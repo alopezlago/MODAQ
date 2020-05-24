@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "removeComments": false,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "esModuleInterop": true,
+    "jsx": "react",
+    "outDir": "out",
+    "lib": ["dom", "es6" ],
+    "alwaysStrict": true,
+    "rootDir": ".",
+    "baseUrl": ".",
+    "module": "CommonJS",
+  },
+  "exclude": [
+    "node_modules",
+    "static"
+  ]
+}
