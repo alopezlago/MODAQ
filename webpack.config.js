@@ -4,7 +4,7 @@ module.exports = {
   devtool: 'source-map',
   mode: 'development',
   entry: [
-    'webpack-dev-server/client?http://localhost:3000',
+    'webpack-dev-server/client?http://localhost:8080',
     './src/index'
   ],
   output: {
@@ -18,20 +18,20 @@ module.exports = {
   module: {
     rules: [
       {
-          test: /\.tsx?$/,
-          loader: "awesome-typescript-loader",
-          include: path.join(__dirname, 'src')
+        test: /\.tsx?$/,
+        loader: "awesome-typescript-loader",
+        include: path.join(__dirname, 'src')
       },
-      { 
-        test: /\.tsx??$/, 
-        loader: "source-map-loader", 
-        enforce: "pre" 
+      {
+        test: /\.tsx??$/,
+        loader: "source-map-loader",
+        enforce: "pre"
       },
       // All output '.js' files will have any sourcemaps re-processed by 'source-map-loader'.
-      { 
-        test: /\.js$/, 
-        loader: "source-map-loader", 
-        enforce: "pre" 
+      {
+        test: /\.js$/,
+        loader: "source-map-loader",
+        enforce: "pre"
       },
     ]
   }

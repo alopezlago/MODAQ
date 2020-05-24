@@ -18,12 +18,32 @@ export interface IQuestion {
     answer: string;
 }
 
+export interface IBonusPart extends IQuestion {
+    correct?: boolean | undefined | null;
+}
+
 export class Tossup implements IQuestion {
     public question: string;
     public answer: string;
+
+    @observable
+    public buzzes: BuzzIndex[];
+
+    constructor(question: string, answer: string) {
+        this.question = question;
+        this.answer = answer;
+    }
 }
 
 export class Bonus {
     public leadin: string;
-    public parts: IQuestion[];
+
+    @observable
+    public parts: IBonusPart[];
+    // Need team
+
+    constructor(leadin: string, parts: IBonusPart[]) {
+        this.leadin = leadin;
+        this.parts = parts;
+    }
 }
