@@ -5,7 +5,7 @@ import * as ReactDOM from 'react-dom';
 import { observable } from 'mobx';
 import { observer } from 'mobx-react';
 
-import { Tossup, Bonus } from './state/PacketState';
+import { Tossup, Bonus, PacketState } from './state/PacketState';
 import { GameState } from './state/GameState';
 import { Player } from './state/TeamState';
 import { CycleChooser } from './components/CycleChooser';
@@ -57,7 +57,7 @@ class TimerView extends React.Component<{ appState: AppState }> {
             new Player("Bradley")
         ];
 
-        const packet = this.props.appState.gameState.packet;
+        const packet = new PacketState();
         packet.tossups = [
             new Tossup("This American was the first presient of the USA.", "George Washington"),
             new Tossup("This is the first perfect number. For 10 points, name how many sides a hexagon has.", "6")
@@ -89,6 +89,8 @@ class TimerView extends React.Component<{ appState: AppState }> {
                 answer: "swan"
             }])
         ];
+
+        this.props.appState.gameState.loadPacket(packet);
     }
 }
 
