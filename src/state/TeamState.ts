@@ -6,6 +6,11 @@ export class Team {
 
     @observable
     public players: Player[];
+
+    constructor() {
+        this.name = "";
+        this.players = [];
+    }
 }
 
 export class Player {

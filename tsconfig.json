@@ -5,9 +5,13 @@
     "sourceMap": true,
     "experimentalDecorators": true,
     "esModuleInterop": true,
+    "strict": true,
     "jsx": "react",
     "outDir": "out",
-    "lib": ["dom", "es6" ],
+    "lib": [
+      "dom",
+      "es6"
+    ],
     "alwaysStrict": true,
     "rootDir": ".",
     "baseUrl": ".",

@@ -1,4 +1,5 @@
 import { observable } from 'mobx';
+import { IBuzzIndex } from './BuzzIndex';
 
 export class PacketState {
     @observable
@@ -27,11 +28,12 @@ export class Tossup implements IQuestion {
     public answer: string;
 
     @observable
-    public buzzes: BuzzIndex[];
+    public buzzes: IBuzzIndex[];
 
     constructor(question: string, answer: string) {
         this.question = question;
         this.answer = answer;
+        this.buzzes = [];
     }
 }
 

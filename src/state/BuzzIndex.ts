@@ -1,6 +1,7 @@
-interface BuzzIndex {
+import { Player } from "./TeamState";
+
+export interface IBuzzIndex {
     position: number;
     correct: boolean;
-
-    // TODO: Add player information here
+    player: Player;
 }

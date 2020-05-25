@@ -8,12 +8,17 @@ import { observer } from 'mobx-react';
 import { Tossup, Bonus } from './state/PacketState';
 import { GameState } from './state/GameState';
 import { Player } from './state/TeamState';
+import { CycleChooser } from './components/CycleChooser';
+import { UIState } from './state/UIState';
 
 class AppState {
     @observable gameState: GameState;
 
+    @observable uiState: UIState;
+
     constructor() {
-        this.gameState = observable(new GameState());
+        this.gameState = new GameState();
+        this.uiState = new UIState();
     }
 }
 
@@ -31,6 +36,7 @@ class TimerView extends React.Component<{ appState: AppState }> {
                 <div>
                     GameState: {JSON.stringify(this.props.appState.gameState)}
                 </div>
+                <CycleChooser game={this.props.appState.gameState} uiState={this.props.appState.uiState}></CycleChooser>
             </div>
         );
     }
@@ -86,22 +92,22 @@ class TimerView extends React.Component<{ appState: AppState }> {
     }
 }
 
-class ErrorBoundary extends React.Component<{}, IErrorBoundaryState> {
-    constructor(props) {
+class ErrorBoundary extends React.Component<Record<string, unknown>, IErrorBoundaryState> {
+    constructor(props: Record<string, unknown>) {
         super(props);
 
         this.state = { error: undefined };
     }
 
-    static getDerivedStateFromError(error) {
+    static getDerivedStateFromError(error: Error | string): IErrorBoundaryState {
         // Update state so the next render will show the fallback UI.
         return { error };
     }
 
-    componentDidCatch(error, errorInfo) {
-        // You can also log the error to an error reporting service
-        // logErrorToMyService(error, errorInfo);
-    }
+    // // componentDidCatch(error, errorInfo) {
+    // //     // You can also log the error to an error reporting service
+    // //     // logErrorToMyService(error, errorInfo);
+    // // }
 
     public render() {
         if (this.state.error) {
@@ -114,7 +120,7 @@ class ErrorBoundary extends React.Component<{}, IErrorBoundaryState> {
 }
 
 interface IErrorBoundaryState {
-    error: any | undefined;
+    error: Error | string | undefined;
 }
 
 const appState = new AppState();
