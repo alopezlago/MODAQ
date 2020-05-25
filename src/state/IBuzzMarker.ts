@@ -1,6 +1,6 @@
 import { Player } from "./TeamState";
 
-export interface IBuzzIndex {
+export interface IBuzzMarker {
     position: number;
     correct: boolean;
     player: Player;
