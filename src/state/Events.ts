@@ -25,12 +25,8 @@ export interface ISubstitutionEvent {
     outPlayer: Player;
 }
 
-export interface IThrowOutTossupEvent {
-    tossupIndex: number;
-}
-
-export interface IThrowOutBonusEvent {
-    bonusIndex: number;
+export interface IThrowOutQuestionEvent {
+    questionIndex: number;
 }
 
 interface IProtestEvent {

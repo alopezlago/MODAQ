@@ -25,8 +25,8 @@ export class Cycle {
     tosuspProtests?: Events.ITossupProtestEvent[];
 
     @observable
-    thrownOutTossups?: Events.IThrowOutTossupEvent[];
+    thrownOutTossups?: Events.IThrowOutQuestionEvent[];
 
     @observable
-    thrownOutBonuses?: Events.IThrowOutBonusEvent[];
+    thrownOutBonuses?: Events.IThrowOutQuestionEvent[];
 }

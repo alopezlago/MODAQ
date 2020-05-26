@@ -27,6 +27,11 @@ export class GameState {
     }
 
     @computed
+    public get isLoaded(): boolean {
+        return this.packet.tossups.length > 0;
+    }
+
+    @computed
     public get teams(): Team[] {
         return [this.firstTeam, this.secondTeam];
     }

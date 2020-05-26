@@ -4,6 +4,7 @@ export class UIState {
     constructor() {
         this.cycleIndex = 0;
         this.isEditingCycleIndex = false;
+        this.selectedWordIndex = -1;
     }
 
     @observable
@@ -11,6 +12,9 @@ export class UIState {
 
     @observable
     public isEditingCycleIndex: boolean;
+
+    @observable
+    public selectedWordIndex: number;
 
     @action
     public nextCycle(): void {
@@ -34,5 +38,10 @@ export class UIState {
     @action
     public setIsEditingCycleIndex(isEditingCycleIndex: boolean): void {
         this.isEditingCycleIndex = isEditingCycleIndex;
+    }
+
+    @action
+    public setSelectedWordIndex(newIndex: number): void {
+        this.selectedWordIndex = newIndex;
     }
 }

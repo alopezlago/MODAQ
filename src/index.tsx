@@ -10,6 +10,7 @@ import { GameState } from './state/GameState';
 import { Player } from './state/TeamState';
 import { CycleChooser } from './components/CycleChooser';
 import { UIState } from './state/UIState';
+import { QuestionViewerContainer } from './components/QuestionViewerContainer';
 
 class AppState {
     @observable gameState: GameState;
@@ -36,7 +37,7 @@ class TimerView extends React.Component<{ appState: AppState }> {
                 <div>
                     GameState: {JSON.stringify(this.props.appState.gameState)}
                 </div>
-                <CycleChooser game={this.props.appState.gameState} uiState={this.props.appState.uiState}></CycleChooser>
+                <QuestionViewerContainer game={this.props.appState.gameState} uiState={this.props.appState.uiState}></QuestionViewerContainer>
             </div>
         );
     }
