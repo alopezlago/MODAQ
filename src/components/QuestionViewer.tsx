@@ -1,9 +1,11 @@
 import React from "react";
 import { observer } from "mobx-react";
+
 import { UIState } from "src/state/UIState";
 import { GameState } from "src/state/GameState";
 import { TossupQuestion } from "./TossupQuestion";
 import { Tossup } from "src/state/PacketState";
+import { BonusQuestion } from "./BonusQuestion";
 
 @observer
 export class QuestionViewer extends React.Component<IQuestionViewerProps> {
@@ -15,8 +17,17 @@ export class QuestionViewer extends React.Component<IQuestionViewerProps> {
 
         const tossup: Tossup = this.props.game.packet.tossups[tossupIndex];
 
+        const bonusIndex: number = this.getBonusIndex();
+        let bonus: JSX.Element | null = null;
+        if (bonusIndex < this.props.game.packet.bonsues.length) {
+            bonus = <BonusQuestion bonus={this.props.game.packet.bonsues[bonusIndex]} uiState={this.props.uiState} />;
+        }
+
         // TODO: Add bonus view below
-        return <TossupQuestion tossupNumber={tossupIndex + 1} tossup={tossup} uiState={this.props.uiState} />;
+        return <div className="question-view">
+            <TossupQuestion tossupNumber={tossupIndex + 1} tossup={tossup} uiState={this.props.uiState} />
+            {bonus}
+        </div>;
     }
 
     private getBonusIndex = (): number => {

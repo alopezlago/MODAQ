@@ -8,7 +8,6 @@ import { observer } from 'mobx-react';
 import { Tossup, Bonus, PacketState } from './state/PacketState';
 import { GameState } from './state/GameState';
 import { Player } from './state/TeamState';
-import { CycleChooser } from './components/CycleChooser';
 import { UIState } from './state/UIState';
 import { QuestionViewerContainer } from './components/QuestionViewerContainer';
 

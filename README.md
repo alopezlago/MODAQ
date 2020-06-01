@@ -44,6 +44,8 @@ TODO items
   - Ideally this would be collapsable/expandable
 - Add the player scoring summary view
   - Divided in two; team name on top, players with their Powers/TUs/Negs/Total in the same line
+- Figure out how to get bolding/underline/italics to fit in well with the text. May want separate tags if underlines are
+  broken up, or may want to avoid creating a dom element for each word in bonuses and answers.
 
 - After the views are done, some of the more nitty-gritty stuff:
   - Accepting packets, first as JSON.
