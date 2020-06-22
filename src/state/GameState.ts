@@ -1,8 +1,10 @@
 import { computed, observable, action } from "mobx";
 
+import * as CompareUtils from "./CompareUtils";
 import { PacketState } from "./PacketState";
-import { Team, Player } from "./TeamState";
-import { Cycle } from "./Cycle";
+import { Team, Player, IPlayer } from "./TeamState";
+import { Cycle, ICycle } from "./Cycle";
+import { format } from "mobx-sync";
 
 export class GameState {
     @observable
@@ -15,9 +17,20 @@ export class GameState {
     public secondTeam: Team;
 
     @observable
+    @format((deserializedArray: IPlayer[]) => {
+        return deserializedArray.map((deserializedPlayer) => {
+            return new Player(deserializedPlayer.name, new Team(deserializedPlayer.team.name));
+        });
+    })
     public players: Player[];
 
+    // Anything with methods/computeds needs to use @format to deserialize correctly
     @observable
+    @format((deserializedArray: ICycle[]) => {
+        return deserializedArray.map((deserializedCycle) => {
+            return new Cycle(deserializedCycle);
+        });
+    })
     public cycles: Cycle[];
 
     constructor() {
@@ -65,7 +78,9 @@ export class GameState {
     public getScoreChangeFromCycle(cycle: Cycle): [number, number] {
         const change: [number, number] = [0, 0];
         if (cycle.correctBuzz) {
-            const indexToUpdate: number = cycle.correctBuzz.marker.player.team === this.firstTeam ? 0 : 1;
+            const indexToUpdate: number = CompareUtils.teamsEqual(cycle.correctBuzz.marker.player.team, this.firstTeam)
+                ? 0
+                : 1;
             change[indexToUpdate] += 10;
             if (cycle.bonusAnswer) {
                 // TODO: We need the bonus value here, so we can get the part's value
@@ -80,7 +95,9 @@ export class GameState {
         }
 
         if (cycle.negBuzz) {
-            const indexToUpdate: number = cycle.negBuzz.marker.player.team === this.firstTeam ? 0 : 1;
+            const indexToUpdate: number = CompareUtils.teamsEqual(cycle.negBuzz.marker.player.team, this.firstTeam)
+                ? 0
+                : 1;
             change[indexToUpdate] -= 5;
         }
 
@@ -93,7 +110,7 @@ export class GameState {
     }
 
     public getPlayers(team: Team): Player[] {
-        return this.players.filter((player) => player.team === team);
+        return this.players.filter((player) => CompareUtils.teamsEqual(player.team, team));
     }
 
     public getBonusIndex(cycleIndex: number): number {

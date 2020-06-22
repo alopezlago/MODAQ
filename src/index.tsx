@@ -5,6 +5,7 @@ import * as ReactDOM from "react-dom";
 import { initializeIcons } from "office-ui-fabric-react/lib/Icons";
 import { configure, observable } from "mobx";
 import { observer } from "mobx-react";
+import { AsyncTrunk } from "mobx-sync";
 import "mobx-react/batchingForReactDom";
 
 import { Tossup, Bonus, PacketState, IBonusPart as BonusPart } from "./state/PacketState";
@@ -146,10 +147,14 @@ initializeIcons();
 const element: HTMLElement | null = document.getElementById("root");
 if (element) {
     const appState = new AppState();
-    ReactDOM.render(
-        <ErrorBoundary>
-            <Root appState={appState} />
-        </ErrorBoundary>,
-        document.getElementById("root")
-    );
+    const trunk = new AsyncTrunk(appState, { storage: localStorage, delay: 100 });
+
+    trunk.init(appState).then(() => {
+        ReactDOM.render(
+            <ErrorBoundary>
+                <Root appState={appState} />
+            </ErrorBoundary>,
+            document.getElementById("root")
+        );
+    });
 }

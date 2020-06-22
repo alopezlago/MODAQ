@@ -1,6 +1,7 @@
 import { observable, action } from "mobx";
 import { ITossupProtestEvent, IBonusProtestEvent } from "./Events";
 import { Team } from "./TeamState";
+import { ignore } from "mobx-sync";
 
 export class UIState {
     constructor() {
@@ -17,18 +18,23 @@ export class UIState {
     public cycleIndex: number;
 
     @observable
+    @ignore
     public isEditingCycleIndex: boolean;
 
     @observable
+    @ignore
     public selectedWordIndex: number;
 
     @observable
+    @ignore
     public buzzMenuVisible: boolean;
 
     @observable
+    @ignore
     public pendingBonusProtestEvent?: IBonusProtestEvent;
 
     @observable
+    @ignore
     public pendingTossupProtestEvent?: ITossupProtestEvent;
 
     @action

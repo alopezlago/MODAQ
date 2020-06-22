@@ -1,13 +1,14 @@
 import { observable, action, computed } from "mobx";
 
+import * as CompareUtils from "./CompareUtils";
 import * as Events from "./Events";
 import { IBuzzMarker } from "./IBuzzMarker";
-import { Team, Player } from "./TeamState";
+import { Team, Player, ITeam } from "./TeamState";
 
 // TODO: Build a stack of cycle changes, so we can support undo. This might mean that mobx isn't the best store for it
 // (not as simple to go back)
 
-export class Cycle {
+export class Cycle implements ICycle {
     @observable
     negBuzz?: Events.ITossupAnswerEvent;
 
@@ -27,7 +28,7 @@ export class Cycle {
     bonusProtests?: Events.IBonusProtestEvent[];
 
     @observable
-    tosuspProtests?: Events.ITossupProtestEvent[];
+    tossupProtests?: Events.ITossupProtestEvent[];
 
     @observable
     thrownOutTossups?: Events.IThrowOutQuestionEvent[];
@@ -35,6 +36,20 @@ export class Cycle {
     @observable
     thrownOutBonuses?: Events.IThrowOutQuestionEvent[];
 
+    constructor(deserializedCycle?: ICycle) {
+        if (deserializedCycle) {
+            this.bonusAnswer = deserializedCycle.bonusAnswer;
+            this.bonusProtests = deserializedCycle.bonusProtests;
+            this.correctBuzz = deserializedCycle.correctBuzz;
+            this.negBuzz = deserializedCycle.negBuzz;
+            this.subs = deserializedCycle.subs;
+            this.thrownOutBonuses = deserializedCycle.thrownOutBonuses;
+            this.thrownOutTossups = deserializedCycle.thrownOutTossups;
+            this.tossupProtests = deserializedCycle.tossupProtests;
+        }
+    }
+
+    @computed({ requiresReaction: true })
     public get incorrectBuzzes(): Events.ITossupAnswerEvent[] {
         const noPenaltyBuzzes: Events.ITossupAnswerEvent[] = this.noPenaltyBuzzes ?? [];
         return this.negBuzz != undefined ? noPenaltyBuzzes.concat(this.negBuzz) : noPenaltyBuzzes;
@@ -87,7 +102,10 @@ export class Cycle {
 
         // TODO: we need a method to set the bonus index (either passed in here or with a new method)
         // Alternatively, we can remove the tossupIndex/bonusIndex, and fill it in whenever we have to serialize this
-        if (this.bonusAnswer == undefined || marker.player.team !== this.bonusAnswer.receivingTeam) {
+        if (
+            this.bonusAnswer == undefined ||
+            !CompareUtils.teamsEqual(marker.player.team, this.bonusAnswer.receivingTeam)
+        ) {
             this.bonusAnswer = {
                 bonusIndex: 0,
                 correctParts: [],
@@ -146,7 +164,7 @@ export class Cycle {
     }
 
     @action
-    public addBonusProtest(team: Team, questionIndex: number, part: number, reason: string): void {
+    public addBonusProtest(team: ITeam, questionIndex: number, part: number, reason: string): void {
         if (this.bonusProtests == undefined) {
             this.bonusProtests = [];
         }
@@ -160,12 +178,12 @@ export class Cycle {
     }
 
     @action
-    public addTossupProtest(team: Team, questionIndex: number, position: number, reason: string): void {
-        if (this.tosuspProtests == undefined) {
-            this.tosuspProtests = [];
+    public addTossupProtest(team: ITeam, questionIndex: number, position: number, reason: string): void {
+        if (this.tossupProtests == undefined) {
+            this.tossupProtests = [];
         }
 
-        this.tosuspProtests.push({
+        this.tossupProtests.push({
             reason: reason,
             position,
             questionIndex,
@@ -189,18 +207,20 @@ export class Cycle {
 
     @action
     public removeTossupProtest(team: Team): void {
-        this.tosuspProtests = this.tosuspProtests?.filter((protest) => protest.team !== team);
-        if (this.tosuspProtests?.length === 0) {
-            this.tosuspProtests = undefined;
+        this.tossupProtests = this.tossupProtests?.filter((protest) => !CompareUtils.teamsEqual(protest.team, team));
+        if (this.tossupProtests?.length === 0) {
+            this.tossupProtests = undefined;
         }
     }
 
     @action
     public removeWrongBuzz(player: Player): void {
-        if (this.negBuzz?.marker.player === player) {
+        if (this.negBuzz && !CompareUtils.playersEqual(this.negBuzz.marker.player, player)) {
             this.negBuzz = undefined;
         } else {
-            this.noPenaltyBuzzes = this.noPenaltyBuzzes?.filter((buzz) => buzz.marker.player !== player);
+            this.noPenaltyBuzzes = this.noPenaltyBuzzes?.filter(
+                (buzz) => !CompareUtils.playersEqual(buzz.marker.player, player)
+            );
         }
     }
 
@@ -226,19 +246,33 @@ export class Cycle {
         }
     }
 
-    private removeTeamsBuzzes(team: Team): void {
-        if (this.correctBuzz?.marker.player.team === team) {
+    private removeTeamsBuzzes(team: ITeam): void {
+        if (this.correctBuzz && CompareUtils.teamsEqual(this.correctBuzz.marker.player.team, team)) {
             this.removeCorrectBuzz();
-        } else if (this.negBuzz?.marker.player.team === team) {
+        } else if (this.negBuzz && CompareUtils.teamsEqual(this.negBuzz.marker.player.team, team)) {
             this.negBuzz = undefined;
         } else if (
             this.noPenaltyBuzzes &&
-            this.noPenaltyBuzzes.findIndex((buzz) => buzz.marker.player.team === team) >= 0
+            this.noPenaltyBuzzes.findIndex((buzz) => CompareUtils.teamsEqual(buzz.marker.player.team, team)) >= 0
         ) {
-            this.noPenaltyBuzzes = this.noPenaltyBuzzes.filter((buzz) => buzz.marker.player.team !== team);
+            this.noPenaltyBuzzes = this.noPenaltyBuzzes.filter(
+                (buzz) => !CompareUtils.teamsEqual(buzz.marker.player.team, team)
+            );
         }
 
         // TODO: Clear the (tossup) protests from this team. Figure out if we need to remove bonus protests too.
-        this.tosuspProtests = this.tosuspProtests?.filter((protest) => protest.team !== team);
+        this.tossupProtests = this.tossupProtests?.filter((protest) => !CompareUtils.teamsEqual(protest.team, team));
     }
+}
+
+export interface ICycle {
+    negBuzz?: Events.ITossupAnswerEvent;
+    correctBuzz?: Events.ITossupAnswerEvent;
+    noPenaltyBuzzes?: Events.ITossupAnswerEvent[];
+    bonusAnswer?: Events.IBonusAnswerEvent;
+    subs?: Events.ISubstitutionEvent[];
+    bonusProtests?: Events.IBonusProtestEvent[];
+    tossupProtests?: Events.ITossupProtestEvent[];
+    thrownOutTossups?: Events.IThrowOutQuestionEvent[];
+    thrownOutBonuses?: Events.IThrowOutQuestionEvent[];
 }

@@ -11,6 +11,7 @@ import * as React from "react";
 import { observer } from "mobx-react";
 import { ContextualMenu, ContextualMenuItemType, IContextualMenuItem } from "office-ui-fabric-react/lib/ContextualMenu";
 
+import * as CompareUtils from "src/state/CompareUtils";
 import { GameState } from "src/state/GameState";
 import { UIState } from "src/state/UIState";
 import { Player, Team } from "src/state/TeamState";
@@ -65,15 +66,17 @@ function getPlayerMenuItems(props: IBuzzMenuProps, team: Team): IContextualMenuI
     return players.map((player, index) => {
         const topLevelKey = `Team_${team.name}_Player_${index}`;
         const isCorrectChecked: boolean =
-            props.cycle.correctBuzz?.marker.player === player &&
+            props.cycle.correctBuzz != undefined &&
+            CompareUtils.playersEqual(props.cycle.correctBuzz.marker.player, player) &&
             props.cycle.correctBuzz.marker.position === props.position;
         const isWrongChecked: boolean =
             props.cycle.incorrectBuzzes.findIndex(
-                (buzz) => buzz.marker.player === player && buzz.marker.position === props.position
+                (buzz) =>
+                    CompareUtils.playersEqual(buzz.marker.player, player) && buzz.marker.position === props.position
             ) >= 0;
         const isProtestChecked: boolean =
             isWrongChecked &&
-            props.cycle.tosuspProtests?.findIndex((protest) => protest.position === props.position) != undefined;
+            props.cycle.tossupProtests?.findIndex((protest) => protest.position === props.position) != undefined;
 
         const subMenuItems: IContextualMenuItem[] = [
             {

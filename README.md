@@ -59,8 +59,6 @@ Next items to work on (figure out an order)
 -   Figure out how to throw out tossups and bonuses
 -   Integrate mobx-persist; hydrate the GameState and UIState (or just AppState), and add a button to clear
     -   May also want a button to export to JSON, or get access to buzz data in some fashion
-    -   mobx-persist/mobx-sync will require some work; both have issues with deserialization, either with cycles not being
-        saved properly, or with having to format anything serialized from a class with computed or methods
 -   Work on quick setup experience: specify teams and players, and upload packet; then on next show QViewer screen.
     -   Could include working on a sidebar
 

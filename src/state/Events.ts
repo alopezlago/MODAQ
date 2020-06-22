@@ -1,4 +1,4 @@
-import { Team, Player } from "./TeamState";
+import { ITeam, IPlayer } from "./TeamState";
 import { IBuzzMarker } from "./IBuzzMarker";
 
 export interface ITossupAnswerEvent {
@@ -9,7 +9,7 @@ export interface ITossupAnswerEvent {
 export interface IBonusAnswerEvent {
     bonusIndex: number;
     correctParts: ICorrectBonusAnswerPart[];
-    receivingTeam: Team;
+    receivingTeam: ITeam;
 }
 
 export interface ICorrectBonusAnswerPart {
@@ -26,8 +26,8 @@ export interface IBonusProtestEvent extends IProtestEvent {
 }
 
 export interface ISubstitutionEvent {
-    inPlayer: Player;
-    outPlayer: Player;
+    inPlayer: IPlayer;
+    outPlayer: IPlayer;
 }
 
 export interface IThrowOutQuestionEvent {
@@ -39,5 +39,5 @@ export interface IThrowOutQuestionEvent {
 interface IProtestEvent {
     questionIndex: number;
     reason: string;
-    team: Team;
+    team: ITeam;
 }

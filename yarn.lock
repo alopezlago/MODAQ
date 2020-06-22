@@ -3916,6 +3916,13 @@ mobx-react@^6.2.2:
   dependencies:
     mobx-react-lite "2"
 
+mobx-sync@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/mobx-sync/-/mobx-sync-3.0.0.tgz#fbbd267442757cf264ee2124730cf57a0f6bd479"
+  integrity sha512-j8DbDB58VfaNH8n+cIIj8yPZjPWOdPz1cUtpaI2NHKzArtZ3S7GZD9MbQJyU7rBIq5+ajfLzuEKF0ruynYPj4A==
+  dependencies:
+    tslib "^2.0.0"
+
 mobx@^5.15.4:
   version "5.15.4"
   resolved "https://registry.yarnpkg.com/mobx/-/mobx-5.15.4.tgz#9da1a84e97ba624622f4e55a0bf3300fb931c2ab"
@@ -5911,6 +5918,11 @@ tslib@^1.9.0:
   version "1.10.0"
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-1.10.0.tgz#c3c19f95973fb0a62973fb09d90d961ee43e5c8a"
   integrity sha512-qOebF53frne81cf0S9B41ByenJ3/IuH8yJKngAX35CmiZySA0khhkovshKK+jGCaMnVomla7gVlIcc3EvKPbTQ==
+
+tslib@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.0.0.tgz#18d13fc2dce04051e20f074cc8387fd8089ce4f3"
+  integrity sha512-lTqkx847PI7xEDYJntxZH89L2/aXInsyF2luSafe/+0fHOMjlBNXdH6th7f70qxLDhul7KZK0zC8V5ZIyHl0/g==
 
 tsutils@^3.17.1:
   version "3.17.1"

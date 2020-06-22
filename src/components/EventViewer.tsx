@@ -140,10 +140,9 @@ function createCycleList(cycle: Cycle): JSX.Element[] {
         elements.push(createBonusAnswerDetails(cycle.bonusAnswer));
     }
 
-    // TODO: Add bonus
-    if (cycle.tosuspProtests) {
-        for (let i = 0; i < cycle.tosuspProtests.length; i++) {
-            elements.push(createTossupProtestDetails(cycle.tosuspProtests[i], i));
+    if (cycle.tossupProtests) {
+        for (let i = 0; i < cycle.tossupProtests.length; i++) {
+            elements.push(createTossupProtestDetails(cycle.tossupProtests[i], i));
         }
     }
 

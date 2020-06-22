@@ -1,7 +1,7 @@
-import { Player } from "./TeamState";
+import { IPlayer } from "./TeamState";
 
 export interface IBuzzMarker {
     position: number;
     correct: boolean;
-    player: Player;
+    player: IPlayer;
 }
