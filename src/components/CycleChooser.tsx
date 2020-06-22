@@ -1,108 +1,147 @@
-import { observer } from "mobx-react";
 import React from "react";
+import { observer } from "mobx-react";
+import { DefaultButton, IButtonStyles } from "office-ui-fabric-react/lib/Button";
+import { TextField, ITextFieldStyles } from "office-ui-fabric-react/lib/TextField";
 
 import { UIState } from "src/state/UIState";
 import { GameState } from "src/state/GameState";
 
-@observer
-export class CycleChooser extends React.Component<ICycleChooserProps, ICycleChooserState> {
-    private static ReturnKeyCode = 13;
+const ReturnKeyCode = 13;
+const questionNumberTextStyle: Partial<ITextFieldStyles> = {
+    root: {
+        display: "inline-flex",
+        width: 40,
+        margin: "0 10px",
+    },
+    field: {
+        textAlign: "center",
+    },
+};
+const previousButtonStyle: Partial<IButtonStyles> = {
+    root: {
+        marginRight: 10,
+    },
+};
+const nextButtonStyle: Partial<IButtonStyles> = {
+    root: {
+        marginLeft: 10,
+    },
+};
 
-    public render(): JSX.Element {
-        // TODO: Move away from buttons to something like images
-        const moveBack: JSX.Element = (
-            <button
-                onClick={this.onPreviousClick}
-                disabled={this.props.uiState.cycleIndex === 0}>
-                &larr; Previous
-            </button>
-        );
-        const moveForward: JSX.Element = (
-            <button
-                onClick={this.onNextClick}
-                disabled={!this.nextDisabled()}>
-                Next &rarr;
-            </button>
-        );
+export const CycleChooser = observer((props: ICycleChooserProps) => {
+    const onPreviousClickHandler = React.useCallback(() => onPreviousClick(props), [props]);
+    const onNextClickHandler = React.useCallback(() => onNextClick(props), [props]);
+    const onProposedQuestionNumberBlurHandler = React.useCallback((ev) => onProposedQuestionNumberBlur(ev, props), [
+        props,
+    ]);
+    const onProposedQuestionNumberKeyDownHandler = React.useCallback(
+        (ev) => onProposedQuestionNumberKeyDown(ev, props),
+        [props]
+    );
+    const onQuestionLabelDoubleClickHandler = React.useCallback(() => onQuestionLabelDoubleClick(props), [props]);
 
-        let questionNumberViewer: JSX.Element | null = null;
-        if (this.props.uiState.isEditingCycleIndex) {
-            questionNumberViewer = <input
+    // TODO: Move away from buttons to something like images
+    const previousButton: JSX.Element = (
+        <DefaultButton
+            key="previousButton"
+            onClick={onPreviousClickHandler}
+            disabled={props.uiState.cycleIndex === 0}
+            styles={previousButtonStyle}
+        >
+            &larr; Previous
+        </DefaultButton>
+    );
+    const nextButton: JSX.Element = (
+        <DefaultButton
+            key="nextButton"
+            onClick={onNextClickHandler}
+            disabled={!nextDisabled(props)}
+            styles={nextButtonStyle}
+        >
+            Next &rarr;
+        </DefaultButton>
+    );
+
+    const questionNumber: number = props.uiState.cycleIndex + 1;
+    let questionNumberViewer: JSX.Element | null = null;
+    if (props.uiState.isEditingCycleIndex) {
+        questionNumberViewer = (
+            <TextField
                 type="text"
-                value={this.state.proposedQuestionNumber}
-                onBlur={this.onProposedQuestionNumberBlur}
-                onChange={this.onProposedQuestionNumberChange}
-                onKeyDown={this.onProposedQuestionNumberKeyDown}
+                defaultValue={questionNumber.toString()}
+                onBlur={onProposedQuestionNumberBlurHandler}
+                onKeyDown={onProposedQuestionNumberKeyDownHandler}
                 tabIndex={0}
                 autoFocus={true}
-            />;
-        } else {
-            questionNumberViewer = <span className="current-question-label" onDoubleClick={this.onQuestionLabelDoubleClick}>Question #{this.props.uiState.cycleIndex + 1}</span>;
-        }
+                styles={questionNumberTextStyle}
+            />
+        );
+    } else {
+        questionNumberViewer = (
+            <span
+                key="questionViewer"
+                className="current-question-label"
+                onDoubleClick={onQuestionLabelDoubleClickHandler}
+            >
+                Question #{questionNumber}
+            </span>
+        );
+    }
 
-        return <div>
-            {moveBack}
+    return (
+        <div>
+            {previousButton}
             {questionNumberViewer}
-            {moveForward}
-        </div>;
+            {nextButton}
+        </div>
+    );
+});
+
+// We may want these to be computed properties in the UIState, but that requires it having access to the packet
+function nextDisabled(props: ICycleChooserProps): boolean {
+    return props.uiState.cycleIndex + 1 < props.game.packet.tossups.length;
+}
+
+function onProposedQuestionNumberBlur(event: React.FocusEvent<HTMLInputElement>, props: ICycleChooserProps): void {
+    commitCycleIndex(props, event.currentTarget.value);
+}
+
+function onProposedQuestionNumberKeyDown(
+    event: React.KeyboardEvent<HTMLInputElement>,
+    props: ICycleChooserProps
+): void {
+    if (event.which == ReturnKeyCode) {
+        commitCycleIndex(props, event.currentTarget.value);
+    }
+}
+
+function onNextClick(props: ICycleChooserProps): void {
+    props.uiState.nextCycle();
+}
+
+function onPreviousClick(props: ICycleChooserProps): void {
+    props.uiState.previousCycle();
+}
+
+function onQuestionLabelDoubleClick(props: ICycleChooserProps): void {
+    // The question number is one higher than the cycle index
+    props.uiState.setIsEditingCycleIndex(true);
+}
+
+function commitCycleIndex(props: ICycleChooserProps, value: string): void {
+    if (value == undefined) {
+        return;
     }
 
-    // We may want these to be computed properties in the UIState, but that requires it having access to the packet
-    public nextDisabled = (): boolean => {
-        return this.props.uiState.cycleIndex + 1 < this.props.game.packet.tossups.length;
+    const propsedCycleIndex: number = parseInt(value, 10);
+    if (propsedCycleIndex >= 1 && propsedCycleIndex <= props.game.packet.tossups.length) {
+        props.uiState.setCycleIndex(propsedCycleIndex - 1);
     }
 
-    public onProposedQuestionNumberBlur = (): void => {
-        this.commitCycleIndex();
-    }
-
-    public onProposedQuestionNumberChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
-        this.setState({ proposedQuestionNumber: event.target.value });
-    }
-
-    public onProposedQuestionNumberKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {
-        if (event.which == CycleChooser.ReturnKeyCode) {
-            this.commitCycleIndex();
-        }
-    }
-
-    private onNextClick = (): void => {
-        this.props.uiState.nextCycle();
-    }
-
-    private onPreviousClick = (): void => {
-        this.props.uiState.previousCycle();
-    }
-
-    private onQuestionLabelDoubleClick = (): void => {
-        // The question number is one higher than the cycle index
-        this.setState({ proposedQuestionNumber: (this.props.uiState.cycleIndex + 1).toString() });
-        this.props.uiState.setIsEditingCycleIndex(true);
-    }
-
-    private commitCycleIndex(): void {
-        if (this.state.proposedQuestionNumber == undefined) {
-            return;
-        }
-
-        const propsedCycleIndex: number = parseInt(this.state.proposedQuestionNumber, 10);
-        if (propsedCycleIndex >= 1 && propsedCycleIndex <= this.props.game.packet.tossups.length) {
-            this.props.uiState.setCycleIndex(propsedCycleIndex - 1);
-        }
-
-        this.props.uiState.setIsEditingCycleIndex(false);
-    }
+    props.uiState.setIsEditingCycleIndex(false);
 }
 
 export interface ICycleChooserProps {
     game: GameState;
     uiState: UIState;
 }
-
-interface ICycleChooserState {
-    // The question number should always be 1 higher than the cycle index
-    proposedQuestionNumber: string | undefined;
-}
-
-// This can be relatively simple: just go through cycles with <- and ->
-// Ideally, double-clicking on the number would let you type it in, and it would ignore it if the value was illegal

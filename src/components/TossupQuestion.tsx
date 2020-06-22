@@ -1,69 +1,160 @@
 import * as React from "react";
 import { observer } from "mobx-react";
+import { createUseStyles } from "react-jss";
 
+import * as FormattedTextParser from "src/parser/FormattedTextParser";
 import { UIState } from "src/state/UIState";
 import { Tossup } from "src/state/PacketState";
 import { QuestionWord } from "./QuestionWord";
+import { Cycle } from "src/state/Cycle";
+import { BuzzMenu } from "./BuzzMenu";
+import { GameState } from "src/state/GameState";
+import { Answer } from "./Answer";
+import { IFormattedText } from "src/parser/IFormattedText";
+import { TossupProtestDialog } from "./TossupProtestDialog";
 
+export const TossupQuestion = observer(
+    (props: IQuestionProps): JSX.Element => {
+        const classes: ITossupQuestionStyle = useStyles();
 
-@observer
-export class TossupQuestion extends React.Component<IQuestionProps> {
-    private readonly clickHandler: React.EventHandler<React.MouseEvent<HTMLDivElement>>;
+        const questionWords: JSX.Element[] = generateQuestionWords(props);
+        const clickHandler: React.MouseEventHandler = React.useCallback(
+            (event: React.MouseEvent<HTMLDivElement>): void => {
+                onTossupTextClicked(props, event);
+            },
+            [props]
+        );
 
-    constructor(props: IQuestionProps) {
-        super(props);
-
-        this.clickHandler = (event) => this.handleClick(event);
-    }
-
-    public render(): JSX.Element {
-        // TODO: Fix styles with JSS
-        const questionWords = this.generateQuestionWords();
         return (
-            <div className="question tossup" onClick={this.clickHandler} onDoubleClick={this.clickHandler} >
-                <div className="tossup-text">
-                    <span>#{this.props.tossupNumber}. </span>
+            <div className={classes.tossupContainer}>
+                <TossupProtestDialog cycle={props.cycle} uiState={props.uiState} />
+                <div className={classes.tossupText} onClick={clickHandler} onDoubleClick={clickHandler}>
                     {questionWords}
                 </div>
-                <div>Answer: {this.props.tossup.answer}</div>
+                <Answer text={props.tossup.answer} />
             </div>
         );
     }
+);
 
-    // TODO: Cache this value, use shouldComponentUpdate to clear the cached value.
-    private generateQuestionWords(): JSX.Element[] {
-        return this.splitWords().map((word, index) => this.generateQuestionWord(word, index));
-    }
+// TODO: Look into caching or memoizing this value, maybe with React.useMemo?
+function generateQuestionWords(props: IQuestionProps): JSX.Element[] {
+    const correctBuzzIndex: number = props.cycle.correctBuzz?.marker.position ?? -1;
+    const wrongBuzzIndexes: number[] = props.cycle.incorrectBuzzes.map((buzz) => buzz.marker.position);
 
-    private generateQuestionWord(word: string, index: number) {
-        // TODO: Look into using the 
+    const selectedWordRef: React.MutableRefObject<null> = React.useRef(null);
+
+    // We need a last character that the reader can click on if the player buzzes in at the end.
+    const questionWords: IFormattedText[][] = React.useMemo(
+        () =>
+            FormattedTextParser.splitFormattedTextIntoWords(props.tossup.question).concat([
+                [{ text: "■", emphasized: false, required: false }],
+            ]),
+        [props]
+    );
+
+    return questionWords.map((word, index) => {
         return (
-            <QuestionWord key={index} index={index} word={word + " "} selected={index === this.props.uiState.selectedWordIndex} />
+            <QuestionWordWrapper
+                key={`qw_${index}`}
+                correctBuzzIndex={correctBuzzIndex}
+                index={index}
+                selectedWordRef={selectedWordRef}
+                word={word}
+                wrongBuzzIndexes={wrongBuzzIndexes}
+                {...props}
+            />
         );
-    }
-
-    private splitWords(): string[] {
-        // If we need to worry about mulitiline, we can use /\s/mg instead
-        return this.props.tossup.question.split(/\s+/g);
-    }
-
-    private handleClick(event: React.MouseEvent<HTMLDivElement>): void {
-        const target = event.target as HTMLElement;
-        if (target.getAttribute) {
-            const index = parseInt(target.getAttribute("data-value") ?? "", 10);
-            if (index >= 0) {
-                const selectedIndex = this.props.uiState.selectedWordIndex === index ? -1 : index;
-                this.props.uiState.setSelectedWordIndex(selectedIndex);
-            }
-
-            event.preventDefault();
-            event.stopPropagation();
-        }
-    }
+    });
 }
 
+function onTossupTextClicked(props: IQuestionProps, event: React.MouseEvent<HTMLDivElement>): void {
+    const target = event.target as HTMLDivElement;
+
+    // I'd like to avoid looking for a specific HTML element instead of a class. This would mean giving QuestionWord a
+    // fixed class.
+    const questionWord: HTMLSpanElement | null = target.closest("span");
+    if (questionWord == undefined || questionWord.getAttribute == undefined) {
+        return;
+    }
+
+    const index = parseInt(questionWord.getAttribute("data-value") ?? "", 10);
+    if (index < 0) {
+        return;
+    }
+
+    const selectedIndex = props.uiState.selectedWordIndex === index ? -1 : index;
+    props.uiState.setSelectedWordIndex(selectedIndex);
+    props.uiState.showBuzzMenu();
+
+    event.preventDefault();
+    event.stopPropagation();
+}
+
+// We need to use a wrapper component so we can give it a key. Otherwise, React will complain
+const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
+    const selected: boolean = props.index === props.uiState.selectedWordIndex;
+
+    const buzzMenu: JSX.Element | undefined =
+        selected && props.uiState.buzzMenuVisible ? (
+            <BuzzMenu
+                cycle={props.cycle}
+                game={props.game}
+                position={props.index}
+                target={props.selectedWordRef}
+                tossup={props.tossup}
+                tossupNumber={props.tossupNumber}
+                uiState={props.uiState}
+            />
+        ) : undefined;
+
+    return (
+        <>
+            <QuestionWord
+                index={props.index}
+                word={props.word}
+                selected={props.index === props.uiState.selectedWordIndex}
+                correct={props.index === props.correctBuzzIndex}
+                wrong={props.wrongBuzzIndexes.findIndex((position) => position === props.index) >= 0}
+                componentRef={selected ? props.selectedWordRef : undefined}
+            />
+            {buzzMenu}
+            &nbsp;
+        </>
+    );
+});
+
 export interface IQuestionProps {
+    cycle: Cycle;
+    game: GameState;
     tossup: Tossup;
     tossupNumber: number;
     uiState: UIState;
 }
+
+interface IQuestionWordWrapperProps {
+    correctBuzzIndex: number;
+    cycle: Cycle;
+    game: GameState;
+    index: number;
+    selectedWordRef: React.MutableRefObject<null>;
+    tossup: Tossup;
+    tossupNumber: number;
+    uiState: UIState;
+    word: IFormattedText[];
+    wrongBuzzIndexes: number[];
+}
+
+interface ITossupQuestionStyle {
+    tossupContainer: string;
+    tossupText: string;
+}
+
+const useStyles: (data?: unknown) => ITossupQuestionStyle = createUseStyles({
+    tossupContainer: {
+        padding: "0 24px",
+    },
+    tossupText: {
+        display: "inline",
+    },
+});

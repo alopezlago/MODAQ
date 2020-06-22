@@ -1,5 +1,4 @@
-import { observable } from 'mobx';
-import { IBuzzMarker } from './IBuzzMarker';
+import { observable, action } from "mobx";
 
 export class PacketState {
     @observable
@@ -12,6 +11,16 @@ export class PacketState {
         this.tossups = [];
         this.bonsues = [];
     }
+
+    @action
+    public setTossups(tossups: Tossup[]): void {
+        this.tossups = tossups;
+    }
+
+    @action
+    public setBonuses(bonuses: Bonus[]): void {
+        this.bonsues = bonuses;
+    }
 }
 
 export interface IQuestion {
@@ -19,21 +28,25 @@ export interface IQuestion {
     answer: string;
 }
 
-export interface IBonusPart extends IQuestion {
-    correct?: boolean | undefined | null;
+export class IBonusPart implements IQuestion {
+    public question: string;
+    public answer: string;
+    public value: number;
+
+    constructor(question: string, answer: string, value = 10) {
+        this.question = question;
+        this.answer = answer;
+        this.value = value;
+    }
 }
 
 export class Tossup implements IQuestion {
     public question: string;
     public answer: string;
 
-    @observable
-    public buzzes: IBuzzMarker[];
-
     constructor(question: string, answer: string) {
         this.question = question;
         this.answer = answer;
-        this.buzzes = [];
     }
 }
 
@@ -42,7 +55,6 @@ export class Bonus {
 
     @observable
     public parts: IBonusPart[];
-    // Need team
 
     constructor(leadin: string, parts: IBonusPart[]) {
         this.leadin = leadin;

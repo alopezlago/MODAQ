@@ -1,15 +1,18 @@
 // Recommendation is to have separate stores for the UI and for different domains. See https://mobx.js.org/best/store.html
 
-import * as React from 'react';
-import * as ReactDOM from 'react-dom';
-import { observable } from 'mobx';
-import { observer } from 'mobx-react';
+import * as React from "react";
+import * as ReactDOM from "react-dom";
+import { initializeIcons } from "office-ui-fabric-react/lib/Icons";
+import { configure, observable } from "mobx";
+import { observer } from "mobx-react";
+import "mobx-react/batchingForReactDom";
 
-import { Tossup, Bonus, PacketState } from './state/PacketState';
-import { GameState } from './state/GameState';
-import { Player } from './state/TeamState';
-import { UIState } from './state/UIState';
-import { QuestionViewerContainer } from './components/QuestionViewerContainer';
+import { Tossup, Bonus, PacketState, IBonusPart as BonusPart } from "./state/PacketState";
+import { GameState } from "./state/GameState";
+import { UIState } from "./state/UIState";
+import { Cycle } from "./state/Cycle";
+import { GameViewer } from "./components/GameViewer";
+import { PacketLoader } from "./components/PacketLoader";
 
 class AppState {
     @observable gameState: GameState;
@@ -17,81 +20,93 @@ class AppState {
     @observable uiState: UIState;
 
     constructor() {
+        configure({ enforceActions: "observed", computedRequiresReaction: true });
+
         this.gameState = new GameState();
         this.uiState = new UIState();
     }
 }
 
 @observer
-class TimerView extends React.Component<{ appState: AppState }> {
+class Root extends React.Component<{ appState: AppState }> {
     public render() {
         return (
             <div>
-                <div>
-                    Questions: {this.props.appState.gameState.packet.tossups.map(x => x.question)}
-                </div>
-                <button onClick={this.onInitialize}>
-                    Initialize game state
-                </button>
-                <div>
-                    GameState: {JSON.stringify(this.props.appState.gameState)}
-                </div>
-                <QuestionViewerContainer game={this.props.appState.gameState} uiState={this.props.appState.uiState}></QuestionViewerContainer>
+                <button onClick={this.onInitialize}>Initialize game state</button>
+                <PacketLoader
+                    onLoad={this.onPacketLoaded}
+                    game={this.props.appState.gameState}
+                    uiState={this.props.appState.uiState}
+                />
+                <GameViewer game={this.props.appState.gameState} uiState={this.props.appState.uiState} />
             </div>
         );
     }
 
-    private onInitialize = () => {
+    private onPacketLoaded = (): void => {
         const firstTeam = this.props.appState.gameState.firstTeam;
-        firstTeam.name = "Alpha";
-        firstTeam.players = [
-            new Player("Alan"),
-            new Player("Alice"),
-            new Player("Antonio")
-        ];
+        firstTeam.setName("Alpha");
+        this.props.appState.gameState.addPlayers(firstTeam, "Alan", "Alice", "Antonio");
 
         const secondTeam = this.props.appState.gameState.secondTeam;
-        secondTeam.name = "B 2";
-        secondTeam.players = [
-            new Player("Betty"),
-            new Player("Bradley")
-        ];
+        secondTeam.setName("B 2");
+        this.props.appState.gameState.addPlayers(secondTeam, "Betty", "Bradley");
+
+        // TODO: Add parsing logic to turn QEMS/Jerry's parser output to Tossups and BonusQuestions for the packet
+        // TODO: Translate <em></em> and <req></req> into italicized and bolded+underlined styles
+    };
+
+    private onInitialize = (): void => {
+        const firstTeam = this.props.appState.gameState.firstTeam;
+        firstTeam.setName("Alpha");
+        this.props.appState.gameState.addPlayers(firstTeam, "Alan", "Alice", "Antonio");
+
+        const secondTeam = this.props.appState.gameState.secondTeam;
+        secondTeam.setName("B 2");
+        this.props.appState.gameState.addPlayers(secondTeam, "Betty", "Bradley");
 
         const packet = new PacketState();
-        packet.tossups = [
-            new Tossup("This American was the first presient of the USA.", "George Washington"),
-            new Tossup("This is the first perfect number. For 10 points, name how many sides a hexagon has.", "6")
-        ]
+        packet.setTossups([
+            new Tossup("This American was the first president of the USA.", "George Washington"),
+            new Tossup("This is the first perfect number. For 10 points, name how many sides a hexagon has.", "6"),
+        ]);
 
-        packet.bonsues = [
-            new Bonus("This is a leadin", [{
-                question: "This is the first part",
-                answer: "First answer"
-            },
-            {
-                question: "This is the second part",
-                answer: "Second answer"
-            },
-            {
-                question: "This is the third part",
-                answer: "Third answer"
-            }]),
-            new Bonus("He wrote An Irishman Airman forsees his death", [{
-                question: "Name this poet",
-                answer: "William Butler Yeats"
-            },
-            {
-                question: "Yeats also wrote this poem that contains the phrase \"the center cannot hold\".",
-                answer: "The Second Coming"
-            },
-            {
-                question: "Yeats also wrote a poem about Leda and this animal that Zeus turned into.",
-                answer: "swan"
-            }])
-        ];
+        packet.setBonuses([
+            new Bonus("This is a leadin", [
+                new BonusPart("This is the first part", "First answer"),
+                new BonusPart("This is the second part", "Second answer"),
+                new BonusPart("This is the third part", "Third answer"),
+            ]),
+            new Bonus("He wrote An Irishman Airman forsees his death", [
+                new BonusPart("Name this poet", "William Butler Yeats"),
+                new BonusPart(
+                    'Yeats also wrote this poem that contains the phrase "the center cannot hold".',
+                    "The Second Coming"
+                ),
+                new BonusPart("Yeats also wrote a poem about Leda and this animal that Zeus turned into.", "swan"),
+            ]),
+        ]);
 
         this.props.appState.gameState.loadPacket(packet);
-    }
+
+        const firstCycle: Cycle = this.props.appState.gameState.cycles[0];
+        firstCycle.addNeg(
+            {
+                correct: false,
+                player: this.props.appState.gameState.getPlayers(secondTeam)[0],
+                position: 2,
+            },
+            0
+        );
+        firstCycle.addCorrectBuzz(
+            {
+                correct: true,
+                player: this.props.appState.gameState.getPlayers(firstTeam)[1],
+                position: 4,
+            },
+            0
+        );
+    };
 }
 
 class ErrorBoundary extends React.Component<Record<string, unknown>, IErrorBoundaryState> {
@@ -125,5 +140,16 @@ interface IErrorBoundaryState {
     error: Error | string | undefined;
 }
 
-const appState = new AppState();
-ReactDOM.render(<ErrorBoundary><TimerView appState={appState} /></ErrorBoundary>, document.getElementById('root'));
+initializeIcons();
+
+// This element might not exist when running tests. In that case, skip rendering the application.
+const element: HTMLElement | null = document.getElementById("root");
+if (element) {
+    const appState = new AppState();
+    ReactDOM.render(
+        <ErrorBoundary>
+            <Root appState={appState} />
+        </ErrorBoundary>,
+        document.getElementById("root")
+    );
+}

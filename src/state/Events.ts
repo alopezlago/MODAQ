@@ -8,8 +8,13 @@ export interface ITossupAnswerEvent {
 
 export interface IBonusAnswerEvent {
     bonusIndex: number;
-    correctParts: number[];
+    correctParts: ICorrectBonusAnswerPart[];
     receivingTeam: Team;
+}
+
+export interface ICorrectBonusAnswerPart {
+    index: number;
+    points: number;
 }
 
 export interface ITossupProtestEvent extends IProtestEvent {
@@ -29,7 +34,10 @@ export interface IThrowOutQuestionEvent {
     questionIndex: number;
 }
 
+// TODO: Consider adding a "note" or "free" event, that can tell the TD something special about this cycle
+
 interface IProtestEvent {
-    description: string;
+    questionIndex: number;
+    reason: string;
     team: Team;
 }

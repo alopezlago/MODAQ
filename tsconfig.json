@@ -1,24 +1,22 @@
 {
-  "compilerOptions": {
-    "target": "es6",
-    "removeComments": false,
-    "sourceMap": true,
-    "experimentalDecorators": true,
-    "esModuleInterop": true,
-    "strict": true,
-    "jsx": "react",
-    "outDir": "out",
-    "lib": [
-      "dom",
-      "es6"
-    ],
-    "alwaysStrict": true,
-    "rootDir": ".",
-    "baseUrl": ".",
-    "module": "CommonJS",
-  },
-  "exclude": [
-    "node_modules",
-    "static"
-  ]
+    "compilerOptions": {
+        "target": "es6",
+        "removeComments": false,
+        "sourceMap": true,
+        "experimentalDecorators": true,
+        "esModuleInterop": true,
+        "strict": true,
+        "jsx": "react",
+        "outDir": "out",
+        "lib": ["dom", "es6", "ES2020.String"],
+        "alwaysStrict": true,
+        "rootDir": ".",
+        "baseUrl": ".",
+        "module": "CommonJS",
+        "paths": {
+            "src": ["src"],
+            "tests": ["tests"]
+        }
+    },
+    "exclude": ["node_modules", "static"]
 }

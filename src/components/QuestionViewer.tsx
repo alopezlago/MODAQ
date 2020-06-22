@@ -1,73 +1,71 @@
 import React from "react";
 import { observer } from "mobx-react";
+import { createUseStyles } from "react-jss";
 
 import { UIState } from "src/state/UIState";
 import { GameState } from "src/state/GameState";
 import { TossupQuestion } from "./TossupQuestion";
 import { Tossup } from "src/state/PacketState";
 import { BonusQuestion } from "./BonusQuestion";
+import { Cycle } from "src/state/Cycle";
 
-@observer
-export class QuestionViewer extends React.Component<IQuestionViewerProps> {
-    public render(): JSX.Element {
-        const tossupIndex: number = this.getTossupIndex();
-        if (tossupIndex > this.props.game.packet.tossups.length) {
-            return <div>New tossups needed (past the end of the packet)</div>
-        }
+export const QuestionViewer = observer((props: IQuestionViewerProps) => {
+    const classes: IQuestionViewerStyle = useStyles();
 
-        const tossup: Tossup = this.props.game.packet.tossups[tossupIndex];
+    const tossupIndex: number = props.game.getTossupIndex(props.uiState.cycleIndex);
+    if (tossupIndex > props.game.packet.tossups.length) {
+        return <div>New tossups needed (past the end of the packet)</div>;
+    }
 
-        const bonusIndex: number = this.getBonusIndex();
-        let bonus: JSX.Element | null = null;
-        if (bonusIndex < this.props.game.packet.bonsues.length) {
-            bonus = <BonusQuestion bonus={this.props.game.packet.bonsues[bonusIndex]} uiState={this.props.uiState} />;
-        }
+    const cycle: Cycle = props.game.cycles[props.uiState.cycleIndex];
+    const tossup: Tossup = props.game.packet.tossups[tossupIndex];
 
-        // TODO: Add bonus view below
-        return <div className="question-view">
-            <TossupQuestion tossupNumber={tossupIndex + 1} tossup={tossup} uiState={this.props.uiState} />
+    const bonusIndex: number = props.game.getBonusIndex(props.uiState.cycleIndex);
+    let bonus: JSX.Element | null = null;
+    const bonusInPlay: boolean = props.game.cycles[tossupIndex].correctBuzz != undefined;
+    if (bonusIndex < props.game.packet.bonsues.length) {
+        bonus = (
+            <BonusQuestion
+                bonus={props.game.packet.bonsues[bonusIndex]}
+                cycle={cycle}
+                uiState={props.uiState}
+                inPlay={bonusInPlay}
+            />
+        );
+    }
+
+    return (
+        <div className={classes.questionViewer}>
+            <TossupQuestion
+                tossupNumber={tossupIndex + 1}
+                cycle={cycle}
+                tossup={tossup}
+                game={props.game}
+                uiState={props.uiState}
+            />
+            <div className={classes.separator} />
             {bonus}
-        </div>;
-    }
-
-    private getBonusIndex = (): number => {
-        const usedBonusesCount = this.props.game.cycles.reduce<number>((usedBonuses, value) => {
-            if (value.correctBuzz != undefined) {
-                return usedBonuses + 1;
-            }
-
-            if (value.thrownOutBonuses == undefined) {
-                return usedBonuses;
-            }
-
-            return value.thrownOutBonuses
-                .map(event => event.questionIndex)
-                .filter(index => index < this.props.uiState.cycleIndex)
-                .length;
-        }, 0);
-
-        // TODO: Limit this to bonuses.length?
-        return this.props.uiState.cycleIndex + usedBonusesCount;
-    }
-
-    // TODO: This value could be computed somewhere, so the cycle <-> TU index and bonus index can be cached
-    private getTossupIndex = (): number => {
-        const thrownOutTossupsCount = this.props.game.cycles.reduce<number>((thrownOutCount, value) => {
-            if (value.thrownOutTossups == undefined) {
-                return thrownOutCount;
-            }
-
-            return thrownOutCount + value.thrownOutTossups
-                .map(event => event.questionIndex)
-                .filter(index => index < this.props.uiState.cycleIndex)
-                .length;
-        }, 0);
-
-        return this.props.uiState.cycleIndex + thrownOutTossupsCount;
-    }
-}
+        </div>
+    );
+});
 
 export interface IQuestionViewerProps {
     game: GameState;
     uiState: UIState;
 }
+
+interface IQuestionViewerStyle {
+    questionViewer: string;
+    separator: string;
+}
+
+const useStyles: (data?: unknown) => IQuestionViewerStyle = createUseStyles({
+    questionViewer: {
+        border: "1px solid darkgray",
+        padding: "5px 10px",
+    },
+    separator: {
+        borderTop: "1px dotted black",
+        margin: "10px 0",
+    },
+});

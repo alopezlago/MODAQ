@@ -1,33 +1,70 @@
 import * as React from "react";
 import { observer } from "mobx-react";
+import { createUseStyles } from "react-jss";
+import { IFormattedText } from "src/parser/IFormattedText";
+import { FormattedText } from "./FormattedText";
 
 // TODO: Issue with part of this approach (around Italics, Underlines) is that it won't be as efficient since it styles
 // each element, and for underlines it would be broken up.
 
-@observer
-export class QuestionWord extends React.Component<IQuestionWordProps> {
-    constructor(props: IQuestionWordProps) {
-        super(props);
-    }
+export const QuestionWord = observer(
+    (props: IQuestionWordProps): JSX.Element => {
+        const classes = useStyles();
+        let className: string = classes.word;
 
-    public render(): JSX.Element {
-        let className = "word";
-        if (this.props.selected) {
+        if (props.selected) {
             className += " selected";
         }
 
-        if (this.props.italic) {
-            className += " italic";
+        if (props.correct) {
+            className += " correct";
         }
+
+        if (props.wrong) {
+            className += " wrong";
+        }
+
         return (
-            <span className={className} data-value={this.props.index}>{this.props.word}</span>
+            <span ref={props.componentRef} data-value={props.index} className={className}>
+                <FormattedText segments={props.word} />
+            </span>
         );
     }
+);
+
+interface IQuestionWordProps {
+    word: IFormattedText[];
+    index: number;
+    selected?: boolean;
+    correct?: boolean;
+    wrong?: boolean;
+    hovered?: boolean;
+    componentRef?: React.MutableRefObject<HTMLSpanElement | null>;
 }
 
-export interface IQuestionWordProps {
+interface IQuestionWordStyle {
     word: string;
-    index: number;
-    italic?: boolean;
-    selected?: boolean;
 }
+
+// This would be a great place for theming or settings
+const useStyles: (data?: unknown) => IQuestionWordStyle = createUseStyles({
+    word: {
+        display: "inline-flex",
+        "&.selected": {
+            fontWeight: "bold",
+            background: "rgba(192, 192, 192, 0.1)",
+        },
+        "&.correct": {
+            background: "rgba(0, 128, 128, 0.1)",
+            textDecoration: "underline solid",
+        },
+        "&.wrong": {
+            background: "rgba(128, 0, 0, 0.1)",
+            textDecoration: "underline wavy",
+        },
+        "&.correct&.wrong": {
+            background: "rgba(128, 128, 128, 0.2)",
+            textDecoration: "underline double",
+        },
+    },
+});
