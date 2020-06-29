@@ -48,7 +48,6 @@ TODO items
 
 Next items to work on (figure out an order)
 
--   Allowing users to remove (certain) events with an "x" on a label in the Event Viewer
 -   Fixing the CSS so that the event viewer and scoreboard are the same size as the question viewer
 -   Investigating WebSockets, to see if integration with the Discord tournament assistant would work, and supply the
     teams/players/readers. The bot could also track scores in real-time and show who's on top, and maybe allow for
@@ -56,11 +55,9 @@ Next items to work on (figure out an order)
 -   Add player view (with stats?), and allow substitutions by clicking on the player and bringing up a menu
 -   Add format rules so we can support powers (and see how the parser generates them)
 -   Figure out how bonus protests should be accessible, since the dialog and hooks should already exist
--   Figure out how to throw out tossups and bonuses
--   Integrate mobx-persist; hydrate the GameState and UIState (or just AppState), and add a button to clear
-    -   May also want a button to export to JSON, or get access to buzz data in some fashion
 -   Work on quick setup experience: specify teams and players, and upload packet; then on next show QViewer screen.
     -   Could include working on a sidebar
+-   May also want a button to export to JSON, or get access to buzz data in some fashion
 
 *   Work on question viewer. Unlike previous approaches, show the tossup and bonus for this cycle
     -   Lower priority, but consider making the font and font size adjustable

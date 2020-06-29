@@ -12,26 +12,36 @@ import { GameState } from "src/state/GameState";
 import { Answer } from "./Answer";
 import { IFormattedText } from "src/parser/IFormattedText";
 import { TossupProtestDialog } from "./TossupProtestDialog";
+import { CancelButton } from "./CancelButton";
 
 export const TossupQuestion = observer(
     (props: IQuestionProps): JSX.Element => {
         const classes: ITossupQuestionStyle = useStyles();
 
         const questionWords: JSX.Element[] = generateQuestionWords(props);
-        const clickHandler: React.MouseEventHandler = React.useCallback(
+        const wordClickHandler: React.MouseEventHandler = React.useCallback(
             (event: React.MouseEvent<HTMLDivElement>): void => {
                 onTossupTextClicked(props, event);
             },
             [props]
         );
+        const throwOutClickHandler: () => void = React.useCallback(() => {
+            props.cycle.addThrownOutTossup(props.tossupNumber - 1);
+        }, [props]);
 
+        // Need tossuptext/answer in one container, X in the other
         return (
             <div className={classes.tossupContainer}>
                 <TossupProtestDialog cycle={props.cycle} uiState={props.uiState} />
-                <div className={classes.tossupText} onClick={clickHandler} onDoubleClick={clickHandler}>
-                    {questionWords}
+                <div>
+                    <div className={classes.tossupText} onClick={wordClickHandler} onDoubleClick={wordClickHandler}>
+                        {questionWords}
+                    </div>
+                    <Answer text={props.tossup.answer} />
                 </div>
-                <Answer text={props.tossup.answer} />
+                <div>
+                    <CancelButton title="Throw out tossup" onClick={throwOutClickHandler} />
+                </div>
             </div>
         );
     }
@@ -40,7 +50,9 @@ export const TossupQuestion = observer(
 // TODO: Look into caching or memoizing this value, maybe with React.useMemo?
 function generateQuestionWords(props: IQuestionProps): JSX.Element[] {
     const correctBuzzIndex: number = props.cycle.correctBuzz?.marker.position ?? -1;
-    const wrongBuzzIndexes: number[] = props.cycle.incorrectBuzzes.map((buzz) => buzz.marker.position);
+    const wrongBuzzIndexes: number[] = props.cycle.incorrectBuzzes
+        .filter((buzz) => buzz.tossupIndex === props.tossupNumber - 1)
+        .map((buzz) => buzz.marker.position);
 
     const selectedWordRef: React.MutableRefObject<null> = React.useRef(null);
 
@@ -98,6 +110,7 @@ const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
     const buzzMenu: JSX.Element | undefined =
         selected && props.uiState.buzzMenuVisible ? (
             <BuzzMenu
+                bonusIndex={props.bonusIndex}
                 cycle={props.cycle}
                 game={props.game}
                 position={props.index}
@@ -125,6 +138,7 @@ const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
 });
 
 export interface IQuestionProps {
+    bonusIndex: number;
     cycle: Cycle;
     game: GameState;
     tossup: Tossup;
@@ -133,6 +147,7 @@ export interface IQuestionProps {
 }
 
 interface IQuestionWordWrapperProps {
+    bonusIndex: number;
     correctBuzzIndex: number;
     cycle: Cycle;
     game: GameState;
@@ -152,7 +167,9 @@ interface ITossupQuestionStyle {
 
 const useStyles: (data?: unknown) => ITossupQuestionStyle = createUseStyles({
     tossupContainer: {
-        padding: "0 24px",
+        paddingLeft: "24px",
+        display: "flex",
+        justifyContent: "space-between",
     },
     tossupText: {
         display: "inline",

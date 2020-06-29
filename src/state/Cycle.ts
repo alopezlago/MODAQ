@@ -3,7 +3,7 @@ import { observable, action, computed } from "mobx";
 import * as CompareUtils from "./CompareUtils";
 import * as Events from "./Events";
 import { IBuzzMarker } from "./IBuzzMarker";
-import { Team, Player, ITeam } from "./TeamState";
+import { Team, ITeam, IPlayer } from "./TeamState";
 
 // TODO: Build a stack of cycle changes, so we can support undo. This might mean that mobx isn't the best store for it
 // (not as simple to go back)
@@ -92,8 +92,8 @@ export class Cycle implements ICycle {
     }
 
     @action
-    public addCorrectBuzz(marker: IBuzzMarker, tossupIndex: number): void {
-        this.removeTeamsBuzzes(marker.player.team);
+    public addCorrectBuzz(marker: IBuzzMarker, tossupIndex: number, bonusIndex: number): void {
+        this.removeTeamsBuzzes(marker.player.team, tossupIndex);
 
         this.correctBuzz = {
             tossupIndex,
@@ -107,7 +107,7 @@ export class Cycle implements ICycle {
             !CompareUtils.teamsEqual(marker.player.team, this.bonusAnswer.receivingTeam)
         ) {
             this.bonusAnswer = {
-                bonusIndex: 0,
+                bonusIndex,
                 correctParts: [],
                 receivingTeam: marker.player.team,
             };
@@ -125,7 +125,7 @@ export class Cycle implements ICycle {
 
     @action
     public addNeg(marker: IBuzzMarker, tossupIndex: number): void {
-        this.removeTeamsBuzzes(marker.player.team);
+        this.removeTeamsBuzzes(marker.player.team, tossupIndex);
         this.negBuzz = {
             marker,
             tossupIndex,
@@ -143,7 +143,7 @@ export class Cycle implements ICycle {
             this.noPenaltyBuzzes = [];
         }
 
-        this.removeTeamsBuzzes(marker.player.team);
+        this.removeTeamsBuzzes(marker.player.team, tossupIndex);
 
         const event: Events.ITossupAnswerEvent = {
             marker,
@@ -169,12 +169,45 @@ export class Cycle implements ICycle {
             this.bonusProtests = [];
         }
 
+        // TODO: Investigate if we can get the questionIndex from the bonusAnswer event
         this.bonusProtests.push({
             reason: reason,
             part,
             questionIndex,
             team,
         });
+    }
+
+    @action
+    public addThrownOutBonus(bonusIndex: number): void {
+        if (this.thrownOutBonuses == undefined) {
+            this.thrownOutBonuses = [];
+        }
+
+        this.thrownOutBonuses.push({
+            questionIndex: bonusIndex,
+        });
+
+        // Clear the bonus answer event
+        if (this.bonusAnswer != undefined) {
+            this.resetBonusAnswer();
+            this.bonusAnswer.bonusIndex = bonusIndex + 1;
+        }
+    }
+
+    @action
+    public addThrownOutTossup(tossupIndex: number): void {
+        if (this.thrownOutTossups == undefined) {
+            this.thrownOutTossups = [];
+        }
+
+        this.thrownOutTossups.push({
+            questionIndex: tossupIndex,
+        });
+
+        // If we threw out the tossup, then we can't have a correct buzz; otherwise the tossup would've been allowed to
+        // stay. Clear the correct buzz
+        this.removeCorrectBuzz();
     }
 
     @action
@@ -193,8 +226,12 @@ export class Cycle implements ICycle {
 
     @action
     public removeBonusProtest(part: number): void {
-        this.bonusProtests = this.bonusProtests?.filter((protest) => protest.part !== part);
-        if (this.bonusProtests?.length === 0) {
+        if (this.bonusProtests == undefined) {
+            return;
+        }
+
+        this.bonusProtests = this.bonusProtests.filter((protest) => protest.part !== part);
+        if (this.bonusProtests.length === 0) {
             this.bonusProtests = undefined;
         }
     }
@@ -206,22 +243,65 @@ export class Cycle implements ICycle {
     }
 
     @action
-    public removeTossupProtest(team: Team): void {
-        this.tossupProtests = this.tossupProtests?.filter((protest) => !CompareUtils.teamsEqual(protest.team, team));
-        if (this.tossupProtests?.length === 0) {
+    public removeThrownOutBonus(bonusIndex: number): void {
+        if (this.thrownOutBonuses == undefined) {
+            return;
+        }
+
+        this.thrownOutBonuses = this.thrownOutBonuses.filter(
+            (thrownOutTossup) => thrownOutTossup.questionIndex !== bonusIndex
+        );
+        if (this.thrownOutBonuses.length === 0) {
+            this.thrownOutBonuses = undefined;
+        }
+
+        // Go back to the old bonus
+        if (this.bonusAnswer != undefined) {
+            this.resetBonusAnswer();
+            this.bonusAnswer.bonusIndex = bonusIndex - 1;
+        }
+    }
+
+    @action
+    public removeThrownOutTossup(tossupIndex: number): void {
+        if (this.thrownOutTossups == undefined) {
+            return;
+        }
+
+        this.thrownOutTossups = this.thrownOutTossups.filter(
+            (thrownOutTossup) => thrownOutTossup.questionIndex !== tossupIndex
+        );
+        if (this.thrownOutTossups.length === 0) {
+            this.thrownOutTossups = undefined;
+        }
+
+        // If the latest tossup is no longer thrown out, then the correct buzz doesn't apply anymore
+        this.removeCorrectBuzz();
+    }
+
+    @action
+    public removeTossupProtest(team: ITeam): void {
+        if (this.tossupProtests == undefined) {
+            return;
+        }
+
+        this.tossupProtests = this.tossupProtests.filter((protest) => !CompareUtils.teamsEqual(protest.team, team));
+        if (this.tossupProtests.length === 0) {
             this.tossupProtests = undefined;
         }
     }
 
     @action
-    public removeWrongBuzz(player: Player): void {
-        if (this.negBuzz && !CompareUtils.playersEqual(this.negBuzz.marker.player, player)) {
+    public removeWrongBuzz(player: IPlayer): void {
+        if (this.negBuzz && CompareUtils.playersEqual(this.negBuzz.marker.player, player)) {
             this.negBuzz = undefined;
         } else {
             this.noPenaltyBuzzes = this.noPenaltyBuzzes?.filter(
                 (buzz) => !CompareUtils.playersEqual(buzz.marker.player, player)
             );
         }
+
+        this.removeTossupProtest(player.team);
     }
 
     @action
@@ -246,17 +326,39 @@ export class Cycle implements ICycle {
         }
     }
 
-    private removeTeamsBuzzes(team: ITeam): void {
-        if (this.correctBuzz && CompareUtils.teamsEqual(this.correctBuzz.marker.player.team, team)) {
+    private resetBonusAnswer(): void {
+        if (this.bonusAnswer != undefined) {
+            this.bonusAnswer = {
+                bonusIndex: this.bonusAnswer.bonusIndex,
+                correctParts: [],
+                receivingTeam: this.bonusAnswer.receivingTeam,
+            };
+        }
+    }
+
+    private removeTeamsBuzzes(team: ITeam, tossupIndex: number): void {
+        if (
+            this.correctBuzz &&
+            this.correctBuzz.tossupIndex === tossupIndex &&
+            CompareUtils.teamsEqual(this.correctBuzz.marker.player.team, team)
+        ) {
             this.removeCorrectBuzz();
-        } else if (this.negBuzz && CompareUtils.teamsEqual(this.negBuzz.marker.player.team, team)) {
+        } else if (
+            this.negBuzz &&
+            this.negBuzz.tossupIndex === tossupIndex &&
+            CompareUtils.teamsEqual(this.negBuzz.marker.player.team, team)
+        ) {
+            // There can still only be one neg if a tossup is thrown out, because the next buzz would have occurred after
+            // that buzz (i.e. been a missed buzz with no penalty)
             this.negBuzz = undefined;
         } else if (
             this.noPenaltyBuzzes &&
-            this.noPenaltyBuzzes.findIndex((buzz) => CompareUtils.teamsEqual(buzz.marker.player.team, team)) >= 0
+            this.noPenaltyBuzzes.findIndex(
+                (buzz) => buzz.tossupIndex === tossupIndex && CompareUtils.teamsEqual(buzz.marker.player.team, team)
+            ) >= 0
         ) {
             this.noPenaltyBuzzes = this.noPenaltyBuzzes.filter(
-                (buzz) => !CompareUtils.teamsEqual(buzz.marker.player.team, team)
+                (buzz) => buzz.tossupIndex !== tossupIndex || !CompareUtils.teamsEqual(buzz.marker.player.team, team)
             );
         }
 

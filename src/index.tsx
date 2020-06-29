@@ -105,6 +105,7 @@ class Root extends React.Component<{ appState: AppState }> {
                 player: this.props.appState.gameState.getPlayers(firstTeam)[1],
                 position: 4,
             },
+            0,
             0
         );
     };

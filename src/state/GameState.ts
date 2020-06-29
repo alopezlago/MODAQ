@@ -113,6 +113,7 @@ export class GameState {
         return this.players.filter((player) => CompareUtils.teamsEqual(player.team, team));
     }
 
+    // TODO: Add test where the previous correct buzz had a thrown out tossup
     public getBonusIndex(cycleIndex: number): number {
         const previousCycleIndex: number = cycleIndex - 1;
         const usedBonusesCount = this.cycles.reduce<number>((usedBonuses, value, currentIndex) => {
@@ -121,15 +122,16 @@ export class GameState {
                 return usedBonuses;
             }
 
+            let bonusesRead = 0;
             if (value.correctBuzz != undefined && currentIndex <= previousCycleIndex) {
-                return usedBonuses + 1;
+                bonusesRead++;
             }
 
-            if (value.thrownOutBonuses == undefined) {
-                return usedBonuses;
+            if (value.thrownOutBonuses != undefined) {
+                bonusesRead += value.thrownOutBonuses.length;
             }
 
-            return usedBonuses + value.thrownOutBonuses.length;
+            return usedBonuses + bonusesRead;
         }, 0);
 
         return usedBonusesCount >= this.packet.bonsues.length ? -1 : usedBonusesCount;

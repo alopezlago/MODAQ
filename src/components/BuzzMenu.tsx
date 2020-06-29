@@ -155,7 +155,8 @@ function onCorrectClicked(item: IContextualMenuItem | undefined, props: IBuzzMen
                 position: props.position,
                 correct: true,
             },
-            props.tossupNumber - 1
+            props.tossupNumber - 1,
+            props.bonusIndex
         );
     }
 }
@@ -188,6 +189,7 @@ function onProtestClicked(item: IContextualMenuItem | undefined, props: IBuzzMen
 }
 
 export interface IBuzzMenuProps {
+    bonusIndex: number;
     cycle: Cycle;
     game: GameState;
     position: number;
