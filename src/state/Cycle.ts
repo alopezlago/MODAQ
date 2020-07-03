@@ -164,7 +164,7 @@ export class Cycle implements ICycle {
     }
 
     @action
-    public addBonusProtest(team: ITeam, questionIndex: number, part: number, reason: string): void {
+    public addBonusProtest(team: ITeam, questionIndex: number, partIndex: number, reason: string): void {
         if (this.bonusProtests == undefined) {
             this.bonusProtests = [];
         }
@@ -172,7 +172,7 @@ export class Cycle implements ICycle {
         // TODO: Investigate if we can get the questionIndex from the bonusAnswer event
         this.bonusProtests.push({
             reason: reason,
-            part,
+            partIndex,
             questionIndex,
             team,
         });
@@ -224,13 +224,31 @@ export class Cycle implements ICycle {
         });
     }
 
+    // TODO: Try to make this a computed function
+    public getProtestableBonusPartIndexes(bonusPartsCount: number): number[] {
+        const indexes: number[] = [];
+
+        const protestIndexes: number[] = this.bonusProtests?.map((protest) => protest.partIndex) ?? [];
+        const protestedOrCorrectIndexes: number[] =
+            this.bonusAnswer?.correctParts.map((part) => part.index).concat(protestIndexes) ?? protestIndexes;
+        const protestedOrCorrectIndexesSet = new Set(protestedOrCorrectIndexes);
+
+        for (let i = 0; i < bonusPartsCount; i++) {
+            if (!protestedOrCorrectIndexesSet.has(i)) {
+                indexes.push(i);
+            }
+        }
+
+        return indexes;
+    }
+
     @action
-    public removeBonusProtest(part: number): void {
+    public removeBonusProtest(partIndex: number): void {
         if (this.bonusProtests == undefined) {
             return;
         }
 
-        this.bonusProtests = this.bonusProtests.filter((protest) => protest.part !== part);
+        this.bonusProtests = this.bonusProtests.filter((protest) => protest.partIndex !== partIndex);
         if (this.bonusProtests.length === 0) {
             this.bonusProtests = undefined;
         }

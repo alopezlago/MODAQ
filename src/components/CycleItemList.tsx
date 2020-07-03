@@ -185,9 +185,9 @@ function createTossupProtestDetails(cycle: Cycle, protest: ITossupProtestEvent, 
 
 function createBonusProtestDetails(cycle: Cycle, protest: IBonusProtestEvent, protestIndex: number): JSX.Element {
     const deleteHandler = () => {
-        cycle.removeBonusProtest(protest.part);
+        cycle.removeBonusProtest(protest.partIndex);
     };
-    const text = `${protest.team.name} protests bonus #${protest.questionIndex + 1}, part ${protest.part + 1}`;
+    const text = `${protest.team.name} protests bonus #${protest.questionIndex + 1}, part ${protest.partIndex + 1}`;
 
     return (
         <CycleItem

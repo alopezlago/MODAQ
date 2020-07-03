@@ -1,6 +1,6 @@
 import { observable, action } from "mobx";
 import { ITossupProtestEvent, IBonusProtestEvent } from "./Events";
-import { Team } from "./TeamState";
+import { ITeam } from "./TeamState";
 import { ignore } from "mobx-sync";
 
 export class UIState {
@@ -65,9 +65,9 @@ export class UIState {
     }
 
     @action
-    public setPendingBonusProtest(team: Team, questionIndex: number, part: number): void {
+    public setPendingBonusProtest(team: ITeam, questionIndex: number, part: number): void {
         this.pendingBonusProtestEvent = {
-            part,
+            partIndex: part,
             questionIndex,
             reason: "",
             team,
@@ -75,7 +75,7 @@ export class UIState {
     }
 
     @action
-    public setPendingTossupProtest(team: Team, questionIndex: number, position: number): void {
+    public setPendingTossupProtest(team: ITeam, questionIndex: number, position: number): void {
         this.pendingTossupProtestEvent = {
             position,
             questionIndex,
@@ -107,5 +107,22 @@ export class UIState {
     @action
     public showBuzzMenu(): void {
         this.buzzMenuVisible = true;
+    }
+
+    @action
+    public updatePendingProtestReason(reason: string): void {
+        if (this.pendingBonusProtestEvent != undefined) {
+            this.pendingBonusProtestEvent.reason = reason;
+        } else if (this.pendingTossupProtestEvent != undefined) {
+            this.pendingTossupProtestEvent.reason = reason;
+        }
+    }
+
+    @action
+    public updatePendingBonusProtestPart(part: string | number): void {
+        if (this.pendingBonusProtestEvent != undefined) {
+            const partIndex = typeof part === "string" ? parseInt(part, 10) : part;
+            this.pendingBonusProtestEvent.partIndex = partIndex;
+        }
     }
 }

@@ -7,6 +7,7 @@ import { QuestionViewerContainer } from "./QuestionViewerContainer";
 import { Scoreboard } from "./Scoreboard";
 import { createUseStyles } from "react-jss";
 import { EventViewer } from "./EventViewer";
+import { GameBar } from "./GameBar";
 
 // TODO: Figure out CSS to prevent the content from growing too much. GameViewer should probably have like 90/100% of
 // the height. We need to make sure the contents also don't grow beyond the page, and add overflow handling to the
@@ -16,13 +17,16 @@ export const GameViewer = observer((props: IGameViewerProps) => {
 
     // TODO: If we begin adding more dialogs, create a DialogManager
     return (
-        <div className={classes.gameViewer}>
-            <div className={classes.questionViewerContainer}>
-                <QuestionViewerContainer game={props.game} uiState={props.uiState}></QuestionViewerContainer>
-            </div>
-            <div className={classes.scoreboardContainer}>
-                <Scoreboard game={props.game} uiState={props.uiState} />
-                <EventViewer game={props.game} uiState={props.uiState} />
+        <div>
+            <GameBar game={props.game} uiState={props.uiState} />
+            <div className={classes.gameViewer}>
+                <div className={classes.questionViewerContainer}>
+                    <QuestionViewerContainer game={props.game} uiState={props.uiState}></QuestionViewerContainer>
+                </div>
+                <div className={classes.scoreboardContainer}>
+                    <Scoreboard game={props.game} uiState={props.uiState} />
+                    <EventViewer game={props.game} uiState={props.uiState} />
+                </div>
             </div>
         </div>
     );

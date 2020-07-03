@@ -25,7 +25,7 @@ export interface ITossupProtestEvent extends IProtestEvent {
 }
 
 export interface IBonusProtestEvent extends IProtestEvent {
-    part: number;
+    partIndex: number;
 }
 
 export interface ISubstitutionEvent {

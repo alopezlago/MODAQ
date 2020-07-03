@@ -7,6 +7,7 @@ import { Bonus } from "src/state/PacketState";
 import { UIState } from "src/state/UIState";
 import { Cycle } from "src/state/Cycle";
 import { CancelButton } from "./CancelButton";
+import { BonusProtestDialog } from "./BonusProtestDialog";
 
 export const BonusQuestion = observer((props: IBonusQuestionProps) => {
     const classes: IBonusQuestionStyle = useStyle();
@@ -30,6 +31,7 @@ export const BonusQuestion = observer((props: IBonusQuestionProps) => {
     const leadinClassName = classes.bonusLeadin + (props.inPlay ? "" : " disabled");
     return (
         <div className={classes.bonusContainer}>
+            <BonusProtestDialog bonus={props.bonus} cycle={props.cycle} uiState={props.uiState} />
             <div className="bonus-question">
                 <div className={leadinClassName}>{props.bonus.leadin}</div>
                 {parts}
@@ -41,7 +43,6 @@ export const BonusQuestion = observer((props: IBonusQuestionProps) => {
     );
 });
 
-// TODO: Should have something for if bonus is in play?
 export interface IBonusQuestionProps {
     bonus: Bonus;
     bonusIndex: number;

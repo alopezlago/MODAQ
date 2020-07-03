@@ -3,15 +3,16 @@ import { Dialog, DialogFooter, IDialogContentProps, DialogType } from "office-ui
 import { PrimaryButton, DefaultButton } from "office-ui-fabric-react/lib/Button";
 
 import { TextField } from "office-ui-fabric-react/lib/TextField";
+import { UIState } from "src/state/UIState";
 
-export const ProtestDialogBase = (props: IProtestDialogBaseProps): JSX.Element => {
-    const [reason, setReason] = React.useState("");
+export const ProtestDialogBase = (props: React.PropsWithChildren<IProtestDialogBaseProps>): JSX.Element => {
     const changeHandler = React.useCallback(
-        (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => setReason(newValue ?? ""),
+        (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) =>
+            props.uiState.updatePendingProtestReason(newValue ?? ""),
         [props]
     );
-    const submitHandler = React.useCallback(() => onSubmit(props, reason, setReason), [props]);
-    const cancelHandler = React.useCallback(() => onCancel(props, setReason), [props]);
+    const submitHandler = React.useCallback(() => onSubmit(props), [props]);
+    const cancelHandler = React.useCallback(() => onCancel(props), [props]);
 
     const content: IDialogContentProps = {
         type: DialogType.normal,
@@ -21,7 +22,8 @@ export const ProtestDialogBase = (props: IProtestDialogBaseProps): JSX.Element =
 
     return (
         <Dialog hidden={props.hidden} dialogContentProps={content}>
-            <TextField label="Reason for the protest" value={reason} multiline={true} onChange={changeHandler} />
+            {props.children}
+            <TextField label="Reason for the protest" value={props.reason} multiline={true} onChange={changeHandler} />
             <DialogFooter>
                 <PrimaryButton text="OK" onClick={submitHandler} />
                 <DefaultButton text="Cancel" onClick={cancelHandler} />
@@ -30,24 +32,20 @@ export const ProtestDialogBase = (props: IProtestDialogBaseProps): JSX.Element =
     );
 };
 
-function onSubmit(
-    props: IProtestDialogBaseProps,
-    reason: string,
-    setReason: React.Dispatch<React.SetStateAction<string>>
-): void {
-    props.onSubmit(reason);
-    setReason("");
+function onSubmit(props: IProtestDialogBaseProps): void {
+    props.onSubmit();
     props.hideDialog();
 }
 
-function onCancel(props: IProtestDialogBaseProps, setReason: React.Dispatch<React.SetStateAction<string>>): void {
-    setReason("");
+function onCancel(props: IProtestDialogBaseProps): void {
     props.hideDialog();
 }
 
 export interface IProtestDialogBaseProps {
     hidden: boolean;
+    reason: string;
+    uiState: UIState;
 
     hideDialog: () => void;
-    onSubmit: (reason: string) => void;
+    onSubmit: () => void;
 }

@@ -34,6 +34,7 @@ class Root extends React.Component<{ appState: AppState }> {
         return (
             <div>
                 <button onClick={this.onInitialize}>Initialize game state</button>
+                <button onClick={this.onClear}>Clear state</button>
                 <PacketLoader
                     onLoad={this.onPacketLoaded}
                     game={this.props.appState.gameState}
@@ -43,6 +44,12 @@ class Root extends React.Component<{ appState: AppState }> {
             </div>
         );
     }
+
+    private onClear = (): void => {
+        const trunk = new AsyncTrunk(this.props.appState, { storage: localStorage, delay: 100 });
+        trunk.clear();
+        location.reload();
+    };
 
     private onPacketLoaded = (): void => {
         const firstTeam = this.props.appState.gameState.firstTeam;

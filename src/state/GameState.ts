@@ -1,7 +1,7 @@
 import { computed, observable, action } from "mobx";
 
 import * as CompareUtils from "./CompareUtils";
-import { PacketState } from "./PacketState";
+import { PacketState, Bonus, Tossup } from "./PacketState";
 import { Team, Player, IPlayer } from "./TeamState";
 import { Cycle, ICycle } from "./Cycle";
 import { format } from "mobx-sync";
@@ -113,6 +113,10 @@ export class GameState {
         return this.players.filter((player) => CompareUtils.teamsEqual(player.team, team));
     }
 
+    public getBonus(cycleIndex: number): Bonus | undefined {
+        return this.packet.bonsues[this.getBonusIndex(cycleIndex)];
+    }
+
     // TODO: Add test where the previous correct buzz had a thrown out tossup
     public getBonusIndex(cycleIndex: number): number {
         const previousCycleIndex: number = cycleIndex - 1;
@@ -135,6 +139,10 @@ export class GameState {
         }, 0);
 
         return usedBonusesCount >= this.packet.bonsues.length ? -1 : usedBonusesCount;
+    }
+
+    public getTossup(cycleIndex: number): Tossup | undefined {
+        return this.packet.tossups[this.getTossupIndex(cycleIndex)];
     }
 
     public getTossupIndex(cycleIndex: number): number {

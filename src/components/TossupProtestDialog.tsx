@@ -8,28 +8,36 @@ import { ITossupProtestEvent } from "src/state/Events";
 
 export const TossupProtestDialog = observer(
     (props: ITossupProtestDialogProps): JSX.Element => {
-        const submitHandler = React.useCallback((reason: string) => onSubmit(props, reason), [props]);
+        const submitHandler = React.useCallback(() => onSubmit(props), [props]);
         const hideHandler = React.useCallback(() => props.uiState.resetPendingTossupProtest(), [props]);
+
+        if (props.uiState.pendingTossupProtestEvent == undefined) {
+            // Nothing to render if there's no pending protest event.
+            return <></>;
+        }
 
         return (
             <ProtestDialogBase
                 hidden={props.uiState.pendingTossupProtestEvent == undefined}
                 hideDialog={hideHandler}
                 onSubmit={submitHandler}
+                reason={props.uiState.pendingTossupProtestEvent?.reason}
+                uiState={props.uiState}
             />
         );
     }
 );
 
-function onSubmit(props: ITossupProtestDialogProps, reason: string): void {
+function onSubmit(props: ITossupProtestDialogProps): void {
     const pendingProtestEvent: ITossupProtestEvent | undefined = props.uiState.pendingTossupProtestEvent;
     if (pendingProtestEvent) {
         props.cycle.addTossupProtest(
             pendingProtestEvent.team,
             pendingProtestEvent.questionIndex,
             pendingProtestEvent.position,
-            reason
+            pendingProtestEvent.reason
         );
+        props.uiState.resetPendingTossupProtest();
     }
 }
 
