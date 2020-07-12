@@ -1,5 +1,5 @@
 import React from "react";
-import { Checkbox } from "office-ui-fabric-react/lib/Checkbox";
+import { Checkbox } from "@fluentui/react/lib/Checkbox";
 import { createUseStyles } from "react-jss";
 import { observer } from "mobx-react";
 

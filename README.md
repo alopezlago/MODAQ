@@ -49,12 +49,13 @@ TODO items
 Next items to work on (figure out an order)
 
 -   Fixing the CSS so that the event viewer and scoreboard are the same size as the question viewer
+    -   Would also be good to see if the viewer could be collapisble, to give the reader more space. Alternatively, have
+        something draggable to set the size
 -   Investigating WebSockets, to see if integration with the Discord tournament assistant would work, and supply the
     teams/players/readers. The bot could also track scores in real-time and show who's on top, and maybe allow for
     rebrackets.
 -   Add player view (with stats?), and allow substitutions by clicking on the player and bringing up a menu
 -   Add format rules so we can support powers (and see how the parser generates them)
--   Figure out how bonus protests should be accessible, since the dialog and hooks should already exist
 -   Work on quick setup experience: specify teams and players, and upload packet; then on next show QViewer screen.
     -   Could include working on a sidebar
 -   May also want a button to export to JSON, or get access to buzz data in some fashion
@@ -83,8 +84,8 @@ Next items to work on (figure out an order)
     -   Divided in two; team name on top, players with their Powers/TUs/Negs/Total in the same line
 *   This may be out-of-scope, but a page to take in packets and a schedule, which then produces files for all of the readers.
     They can then upload it to the page to run the tournament.
-*   Use mobx-persist to retain state (e.g. GameState): https://medium.com/@Zwenza/how-to-persist-your-mobx-state-4b48b3834a41
 *   Make the tossups/bonuses collapsible so they can take up less space
+*   Move to mergeStyleSheets and remove (direct) dependency on react-jss
 
 *   After the views are done, some of the more nitty-gritty stuff:
 
@@ -94,6 +95,8 @@ Next items to work on (figure out an order)
     -   Look into using a server to get this information (packet, teams, etc.)
     -   Consider adding dark-theme support: https://medium.com/better-programming/how-to-build-dark-and-light-theme-with-web-components-a63ca1570bfe
     -   Add escape hatches if things get stuck (adding teams, reading the rest of the packet, etc.)
+    -   Look into space optimizations to reduce the size of the bundle (e.g. code-splitting). When this was written the
+        minimized bundle was 793 KB, which is above Webpack's recommended size of 244 KB.
 
 *   Could do this
 

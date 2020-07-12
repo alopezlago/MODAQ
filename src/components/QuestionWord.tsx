@@ -4,9 +4,6 @@ import { createUseStyles } from "react-jss";
 import { IFormattedText } from "src/parser/IFormattedText";
 import { FormattedText } from "./FormattedText";
 
-// TODO: Issue with part of this approach (around Italics, Underlines) is that it won't be as efficient since it styles
-// each element, and for underlines it would be broken up.
-
 export const QuestionWord = observer(
     (props: IQuestionWordProps): JSX.Element => {
         const classes = useStyles();

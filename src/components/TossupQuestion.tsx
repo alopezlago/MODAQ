@@ -27,6 +27,7 @@ export const TossupQuestion = observer(
         );
         const throwOutClickHandler: () => void = React.useCallback(() => {
             props.cycle.addThrownOutTossup(props.tossupNumber - 1);
+            props.uiState.setSelectedWordIndex(-1);
         }, [props]);
 
         // Need tossuptext/answer in one container, X in the other

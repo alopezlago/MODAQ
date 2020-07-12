@@ -1,6 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react";
-import { Dropdown, IDropdownOption } from "office-ui-fabric-react/lib/Dropdown";
+import { Dropdown, IDropdownOption } from "@fluentui/react/lib/Dropdown";
 
 import { ProtestDialogBase } from "./ProtestDialogBase";
 import { UIState } from "src/state/UIState";
@@ -59,7 +59,6 @@ function onSubmit(props: IBonusProtestDialogProps): void {
     const pendingProtestEvent: IBonusProtestEvent | undefined = props.uiState.pendingBonusProtestEvent;
     if (pendingProtestEvent) {
         props.cycle.addBonusProtest(
-            pendingProtestEvent.team,
             pendingProtestEvent.questionIndex,
             pendingProtestEvent.partIndex,
             pendingProtestEvent.reason

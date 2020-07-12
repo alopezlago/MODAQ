@@ -1,6 +1,6 @@
 import * as React from "react";
-import { IIconProps } from "office-ui-fabric-react";
-import { IconButton } from "office-ui-fabric-react/lib/Button";
+import { IIconProps } from "@fluentui/react";
+import { IconButton } from "@fluentui/react/lib/Button";
 import { createUseStyles } from "react-jss";
 
 const deleteIconProps: IIconProps = { iconName: "Cancel" };

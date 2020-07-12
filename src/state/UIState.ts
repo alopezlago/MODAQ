@@ -1,7 +1,9 @@
 import { observable, action } from "mobx";
 import { ITossupProtestEvent, IBonusProtestEvent } from "./Events";
-import { ITeam } from "./TeamState";
 import { ignore } from "mobx-sync";
+import { IPendingNewGame } from "./IPendingNewGame";
+import { PacketState } from "./PacketState";
+import { Player } from "./TeamState";
 
 export class UIState {
     constructor() {
@@ -10,6 +12,7 @@ export class UIState {
         this.selectedWordIndex = -1;
         this.buzzMenuVisible = false;
         this.pendingBonusProtestEvent = undefined;
+        this.pendingNewGame = undefined;
         this.pendingTossupProtestEvent = undefined;
     }
 
@@ -35,7 +38,56 @@ export class UIState {
 
     @observable
     @ignore
+    public pendingNewGame?: IPendingNewGame;
+
+    @observable
+    @ignore
     public pendingTossupProtestEvent?: ITossupProtestEvent;
+
+    // TODO: Feels off. Could generalize to array of teams
+    @action
+    public addPlayerToFirstTeamInPendingNewGame(player: Player): void {
+        if (this.pendingNewGame != undefined) {
+            this.pendingNewGame?.firstTeamPlayers.push(player);
+        }
+    }
+
+    @action
+    public addPlayerToSecondTeamInPendingNewGame(player: Player): void {
+        if (this.pendingNewGame != undefined) {
+            this.pendingNewGame?.secondTeamPlayers.push(player);
+        }
+    }
+
+    @action
+    public removePlayerToFirstTeamInPendingNewGame(player: Player): void {
+        if (this.pendingNewGame != undefined) {
+            this.pendingNewGame.firstTeamPlayers = this.pendingNewGame?.firstTeamPlayers.filter((p) => p !== player);
+        }
+    }
+
+    @action
+    public removePlayerToSecondTeamInPendingNewGame(player: Player): void {
+        if (this.pendingNewGame != undefined) {
+            this.pendingNewGame.secondTeamPlayers = this.pendingNewGame?.secondTeamPlayers.filter((p) => p !== player);
+        }
+    }
+
+    @action
+    public createPendingNewGame(): void {
+        const firstTeamPlayers: Player[] = [];
+        const secondTeamPlayers: Player[] = [];
+        for (let i = 0; i < 4; i++) {
+            firstTeamPlayers.push(new Player("", "Team 1", /* isStarter */ true));
+            secondTeamPlayers.push(new Player("", "Team 2", /* isStarter */ true));
+        }
+
+        this.pendingNewGame = {
+            packet: new PacketState(),
+            firstTeamPlayers,
+            secondTeamPlayers,
+        };
+    }
 
     @action
     public nextCycle(): void {
@@ -65,22 +117,22 @@ export class UIState {
     }
 
     @action
-    public setPendingBonusProtest(team: ITeam, questionIndex: number, part: number): void {
+    public setPendingBonusProtest(teamName: string, questionIndex: number, part: number): void {
         this.pendingBonusProtestEvent = {
             partIndex: part,
             questionIndex,
             reason: "",
-            team,
+            teamName,
         };
     }
 
     @action
-    public setPendingTossupProtest(team: ITeam, questionIndex: number, position: number): void {
+    public setPendingTossupProtest(teamName: string, questionIndex: number, position: number): void {
         this.pendingTossupProtestEvent = {
             position,
             questionIndex,
             reason: "",
-            team,
+            teamName,
         };
     }
 
@@ -97,6 +149,11 @@ export class UIState {
     @action
     public resetPendingBonusProtest(): void {
         this.pendingBonusProtestEvent = undefined;
+    }
+
+    @action
+    public resetPendingNewGame(): void {
+        this.pendingNewGame = undefined;
     }
 
     @action

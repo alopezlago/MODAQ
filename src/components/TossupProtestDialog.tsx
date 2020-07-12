@@ -32,7 +32,7 @@ function onSubmit(props: ITossupProtestDialogProps): void {
     const pendingProtestEvent: ITossupProtestEvent | undefined = props.uiState.pendingTossupProtestEvent;
     if (pendingProtestEvent) {
         props.cycle.addTossupProtest(
-            pendingProtestEvent.team,
+            pendingProtestEvent.teamName,
             pendingProtestEvent.questionIndex,
             pendingProtestEvent.position,
             pendingProtestEvent.reason

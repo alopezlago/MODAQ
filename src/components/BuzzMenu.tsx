@@ -9,12 +9,12 @@
 
 import * as React from "react";
 import { observer } from "mobx-react";
-import { ContextualMenu, ContextualMenuItemType, IContextualMenuItem } from "office-ui-fabric-react/lib/ContextualMenu";
+import { ContextualMenu, ContextualMenuItemType, IContextualMenuItem } from "@fluentui/react/lib/ContextualMenu";
 
 import * as CompareUtils from "src/state/CompareUtils";
 import { GameState } from "src/state/GameState";
 import { UIState } from "src/state/UIState";
-import { Player, Team } from "src/state/TeamState";
+import { Player } from "src/state/TeamState";
 import { Cycle } from "src/state/Cycle";
 import { Tossup } from "src/state/PacketState";
 import { IBuzzMarker } from "src/state/IBuzzMarker";
@@ -22,29 +22,21 @@ import { IBuzzMarker } from "src/state/IBuzzMarker";
 export const BuzzMenu = observer((props: IBuzzMenuProps) => {
     const onHideBuzzMenu: () => void = React.useCallback(() => onBuzzMenuDismissed(props), [props.uiState]);
 
-    const firstTeamMenuItems: IContextualMenuItem[] = getPlayerMenuItems(props, props.game.firstTeam);
-    const secondTeamMenuItems: IContextualMenuItem[] = getPlayerMenuItems(props, props.game.secondTeam);
+    const teamNames: string[] = props.game.teamNames;
+    const menuItems: IContextualMenuItem[] = [];
+    for (const teamName of teamNames) {
+        const subMenuItems: IContextualMenuItem[] = getPlayerMenuItems(props, teamName);
+        menuItems.push({
+            key: `${teamName}_${menuItems.length}_Section`,
+            itemType: ContextualMenuItemType.Section,
+            sectionProps: {
+                bottomDivider: true,
+                title: teamName,
+                items: subMenuItems,
+            },
+        });
+    }
 
-    const menuItems: IContextualMenuItem[] = [
-        {
-            key: "firstTeamSection",
-            itemType: ContextualMenuItemType.Section,
-            sectionProps: {
-                bottomDivider: true,
-                title: props.game.firstTeam.name,
-                items: firstTeamMenuItems,
-            },
-        },
-        {
-            key: "secondTeamSection",
-            itemType: ContextualMenuItemType.Section,
-            sectionProps: {
-                bottomDivider: true,
-                title: props.game.secondTeam.name,
-                items: secondTeamMenuItems,
-            },
-        },
-    ];
     return (
         <ContextualMenu
             hidden={!props.uiState.buzzMenuVisible}
@@ -58,13 +50,13 @@ export const BuzzMenu = observer((props: IBuzzMenuProps) => {
     );
 });
 
-function getPlayerMenuItems(props: IBuzzMenuProps, team: Team): IContextualMenuItem[] {
+function getPlayerMenuItems(props: IBuzzMenuProps, teamName: string): IContextualMenuItem[] {
     // TODO: Need to support Wrong (1st buzz) and Wrong (2nd buzz)
-    // TODO: Add some highlighting/indicator on the player to show that they have a buzz
+    // TODO: Add some highlighting/indicator on the player to show that they have a buzz in a different word
 
-    const players: Player[] = props.game.getPlayers(team);
+    const players: Player[] = props.game.getPlayers(teamName);
     return players.map((player, index) => {
-        const topLevelKey = `Team_${team.name}_Player_${index}`;
+        const topLevelKey = `Team_${teamName}_Player_${index}`;
         const isCorrectChecked: boolean =
             props.cycle.correctBuzz != undefined &&
             CompareUtils.playersEqual(props.cycle.correctBuzz.marker.player, player) &&
@@ -127,7 +119,7 @@ function getPlayerMenuItems(props: IBuzzMenuProps, team: Team): IContextualMenuI
         // tagging this with a class name and using react-jss, or using a style on the parent component (much harder to
         // do without folding this back into the render method)
         return {
-            key: `Team_${team.name}_Player_${index}`,
+            key: `Team_${teamName}_Player_${index}`,
             text: player.name,
             style: {
                 background: isCorrectChecked ? "rgba(0,128,128,0.1)" : isWrongChecked ? "rgba(128,0,0,0.1)" : undefined,
@@ -182,9 +174,9 @@ function onWrongClicked(item: IContextualMenuItem | undefined, props: IBuzzMenuP
 
 function onProtestClicked(item: IContextualMenuItem | undefined, props: IBuzzMenuProps, player: Player): void {
     if (item?.checked) {
-        props.cycle.removeTossupProtest(player.team);
+        props.cycle.removeTossupProtest(player.teamName);
     } else if (item?.checked === false) {
-        props.uiState.setPendingTossupProtest(player.team, props.tossupNumber - 1, props.position);
+        props.uiState.setPendingTossupProtest(player.teamName, props.tossupNumber - 1, props.position);
     }
 }
 

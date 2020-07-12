@@ -1,16 +1,19 @@
 import React from "react";
 
-import { GameState } from "src/state/GameState";
 import { UIState } from "src/state/UIState";
-
-// TODO: Find out why Webpack needs the path in this relative form, while it doesn't for other imports
 import { Tossup, Bonus, IBonusPart, PacketState } from "src/state/PacketState";
 import { FileInput } from "./FileInput";
+import { Label } from "@fluentui/react";
 
 export const PacketLoader = (props: IPacketLoaderProps): JSX.Element => {
     const onLoadHandler = React.useCallback((ev: ProgressEvent<FileReader>) => onLoad(ev, props), [props]);
 
-    return <FileInput onLoad={onLoadHandler} />;
+    return (
+        <div>
+            <Label required={true}>Load Packet</Label>
+            <FileInput onLoad={onLoadHandler} />
+        </div>
+    );
 };
 
 function onLoad(ev: ProgressEvent<FileReader>, props: IPacketLoaderProps): void {
@@ -50,13 +53,11 @@ function onLoad(ev: ProgressEvent<FileReader>, props: IPacketLoaderProps): void 
     packet.setTossups(tossups);
     packet.setBonuses(bonuses);
 
-    props.game.loadPacket(packet);
-
     props.onLoad(packet);
 }
 
 export interface IPacketLoaderProps {
-    game: GameState;
+    loadPacketIntoGame?: boolean;
     uiState: UIState;
 
     onLoad(packet: PacketState): void;

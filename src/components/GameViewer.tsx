@@ -53,6 +53,7 @@ const useStyles: (data?: unknown) => IGameViewerStyle = createUseStyles({
     },
     scoreboardContainer: {
         margin: "0 10px",
+        overflowY: "auto",
     },
     questionViewerContainer: {},
 });

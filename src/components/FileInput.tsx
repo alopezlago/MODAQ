@@ -1,41 +1,57 @@
 import React from "react";
+import { createUseStyles } from "react-jss";
+import { observer } from "mobx-react";
 
-// TODO: Convert this into a functional component so it can be styled
-export class FileInput extends React.Component<IFileInputProps> {
-    private readonly fileInput: React.RefObject<HTMLInputElement>;
+export const FileInput = observer(
+    (props: IFileInputProps): JSX.Element => {
+        const classes: IFileInputStyles = useStyles();
 
-    constructor(props: IFileInputProps) {
-        super(props);
+        const fileInput: React.MutableRefObject<null> = React.useRef(null);
+        const uploadHandler = React.useCallback(
+            (event: React.ChangeEvent<HTMLInputElement>) => {
+                onChange(props, fileInput, event);
+            },
+            [props]
+        );
+        const accept: string = props.accept ?? ".json";
 
-        this.fileInput = React.createRef();
-    }
-
-    private onChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
-        event.preventDefault();
-        if (this.fileInput.current?.files == undefined) {
-            return;
-        }
-
-        const fileReader = new FileReader();
-        fileReader.onload = this.props.onLoad;
-        fileReader.readAsText(this.fileInput.current.files[0]);
-    };
-
-    public render(): JSX.Element {
-        const accept: string = this.props.accept ?? ".json";
-
+        // TODO: Cover up the input with a button, overlaid on top
         return (
-            <div>
-                <label>
-                    Upload file:
-                    <input type="file" accept={accept} ref={this.fileInput} onChange={this.onChange} />
-                </label>
-            </div>
+            <input
+                type="file"
+                className={classes.uploadButton}
+                accept={accept}
+                ref={fileInput}
+                onChange={uploadHandler}
+            />
         );
     }
+);
+
+function onChange(
+    props: IFileInputProps,
+    fileInput: React.RefObject<HTMLInputElement>,
+    event: React.ChangeEvent<HTMLInputElement>
+): void {
+    event.preventDefault();
+    if (fileInput.current?.files == undefined) {
+        return;
+    }
+
+    const fileReader = new FileReader();
+    fileReader.onload = props.onLoad;
+    fileReader.readAsText(fileInput.current.files[0]);
 }
 
 export interface IFileInputProps {
     onLoad(ev: ProgressEvent<FileReader>): void;
     accept?: string;
 }
+
+interface IFileInputStyles {
+    uploadButton: string;
+}
+
+const useStyles: (data?: unknown) => IFileInputStyles = createUseStyles({
+    uploadButton: {},
+});

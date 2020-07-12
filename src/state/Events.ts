@@ -1,4 +1,4 @@
-import { ITeam, IPlayer } from "./TeamState";
+import { IPlayer } from "./TeamState";
 import { IBuzzMarker } from "./IBuzzMarker";
 
 // TODO: Consider folding IBonusAnswerEvent into ITossupAnswerEvent, so we don't need to keep two events in sync. We
@@ -12,7 +12,7 @@ export interface ITossupAnswerEvent {
 export interface IBonusAnswerEvent {
     bonusIndex: number;
     correctParts: ICorrectBonusAnswerPart[];
-    receivingTeam: ITeam;
+    receivingTeamName: string;
 }
 
 export interface ICorrectBonusAnswerPart {
@@ -33,6 +33,10 @@ export interface ISubstitutionEvent {
     outPlayer: IPlayer;
 }
 
+export interface ITimeoutEvent {
+    teamName: string;
+}
+
 export interface IThrowOutQuestionEvent {
     questionIndex: number;
 }
@@ -42,5 +46,5 @@ export interface IThrowOutQuestionEvent {
 interface IProtestEvent {
     questionIndex: number;
     reason: string;
-    team: ITeam;
+    teamName: string;
 }

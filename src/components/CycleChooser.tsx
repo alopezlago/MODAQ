@@ -1,7 +1,7 @@
 import React from "react";
 import { observer } from "mobx-react";
-import { DefaultButton, IButtonStyles } from "office-ui-fabric-react/lib/Button";
-import { TextField, ITextFieldStyles } from "office-ui-fabric-react/lib/TextField";
+import { DefaultButton, IButtonStyles } from "@fluentui/react/lib/Button";
+import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
 
 import { UIState } from "src/state/UIState";
 import { GameState } from "src/state/GameState";

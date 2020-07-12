@@ -112,7 +112,7 @@ function createCycleList(cycle: Cycle): JSX.Element[] {
 
 function createSubstitutionDetails(subs: ISubstitutionEvent[]): JSX.Element[] {
     return subs.map((sub, index) => {
-        const text = `Substitution (${sub.inPlayer.team.name}): ${sub.inPlayer.name} in for ${sub.outPlayer.name}`;
+        const text = `Substitution (${sub.inPlayer.teamName}): ${sub.inPlayer.name} in for ${sub.outPlayer.name}`;
         return <CycleItem key={`sub_${index}_${sub.inPlayer.name}_${sub.outPlayer.name}`} text={text} />;
     });
 }
@@ -129,12 +129,12 @@ function createTossupAnswerDetails(cycle: Cycle, buzz: ITossupAnswerEvent, buzzI
         }
     };
 
-    const text = `${buzz.marker.player.name} (${buzz.marker.player.team.name}) answered ${
+    const text = `${buzz.marker.player.name} (${buzz.marker.player.teamName}) answered ${
         buzz.marker.correct ? "CORRECTLY" : "WRONGLY"
     } on tossup #${buzz.tossupIndex + 1} at word ${buzz.marker.position + 1}`;
     return (
         <CycleItem
-            key={`buzz_${buzzIndex}_tu_${buzz.tossupIndex}_${buzz.marker.player.name}_${buzz.marker.player.team.name}`}
+            key={`buzz_${buzzIndex}_tu_${buzz.tossupIndex}_${buzz.marker.player.name}_${buzz.marker.player.teamName}`}
             text={text}
             onDelete={deleteHandler}
         />
@@ -167,17 +167,17 @@ function createBonusAnswerDetails(bonusAnswer: IBonusAnswerEvent): JSX.Element {
         .join(", ");
     const partsText: string = parts.length === 0 ? "no parts" : `part${parts.length > 1 ? "s" : ""} ${parts}`;
     const total: number = bonusAnswer.correctParts.reduce((previous, current) => previous + current.points, 0);
-    const text = `${bonusAnswer.receivingTeam.name} answered ${partsText} correctly for ${total} points`;
+    const text = `${bonusAnswer.receivingTeamName} answered ${partsText} correctly for ${total} points`;
 
     return <CycleItem key="bonus_answer" text={text} />;
 }
 
 function createTossupProtestDetails(cycle: Cycle, protest: ITossupProtestEvent, protestIndex: number): JSX.Element {
     const deleteHandler = () => {
-        cycle.removeTossupProtest(protest.team);
+        cycle.removeTossupProtest(protest.teamName);
     };
 
-    const text = `${protest.team.name} protests tossup #${protest.questionIndex + 1} at word ${protest.position + 1}`;
+    const text = `${protest.teamName} protests tossup #${protest.questionIndex + 1} at word ${protest.position + 1}`;
     return (
         <CycleItem key={`tu_protest_${protestIndex}_${protest.questionIndex}`} text={text} onDelete={deleteHandler} />
     );
@@ -187,7 +187,7 @@ function createBonusProtestDetails(cycle: Cycle, protest: IBonusProtestEvent, pr
     const deleteHandler = () => {
         cycle.removeBonusProtest(protest.partIndex);
     };
-    const text = `${protest.team.name} protests bonus #${protest.questionIndex + 1}, part ${protest.partIndex + 1}`;
+    const text = `${protest.teamName} protests bonus #${protest.questionIndex + 1}, part ${protest.partIndex + 1}`;
 
     return (
         <CycleItem

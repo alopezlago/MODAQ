@@ -1,15 +1,19 @@
-// TODO: add separate configurations for release and dev, like in https://webpack.js.org/concepts/entry-points/
-
-var path = require("path");
+const path = require("path");
+const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
 module.exports = {
-    devtool: "source-map",
-    mode: "development",
+    // TODO: Consider using source-map in production, so we can get more meaningful error messages
+    devtool: "eval-cheap-module-source-map",
     entry: ["webpack-dev-server/client?http://localhost:8080", "./src/index"],
     output: {
         path: path.join(__dirname, "out"),
         filename: "bundle.js",
         publicPath: "/out/",
+    },
+    watch: true,
+    watchOptions: {
+        aggregateTimeout: 1000,
+        ignored: /node_modules/,
     },
     resolve: {
         extensions: [".ts", ".tsx", ".js"],
@@ -21,8 +25,11 @@ module.exports = {
         rules: [
             {
                 test: /\.tsx?$/,
-                loader: "awesome-typescript-loader",
+                loader: "ts-loader",
                 include: path.join(__dirname, "src"),
+                options: {
+                    transpileOnly: true,
+                },
             },
             {
                 test: /\.tsx??$/,
@@ -37,4 +44,11 @@ module.exports = {
             },
         ],
     },
+    plugins: [
+        new ForkTsCheckerWebpackPlugin({
+            eslint: {
+                files: "./src/**/*.{ts,tsx,js,jsx}",
+            },
+        }),
+    ],
 };

@@ -1,8 +1,7 @@
 import { computed, observable, action } from "mobx";
 
-import * as CompareUtils from "./CompareUtils";
 import { PacketState, Bonus, Tossup } from "./PacketState";
-import { Team, Player, IPlayer } from "./TeamState";
+import { Player } from "./TeamState";
 import { Cycle, ICycle } from "./Cycle";
 import { format } from "mobx-sync";
 
@@ -11,20 +10,9 @@ export class GameState {
     public packet: PacketState;
 
     @observable
-    public firstTeam: Team;
-
-    @observable
-    public secondTeam: Team;
-
-    @observable
-    @format((deserializedArray: IPlayer[]) => {
-        return deserializedArray.map((deserializedPlayer) => {
-            return new Player(deserializedPlayer.name, new Team(deserializedPlayer.team.name));
-        });
-    })
     public players: Player[];
 
-    // Anything with methods/computeds needs to use @format to deserialize correctly
+    // Anything with methods/computeds not at the top level needs to use @format to deserialize correctly
     @observable
     @format((deserializedArray: ICycle[]) => {
         return deserializedArray.map((deserializedCycle) => {
@@ -35,22 +23,26 @@ export class GameState {
 
     constructor() {
         this.packet = new PacketState();
-
-        this.firstTeam = new Team();
-        this.secondTeam = new Team();
         this.players = [];
-
         this.cycles = [];
     }
 
-    @computed
+    @computed({ requiresReaction: true })
     public get isLoaded(): boolean {
         return this.packet.tossups.length > 0;
     }
 
-    @computed
-    public get teams(): Team[] {
-        return [this.firstTeam, this.secondTeam];
+    @computed({ requiresReaction: true })
+    public get teamNames(): string[] {
+        const teamSet: Set<string> = new Set<string>(this.players.map((player) => player.teamName));
+
+        const teamNames: string[] = [];
+        for (const teamName of teamSet.values()) {
+            teamNames.push(teamName);
+        }
+
+        teamNames.sort();
+        return teamNames;
     }
 
     // If this is too expensive, investigate keepAlive
@@ -78,9 +70,13 @@ export class GameState {
     public getScoreChangeFromCycle(cycle: Cycle): [number, number] {
         const change: [number, number] = [0, 0];
         if (cycle.correctBuzz) {
-            const indexToUpdate: number = CompareUtils.teamsEqual(cycle.correctBuzz.marker.player.team, this.firstTeam)
-                ? 0
-                : 1;
+            const indexToUpdate: number = this.teamNames.indexOf(cycle.correctBuzz.marker.player.teamName);
+            if (indexToUpdate < 0) {
+                throw new Error(
+                    `Correct buzz belongs to a non-existent team ${cycle.correctBuzz.marker.player.teamName}`
+                );
+            }
+
             change[indexToUpdate] += 10;
             if (cycle.bonusAnswer) {
                 // TODO: We need the bonus value here, so we can get the part's value
@@ -95,9 +91,11 @@ export class GameState {
         }
 
         if (cycle.negBuzz) {
-            const indexToUpdate: number = CompareUtils.teamsEqual(cycle.negBuzz.marker.player.team, this.firstTeam)
-                ? 0
-                : 1;
+            const indexToUpdate: number = this.teamNames.indexOf(cycle.negBuzz.marker.player.teamName);
+            if (indexToUpdate < 0) {
+                throw new Error(`Correct buzz belongs to a non-existent team ${cycle.negBuzz.marker.player.teamName}`);
+            }
+
             change[indexToUpdate] -= 5;
         }
 
@@ -105,12 +103,24 @@ export class GameState {
     }
 
     @action
-    public addPlayers(team: Team, ...names: string[]): void {
-        this.players.push(...names.map((name) => new Player(name, team)));
+    public addPlayers(players: Player[]): void {
+        this.players.push(...players);
     }
 
-    public getPlayers(team: Team): Player[] {
-        return this.players.filter((player) => CompareUtils.teamsEqual(player.team, team));
+    @action
+    public addPlayersForDemo(teamName: string, ...names: string[]): void {
+        this.players.push(...names.map((name) => new Player(name, teamName, /* isStarter */ true)));
+    }
+
+    @action
+    public clear(): void {
+        this.packet = new PacketState();
+        this.players = [];
+        this.cycles = [];
+    }
+
+    public getPlayers(teamName: string): Player[] {
+        return this.players.filter((player) => player.teamName === teamName);
     }
 
     public getBonus(cycleIndex: number): Bonus | undefined {

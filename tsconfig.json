@@ -10,6 +10,7 @@
         "outDir": "out",
         "lib": ["dom", "es6", "ES2020.String"],
         "alwaysStrict": true,
+        "importsNotUsedAsValues": "preserve",
         "rootDir": ".",
         "baseUrl": ".",
         "module": "CommonJS",

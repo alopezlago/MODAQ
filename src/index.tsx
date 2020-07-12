@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { initializeIcons } from "office-ui-fabric-react/lib/Icons";
+import { initializeIcons } from "@fluentui/react/lib/Icons";
 import { configure, observable } from "mobx";
 import { observer } from "mobx-react";
 import { AsyncTrunk } from "mobx-sync";
@@ -14,16 +14,20 @@ import { UIState } from "./state/UIState";
 import { Cycle } from "./state/Cycle";
 import { GameViewer } from "./components/GameViewer";
 import { PacketLoader } from "./components/PacketLoader";
+import { NewGameDialog } from "./components/NewGameDialog";
+
+const firstTeamName = "Alpha";
+const secondTeamName = "B 2";
 
 class AppState {
-    @observable gameState: GameState;
+    @observable game: GameState;
 
     @observable uiState: UIState;
 
     constructor() {
         configure({ enforceActions: "observed", computedRequiresReaction: true });
 
-        this.gameState = new GameState();
+        this.game = new GameState();
         this.uiState = new UIState();
     }
 }
@@ -35,12 +39,9 @@ class Root extends React.Component<{ appState: AppState }> {
             <div>
                 <button onClick={this.onInitialize}>Initialize game state</button>
                 <button onClick={this.onClear}>Clear state</button>
-                <PacketLoader
-                    onLoad={this.onPacketLoaded}
-                    game={this.props.appState.gameState}
-                    uiState={this.props.appState.uiState}
-                />
-                <GameViewer game={this.props.appState.gameState} uiState={this.props.appState.uiState} />
+                <PacketLoader onLoad={this.onPacketLoaded} uiState={this.props.appState.uiState} />
+                <NewGameDialog game={this.props.appState.game} uiState={this.props.appState.uiState} />
+                <GameViewer game={this.props.appState.game} uiState={this.props.appState.uiState} />
             </div>
         );
     }
@@ -51,27 +52,16 @@ class Root extends React.Component<{ appState: AppState }> {
         location.reload();
     };
 
-    private onPacketLoaded = (): void => {
-        const firstTeam = this.props.appState.gameState.firstTeam;
-        firstTeam.setName("Alpha");
-        this.props.appState.gameState.addPlayers(firstTeam, "Alan", "Alice", "Antonio");
+    private onPacketLoaded = (packet: PacketState): void => {
+        this.props.appState.game.addPlayersForDemo(firstTeamName, "Alan", "Alice", "Antonio");
+        this.props.appState.game.addPlayersForDemo(secondTeamName, "Betty", "Bradley");
 
-        const secondTeam = this.props.appState.gameState.secondTeam;
-        secondTeam.setName("B 2");
-        this.props.appState.gameState.addPlayers(secondTeam, "Betty", "Bradley");
-
-        // TODO: Add parsing logic to turn QEMS/Jerry's parser output to Tossups and BonusQuestions for the packet
-        // TODO: Translate <em></em> and <req></req> into italicized and bolded+underlined styles
+        this.props.appState.game.loadPacket(packet);
     };
 
     private onInitialize = (): void => {
-        const firstTeam = this.props.appState.gameState.firstTeam;
-        firstTeam.setName("Alpha");
-        this.props.appState.gameState.addPlayers(firstTeam, "Alan", "Alice", "Antonio");
-
-        const secondTeam = this.props.appState.gameState.secondTeam;
-        secondTeam.setName("B 2");
-        this.props.appState.gameState.addPlayers(secondTeam, "Betty", "Bradley");
+        this.props.appState.game.addPlayersForDemo(firstTeamName, "Alan", "Alice", "Antonio");
+        this.props.appState.game.addPlayersForDemo(secondTeamName, "Betty", "Bradley");
 
         const packet = new PacketState();
         packet.setTossups([
@@ -95,13 +85,13 @@ class Root extends React.Component<{ appState: AppState }> {
             ]),
         ]);
 
-        this.props.appState.gameState.loadPacket(packet);
+        this.props.appState.game.loadPacket(packet);
 
-        const firstCycle: Cycle = this.props.appState.gameState.cycles[0];
+        const firstCycle: Cycle = this.props.appState.game.cycles[0];
         firstCycle.addNeg(
             {
                 correct: false,
-                player: this.props.appState.gameState.getPlayers(secondTeam)[0],
+                player: this.props.appState.game.getPlayers(secondTeamName)[0],
                 position: 2,
             },
             0
@@ -109,7 +99,7 @@ class Root extends React.Component<{ appState: AppState }> {
         firstCycle.addCorrectBuzz(
             {
                 correct: true,
-                player: this.props.appState.gameState.getPlayers(firstTeam)[1],
+                player: this.props.appState.game.getPlayers(firstTeamName)[1],
                 position: 4,
             },
             0,

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { observer } from "mobx-react";
-import { DetailsList, CheckboxVisibility, SelectionMode, IColumn } from "office-ui-fabric-react/lib/DetailsList";
-import { Label } from "office-ui-fabric-react/lib/Label";
+import { DetailsList, CheckboxVisibility, SelectionMode, IColumn } from "@fluentui/react/lib/DetailsList";
+import { Label } from "@fluentui/react/lib/Label";
 import { GameState } from "src/state/GameState";
 import { UIState } from "src/state/UIState";
 import { createUseStyles } from "react-jss";
@@ -50,6 +50,8 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
         };
     });
 
+    // TODO: Move passing in the cycle in items, and using onRenderItemColumn. This means we don't need keys for each
+    // CycleItemList. Look into using List for CycleItemList too.
     return (
         <div className={classes.eventViewerContainer} data-is-scrollable="true">
             <DetailsList

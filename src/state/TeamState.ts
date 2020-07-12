@@ -1,31 +1,26 @@
 import { observable, action } from "mobx";
-import { format } from "mobx-sync";
 
-export class Team implements ITeam {
-    @observable
-    public name: string;
-
-    constructor(name = "") {
-        this.name = name;
-    }
-
-    @action
-    public setName(newName: string): void {
-        this.name = newName;
-    }
-}
-
+// TODO: Investigate if Team should just have an array of players, since we don't need to normalize these values in mobx
+// This could simplify the format
 export class Player implements IPlayer {
     @observable
+    public isStarter: boolean;
+
+    @observable
     public name: string;
 
     @observable
-    @format((deserializedTeam: ITeam) => new Team(deserializedTeam.name))
-    public team: Team;
+    public teamName: string;
 
-    constructor(name: string, team: Team) {
+    constructor(name: string, teamName: string, isStarter: boolean) {
         this.name = name;
-        this.team = team;
+        this.teamName = teamName;
+        this.isStarter = isStarter;
+    }
+
+    @action
+    public setStarterStatus(isStarter: boolean): void {
+        this.isStarter = isStarter;
     }
 
     @action
@@ -34,16 +29,13 @@ export class Player implements IPlayer {
     }
 
     @action
-    public setTeam(team: Team): void {
-        this.team = team;
+    public setTeamName(teamName: string): void {
+        this.teamName = teamName;
     }
 }
 
 export interface IPlayer {
     name: string;
-    team: ITeam;
-}
-
-export interface ITeam {
-    name: string;
+    teamName: string;
+    isStarter: boolean;
 }
