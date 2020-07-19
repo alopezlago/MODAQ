@@ -32,7 +32,7 @@ export const GameBar = observer(
             }
 
             const bonusIndex: number = props.game.getBonusIndex(props.uiState.cycleIndex);
-            const bonus: Bonus | undefined = props.game.packet.bonsues[bonusIndex];
+            const bonus: Bonus | undefined = props.game.packet.bonuses[bonusIndex];
             if (bonus == undefined) {
                 // Something is wrong... the bonus is undefined, but this handler can be accessed?
                 throw new Error(`Impossible to add bonus protest for bonus question ${bonusIndex}`);
@@ -187,7 +187,7 @@ function getActionSubMenuItems(
     let protestBonusItem: ICommandBarItemProps | undefined = undefined;
     if (cycle && cycle.bonusAnswer != undefined) {
         const bonusIndex: number = props.game.getBonusIndex(props.uiState.cycleIndex);
-        const bonus: Bonus = props.game.packet.bonsues[bonusIndex];
+        const bonus: Bonus = props.game.packet.bonuses[bonusIndex];
         if (cycle.getProtestableBonusPartIndexes(bonus.parts.length).length > 0) {
             protestBonusItem = {
                 key: "protestBonus",

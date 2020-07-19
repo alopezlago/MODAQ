@@ -17,10 +17,10 @@ export const QuestionViewer = observer((props: IQuestionViewerProps) => {
 
     let bonus: JSX.Element | null = null;
     const bonusInPlay: boolean = cycle.correctBuzz != undefined;
-    if (bonusIndex >= 0 && bonusIndex < props.game.packet.bonsues.length) {
+    if (bonusIndex >= 0 && bonusIndex < props.game.packet.bonuses.length) {
         bonus = (
             <BonusQuestion
-                bonus={props.game.packet.bonsues[bonusIndex]}
+                bonus={props.game.packet.bonuses[bonusIndex]}
                 bonusIndex={bonusIndex}
                 cycle={cycle}
                 uiState={props.uiState}

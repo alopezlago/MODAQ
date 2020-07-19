@@ -3,7 +3,7 @@ import { Cycle } from "src/state/Cycle";
 import { Player } from "src/state/TeamState";
 import { GameState } from "src/state/GameState";
 
-describe("GetActivePlayersTests", () => {
+describe("GameStateTests", () => {
     describe("getActivePlayers", () => {
         const firstTeamName = "A";
         const secondTeamName = "B";

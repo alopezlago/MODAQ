@@ -5,11 +5,11 @@ export class PacketState {
     public tossups: Tossup[];
 
     @observable
-    public bonsues: Bonus[];
+    public bonuses: Bonus[];
 
     constructor() {
         this.tossups = [];
-        this.bonsues = [];
+        this.bonuses = [];
     }
 
     @action
@@ -19,7 +19,7 @@ export class PacketState {
 
     @action
     public setBonuses(bonuses: Bonus[]): void {
-        this.bonsues = bonuses;
+        this.bonuses = bonuses;
     }
 }
 

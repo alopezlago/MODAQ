@@ -198,32 +198,24 @@ export class GameState {
     }
 
     public getBonus(cycleIndex: number): Bonus | undefined {
-        return this.packet.bonsues[this.getBonusIndex(cycleIndex)];
+        return this.packet.bonuses[this.getBonusIndex(cycleIndex)];
     }
 
-    // TODO: Add test where the previous correct buzz had a thrown out tossup
-    // TODO: Rewrite this to just use a for-loop, since we don't need to look at all the elements after cycleIndex
     public getBonusIndex(cycleIndex: number): number {
         const previousCycleIndex: number = cycleIndex - 1;
-        const usedBonusesCount = this.cycles.reduce<number>((usedBonuses, value, currentIndex) => {
-            // The bonus index should depend on how many bonus answers came before it, plus all of the thrown out bonuses
-            if (currentIndex > cycleIndex) {
-                return usedBonuses;
+        let usedBonusesCount = 0;
+        for (let i = 0; i <= cycleIndex; i++) {
+            const cycle = this.cycles[i];
+            if (cycle.correctBuzz != undefined && i <= previousCycleIndex) {
+                usedBonusesCount++;
             }
 
-            let bonusesRead = 0;
-            if (value.correctBuzz != undefined && currentIndex <= previousCycleIndex) {
-                bonusesRead++;
+            if (cycle.thrownOutBonuses != undefined) {
+                usedBonusesCount += cycle.thrownOutBonuses.length;
             }
+        }
 
-            if (value.thrownOutBonuses != undefined) {
-                bonusesRead += value.thrownOutBonuses.length;
-            }
-
-            return usedBonuses + bonusesRead;
-        }, 0);
-
-        return usedBonusesCount >= this.packet.bonsues.length ? -1 : usedBonusesCount;
+        return usedBonusesCount >= this.packet.bonuses.length ? -1 : usedBonusesCount;
     }
 
     public getTossup(cycleIndex: number): Tossup | undefined {
@@ -231,13 +223,13 @@ export class GameState {
     }
 
     public getTossupIndex(cycleIndex: number): number {
-        const thrownOutTossupsCount = this.cycles.reduce<number>((usedTossups, value, currentIndex) => {
-            if (value.thrownOutTossups == undefined || currentIndex > cycleIndex) {
-                return usedTossups;
+        let thrownOutTossupsCount = 0;
+        for (let i = 0; i <= cycleIndex; i++) {
+            const cycle: Cycle = this.cycles[i];
+            if (cycle.thrownOutTossups !== undefined) {
+                thrownOutTossupsCount += cycle.thrownOutTossups.length;
             }
-
-            return usedTossups + value.thrownOutTossups.length;
-        }, 0);
+        }
 
         return cycleIndex + thrownOutTossupsCount;
     }

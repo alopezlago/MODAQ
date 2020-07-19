@@ -55,12 +55,16 @@ function createCycleList(cycle: Cycle): JSX.Element[] {
     }
 
     const thrownOutTossups: IThrowOutQuestionEvent[] = cycle.thrownOutTossups ?? [];
+    const lastThrownOutTossupIndex = thrownOutTossups.length - 1;
     thrownOutTossups.sort((event, otherEvent) => event.questionIndex - otherEvent.questionIndex);
     const orderedBuzzes: ITossupAnswerEvent[] = cycle.orderedBuzzes;
 
     if (orderedBuzzes.length === 0) {
         for (let i = 0; i < thrownOutTossups.length; i++) {
-            elements.push(createThrowOutQuestionDetails(cycle, thrownOutTossups[i], i, /* isTossup */ true));
+            const isLastThrownOutTossup: boolean = i === lastThrownOutTossupIndex;
+            elements.push(
+                createThrowOutQuestionDetails(cycle, thrownOutTossups[i], i, /* isTossup */ true, isLastThrownOutTossup)
+            );
         }
     } else {
         // We want buzzes on a specific question to appear before the event throwing out that question appears.
@@ -77,12 +81,14 @@ function createCycleList(cycle: Cycle): JSX.Element[] {
                     thrownOutTossupsIndex < thrownOutTossups.length &&
                     thrownOutTossups[thrownOutTossupsIndex].questionIndex < currentTossupIndex
                 ) {
+                    const isLastThrownOutTossup: boolean = thrownOutTossupsIndex === lastThrownOutTossupIndex;
                     elements.push(
                         createThrowOutQuestionDetails(
                             cycle,
                             thrownOutTossups[thrownOutTossupsIndex],
                             thrownOutTossupsIndex,
-                            /* isTossup */ true
+                            /* isTossup */ true,
+                            isLastThrownOutTossup
                         )
                     );
                     thrownOutTossupsIndex++;
@@ -94,20 +100,32 @@ function createCycleList(cycle: Cycle): JSX.Element[] {
 
         // Ordering is still a little off, and the buzzes remain in view. Tweak this.
         for (; thrownOutTossupsIndex < thrownOutTossups.length; thrownOutTossupsIndex++) {
+            const isLastThrownOutTossup: boolean = thrownOutTossupsIndex === lastThrownOutTossupIndex;
             elements.push(
                 createThrowOutQuestionDetails(
                     cycle,
                     thrownOutTossups[thrownOutTossupsIndex],
                     thrownOutTossupsIndex,
-                    /* isTossup */ true
+                    /* isTossup */ true,
+                    isLastThrownOutTossup
                 )
             );
         }
     }
 
     if (cycle.thrownOutBonuses) {
+        const lastThrownOutBonusIndex: number = cycle.thrownOutBonuses.length - 1;
         for (let i = 0; i < cycle.thrownOutBonuses.length; i++) {
-            elements.push(createThrowOutQuestionDetails(cycle, cycle.thrownOutBonuses[i], i, /* isTossup */ false));
+            const isLastThrownOutBonus: boolean = i === lastThrownOutBonusIndex;
+            elements.push(
+                createThrowOutQuestionDetails(
+                    cycle,
+                    cycle.thrownOutBonuses[i],
+                    i,
+                    /* isTossup */ false,
+                    isLastThrownOutBonus
+                )
+            );
         }
     }
 
@@ -199,17 +217,24 @@ function createThrowOutQuestionDetails(
     cycle: Cycle,
     thrownOutEvent: IThrowOutQuestionEvent,
     thrownOutIndex: number,
-    isTossup: boolean
+    isTossup: boolean,
+    isLastThrownOutQuestion: boolean
 ): JSX.Element {
     const questionType: string = isTossup ? "tossup" : "bonus";
     const text = `Threw out ${questionType} #${thrownOutEvent.questionIndex + 1}`;
-    const deleteHandler = () => {
-        if (isTossup) {
-            cycle.removeThrownOutTossup(thrownOutEvent.questionIndex);
-        } else {
-            cycle.removeThrownOutBonus(thrownOutEvent.questionIndex);
-        }
-    };
+    let deleteHandler: (() => void) | undefined = undefined;
+
+    // We only want to allow removing the last thrown out question, so we don't have ordering issues when calculating
+    // the next question index
+    if (isLastThrownOutQuestion) {
+        deleteHandler = () => {
+            if (isTossup) {
+                cycle.removeThrownOutTossup(thrownOutEvent.questionIndex);
+            } else {
+                cycle.removeThrownOutBonus(thrownOutEvent.questionIndex);
+            }
+        };
+    }
 
     return <CycleItem key={`throw_out_${questionType}_${thrownOutIndex}`} text={text} onDelete={deleteHandler} />;
 }
