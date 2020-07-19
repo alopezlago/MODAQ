@@ -20,7 +20,7 @@ import { Tossup } from "src/state/PacketState";
 import { IBuzzMarker } from "src/state/IBuzzMarker";
 
 export const BuzzMenu = observer((props: IBuzzMenuProps) => {
-    const onHideBuzzMenu: () => void = React.useCallback(() => onBuzzMenuDismissed(props), [props.uiState]);
+    const onHideBuzzMenu: () => void = React.useCallback(() => onBuzzMenuDismissed(props), [props]);
 
     const teamNames: string[] = props.game.teamNames;
     const menuItems: IContextualMenuItem[] = [];
@@ -73,32 +73,24 @@ function getPlayerMenuItems(props: IBuzzMenuProps, teamName: string): IContextua
             isWrongChecked &&
             props.cycle.tossupProtests?.findIndex((protest) => protest.position === props.position) != undefined;
 
+        const buzzMenuItemData: IBuzzMenuItemData = { props, player };
+
         const subMenuItems: IContextualMenuItem[] = [
             {
                 key: `${topLevelKey}_correct`,
                 text: "Correct",
+                data: buzzMenuItemData,
                 canCheck: true,
                 checked: isCorrectChecked,
-                onClick: React.useCallback(
-                    (
-                        ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
-                        item?: IContextualMenuItem
-                    ) => onCorrectClicked(item, props, player),
-                    [props, player]
-                ),
+                onClick: onCorrectClicked,
             },
             {
                 key: `${topLevelKey}_wrong`,
                 text: "Wrong",
+                data: buzzMenuItemData,
                 canCheck: true,
                 checked: isWrongChecked,
-                onClick: React.useCallback(
-                    (
-                        ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
-                        item?: IContextualMenuItem
-                    ) => onWrongClicked(item, props, player),
-                    [props, player]
-                ),
+                onClick: onWrongClicked,
             },
         ];
 
@@ -106,15 +98,10 @@ function getPlayerMenuItems(props: IBuzzMenuProps, teamName: string): IContextua
             subMenuItems.push({
                 key: `${topLevelKey}_protest`,
                 text: "Protest",
+                data: buzzMenuItemData,
                 canCheck: true,
                 checked: isProtestChecked,
-                onClick: React.useCallback(
-                    (
-                        ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
-                        item?: IContextualMenuItem
-                    ) => onProtestClicked(item, props, player),
-                    [props, player]
-                ),
+                onClick: onProtestClicked,
             });
         }
 
@@ -143,14 +130,24 @@ function onBuzzMenuDismissed(props: IBuzzMenuProps): void {
     props.uiState.setSelectedWordIndex(-1);
 }
 
-function onCorrectClicked(item: IContextualMenuItem | undefined, props: IBuzzMenuProps, player: Player): void {
-    if (item?.checked) {
+function onCorrectClicked(
+    ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
+    item?: IContextualMenuItem
+) {
+    if (item?.data == undefined || !isBuzzMenuItemData(item.data)) {
+        // We need access to the player and props
+        return;
+    }
+
+    const { props, player } = { ...item.data };
+
+    if (item.checked) {
         props.cycle.removeCorrectBuzz();
     } else if (item?.checked === false) {
         props.cycle.addCorrectBuzz(
             {
                 player,
-                position: props.position,
+                position: item.data.props.position,
                 correct: true,
             },
             props.tossupNumber - 1,
@@ -159,10 +156,20 @@ function onCorrectClicked(item: IContextualMenuItem | undefined, props: IBuzzMen
     }
 }
 
-function onWrongClicked(item: IContextualMenuItem | undefined, props: IBuzzMenuProps, player: Player): void {
-    if (item?.checked) {
+function onWrongClicked(
+    ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
+    item?: IContextualMenuItem
+) {
+    if (item?.data == undefined || !isBuzzMenuItemData(item.data)) {
+        // We need access to the player and props
+        return;
+    }
+
+    const { props, player } = { ...item.data };
+
+    if (item.checked) {
         props.cycle.removeWrongBuzz(player);
-    } else if (item?.checked === false) {
+    } else if (item.checked === false) {
         const marker: IBuzzMarker = {
             player,
             position: props.position,
@@ -178,12 +185,26 @@ function onWrongClicked(item: IContextualMenuItem | undefined, props: IBuzzMenuP
     }
 }
 
-function onProtestClicked(item: IContextualMenuItem | undefined, props: IBuzzMenuProps, player: Player): void {
-    if (item?.checked) {
+function onProtestClicked(
+    ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
+    item?: IContextualMenuItem
+) {
+    if (item?.data == undefined || !isBuzzMenuItemData(item.data)) {
+        // We need access to the player and props
+        return;
+    }
+
+    const { props, player } = { ...item.data };
+
+    if (item.checked) {
         props.cycle.removeTossupProtest(player.teamName);
-    } else if (item?.checked === false) {
+    } else if (item.checked === false) {
         props.uiState.setPendingTossupProtest(player.teamName, props.tossupNumber - 1, props.position);
     }
+}
+
+function isBuzzMenuItemData(data: IBuzzMenuItemData | undefined): data is IBuzzMenuItemData {
+    return data?.props !== undefined && data.player !== undefined;
 }
 
 export interface IBuzzMenuProps {
@@ -195,4 +216,9 @@ export interface IBuzzMenuProps {
     tossup: Tossup;
     tossupNumber: number;
     uiState: UIState;
+}
+
+interface IBuzzMenuItemData {
+    props: IBuzzMenuProps;
+    player: Player;
 }

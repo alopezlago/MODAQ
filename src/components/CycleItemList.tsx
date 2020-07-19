@@ -56,7 +56,9 @@ function createCycleList(cycle: Cycle): JSX.Element[] {
 
     const thrownOutTossups: IThrowOutQuestionEvent[] = cycle.thrownOutTossups ?? [];
     const lastThrownOutTossupIndex = thrownOutTossups.length - 1;
-    thrownOutTossups.sort((event, otherEvent) => event.questionIndex - otherEvent.questionIndex);
+
+    // mobx will complain if we call sort on an observable array, so copy the elements before sorting it
+    [...thrownOutTossups].sort((event, otherEvent) => event.questionIndex - otherEvent.questionIndex);
     const orderedBuzzes: ITossupAnswerEvent[] = cycle.orderedBuzzes;
 
     if (orderedBuzzes.length === 0) {

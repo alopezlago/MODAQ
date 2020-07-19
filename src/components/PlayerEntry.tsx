@@ -40,7 +40,7 @@ export const PlayerEntry = observer((props: IPlayerEntryProps) => {
         },
         [props.player]
     );
-    const removeHandler = React.useCallback(() => props.onRemovePlayerClick(props.player), [props.player]);
+    const removeHandler = React.useCallback(() => props.onRemovePlayerClick(props.player), [props]);
 
     const cancelButtonOrSpacer: JSX.Element = props.canRemove ? (
         <CancelButton title="Remove" onClick={removeHandler} />

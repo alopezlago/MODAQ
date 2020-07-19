@@ -18,7 +18,36 @@ export const TossupQuestion = observer(
     (props: IQuestionProps): JSX.Element => {
         const classes: ITossupQuestionStyle = useStyles();
 
-        const questionWords: JSX.Element[] = generateQuestionWords(props);
+        const selectedWordRef: React.MutableRefObject<null> = React.useRef(null);
+
+        const correctBuzzIndex: number = props.cycle.correctBuzz?.marker.position ?? -1;
+        const wrongBuzzIndexes: number[] = props.cycle.incorrectBuzzes
+            .filter((buzz) => buzz.tossupIndex === props.tossupNumber - 1)
+            .map((buzz) => buzz.marker.position);
+
+        // We need a last character that the reader can click on if the player buzzes in at the end.
+        const questionFormattedTexts: IFormattedText[][] = React.useMemo(
+            () =>
+                FormattedTextParser.splitFormattedTextIntoWords(props.tossup.question).concat([
+                    [{ text: "■", emphasized: false, required: false }],
+                ]),
+            [props]
+        );
+
+        const questionWords: JSX.Element[] = questionFormattedTexts.map((word, index) => {
+            return (
+                <QuestionWordWrapper
+                    key={`qw_${index}`}
+                    correctBuzzIndex={correctBuzzIndex}
+                    index={index}
+                    selectedWordRef={selectedWordRef}
+                    word={word}
+                    wrongBuzzIndexes={wrongBuzzIndexes}
+                    {...props}
+                />
+            );
+        });
+
         const wordClickHandler: React.MouseEventHandler = React.useCallback(
             (event: React.MouseEvent<HTMLDivElement>): void => {
                 onTossupTextClicked(props, event);
@@ -51,39 +80,6 @@ export const TossupQuestion = observer(
         );
     }
 );
-
-// TODO: Look into caching or memoizing this value, maybe with React.useMemo?
-function generateQuestionWords(props: IQuestionProps): JSX.Element[] {
-    const correctBuzzIndex: number = props.cycle.correctBuzz?.marker.position ?? -1;
-    const wrongBuzzIndexes: number[] = props.cycle.incorrectBuzzes
-        .filter((buzz) => buzz.tossupIndex === props.tossupNumber - 1)
-        .map((buzz) => buzz.marker.position);
-
-    const selectedWordRef: React.MutableRefObject<null> = React.useRef(null);
-
-    // We need a last character that the reader can click on if the player buzzes in at the end.
-    const questionWords: IFormattedText[][] = React.useMemo(
-        () =>
-            FormattedTextParser.splitFormattedTextIntoWords(props.tossup.question).concat([
-                [{ text: "■", emphasized: false, required: false }],
-            ]),
-        [props]
-    );
-
-    return questionWords.map((word, index) => {
-        return (
-            <QuestionWordWrapper
-                key={`qw_${index}`}
-                correctBuzzIndex={correctBuzzIndex}
-                index={index}
-                selectedWordRef={selectedWordRef}
-                word={word}
-                wrongBuzzIndexes={wrongBuzzIndexes}
-                {...props}
-            />
-        );
-    });
-}
 
 function onTossupTextClicked(props: IQuestionProps, event: React.MouseEvent<HTMLDivElement>): void {
     const target = event.target as HTMLDivElement;

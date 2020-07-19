@@ -103,13 +103,13 @@ const NewGameDialogBody = observer(
             (existingPlayers: Player[]) => {
                 onAddPlayer(props, existingPlayers);
             },
-            [props.uiState.pendingNewGame]
+            [props]
         );
         const removePlayerHandler = React.useCallback(
             (player: Player) => {
                 onRemovePlayer(props, player);
             },
-            [props.uiState.pendingNewGame]
+            [props]
         );
         const teamNameValidationHandler = React.useCallback((): string | undefined => {
             if (props.uiState.pendingNewGame == undefined) {

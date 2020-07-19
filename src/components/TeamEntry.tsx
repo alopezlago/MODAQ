@@ -41,20 +41,20 @@ export const TeamEntry = observer((props: ITeamEntryProps) => {
                 }
             }
         },
-        [props.players, props.players.length]
+        [props.players]
     );
     const addPlayerHandler = React.useCallback(() => props.onAddPlayerClick(props.players), [props]);
     const playerNameValidationHandler = React.useCallback(
         (newName: string): string | undefined => {
             return NewGameValidator.newPlayerNameUnique(props.players, newName);
         },
-        [props.players, props.players.length]
+        [props.players]
     );
 
     const renderPlayerHandler = React.useCallback(
         (player: Player | undefined, index: number | undefined) =>
             onRenderPlayerEntry(player, index, playerNameValidationHandler, props.onRemovePlayerClick),
-        [props.players, props.players.length]
+        [playerNameValidationHandler, props.onRemovePlayerClick]
     );
 
     if (props.players.length === 0) {

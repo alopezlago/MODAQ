@@ -19,6 +19,7 @@
         "eslint": "^7.1.0",
         "eslint-config-prettier": "^6.11.0",
         "eslint-plugin-react": "^7.20.0",
+        "eslint-plugin-react-hooks": "^4.0.8",
         "fork-ts-checker-webpack-plugin": "^5.0.6",
         "global-jsdom": "^6.1.0",
         "jsdom": "^16.2.2",

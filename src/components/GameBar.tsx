@@ -43,7 +43,7 @@ export const GameBar = observer(
         }, [props]);
         const addPlayerHandler = React.useCallback(() => {
             props.uiState.createPendingNewPlayer(props.game.teamNames[0]);
-        }, [props, props.game.teamNames]);
+        }, [props]);
 
         const items: ICommandBarItemProps[] = [
             {
