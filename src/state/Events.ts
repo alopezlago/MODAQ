@@ -28,6 +28,14 @@ export interface IBonusProtestEvent extends IProtestEvent {
     partIndex: number;
 }
 
+export interface IPlayerJoinsEvent {
+    inPlayer: IPlayer;
+}
+
+export interface IPlayerLeavesEvent {
+    outPlayer: IPlayer;
+}
+
 export interface ISubstitutionEvent {
     inPlayer: IPlayer;
     outPlayer: IPlayer;
@@ -40,6 +48,8 @@ export interface ITimeoutEvent {
 export interface IThrowOutQuestionEvent {
     questionIndex: number;
 }
+
+export type PlayerChangeEvent = IPlayerJoinsEvent | IPlayerLeavesEvent | ISubstitutionEvent;
 
 // TODO: Consider adding a "note" or "free" event, that can tell the TD something special about this cycle
 

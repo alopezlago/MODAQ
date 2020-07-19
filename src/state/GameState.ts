@@ -1,9 +1,10 @@
 import { computed, observable, action } from "mobx";
+import { format } from "mobx-sync";
 
 import { PacketState, Bonus, Tossup } from "./PacketState";
 import { Player } from "./TeamState";
 import { Cycle, ICycle } from "./Cycle";
-import { format } from "mobx-sync";
+import { ISubstitutionEvent, IPlayerJoinsEvent, IPlayerLeavesEvent } from "./Events";
 
 export class GameState {
     @observable
@@ -103,6 +104,11 @@ export class GameState {
     }
 
     @action
+    public addPlayer(player: Player): void {
+        this.players.push(player);
+    }
+
+    @action
     public addPlayers(players: Player[]): void {
         this.players.push(...players);
     }
@@ -119,6 +125,74 @@ export class GameState {
         this.cycles = [];
     }
 
+    public getActivePlayers(teamName: string, cycleIndex: number): Set<Player> {
+        // If there's no cycles at that index, then there are no active players
+        if (cycleIndex >= this.cycles.length) {
+            return new Set<Player>();
+        }
+
+        const players: Player[] = this.getPlayers(teamName);
+        const activePlayers: Set<Player> = new Set<Player>(players.filter((player) => player.isStarter));
+
+        // We should just have starters at the beginning. Then swap out new players, based on substitutions up to the
+        // cycleIndex.
+        for (let i = 0; i <= cycleIndex; i++) {
+            const cycle: Cycle = this.cycles[i];
+            const subs: ISubstitutionEvent[] | undefined = cycle.subs;
+            const joins: IPlayerJoinsEvent[] | undefined = cycle.playerJoins;
+            const leaves: IPlayerLeavesEvent[] | undefined = cycle.playerLeaves;
+
+            if (subs == undefined && joins == undefined && leaves == undefined) {
+                continue;
+            }
+
+            const teamLeaves: IPlayerLeavesEvent[] =
+                leaves?.filter((leave) => leave.outPlayer.teamName === teamName) ?? [];
+            for (const leave of teamLeaves) {
+                const outPlayer: Player | undefined = players.find((player) => player.name === leave.outPlayer.name);
+                if (outPlayer == undefined) {
+                    throw new Error(
+                        `Tried to take out ${leave.outPlayer.name} from the game, who isn't on team ${teamName}`
+                    );
+                }
+
+                activePlayers.delete(outPlayer);
+            }
+
+            const teamJoins: IPlayerJoinsEvent[] = joins?.filter((join) => join.inPlayer.teamName === teamName) ?? [];
+            for (const join of teamJoins) {
+                const inPlayer: Player | undefined = players.find((player) => player.name === join.inPlayer.name);
+                if (inPlayer == undefined) {
+                    throw new Error(`Tried to add ${join.inPlayer.name}, who isn't on team ${teamName}`);
+                }
+
+                activePlayers.add(inPlayer);
+            }
+
+            const teamSubs: ISubstitutionEvent[] = subs?.filter((sub) => sub.inPlayer.teamName === teamName) ?? [];
+            for (const sub of teamSubs) {
+                const inPlayer = players.find((player) => player.name === sub.inPlayer.name);
+                const outPlayer = players.find((player) => player.name === sub.outPlayer.name);
+
+                if (inPlayer == undefined) {
+                    throw new Error(
+                        `Tried to substitute in player ${sub.inPlayer.name}, who isn't on team ${teamName}`
+                    );
+                } else if (outPlayer == undefined) {
+                    throw new Error(
+                        `Tried to substitute out player ${sub.outPlayer.name}, who isn't on team ${teamName}`
+                    );
+                }
+
+                activePlayers.add(inPlayer);
+                activePlayers.delete(outPlayer);
+            }
+        }
+
+        return activePlayers;
+    }
+
+    // TODO: Make this return a set?
     public getPlayers(teamName: string): Player[] {
         return this.players.filter((player) => player.teamName === teamName);
     }
@@ -128,6 +202,7 @@ export class GameState {
     }
 
     // TODO: Add test where the previous correct buzz had a thrown out tossup
+    // TODO: Rewrite this to just use a for-loop, since we don't need to look at all the elements after cycleIndex
     public getBonusIndex(cycleIndex: number): number {
         const previousCycleIndex: number = cycleIndex - 1;
         const usedBonusesCount = this.cycles.reduce<number>((usedBonuses, value, currentIndex) => {

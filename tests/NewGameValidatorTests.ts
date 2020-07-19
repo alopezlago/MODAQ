@@ -114,6 +114,20 @@ describe("NewGameValidatorTests", () => {
                 packet: defaultPacket,
             });
         });
+        it("No starters in first team", () => {
+            assertNewGameIsInvalid({
+                firstTeamPlayers: [new Player("a", "1", false)],
+                secondTeamPlayers: [new Player("b", "2", true)],
+                packet: defaultPacket,
+            });
+        });
+        it("No starters in second team", () => {
+            assertNewGameIsInvalid({
+                firstTeamPlayers: [new Player("a", "1", true)],
+                secondTeamPlayers: [new Player("b", "2", false)],
+                packet: defaultPacket,
+            });
+        });
         it("No tossups in packet", () => {
             assertNewGameIsInvalid({
                 firstTeamPlayers: [new Player("a", "1", true)],

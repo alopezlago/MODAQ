@@ -34,8 +34,12 @@ export const TossupQuestion = observer(
         return (
             <div className={classes.tossupContainer}>
                 <TossupProtestDialog cycle={props.cycle} uiState={props.uiState} />
-                <div>
-                    <div className={classes.tossupText} onClick={wordClickHandler} onDoubleClick={wordClickHandler}>
+                <div className={classes.tossupText}>
+                    <div
+                        className={classes.tossupQuestionText}
+                        onClick={wordClickHandler}
+                        onDoubleClick={wordClickHandler}
+                    >
                         {questionWords}
                     </div>
                     <Answer text={props.tossup.answer} />
@@ -163,16 +167,21 @@ interface IQuestionWordWrapperProps {
 
 interface ITossupQuestionStyle {
     tossupContainer: string;
+    tossupQuestionText: string;
     tossupText: string;
 }
 
-const useStyles: (data?: unknown) => ITossupQuestionStyle = createUseStyles({
+const useStyles: () => ITossupQuestionStyle = createUseStyles({
     tossupContainer: {
         paddingLeft: "24px",
         display: "flex",
         justifyContent: "space-between",
     },
-    tossupText: {
+    tossupQuestionText: {
         display: "inline",
+    },
+    tossupText: {
+        maxHeight: "37.5vh",
+        overflowY: "auto",
     },
 });

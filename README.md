@@ -48,22 +48,24 @@ TODO items
 
 Next items to work on (figure out an order)
 
--   Fixing the CSS so that the event viewer and scoreboard are the same size as the question viewer
-    -   Would also be good to see if the viewer could be collapisble, to give the reader more space. Alternatively, have
-        something draggable to set the size
+-   May also want a button to export to JSON, or get access to buzz data in some fashion
 -   Investigating WebSockets, to see if integration with the Discord tournament assistant would work, and supply the
     teams/players/readers. The bot could also track scores in real-time and show who's on top, and maybe allow for
     rebrackets.
--   Add player view (with stats?), and allow substitutions by clicking on the player and bringing up a menu
+-   Move different CycleItems to their own components, so we can properly memoize callbacks
+-   Look into integrating with something like Google Sheets, so we can save a spreadsheet while everything is being done.
+    -   This should maybe be an explicit action to enable. It could also be a way to add a new game, e.g. "New game (local)"
+        and "New game (spreadsheet)"
+    -   Could also export to a Google Sheet. Might be best to make this an option on new game, so it can always be
+        persisted there in case we get into a bad state.
 -   Add format rules so we can support powers (and see how the parser generates them)
--   Work on quick setup experience: specify teams and players, and upload packet; then on next show QViewer screen.
-    -   Could include working on a sidebar
--   May also want a button to export to JSON, or get access to buzz data in some fashion
+-   Should look into the perf of the buzz menu; seems to be a noticeable delay the first time we click on a question.
+    -   Using the profiler, doesn't seem directly related to the code
+    -   We're using ES that supports Set<>, so use it more often (maybe for active players?). Would be nice for events,
+        except serialization becomes more annoying.
 
 *   Work on question viewer. Unlike previous approaches, show the tossup and bonus for this cycle
     -   Lower priority, but consider making the font and font size adjustable
-    -   Make the question viewer grow downwards (fix the top position)
-        -   Unsure if this is something we can fix, it only grows upwards if we're at the end of the page
 *   Create FormatRules? Something to tell us how many tossups per game, and how to handle tie-breakers. Eventaully replace this with the qb schema
     -   This might mean adding support for more complex events:
         -   Substitutions (alternative is always showing every player)
@@ -72,26 +74,29 @@ Next items to work on (figure out an order)
         -   These need to be discoverable for them to be effective, this will be very frustrating for readers otherwise
             -   Also need to consider if there should just be a "packet" view, that lets them see all tossups and bonuses
 *   Show the score in a nicer component
-*   Add the event log view, which shows the question number and relevant events
+*   Improve the event viewer
     -   One potential trick: if we make "halftime" the first event, then cycle index and question index will match up
     -   This view should have numbers on the left for each cycle index, and on the right it should show things about buzzes
         and bonus conversion. On the right should be the score at that point.
-    -   Clicking on an event (number?)
-    -   Ideally this would be collapsable/expandable
     -   Should look into showing the score (either in the scoreboard, or on a tooltip, or at the bottom)
-    -   Should look into jumping to the cycle when clicking on the number
 *   Add the player scoring summary view
     -   Divided in two; team name on top, players with their Powers/TUs/Negs/Total in the same line
 *   This may be out-of-scope, but a page to take in packets and a schedule, which then produces files for all of the readers.
     They can then upload it to the page to run the tournament.
-*   Make the tossups/bonuses collapsible so they can take up less space
+*   Make the tossups/bonuses collapsible so they can take up less space, and make the event viewer collapsible
 *   Move to mergeStyleSheets and remove (direct) dependency on react-jss
+*   Substitution improvements:
+
+    -   Allow substitutions, and only show current players in the dropdown
+        -   See if we can mitigate the issue where, once a player is added, you can sub them in before they were added.
+            -   Another rough bit of UI is that, if someone leaves and a sub fills in their place, you have to do a sub event.
+                If you make them leave, you can't bring the sub back on, since they already "exist"
 
 *   After the views are done, some of the more nitty-gritty stuff:
 
     -   Sending an output of the state.
     -   Integrate with qbschema so the output is consumable
-    -   Look into creating an SQBS round with it?
+    -   Look into creating an SQBS or Yellow Fruit round with it?
     -   Look into using a server to get this information (packet, teams, etc.)
     -   Consider adding dark-theme support: https://medium.com/better-programming/how-to-build-dark-and-light-theme-with-web-components-a63ca1570bfe
     -   Add escape hatches if things get stuck (adding teams, reading the rest of the packet, etc.)
@@ -121,7 +126,6 @@ Next items to work on (figure out an order)
 *   Integrations to look into:
     -   Use Google Sheets to recreate Ophirstats-like spreadsheets, which could then use https://github.com/hftf/oligodendrocytes for analysis
     -   Import tournaments from Yellowfruit, and export Yellowfruit tournaments so they can be merged.
-        -   We'd probably want to save the state (gameState, maybe uiState) to an IndexedDB or Session Storage
     -   Export it into some format that https://github.com/hftf/belgrade can understand, so we can get visualizations quickly
     -   Wild idea would be to tie it in with the Discord Tournament Assistant; it could get the schedule from there, and
         let the reader choose who they are. This means a socket to the bot would have to be created, and could lead to DoS

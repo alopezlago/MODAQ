@@ -54,8 +54,11 @@ function getPlayerMenuItems(props: IBuzzMenuProps, teamName: string): IContextua
     // TODO: Need to support Wrong (1st buzz) and Wrong (2nd buzz)
     // TODO: Add some highlighting/indicator on the player to show that they have a buzz in a different word
 
-    const players: Player[] = props.game.getPlayers(teamName);
-    return players.map((player, index) => {
+    const players: Set<Player> = props.game.getActivePlayers(teamName, props.uiState.cycleIndex);
+    const menuItems: IContextualMenuItem[] = [];
+
+    let index = 0;
+    for (const player of players.values()) {
         const topLevelKey = `Team_${teamName}_Player_${index}`;
         const isCorrectChecked: boolean =
             props.cycle.correctBuzz != undefined &&
@@ -118,18 +121,21 @@ function getPlayerMenuItems(props: IBuzzMenuProps, teamName: string): IContextua
         // TODO: See if we can improve the style, since the background doesn't change on hover. We can look into
         // tagging this with a class name and using react-jss, or using a style on the parent component (much harder to
         // do without folding this back into the render method)
-        return {
+        menuItems.push({
             key: `Team_${teamName}_Player_${index}`,
             text: player.name,
             style: {
                 background: isCorrectChecked ? "rgba(0,128,128,0.1)" : isWrongChecked ? "rgba(128,0,0,0.1)" : undefined,
             },
             subMenuProps: {
-                key: `${topLevelKey}_correctness`,
                 items: subMenuItems,
             },
-        };
-    });
+        });
+
+        index++;
+    }
+
+    return menuItems;
 }
 
 function onBuzzMenuDismissed(props: IBuzzMenuProps): void {

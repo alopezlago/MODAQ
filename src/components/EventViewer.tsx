@@ -5,13 +5,17 @@ import { Label } from "@fluentui/react/lib/Label";
 import { GameState } from "src/state/GameState";
 import { UIState } from "src/state/UIState";
 import { createUseStyles } from "react-jss";
+
 import { CycleItemList } from "./CycleItemList";
+import { Cycle } from "src/state/Cycle";
+
+const numberKey = "number";
+const cycleKey = "cycle";
 
 // This should look like a numbered list, with the number representing the cycle.
-
 const columns: IColumn[] = [
     {
-        key: "number",
+        key: numberKey,
         fieldName: "number",
         name: "#",
         minWidth: 20,
@@ -22,7 +26,7 @@ const columns: IColumn[] = [
         isRowHeader: true,
     },
     {
-        key: "cycle",
+        key: cycleKey,
         fieldName: "cycle",
         name: "Events",
         minWidth: 80,
@@ -43,27 +47,42 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
         [props]
     );
 
-    const items: IEventViewerRow[] = props.game.cycles.map((cycle, index) => {
-        return {
-            cycle: <CycleItemList key={`cycle_${index}`} cycle={cycle} />,
-            number: <Label key={`number_${index}`}>{index + 1}</Label>,
-        };
-    });
+    const renderColumnHandler = React.useCallback((item?: Cycle, index?: number, column?: IColumn): JSX.Element => {
+        if (item === undefined || index === undefined || column === undefined) {
+            return <></>;
+        }
 
-    // TODO: Move passing in the cycle in items, and using onRenderItemColumn. This means we don't need keys for each
-    // CycleItemList. Look into using List for CycleItemList too.
+        return onRenderItemColumn(item, index, column);
+    }, []);
+
     return (
         <div className={classes.eventViewerContainer} data-is-scrollable="true">
             <DetailsList
                 checkboxVisibility={CheckboxVisibility.hidden}
                 selectionMode={SelectionMode.single}
                 columns={columns}
-                items={items}
+                items={props.game.cycles}
                 onActiveItemChanged={activeItemChangedHandler}
+                onRenderItemColumn={renderColumnHandler}
             />
         </div>
     );
 });
+
+function onRenderItemColumn(item: Cycle, index: number, column: IColumn): JSX.Element {
+    switch (column?.key) {
+        case numberKey:
+            if (index == undefined) {
+                return <></>;
+            }
+
+            return <Label>{index + 1}</Label>;
+        case cycleKey:
+            return <CycleItemList cycle={item} />;
+        default:
+            return <></>;
+    }
+}
 
 export interface IEventViewerProps {
     game: GameState;
@@ -82,6 +101,7 @@ interface IEventViewerRow {
 const useStyle: (data?: unknown) => IEventViewerStyle = createUseStyles({
     eventViewerContainer: {
         border: "1px black solid",
+        maxHeight: "80vh",
         overflowY: "auto",
     },
 });

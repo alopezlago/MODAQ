@@ -13,6 +13,7 @@ export class UIState {
         this.buzzMenuVisible = false;
         this.pendingBonusProtestEvent = undefined;
         this.pendingNewGame = undefined;
+        this.pendingNewPlayer = undefined;
         this.pendingTossupProtestEvent = undefined;
     }
 
@@ -39,6 +40,10 @@ export class UIState {
     @observable
     @ignore
     public pendingNewGame?: IPendingNewGame;
+
+    @observable
+    @ignore
+    public pendingNewPlayer?: Player;
 
     @observable
     @ignore
@@ -87,6 +92,11 @@ export class UIState {
             firstTeamPlayers,
             secondTeamPlayers,
         };
+    }
+
+    @action
+    public createPendingNewPlayer(teamName: string): void {
+        this.pendingNewPlayer = new Player(name, teamName, /* isStarter */ false);
     }
 
     @action
@@ -157,6 +167,11 @@ export class UIState {
     }
 
     @action
+    public resetPendingNewPlayer(): void {
+        this.pendingNewPlayer = undefined;
+    }
+
+    @action
     public resetPendingTossupProtest(): void {
         this.pendingTossupProtestEvent = undefined;
     }
@@ -181,5 +196,23 @@ export class UIState {
             const partIndex = typeof part === "string" ? parseInt(part, 10) : part;
             this.pendingBonusProtestEvent.partIndex = partIndex;
         }
+    }
+
+    @action
+    public updatePendingNewPlayerName(name: string): void {
+        if (this.pendingNewPlayer == undefined) {
+            return;
+        }
+
+        this.pendingNewPlayer.name = name;
+    }
+
+    @action
+    public updatePendingNewPlayerTeamName(teamName: string): void {
+        if (this.pendingNewPlayer == undefined) {
+            return;
+        }
+
+        this.pendingNewPlayer.teamName = teamName;
     }
 }

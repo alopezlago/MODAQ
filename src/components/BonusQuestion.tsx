@@ -32,7 +32,7 @@ export const BonusQuestion = observer((props: IBonusQuestionProps) => {
     return (
         <div className={classes.bonusContainer}>
             <BonusProtestDialog bonus={props.bonus} cycle={props.cycle} uiState={props.uiState} />
-            <div className="bonus-question">
+            <div className={classes.bonusText}>
                 <div className={leadinClassName}>{props.bonus.leadin}</div>
                 {parts}
             </div>
@@ -54,6 +54,7 @@ export interface IBonusQuestionProps {
 interface IBonusQuestionStyle {
     bonusLeadin: string;
     bonusContainer: string;
+    bonusText: string;
 }
 
 const useStyle: (data?: unknown) => IBonusQuestionStyle = createUseStyles({
@@ -66,5 +67,9 @@ const useStyle: (data?: unknown) => IBonusQuestionStyle = createUseStyles({
         "&.disabled": {
             color: "#888888",
         },
+    },
+    bonusText: {
+        maxHeight: "37.5vh",
+        overflowY: "auto",
     },
 });

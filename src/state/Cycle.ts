@@ -22,6 +22,12 @@ export class Cycle implements ICycle {
     bonusAnswer?: Events.IBonusAnswerEvent;
 
     @observable
+    playerJoins?: Events.IPlayerJoinsEvent[];
+
+    @observable
+    playerLeaves?: Events.IPlayerLeavesEvent[];
+
+    @observable
     subs?: Events.ISubstitutionEvent[];
 
     @observable
@@ -45,6 +51,8 @@ export class Cycle implements ICycle {
             this.bonusProtests = deserializedCycle.bonusProtests;
             this.correctBuzz = deserializedCycle.correctBuzz;
             this.negBuzz = deserializedCycle.negBuzz;
+            this.playerJoins = deserializedCycle.playerJoins;
+            this.playerLeaves = deserializedCycle.playerLeaves;
             this.subs = deserializedCycle.subs;
             this.timeouts = deserializedCycle.timeouts;
             this.thrownOutBonuses = deserializedCycle.thrownOutBonuses;
@@ -185,6 +193,40 @@ export class Cycle implements ICycle {
     }
 
     @action
+    public addPlayerJoins(inPlayer: IPlayer): void {
+        if (this.playerJoins == undefined) {
+            this.playerJoins = [];
+        }
+
+        this.playerJoins.push({
+            inPlayer,
+        });
+    }
+
+    @action
+    public addPlayerLeaves(outPlayer: IPlayer): void {
+        if (this.playerLeaves == undefined) {
+            this.playerLeaves = [];
+        }
+
+        this.playerLeaves.push({
+            outPlayer,
+        });
+    }
+
+    @action
+    public addSwapSubstitution(inPlayer: IPlayer, outPlayer: IPlayer): void {
+        if (this.subs == undefined) {
+            this.subs = [];
+        }
+
+        this.subs.push({
+            inPlayer,
+            outPlayer,
+        });
+    }
+
+    @action
     public addThrownOutBonus(bonusIndex: number): void {
         if (this.thrownOutBonuses == undefined) {
             this.thrownOutBonuses = [];
@@ -264,6 +306,33 @@ export class Cycle implements ICycle {
     public removeCorrectBuzz(): void {
         this.correctBuzz = undefined;
         this.bonusAnswer = undefined;
+    }
+
+    @action
+    public removePlayerJoins(joinToRemove: Events.IPlayerJoinsEvent): void {
+        if (this.playerJoins == undefined) {
+            return;
+        }
+
+        this.playerJoins = this.playerJoins.filter((join) => join !== joinToRemove);
+    }
+
+    @action
+    public removePlayerLeaves(leaveToRemove: Events.IPlayerLeavesEvent): void {
+        if (this.playerLeaves == undefined) {
+            return;
+        }
+
+        this.playerLeaves = this.playerLeaves.filter((leave) => leave !== leaveToRemove);
+    }
+
+    @action
+    public removeSubstitution(subToRemove: Events.ISubstitutionEvent): void {
+        if (this.subs == undefined) {
+            return;
+        }
+
+        this.subs = this.subs.filter((sub) => sub !== subToRemove);
     }
 
     @action
@@ -399,6 +468,8 @@ export interface ICycle {
     correctBuzz?: Events.ITossupAnswerEvent;
     noPenaltyBuzzes?: Events.ITossupAnswerEvent[];
     bonusAnswer?: Events.IBonusAnswerEvent;
+    playerJoins?: Events.IPlayerJoinsEvent[];
+    playerLeaves?: Events.IPlayerLeavesEvent[];
     subs?: Events.ISubstitutionEvent[];
     timeouts?: Events.ITimeoutEvent[];
     bonusProtests?: Events.IBonusProtestEvent[];

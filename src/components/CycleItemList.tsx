@@ -1,5 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react";
+
 import { Cycle } from "src/state/Cycle";
 import {
     IThrowOutQuestionEvent,
@@ -8,6 +9,8 @@ import {
     IBonusProtestEvent,
     ITossupProtestEvent,
     IBonusAnswerEvent,
+    IPlayerJoinsEvent,
+    IPlayerLeavesEvent,
 } from "src/state/Events";
 import { CycleItem } from "./CycleItem";
 
@@ -19,6 +22,8 @@ export const CycleItemList = observer(
 
 // TODO: Consider moving some of this logic to a separate class for testing; specifically ordering ones
 // TODO: Investigate using List/DetailedList for this, instead of returning a bunch of individual elements
+// Consider making CycleItem take in a "data" field, that can be passed into the click handler. This will solve the
+// issue of making a new event handler each time
 function createCycleList(cycle: Cycle): JSX.Element[] {
     // Ordering should be
     // Substitutions
@@ -28,10 +33,25 @@ function createCycleList(cycle: Cycle): JSX.Element[] {
     // Bonus Answer
     // TU protests
     // Bonus protests
+
     const elements: JSX.Element[] = [];
 
+    if (cycle.playerLeaves) {
+        for (let i = 0; i < cycle.playerLeaves.length; i++) {
+            elements.push(createPlayerLeaveDetails(cycle, cycle.playerLeaves[i], i));
+        }
+    }
+
+    if (cycle.playerJoins) {
+        for (let i = 0; i < cycle.playerJoins.length; i++) {
+            elements.push(createPlayerJoinDetails(cycle, cycle.playerJoins[i], i));
+        }
+    }
+
     if (cycle.subs) {
-        elements.concat(createSubstitutionDetails(cycle.subs));
+        for (let i = 0; i < cycle.subs.length; i++) {
+            elements.push(createSubstitutionDetails(cycle, cycle.subs[i], i));
+        }
     }
 
     const thrownOutTossups: IThrowOutQuestionEvent[] = cycle.thrownOutTossups ?? [];
@@ -110,17 +130,51 @@ function createCycleList(cycle: Cycle): JSX.Element[] {
     return elements;
 }
 
-function createSubstitutionDetails(subs: ISubstitutionEvent[]): JSX.Element[] {
-    return subs.map((sub, index) => {
-        const text = `Substitution (${sub.inPlayer.teamName}): ${sub.inPlayer.name} in for ${sub.outPlayer.name}`;
-        return <CycleItem key={`sub_${index}_${sub.inPlayer.name}_${sub.outPlayer.name}`} text={text} />;
-    });
+function createPlayerLeaveDetails(cycle: Cycle, leave: IPlayerLeavesEvent, index: number): JSX.Element {
+    const deleteHandler = () => {
+        cycle.removePlayerLeaves(leave);
+    };
+    return (
+        <CycleItem
+            key={`sub_${index}_out_${leave.outPlayer?.name}`}
+            text={`${leave.outPlayer.name} (${leave.outPlayer.teamName}) leaves`}
+            onDelete={deleteHandler}
+        />
+    );
+}
+
+function createPlayerJoinDetails(cycle: Cycle, join: IPlayerJoinsEvent, index: number): JSX.Element {
+    const deleteHandler = () => {
+        cycle.removePlayerJoins(join);
+    };
+    return (
+        <CycleItem
+            key={`sub_${index}_in_${join.inPlayer.name}`}
+            text={`New player (${join.inPlayer.teamName}): ${join.inPlayer.name} joins`}
+            onDelete={deleteHandler}
+        />
+    );
+}
+
+function createSubstitutionDetails(cycle: Cycle, sub: ISubstitutionEvent, index: number): JSX.Element {
+    const deleteHandler = () => {
+        cycle.removeSubstitution(sub);
+    };
+
+    return (
+        <CycleItem
+            key={`sub_${index}_${sub.inPlayer.name}_${sub.outPlayer?.name}`}
+            text={`Substitution (${sub.inPlayer.teamName}): ${sub.inPlayer.name} in for ${sub.outPlayer.name}`}
+            onDelete={deleteHandler}
+        />
+    );
 }
 
 function createTossupAnswerDetails(cycle: Cycle, buzz: ITossupAnswerEvent, buzzIndex: number): JSX.Element {
     // TODO: Look into using something like shortid for the key
     // TODO: Find out how to prevent us from creating this each time. React will throw if we use useCallback:
     // https://reactjs.org/docs/hooks-rules.html#only-call-hooks-at-the-top-level
+    // I think we need to make this a special CycleItem that has cycle/buzz, and expects that from its onDelete handler
     const deleteHandler = () => {
         if (buzz.marker.correct) {
             cycle.removeCorrectBuzz();

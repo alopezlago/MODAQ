@@ -37,6 +37,7 @@ const useStyles: (data?: unknown) => IQuestionViewerContainerStyle = createUseSt
     cycleChooserContainer: {
         display: "flex",
         justifyContent: "center",
+        height: "5vh",
         margin: 10,
     },
 });

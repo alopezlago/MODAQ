@@ -16,6 +16,8 @@ export function isValid(pendingNewGame: IPendingNewGame): boolean {
         playerTeamsUnique(nonEmptyFirstTeamPlayers, nonEmptySecondTeamPlayers) === undefined &&
         playerNamesUnique(nonEmptyFirstTeamPlayers) &&
         playerNamesUnique(nonEmptySecondTeamPlayers) &&
+        atLeastOneStarter(nonEmptyFirstTeamPlayers) &&
+        atLeastOneStarter(nonEmptySecondTeamPlayers) &&
         pendingNewGame.packet.tossups.length !== 0
     );
 }
@@ -56,4 +58,8 @@ export function newPlayerNameUnique(players: Player[], newName: string): string 
 function playerNamesUnique(players: Player[]): boolean {
     const nameSet = new Set<string>(players.map((player) => player.name));
     return nameSet.size === players.length;
+}
+
+function atLeastOneStarter(players: Player[]): boolean {
+    return players.some((player) => player.isStarter);
 }
