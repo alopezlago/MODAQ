@@ -125,6 +125,7 @@ class ErrorBoundary extends React.Component<Record<string, unknown>, IErrorBound
     // //     // logErrorToMyService(error, errorInfo);
     // // }
 
+    // TODO: This should have a clear button reset the state
     public render() {
         if (this.state.error) {
             const text: string = "Something went wrong. Error: " + this.state.error;

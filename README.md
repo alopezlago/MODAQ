@@ -4,13 +4,6 @@ This is a tool for reading, scorekeeping, and tracking buzz poins for quiz bowl 
 
 # Getting Started
 
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-
-1. Installation process
-2. Software dependencies
-3. Latest releases
-4. API references
-
 To setup the project, run
 
 `npm init`
@@ -33,6 +26,14 @@ To run the tests, run
 
 `npm test`
 
+If you want to use the Dev Server (required for testing Google Sheets), then do the following
+
+-   Add this entry to your HOSTS file (in Windows, at C:\Windows\System32\drivers\etc\hosts)
+
+    127.0.0.1 qbreader-localhost.com
+
+-   Run `npm start`
+
 # Contribute
 
 TODO: Explain how other users and developers can contribute to make your code better.
@@ -44,25 +45,33 @@ Some things to look into:
 -   JSS: https://cssinjs.org/
 -   Office UI Fabric React: https://developer.microsoft.com/en-us/fluentui#/controls/web, https://docs.microsoft.com/en-us/javascript/api/office-ui-fabric-react?view=office-ui-fabric-react-latest
 
+-   Client ID: 1038902414768-nj056sbrbe0oshavft2uq9et6tvbu2d5.apps.googleusercontent.com
+
 TODO items
 
 Next items to work on (figure out an order)
 
--   May also want a button to export to JSON, or get access to buzz data in some fashion
--   Investigating WebSockets, to see if integration with the Discord tournament assistant would work, and supply the
-    teams/players/readers. The bot could also track scores in real-time and show who's on top, and maybe allow for
-    rebrackets.
--   Move different CycleItems to their own components, so we can properly memoize callbacks
 -   Look into integrating with something like Google Sheets, so we can save a spreadsheet while everything is being done.
     -   This should maybe be an explicit action to enable. It could also be a way to add a new game, e.g. "New game (local)"
         and "New game (spreadsheet)"
     -   Could also export to a Google Sheet. Might be best to make this an option on new game, so it can always be
         persisted there in case we get into a bad state.
+-   Move different CycleItems to their own components, so we can properly memoize callbacks
 -   Add format rules so we can support powers (and see how the parser generates them)
+-   Add a button/text when we've run out of tossups (or bonuses?) to do one of the following
+    -   Import more questions, so we can track the data
+    -   Add buttons/menu to add buzzes manually (with no tracking, so position = -1), and to add another cycle
+-   Investigating WebSockets, to see if integration with the Discord tournament assistant would work, and supply the
+    teams/players/readers. The bot could also track scores in real-time and show who's on top, and maybe allow for
+    rebrackets.
+-   Look into changing parsers; the current one may be too fragile, and the one QuizDB uses expects it as an HTML file.
 -   Should look into the perf of the buzz menu; seems to be a noticeable delay the first time we click on a question.
     -   Using the profiler, doesn't seem directly related to the code
     -   We're using ES that supports Set<>, so use it more often (maybe for active players?). Would be nice for events,
         except serialization becomes more annoying.
+-   Show scores at the end of each cycle. That way it's easy to scorecheck.
+
+*   When ready to show this to the public, talk to Ophir to see how he wants to be credited
 
 *   Work on question viewer. Unlike previous approaches, show the tossup and bonus for this cycle
     -   Lower priority, but consider making the font and font size adjustable
@@ -91,6 +100,8 @@ Next items to work on (figure out an order)
         -   See if we can mitigate the issue where, once a player is added, you can sub them in before they were added.
             -   Another rough bit of UI is that, if someone leaves and a sub fills in their place, you have to do a sub event.
                 If you make them leave, you can't bring the sub back on, since they already "exist"
+
+*   Tossup protest dialog should auto-focus on the textbox
 
 *   After the views are done, some of the more nitty-gritty stuff:
 
@@ -123,6 +134,9 @@ Next items to work on (figure out an order)
     -   Files from D:\qbsets\Fall2015
         "C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python37_64\python.exe" packet_parser.py -f "D:\qbsets\Fall2015\Berkeley B + MIT A.docx" -o process -op D:\qbsets\BerkB.json
 
+        With powers
+        "C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python37_64\python.exe" packet_parser.py -f "D:\qbsets\DEFT October 21\Packet 8.docx" -o process -op D:\qbsets\DEFT_8.json
+
 *   Integrations to look into:
     -   Use Google Sheets to recreate Ophirstats-like spreadsheets, which could then use https://github.com/hftf/oligodendrocytes for analysis
     -   Import tournaments from Yellowfruit, and export Yellowfruit tournaments so they can be merged.
@@ -138,6 +152,15 @@ Next items to work on (figure out an order)
             -   One possible concern would be players changing their names, which could mess up stats.
             -   On a buzz in the reader's room (for that round), it should highlight the word and pop up a menu
                 (correct/wrong), so then the reader can pick it.
+    -   Integrate with the score bot, with some few changes
+        -   A newer scorebot that keeps track of teams, but doens't need to support undo
+        -   When there is a buzz, alert the reader (can do a blinking buzzer light on some corner). Have it show the name
+            of the player who buzzed in, so they can get ready to mark their buzz.
+        -   Bot reports the score from the reader
+        -   Still need an alternative export for stats (Sheets, YellowFruit)
+        -   Need to think on how to do setup
+            -   How does the bot know which room it's reporting?
+            -   Does the reader need to specify the player names? At some point yes, because both apps don't know about teams
 
 Note: if we ever test react components in the future, we'll need something like this for the tests:
 "test": "mocha --recursive tests/\*_/_.ts --exit --check-leaks --require ts-node/register --require global-jsdom/lib/register --require raf/polyfill -r tsconfig-paths/register"

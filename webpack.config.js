@@ -4,7 +4,11 @@ const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 module.exports = {
     // TODO: Consider using source-map in production, so we can get more meaningful error messages
     devtool: "eval-cheap-module-source-map",
-    entry: ["webpack-dev-server/client?http://localhost:8080", "./src/index"],
+    entry: [
+        "webpack-dev-server/client?http://localhost:8080",
+        "webpack-dev-server/client?http://qbreader-localhost:8080",
+        "./src/index",
+    ],
     output: {
         path: path.join(__dirname, "out"),
         filename: "bundle.js",
@@ -43,6 +47,14 @@ module.exports = {
                 enforce: "pre",
             },
         ],
+    },
+    devServer: {
+        allowedHosts: ["localhost:8080", "quizbowlreader.com", "qbreader-localhost.com"],
+        watchContentBase: true,
+        watchOptions: {
+            aggregateTimeout: 1000,
+            ignored: /node_modules/,
+        },
     },
     plugins: [
         new ForkTsCheckerWebpackPlugin({

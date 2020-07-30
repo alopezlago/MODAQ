@@ -8,12 +8,14 @@ import {
     CommandBar,
 } from "@fluentui/react";
 
+import * as Sheets from "src/state/Sheets";
 import { GameState } from "src/state/GameState";
 import { UIState } from "src/state/UIState";
 import { Cycle } from "src/state/Cycle";
 import { Bonus } from "src/state/PacketState";
 import { AddPlayerDialog } from "./AddPlayerDialog";
 import { Player } from "src/state/TeamState";
+import { ITossupAnswerEvent } from "src/state/Events";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
@@ -68,6 +70,16 @@ export const GameBar = observer(
             },
         });
 
+        // Google stuff
+        const exportSubMenuItems: ICommandBarItemProps[] = getExportSubMenuItems(props);
+        items.push({
+            key: "export",
+            text: "Export...",
+            subMenuProps: {
+                items: exportSubMenuItems,
+            },
+        });
+
         // Get the actions, and decide if there are any applicable ones
 
         return (
@@ -78,6 +90,10 @@ export const GameBar = observer(
         );
     }
 );
+
+async function googleSheetsDemo(props: IGameBarProps): Promise<void> {
+    return Sheets.exportToSheet(props.game, props.uiState);
+}
 
 function getActionSubMenuItems(
     props: IGameBarProps,
@@ -210,6 +226,56 @@ function getActionSubMenuItems(
     return items;
 }
 
+function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
+    const items: ICommandBarItemProps[] = [];
+
+    items.push({
+        key: "copyBuzzPoints",
+        text: "Copy buzz points",
+        onClick: () => {
+            const teamNames: string[] = props.game.teamNames;
+            const buzzPoints: [number?, number?][] = props.game.cycles.map((cycle) => {
+                const result: [number?, number?] = [undefined, undefined];
+                const buzzes: ITossupAnswerEvent[] = cycle.orderedBuzzes;
+                for (const buzz of buzzes) {
+                    const index: number = buzz.marker.player.teamName === teamNames[0] ? 0 : 1;
+                    result[index] = buzz.marker.position;
+                }
+
+                return result;
+            });
+
+            // Translate this to lines of tab delimited strings
+            const buzzPointsText: string = buzzPoints.map((points) => points.join("\t")).join("\n");
+            copyText(buzzPointsText);
+        },
+    });
+
+    items.push({
+        key: "exportSheets",
+        text: "Export to Sheets",
+        onClick: () => {
+            googleSheetsDemo(props);
+        },
+        // TODO: This won't update when gapi does; it needs another prop change
+        // I don't like commenting out code, but this isn't ready yet, and the work needs to be handed over
+        // disabled: window.gapi == undefined,
+        disabled: true,
+    });
+
+    // TODO: Blob should probably be memoized, so we don't keep stringifying? It does appear that the link is the same
+    // if the cycles haven't changed.
+    const cyclesJson = new Blob([JSON.stringify(props.game.cycles)], { type: "application/json" });
+    items.push({
+        key: "downloadJson",
+        text: "Download events (JSON)",
+        href: URL.createObjectURL(cyclesJson),
+        download: `${props.game.teamNames.join("_")}_Events.json`,
+    });
+
+    return items;
+}
+
 function onRemovePlayerClick(
     ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
     item?: IContextualMenuItem
@@ -241,6 +307,31 @@ function onSwapPlayerClick(
 
 function isSubMenuItemData(data: ISubMenuItemData | undefined): data is ISubMenuItemData {
     return data?.props !== undefined && data.activePlayer !== undefined;
+}
+
+// Adapted from this gist: https://gist.github.com/lgarron/d1dee380f4ed9d825ca7
+function copyText(text: string) {
+    return new Promise(function (resolve, reject) {
+        let success = false;
+        function listener(e: ClipboardEvent) {
+            if (e == undefined || e.clipboardData == undefined) {
+                return;
+            }
+
+            e.clipboardData.setData("text/plain", text);
+            e.preventDefault();
+            success = true;
+        }
+
+        document.addEventListener("copy", listener);
+        document.execCommand("copy");
+        document.removeEventListener("copy", listener);
+        if (success) {
+            resolve();
+        } else {
+            reject();
+        }
+    });
 }
 
 export interface IGameBarProps {

@@ -4,6 +4,7 @@ import { ignore } from "mobx-sync";
 import { IPendingNewGame } from "./IPendingNewGame";
 import { PacketState } from "./PacketState";
 import { Player } from "./TeamState";
+import { LoadingState, SheetState } from "./SheetState";
 
 export class UIState {
     constructor() {
@@ -15,6 +16,7 @@ export class UIState {
         this.pendingNewGame = undefined;
         this.pendingNewPlayer = undefined;
         this.pendingTossupProtestEvent = undefined;
+        this.sheetsState = new SheetState();
     }
 
     // TODO: Should we also include the Cycle? This would simplify anything that needs access to the cycle
@@ -48,6 +50,9 @@ export class UIState {
     @observable
     @ignore
     public pendingTossupProtestEvent?: ITossupProtestEvent;
+
+    @observable
+    public sheetsState: SheetState;
 
     // TODO: Feels off. Could generalize to array of teams
     @action
@@ -147,6 +152,16 @@ export class UIState {
     }
 
     @action
+    public setSheetsApiInitialized(state: LoadingState): void {
+        this.sheetsState.apiInitialized = state;
+    }
+
+    @action
+    public setSheetsId(id: string): void {
+        this.sheetsState.sheetId = id;
+    }
+
+    @action
     public setSelectedWordIndex(newIndex: number): void {
         this.selectedWordIndex = newIndex;
     }
@@ -174,6 +189,11 @@ export class UIState {
     @action
     public resetPendingTossupProtest(): void {
         this.pendingTossupProtestEvent = undefined;
+    }
+
+    @action
+    public resetSheetsId(): void {
+        this.sheetsState.sheetId = undefined;
     }
 
     @action
