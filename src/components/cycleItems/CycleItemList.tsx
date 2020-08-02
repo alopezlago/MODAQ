@@ -12,7 +12,14 @@ import {
     IPlayerJoinsEvent,
     IPlayerLeavesEvent,
 } from "src/state/Events";
-import { CycleItem } from "./CycleItem";
+import { PlayerLeavesCycleItem } from "./PlayerLeaveCycleItem";
+import { PlayerJoinsCycleItem } from "./PlayerJoinsCycleItem";
+import { SubstitutionCycleItem } from "./SubstitutionCycleItem";
+import { TossupAnswerCycleItem } from "./TossupAnswerCycleItem";
+import { ThrowOutQuestionCycleItem } from "./ThrowOutQuestionCycleItem";
+import { BonusAnswerCycleItem } from "./BonusAnswerCycleItem";
+import { TossupProtestCycleItem } from "./TossupProtestCycleItem";
+import { BonusProtestCycleItem } from "./BonusProtestCycleItem";
 
 export const CycleItemList = observer(
     (props: ICycleItemListProps): JSX.Element => {
@@ -151,66 +158,30 @@ function createCycleList(cycle: Cycle): JSX.Element[] {
 }
 
 function createPlayerLeaveDetails(cycle: Cycle, leave: IPlayerLeavesEvent, index: number): JSX.Element {
-    const deleteHandler = () => {
-        cycle.removePlayerLeaves(leave);
-    };
-    return (
-        <CycleItem
-            key={`sub_${index}_out_${leave.outPlayer?.name}`}
-            text={`${leave.outPlayer.name} (${leave.outPlayer.teamName}) leaves`}
-            onDelete={deleteHandler}
-        />
-    );
+    return <PlayerLeavesCycleItem key={`sub_${index}_out_${leave.outPlayer?.name}`} cycle={cycle} leave={leave} />;
 }
 
 function createPlayerJoinDetails(cycle: Cycle, join: IPlayerJoinsEvent, index: number): JSX.Element {
-    const deleteHandler = () => {
-        cycle.removePlayerJoins(join);
-    };
-    return (
-        <CycleItem
-            key={`sub_${index}_in_${join.inPlayer.name}`}
-            text={`New player (${join.inPlayer.teamName}): ${join.inPlayer.name} joins`}
-            onDelete={deleteHandler}
-        />
-    );
+    return <PlayerJoinsCycleItem key={`sub_${index}_in_${join.inPlayer.name}`} cycle={cycle} join={join} />;
 }
 
 function createSubstitutionDetails(cycle: Cycle, sub: ISubstitutionEvent, index: number): JSX.Element {
-    const deleteHandler = () => {
-        cycle.removeSubstitution(sub);
-    };
-
     return (
-        <CycleItem
+        <SubstitutionCycleItem
             key={`sub_${index}_${sub.inPlayer.name}_${sub.outPlayer?.name}`}
-            text={`Substitution (${sub.inPlayer.teamName}): ${sub.inPlayer.name} in for ${sub.outPlayer.name}`}
-            onDelete={deleteHandler}
+            cycle={cycle}
+            sub={sub}
         />
     );
 }
 
 function createTossupAnswerDetails(cycle: Cycle, buzz: ITossupAnswerEvent, buzzIndex: number): JSX.Element {
     // TODO: Look into using something like shortid for the key
-    // TODO: Find out how to prevent us from creating this each time. React will throw if we use useCallback:
-    // https://reactjs.org/docs/hooks-rules.html#only-call-hooks-at-the-top-level
-    // I think we need to make this a special CycleItem that has cycle/buzz, and expects that from its onDelete handler
-    const deleteHandler = () => {
-        if (buzz.marker.correct) {
-            cycle.removeCorrectBuzz();
-        } else {
-            cycle.removeWrongBuzz(buzz.marker.player);
-        }
-    };
-
-    const text = `${buzz.marker.player.name} (${buzz.marker.player.teamName}) answered ${
-        buzz.marker.correct ? "CORRECTLY" : "WRONGLY"
-    } on tossup #${buzz.tossupIndex + 1} at word ${buzz.marker.position + 1}`;
     return (
-        <CycleItem
+        <TossupAnswerCycleItem
             key={`buzz_${buzzIndex}_tu_${buzz.tossupIndex}_${buzz.marker.player.name}_${buzz.marker.player.teamName}`}
-            text={text}
-            onDelete={deleteHandler}
+            cycle={cycle}
+            buzz={buzz}
         />
     );
 }
@@ -222,59 +193,37 @@ function createThrowOutQuestionDetails(
     isTossup: boolean,
     isLastThrownOutQuestion: boolean
 ): JSX.Element {
-    const questionType: string = isTossup ? "tossup" : "bonus";
-    const text = `Threw out ${questionType} #${thrownOutEvent.questionIndex + 1}`;
-    let deleteHandler: (() => void) | undefined = undefined;
-
-    // We only want to allow removing the last thrown out question, so we don't have ordering issues when calculating
-    // the next question index
-    if (isLastThrownOutQuestion) {
-        deleteHandler = () => {
-            if (isTossup) {
-                cycle.removeThrownOutTossup(thrownOutEvent.questionIndex);
-            } else {
-                cycle.removeThrownOutBonus(thrownOutEvent.questionIndex);
-            }
-        };
-    }
-
-    return <CycleItem key={`throw_out_${questionType}_${thrownOutIndex}`} text={text} onDelete={deleteHandler} />;
+    return (
+        <ThrowOutQuestionCycleItem
+            key={`throw_out_${isTossup}_${thrownOutIndex}`}
+            cycle={cycle}
+            thrownOutEvent={thrownOutEvent}
+            isTossup={isTossup}
+            isLastThrownOutQuestion={isLastThrownOutQuestion}
+        />
+    );
 }
 
 function createBonusAnswerDetails(bonusAnswer: IBonusAnswerEvent): JSX.Element {
-    const parts: string = bonusAnswer.correctParts
-        .map((part) => part.index + 1)
-        .sort()
-        .join(", ");
-    const partsText: string = parts.length === 0 ? "no parts" : `part${parts.length > 1 ? "s" : ""} ${parts}`;
-    const total: number = bonusAnswer.correctParts.reduce((previous, current) => previous + current.points, 0);
-    const text = `${bonusAnswer.receivingTeamName} answered ${partsText} correctly for ${total} points`;
-
-    return <CycleItem key="bonus_answer" text={text} />;
+    return <BonusAnswerCycleItem key="bonus_answer" bonusAnswer={bonusAnswer} />;
 }
 
 function createTossupProtestDetails(cycle: Cycle, protest: ITossupProtestEvent, protestIndex: number): JSX.Element {
-    const deleteHandler = () => {
-        cycle.removeTossupProtest(protest.teamName);
-    };
-
-    const text = `${protest.teamName} protests tossup #${protest.questionIndex + 1} at word ${protest.position + 1}`;
     return (
-        <CycleItem key={`tu_protest_${protestIndex}_${protest.questionIndex}`} text={text} onDelete={deleteHandler} />
+        <TossupProtestCycleItem
+            key={`tu_protest_${protestIndex}_${protest.questionIndex}`}
+            cycle={cycle}
+            protest={protest}
+        />
     );
 }
 
 function createBonusProtestDetails(cycle: Cycle, protest: IBonusProtestEvent, protestIndex: number): JSX.Element {
-    const deleteHandler = () => {
-        cycle.removeBonusProtest(protest.partIndex);
-    };
-    const text = `${protest.teamName} protests bonus #${protest.questionIndex + 1}, part ${protest.partIndex + 1}`;
-
     return (
-        <CycleItem
+        <BonusProtestCycleItem
             key={`bonus_protest_${protestIndex}_${protest.questionIndex}`}
-            text={text}
-            onDelete={deleteHandler}
+            cycle={cycle}
+            protest={protest}
         />
     );
 }

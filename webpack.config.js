@@ -6,7 +6,7 @@ module.exports = {
     devtool: "eval-cheap-module-source-map",
     entry: [
         "webpack-dev-server/client?http://localhost:8080",
-        "webpack-dev-server/client?http://qbreader-localhost:8080",
+        "webpack-dev-server/client?http://localhost.quizbowlreader.com:8080",
         "./src/index",
     ],
     output: {
@@ -49,7 +49,7 @@ module.exports = {
         ],
     },
     devServer: {
-        allowedHosts: ["localhost:8080", "quizbowlreader.com", "qbreader-localhost.com"],
+        allowedHosts: ["localhost:8080", "quizbowlreader.com", "localhost.quizbowlreader.com"],
         watchContentBase: true,
         watchOptions: {
             aggregateTimeout: 1000,

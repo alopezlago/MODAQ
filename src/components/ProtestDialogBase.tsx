@@ -35,7 +35,13 @@ export const ProtestDialogBase = (props: React.PropsWithChildren<IProtestDialogB
     return (
         <Dialog hidden={props.hidden} dialogContentProps={content} modalProps={modalProps} onDismiss={cancelHandler}>
             {props.children}
-            <TextField label="Reason for the protest" value={props.reason} multiline={true} onChange={changeHandler} />
+            <TextField
+                label="Reason for the protest"
+                value={props.reason}
+                multiline={true}
+                onChange={changeHandler}
+                autoFocus={props.autoFocusOnReason}
+            />
             <DialogFooter>
                 <PrimaryButton text="OK" onClick={submitHandler} />
                 <DefaultButton text="Cancel" onClick={cancelHandler} />
@@ -54,6 +60,7 @@ function onCancel(props: IProtestDialogBaseProps): void {
 }
 
 export interface IProtestDialogBaseProps {
+    autoFocusOnReason?: boolean;
     hidden: boolean;
     reason: string;
     uiState: UIState;

@@ -30,7 +30,7 @@ If you want to use the Dev Server (required for testing Google Sheets), then do 
 
 -   Add this entry to your HOSTS file (in Windows, at C:\Windows\System32\drivers\etc\hosts)
 
-    127.0.0.1 qbreader-localhost.com
+    127.0.0.1 localhost.quizbowlreader.com
 
 -   Run `npm start`
 
@@ -56,7 +56,6 @@ Next items to work on (figure out an order)
         and "New game (spreadsheet)"
     -   Could also export to a Google Sheet. Might be best to make this an option on new game, so it can always be
         persisted there in case we get into a bad state.
--   Move different CycleItems to their own components, so we can properly memoize callbacks
 -   Add format rules so we can support powers (and see how the parser generates them)
 -   Add a button/text when we've run out of tossups (or bonuses?) to do one of the following
     -   Import more questions, so we can track the data
@@ -70,6 +69,7 @@ Next items to work on (figure out an order)
     -   We're using ES that supports Set<>, so use it more often (maybe for active players?). Would be nice for events,
         except serialization becomes more annoying.
 -   Show scores at the end of each cycle. That way it's easy to scorecheck.
+-   Make the scoreboard/event viewer collapsible
 
 *   When ready to show this to the public, talk to Ophir to see how he wants to be credited
 
@@ -100,8 +100,6 @@ Next items to work on (figure out an order)
         -   See if we can mitigate the issue where, once a player is added, you can sub them in before they were added.
             -   Another rough bit of UI is that, if someone leaves and a sub fills in their place, you have to do a sub event.
                 If you make them leave, you can't bring the sub back on, since they already "exist"
-
-*   Tossup protest dialog should auto-focus on the textbox
 
 *   After the views are done, some of the more nitty-gritty stuff:
 

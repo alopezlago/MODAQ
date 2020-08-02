@@ -9,6 +9,7 @@ export const CancelButton = (props: ICancelButtonProps): JSX.Element => {
     const classes = useStyle();
     return (
         <IconButton
+            ariaLabel={props.title}
             className={classes.cancelButton}
             disabled={props.disabled}
             iconProps={deleteIconProps}

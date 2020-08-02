@@ -6,7 +6,7 @@ import { GameState } from "src/state/GameState";
 import { UIState } from "src/state/UIState";
 import { createUseStyles } from "react-jss";
 
-import { CycleItemList } from "./CycleItemList";
+import { CycleItemList } from "./cycleItems/CycleItemList";
 import { Cycle } from "src/state/Cycle";
 
 const numberKey = "number";

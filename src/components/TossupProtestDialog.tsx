@@ -18,6 +18,7 @@ export const TossupProtestDialog = observer(
 
         return (
             <ProtestDialogBase
+                autoFocusOnReason={true}
                 hidden={props.uiState.pendingTossupProtestEvent == undefined}
                 hideDialog={hideHandler}
                 onSubmit={submitHandler}

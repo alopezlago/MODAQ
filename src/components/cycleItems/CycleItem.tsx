@@ -2,7 +2,7 @@ import * as React from "react";
 import { observer } from "mobx-react";
 import { Label } from "@fluentui/react/lib/Label";
 import { createUseStyles } from "react-jss";
-import { CancelButton } from "./CancelButton";
+import { CancelButton } from "../CancelButton";
 
 // TODO: Think on how to make this keyboard friendly
 export const CycleItem = observer(
@@ -20,6 +20,8 @@ export const CycleItem = observer(
     }
 );
 
+// TODO: CycleItem should be generic (accept an event as the generic argument), and onDelete should pass in the cycle and
+// that event. That way we just need one function for it.
 export interface ICycleItemProps {
     text: string;
     onDelete?: () => void;
