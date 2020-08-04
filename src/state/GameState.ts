@@ -46,25 +46,25 @@ export class GameState {
         return teamNames;
     }
 
-    // If this is too expensive, investigate keepAlive
-    // @computed({ keepAlive: true })
     @computed({ requiresReaction: true })
-    public get score(): [number, number] {
-        // More complex with powers. Need to convert buzzes to points, then add bonuses.
-        // Would want getScore(team) method to simplify it
+    public get finalScore(): [number, number] {
+        return this.scores[this.cycles.length - 1];
+    }
 
-        const score: [number, number] = this.cycles.reduce(
-            (previousScore, cycle) => {
-                const scoreChange: [number, number] = this.getScoreChangeFromCycle(cycle);
-                previousScore[0] += scoreChange[0];
-                previousScore[1] += scoreChange[1];
-                return previousScore;
-            },
-            [0, 0]
-        );
+    @computed({ requiresReaction: true })
+    public get scores(): [number, number][] {
+        const score: [number, number][] = [];
+        let firstTeamPreviousScore = 0;
+        let secondTeamPreviousScore = 0;
+
+        for (const cycle of this.cycles) {
+            const scoreChange: [number, number] = this.getScoreChangeFromCycle(cycle);
+            firstTeamPreviousScore += scoreChange[0];
+            secondTeamPreviousScore += scoreChange[1];
+            score.push([firstTeamPreviousScore, secondTeamPreviousScore]);
+        }
 
         return score;
-        // return this.teams().map(team => this.packet.tossups)
     }
 
     // TODO: Update this to support powers, and take into account format rules (powers/super-powers, etc.)
@@ -78,12 +78,10 @@ export class GameState {
                 );
             }
 
+            // More complex with powers. Need to convert buzzes to points, then add bonuses.
+            // Would want getScore(team) method to simplify it
             change[indexToUpdate] += 10;
             if (cycle.bonusAnswer) {
-                // TODO: We need the bonus value here, so we can get the part's value
-                // // for (let partIndex in cycle.bonusAnswer.correctParts) {
-                // //     change[indexToUpdate] += cycle.bonusAnswer.
-                // // }
                 change[indexToUpdate] += cycle.bonusAnswer.correctParts.reduce(
                     (previous, current) => previous + current.points,
                     0

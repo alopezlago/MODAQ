@@ -80,7 +80,7 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
         },
         {
             range: "N5",
-            values: [[game.score[0]]],
+            values: [[game.finalScore[0]]],
         },
         {
             range: "P5",
@@ -100,7 +100,7 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
         },
         {
             range: "AD5",
-            values: [[game.score[1]]],
+            values: [[game.finalScore[1]]],
         },
     ];
     const firstLineUpdateResponse: BatchUpdateValuesResponse = await gapi.client.sheets.spreadsheets.values.batchUpdate(

@@ -8,7 +8,7 @@ import { createUseStyles } from "react-jss";
 export const Scoreboard = observer((props: IScoreboardProps) => {
     const classes: IScoreboardStyle = useStyles();
 
-    const scores: [number, number] = props.game.score;
+    const scores: [number, number] = props.game.finalScore;
     const teamNames = props.game.teamNames;
     const result = teamNames.length >= 2 ? `${teamNames[0]}: ${scores[0]}, ${teamNames[1]}: ${scores[1]}` : "";
     return <div className={classes.board}>{result}</div>;

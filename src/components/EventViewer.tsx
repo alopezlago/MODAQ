@@ -12,29 +12,6 @@ import { Cycle } from "src/state/Cycle";
 const numberKey = "number";
 const cycleKey = "cycle";
 
-// This should look like a numbered list, with the number representing the cycle.
-const columns: IColumn[] = [
-    {
-        key: numberKey,
-        fieldName: "number",
-        name: "#",
-        minWidth: 20,
-        maxWidth: 40,
-        ariaLabel: "Question number",
-        data: "number",
-        isResizable: true,
-        isRowHeader: true,
-    },
-    {
-        key: cycleKey,
-        fieldName: "cycle",
-        name: "Events",
-        minWidth: 80,
-        isResizable: true,
-        isMultiline: true,
-    },
-];
-
 export const EventViewer = observer((props: IEventViewerProps): JSX.Element | null => {
     const classes: IEventViewerStyle = useStyle();
 
@@ -54,6 +31,33 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
 
         return onRenderItemColumn(item, index, column);
     }, []);
+
+    const columns: IColumn[] = [
+        {
+            key: numberKey,
+            fieldName: "number",
+            name: "#",
+            minWidth: 20,
+            maxWidth: 40,
+            ariaLabel: "Question number",
+            isResizable: true,
+            isRowHeader: true,
+        },
+        {
+            key: cycleKey,
+            fieldName: "cycle",
+            name: "Events",
+            minWidth: 80,
+            isResizable: true,
+            isMultiline: true,
+            // We need to pass the scores in, instead of the game, since the callback won't be in a reactive context, so
+            // the computed will be recalculated each time
+            // TODO: Consider adding autoruns for scores/finalScore so we don't have to consider what context it's run
+            // in. Just swapping scores with a scores2 value set during autorun didn't work initially, so it needs more
+            // investigation.
+            data: props.game.scores,
+        },
+    ];
 
     return (
         <div className={classes.eventViewerContainer} data-is-scrollable="true">
@@ -78,7 +82,15 @@ function onRenderItemColumn(item: Cycle, index: number, column: IColumn): JSX.El
 
             return <Label>{index + 1}</Label>;
         case cycleKey:
-            return <CycleItemList cycle={item} />;
+            const scores: [number, number][] = column.data;
+            const scoreInCurrentCycle: [number, number] = scores[index];
+
+            return (
+                <>
+                    <CycleItemList cycle={item} />
+                    <Label>{`(${scoreInCurrentCycle[0]} - ${scoreInCurrentCycle[1]})`}</Label>
+                </>
+            );
         default:
             return <></>;
     }
