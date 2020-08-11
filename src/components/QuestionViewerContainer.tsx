@@ -1,6 +1,6 @@
 import React from "react";
-import { createUseStyles } from "react-jss";
 import { observer } from "mobx-react";
+import { mergeStyleSets } from "@fluentui/react";
 
 import { UIState } from "src/state/UIState";
 import { CycleChooser } from "./CycleChooser";
@@ -8,7 +8,7 @@ import { GameState } from "src/state/GameState";
 import { QuestionViewer } from "./QuestionViewer";
 
 export const QuestionViewerContainer = observer((props: IQuestionViewerContainerProps) => {
-    const classes: IQuestionViewerContainerStyle = useStyles();
+    const classes: IQuestionViewerContainerClassNames = getClassNames();
 
     if (!props.game.isLoaded) {
         return null;
@@ -29,15 +29,16 @@ export interface IQuestionViewerContainerProps {
     uiState: UIState;
 }
 
-interface IQuestionViewerContainerStyle {
+interface IQuestionViewerContainerClassNames {
     cycleChooserContainer: string;
 }
 
-const useStyles: (data?: unknown) => IQuestionViewerContainerStyle = createUseStyles({
-    cycleChooserContainer: {
-        display: "flex",
-        justifyContent: "center",
-        height: "5vh",
-        margin: 10,
-    },
-});
+const getClassNames = (): IQuestionViewerContainerClassNames =>
+    mergeStyleSets({
+        cycleChooserContainer: {
+            display: "flex",
+            justifyContent: "center",
+            height: "5vh",
+            margin: 10,
+        },
+    });

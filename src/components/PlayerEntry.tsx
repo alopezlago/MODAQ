@@ -2,7 +2,7 @@ import React from "react";
 import { observer } from "mobx-react";
 import { Checkbox, ICheckboxStyles } from "@fluentui/react/lib/Checkbox";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
-import { createUseStyles } from "react-jss";
+import { mergeStyleSets } from "@fluentui/react";
 
 import { Player } from "src/state/TeamState";
 import { CancelButton } from "./CancelButton";
@@ -22,7 +22,7 @@ const starterCheckboxStyle: Partial<ICheckboxStyles> = {
 };
 
 export const PlayerEntry = observer((props: IPlayerEntryProps) => {
-    const classes: IPlayerEntryStyles = useStyles();
+    const classes: IPlayerEntryClassNames = getClassNames();
 
     const nameChangeHandler = React.useCallback(
         (ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newName?: string) => {
@@ -78,18 +78,19 @@ export interface IPlayerEntryProps {
     validateName(newName: string): string | undefined;
 }
 
-interface IPlayerEntryStyles {
+interface IPlayerEntryClassNames {
     playerEntryContainer: string;
     spacer: string;
 }
 
-const useStyles: (data?: unknown) => IPlayerEntryStyles = createUseStyles({
-    playerEntryContainer: {
-        display: "inline-flex",
-        margin: "5px 0",
-    },
-    spacer: {
-        // TODO: See if this needs to change, based on different media queries
-        width: 32,
-    },
-});
+const getClassNames = (): IPlayerEntryClassNames =>
+    mergeStyleSets({
+        playerEntryContainer: {
+            display: "inline-flex",
+            margin: "5px 0",
+        },
+        spacer: {
+            // TODO: See if this needs to change, based on different media queries
+            width: 32,
+        },
+    });

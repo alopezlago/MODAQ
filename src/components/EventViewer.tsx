@@ -4,7 +4,7 @@ import { DetailsList, CheckboxVisibility, SelectionMode, IColumn } from "@fluent
 import { Label } from "@fluentui/react/lib/Label";
 import { GameState } from "src/state/GameState";
 import { UIState } from "src/state/UIState";
-import { createUseStyles } from "react-jss";
+import { mergeStyleSets } from "@fluentui/react";
 
 import { CycleItemList } from "./cycleItems/CycleItemList";
 import { Cycle } from "src/state/Cycle";
@@ -13,7 +13,7 @@ const numberKey = "number";
 const cycleKey = "cycle";
 
 export const EventViewer = observer((props: IEventViewerProps): JSX.Element | null => {
-    const classes: IEventViewerStyle = useStyle();
+    const classes: IEventViewerClassNames = getClassNames();
 
     const activeItemChangedHandler = React.useCallback(
         (item: IEventViewerRow, index?: number) => {
@@ -101,7 +101,7 @@ export interface IEventViewerProps {
     uiState: UIState;
 }
 
-interface IEventViewerStyle {
+interface IEventViewerClassNames {
     eventViewerContainer: string;
 }
 
@@ -110,10 +110,11 @@ interface IEventViewerRow {
     cycle: JSX.Element;
 }
 
-const useStyle: (data?: unknown) => IEventViewerStyle = createUseStyles({
-    eventViewerContainer: {
-        border: "1px black solid",
-        maxHeight: "80vh",
-        overflowY: "auto",
-    },
-});
+const getClassNames = (): IEventViewerClassNames =>
+    mergeStyleSets({
+        eventViewerContainer: {
+            border: "1px black solid",
+            maxHeight: "80vh",
+            overflowY: "auto",
+        },
+    });

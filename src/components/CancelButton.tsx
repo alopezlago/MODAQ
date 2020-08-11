@@ -1,12 +1,11 @@
 import * as React from "react";
-import { IIconProps } from "@fluentui/react";
+import { IIconProps, mergeStyleSets } from "@fluentui/react";
 import { IconButton } from "@fluentui/react/lib/Button";
-import { createUseStyles } from "react-jss";
 
 const deleteIconProps: IIconProps = { iconName: "Cancel" };
 
 export const CancelButton = (props: ICancelButtonProps): JSX.Element => {
-    const classes = useStyle();
+    const classes = getClassNames();
     return (
         <IconButton
             ariaLabel={props.title}
@@ -25,16 +24,17 @@ export interface ICancelButtonProps {
     onClick: () => void;
 }
 
-interface ICancelButtonStyle {
+interface ICancelButtonClassNames {
     cancelButton: string;
 }
 
-const useStyle: (data?: unknown) => ICancelButtonStyle = createUseStyles({
-    cancelButton: {
-        display: "inline",
-        color: "rgba(128, 0, 0, 0.25)",
-        "&:hover": {
-            color: "rgba(128, 0, 0, 1)",
+const getClassNames = (): ICancelButtonClassNames =>
+    mergeStyleSets({
+        cancelButton: {
+            display: "inline",
+            color: "rgba(128, 0, 0, 0.25)",
+            "&:hover": {
+                color: "rgba(128, 0, 0, 1)",
+            },
         },
-    },
-});
+    });

@@ -1,13 +1,14 @@
 import * as React from "react";
 import { observer } from "mobx-react";
 import { Label } from "@fluentui/react/lib/Label";
-import { createUseStyles } from "react-jss";
+import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
+
 import { CancelButton } from "../CancelButton";
 
 // TODO: Think on how to make this keyboard friendly
 export const CycleItem = observer(
     (props: ICycleItemProps): JSX.Element => {
-        const classes: ICycleItemStyle = useStyle();
+        const classes: ICycleItemClassNames = getClassNames();
         const deleteButton: JSX.Element | undefined =
             props.onDelete != undefined ? <CancelButton title="Delete" onClick={props.onDelete} /> : undefined;
 
@@ -27,16 +28,19 @@ export interface ICycleItemProps {
     onDelete?: () => void;
 }
 
-interface ICycleItemStyle {
+interface ICycleItemClassNames {
     eventContainer: string;
     eventText: string;
 }
 
-const useStyle: (data?: unknown) => ICycleItemStyle = createUseStyles({
-    eventContainer: {
-        marginBottom: 5,
-    },
-    eventText: {
-        display: "inline",
-    },
-});
+const getClassNames = memoizeFunction(
+    (): ICycleItemClassNames =>
+        mergeStyleSets({
+            eventContainer: {
+                marginBottom: 5,
+            },
+            eventText: {
+                display: "inline",
+            },
+        })
+);

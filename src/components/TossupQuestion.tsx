@@ -1,6 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react";
-import { createUseStyles } from "react-jss";
+import { mergeStyleSets } from "@fluentui/react";
 
 import * as FormattedTextParser from "src/parser/FormattedTextParser";
 import { UIState } from "src/state/UIState";
@@ -16,7 +16,7 @@ import { CancelButton } from "./CancelButton";
 
 export const TossupQuestion = observer(
     (props: IQuestionProps): JSX.Element => {
-        const classes: ITossupQuestionStyle = useStyles();
+        const classes: ITossupQuestionClassNames = getClassNames();
 
         const selectedWordRef: React.MutableRefObject<null> = React.useRef(null);
 
@@ -161,23 +161,24 @@ interface IQuestionWordWrapperProps {
     wrongBuzzIndexes: number[];
 }
 
-interface ITossupQuestionStyle {
+interface ITossupQuestionClassNames {
     tossupContainer: string;
     tossupQuestionText: string;
     tossupText: string;
 }
 
-const useStyles: () => ITossupQuestionStyle = createUseStyles({
-    tossupContainer: {
-        paddingLeft: "24px",
-        display: "flex",
-        justifyContent: "space-between",
-    },
-    tossupQuestionText: {
-        display: "inline",
-    },
-    tossupText: {
-        maxHeight: "37.5vh",
-        overflowY: "auto",
-    },
-});
+const getClassNames = (): ITossupQuestionClassNames =>
+    mergeStyleSets({
+        tossupContainer: {
+            paddingLeft: "24px",
+            display: "flex",
+            justifyContent: "space-between",
+        },
+        tossupQuestionText: {
+            display: "inline",
+        },
+        tossupText: {
+            maxHeight: "37.5vh",
+            overflowY: "auto",
+        },
+    });

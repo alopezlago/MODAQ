@@ -1,28 +1,16 @@
 import * as React from "react";
 import { observer } from "mobx-react";
-import { createUseStyles } from "react-jss";
+import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
+
 import { IFormattedText } from "src/parser/IFormattedText";
 import { FormattedText } from "./FormattedText";
 
 export const QuestionWord = observer(
     (props: IQuestionWordProps): JSX.Element => {
-        const classes = useStyles();
-        let className: string = classes.word;
-
-        if (props.selected) {
-            className += " selected";
-        }
-
-        if (props.correct) {
-            className += " correct";
-        }
-
-        if (props.wrong) {
-            className += " wrong";
-        }
+        const classes = getClassNames(props.selected, props.correct, props.wrong);
 
         return (
-            <span ref={props.componentRef} data-value={props.index} className={className}>
+            <span ref={props.componentRef} data-value={props.index} className={classes.word}>
                 <FormattedText segments={props.word} />
             </span>
         );
@@ -39,29 +27,33 @@ interface IQuestionWordProps {
     componentRef?: React.MutableRefObject<HTMLSpanElement | null>;
 }
 
-interface IQuestionWordStyle {
+interface IQuestionWordClassNames {
     word: string;
 }
 
 // This would be a great place for theming or settings
-const useStyles: (data?: unknown) => IQuestionWordStyle = createUseStyles({
-    word: {
-        display: "inline-flex",
-        "&.selected": {
-            fontWeight: "bold",
-            background: "rgba(192, 192, 192, 0.1)",
-        },
-        "&.correct": {
-            background: "rgba(0, 128, 128, 0.1)",
-            textDecoration: "underline solid",
-        },
-        "&.wrong": {
-            background: "rgba(128, 0, 0, 0.1)",
-            textDecoration: "underline wavy",
-        },
-        "&.correct&.wrong": {
-            background: "rgba(128, 128, 128, 0.2)",
-            textDecoration: "underline double",
-        },
-    },
-});
+const getClassNames = memoizeFunction(
+    (selected?: boolean, correct?: boolean, wrong?: boolean): IQuestionWordClassNames =>
+        mergeStyleSets({
+            word: [
+                { display: "inline-flex" },
+                selected && {
+                    fontWeight: "bold",
+                    background: "rgba(192, 192, 192, 0.1)",
+                },
+                correct && {
+                    background: "rgba(0, 128, 128, 0.1)",
+                    textDecoration: "underline solid",
+                },
+                wrong && {
+                    background: "rgba(128, 0, 0, 0.1)",
+                    textDecoration: "underline wavy",
+                },
+                correct &&
+                    wrong && {
+                        background: "rgba(128, 128, 128, 0.2)",
+                        textDecoration: "underline double",
+                    },
+            ],
+        })
+);

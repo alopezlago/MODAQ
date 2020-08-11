@@ -68,8 +68,8 @@ Next items to work on (figure out an order)
     -   Using the profiler, doesn't seem directly related to the code
     -   We're using ES that supports Set<>, so use it more often (maybe for active players?). Would be nice for events,
         except serialization becomes more annoying.
--   Show scores at the end of each cycle. That way it's easy to scorecheck.
 -   Make the scoreboard/event viewer collapsible
+    -   There's no good existing control for this. The closest is the Pane, but that overlaps with the UI.
 
 *   When ready to show this to the public, talk to Ophir to see how he wants to be credited
 
@@ -93,7 +93,6 @@ Next items to work on (figure out an order)
 *   This may be out-of-scope, but a page to take in packets and a schedule, which then produces files for all of the readers.
     They can then upload it to the page to run the tournament.
 *   Make the tossups/bonuses collapsible so they can take up less space, and make the event viewer collapsible
-*   Move to mergeStyleSheets and remove (direct) dependency on react-jss
 *   Substitution improvements:
 
     -   Allow substitutions, and only show current players in the dropdown
