@@ -1,12 +1,12 @@
 import * as React from "react";
 import { observer } from "mobx-react";
-import { createUseStyles } from "react-jss";
+import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
 
 import { IFormattedText } from "src/parser/IFormattedText";
 
 export const FormattedText = observer(
     (props: IFormattedTextProps): JSX.Element => {
-        const classes: IFormattedTextStyle = useStyles();
+        const classes: IFormattedTextClassNames = useStyles();
         const elements: JSX.Element[] = [];
         for (let i = 0; i < props.segments.length; i++) {
             elements.push(<FormattedSegment key={`segment_${i}`} segment={props.segments[i]} />);
@@ -45,12 +45,15 @@ interface IFormattedSegmentProps {
     segment: IFormattedText;
 }
 
-interface IFormattedTextStyle {
+interface IFormattedTextClassNames {
     text: string;
 }
 
-const useStyles: (data?: unknown) => IFormattedTextStyle = createUseStyles({
-    text: {
-        display: "inline",
-    },
-});
+const useStyles = memoizeFunction(
+    (): IFormattedTextClassNames =>
+        mergeStyleSets({
+            text: {
+                display: "inline",
+            },
+        })
+);

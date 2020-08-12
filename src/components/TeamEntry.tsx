@@ -1,13 +1,12 @@
 import React from "react";
 import { observer } from "mobx-react";
-import { IIconProps, Label, List } from "@fluentui/react";
+import { IIconProps, Label, List, mergeStyleSets } from "@fluentui/react";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
 import { IconButton, IButtonStyles } from "@fluentui/react/lib/Button";
 
 import * as NewGameValidator from "src/state/NewGameValidator";
 import { Player } from "src/state/TeamState";
 import { PlayerEntry } from "./PlayerEntry";
-import { createUseStyles } from "react-jss";
 
 const addButtonProps: IIconProps = {
     iconName: "Add",
@@ -30,7 +29,7 @@ const addPlayerButtonStyle: Partial<IButtonStyles> = {
 // I looked into using a DetailsList instead of a List, so we could get rid of the Starter label on each checkbox, but
 // the column label is usually cut off, defeating the purpose
 export const TeamEntry = observer((props: ITeamEntryProps) => {
-    const classes: ITeamEntryStyle = useStyles(props.playerListHeight);
+    const classes: ITeamEntryClassNames = getClassNames(props.playerListHeight);
 
     const nameChangeHandler = React.useCallback(
         (ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newName?: string) => {
@@ -115,8 +114,8 @@ function onRenderPlayerEntry(
     );
 }
 
-function useStyles(playerListHeight: number | string): ITeamEntryStyle {
-    return createUseStyles({
+const getClassNames = (playerListHeight: number | string): ITeamEntryClassNames =>
+    mergeStyleSets({
         addButtonContainer: {
             display: "flex",
             justifyContent: "center",
@@ -132,8 +131,7 @@ function useStyles(playerListHeight: number | string): ITeamEntryStyle {
             border: "1px solid rgb(128, 128, 128)",
             padding: "5px 20px",
         },
-    })();
-}
+    });
 
 export interface ITeamEntryProps {
     defaultTeamName: string;
@@ -147,7 +145,7 @@ export interface ITeamEntryProps {
     validateTeamName(value: string): string | undefined;
 }
 
-interface ITeamEntryStyle {
+interface ITeamEntryClassNames {
     addButtonContainer: string;
     playerListContainer: string;
     teamEntry: string;

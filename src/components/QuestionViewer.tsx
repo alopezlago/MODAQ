@@ -1,15 +1,15 @@
 import React from "react";
 import { observer } from "mobx-react";
-import { createUseStyles } from "react-jss";
 
 import { UIState } from "src/state/UIState";
 import { GameState } from "src/state/GameState";
 import { TossupQuestion } from "./TossupQuestion";
 import { BonusQuestion } from "./BonusQuestion";
 import { Cycle } from "src/state/Cycle";
+import { mergeStyleSets } from "@fluentui/react";
 
 export const QuestionViewer = observer((props: IQuestionViewerProps) => {
-    const classes: IQuestionViewerStyle = useStyles();
+    const classes: IQuestionViewerClassNames = getClassNames();
 
     const cycle: Cycle = props.game.cycles[props.uiState.cycleIndex];
     const tossupIndex: number = props.game.getTossupIndex(props.uiState.cycleIndex);
@@ -76,18 +76,19 @@ export interface IQuestionViewerProps {
     uiState: UIState;
 }
 
-interface IQuestionViewerStyle {
+interface IQuestionViewerClassNames {
     questionViewer: string;
     separator: string;
 }
 
-const useStyles: (data?: unknown) => IQuestionViewerStyle = createUseStyles({
-    questionViewer: {
-        border: "1px solid darkgray",
-        padding: "5px 10px",
-    },
-    separator: {
-        borderTop: "1px dotted black",
-        margin: "10px 0",
-    },
-});
+const getClassNames = (): IQuestionViewerClassNames =>
+    mergeStyleSets({
+        questionViewer: {
+            border: "1px solid darkgray",
+            padding: "5px 10px",
+        },
+        separator: {
+            borderTop: "1px dotted black",
+            margin: "10px 0",
+        },
+    });

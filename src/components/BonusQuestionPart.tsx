@@ -1,6 +1,6 @@
 import React from "react";
 import { Checkbox } from "@fluentui/react/lib/Checkbox";
-import { createUseStyles } from "react-jss";
+import { mergeStyleSets } from "@fluentui/react";
 import { observer } from "mobx-react";
 
 import * as FormattedTextParser from "src/parser/FormattedTextParser";
@@ -12,12 +12,8 @@ import { FormattedText } from "./FormattedText";
 import { IFormattedText } from "src/parser/IFormattedText";
 
 export const BonusQuestionPart = observer((props: IBonusQuestionPartProps) => {
-    const classes: IBonusQuestionPartStyle = useStyle();
+    const classes: IBonusQuestionPartClassNames = getClassNames(props.disabled);
     const onChangeHandler = React.useCallback((ev, checked) => onCorrectChange(props, ev, checked), [props]);
-
-    const disabledClassName = props.disabled ? "" : " disabled";
-    const answerClassName = classes.bonusPartAnswer + disabledClassName;
-    const questionTextClassName = classes.bonusPartQuestionText + disabledClassName;
 
     const isCorrect: boolean =
         (props.cycle.bonusAnswer?.correctParts.findIndex((part) => part.index === props.partNumber - 1) ?? -1) >= 0;
@@ -26,9 +22,9 @@ export const BonusQuestionPart = observer((props: IBonusQuestionPartProps) => {
 
     return (
         <div className="bonus-part">
-            <div className={questionTextClassName}>
+            <div className={classes.bonusPartQuestionText}>
                 <Checkbox
-                    disabled={!props.disabled}
+                    disabled={props.disabled}
                     checked={isCorrect}
                     ariaLabel={`Part ${props.partNumber}: ${isCorrect ? "Correct" : "Missed"}`}
                     onChange={onChangeHandler}
@@ -38,7 +34,7 @@ export const BonusQuestionPart = observer((props: IBonusQuestionPartProps) => {
                 </span>
             </div>
             <div className={classes.bonusPartAnswerSpacer}>
-                <Answer className={answerClassName} text={props.bonusPart.answer.trimLeft()} />
+                <Answer className={classes.bonusPartAnswer} text={props.bonusPart.answer.trimLeft()} />
             </div>
         </div>
     );
@@ -62,26 +58,26 @@ export interface IBonusQuestionPartProps {
     uiState: UIState;
 }
 
-interface IBonusQuestionPartStyle {
+interface IBonusQuestionPartClassNames {
     bonusPartQuestionText: string;
     bonusPartAnswer: string;
     bonusPartAnswerSpacer: string;
 }
 
-const useStyle: (data?: unknown) => IBonusQuestionPartStyle = createUseStyles({
-    bonusPartQuestionText: {
-        display: "flex",
-        marginTop: 5,
-        "&.disabled": {
-            color: "#888888",
+const getClassNames = (disabled: boolean): IBonusQuestionPartClassNames =>
+    mergeStyleSets({
+        bonusPartQuestionText: [
+            { display: "flex", marginTop: 5 },
+            disabled && {
+                color: "#888888",
+            },
+        ],
+        bonusPartAnswer: [
+            disabled && {
+                color: "#888888",
+            },
+        ],
+        bonusPartAnswerSpacer: {
+            padding: "0 24px",
         },
-    },
-    bonusPartAnswer: {
-        "&.disabled": {
-            color: "#888888",
-        },
-    },
-    bonusPartAnswerSpacer: {
-        padding: "0 24px",
-    },
-});
+    });

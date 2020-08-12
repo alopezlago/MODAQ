@@ -17,9 +17,8 @@ import { Dialog, DialogFooter, IDialogContentProps, DialogType } from "@fluentui
 import { IModalProps } from "@fluentui/react/lib/Modal";
 import { ContextualMenu } from "@fluentui/react/lib/ContextualMenu";
 import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
-import { createUseStyles } from "react-jss";
 import { observer } from "mobx-react";
-import { Separator, Stack } from "@fluentui/react";
+import { Separator, Stack, mergeStyleSets } from "@fluentui/react";
 
 import * as NewGameValidator from "src/state/NewGameValidator";
 import { UIState } from "src/state/UIState";
@@ -87,7 +86,7 @@ export const NewGameDialog = observer(
 
 const NewGameDialogBody = observer(
     (props: INewGameDialogProps): JSX.Element => {
-        const classes: INewGameDialogBodyStyle = useStyles();
+        const classes: INewGameDialogBodyClassNames = getClassNames();
         const packetLoadHandler = React.useCallback(
             (packet: PacketState) => {
                 if (props.uiState.pendingNewGame) {
@@ -228,19 +227,20 @@ export interface INewGameDialogProps {
     uiState: UIState;
 }
 
-interface INewGameDialogBodyStyle {
+interface INewGameDialogBodyClassNames {
     teamEntriesContainer: string;
     teamNameInput: string;
 }
 
-const useStyles: (data?: unknown) => INewGameDialogBodyStyle = createUseStyles({
-    teamEntriesContainer: {
-        // Grid should be more resize friendly than flex if we ever do responsive design
-        display: "grid",
-        gridTemplateColumns: "5fr 1fr 5fr",
-        marginBottom: 20,
-    },
-    teamNameInput: {
-        marginBottom: "10px",
-    },
-});
+const getClassNames = (): INewGameDialogBodyClassNames =>
+    mergeStyleSets({
+        teamEntriesContainer: {
+            // Grid should be more resize friendly than flex if we ever do responsive design
+            display: "grid",
+            gridTemplateColumns: "5fr 1fr 5fr",
+            marginBottom: 20,
+        },
+        teamNameInput: {
+            marginBottom: "10px",
+        },
+    });
