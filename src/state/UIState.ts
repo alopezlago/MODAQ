@@ -5,6 +5,7 @@ import { IPendingNewGame } from "./IPendingNewGame";
 import { PacketState } from "./PacketState";
 import { Player } from "./TeamState";
 import { LoadingState, SheetState } from "./SheetState";
+import { IPacketParseStatus } from "./IPacketParseStatus";
 
 export class UIState {
     constructor() {
@@ -12,6 +13,7 @@ export class UIState {
         this.isEditingCycleIndex = false;
         this.selectedWordIndex = -1;
         this.buzzMenuVisible = false;
+        this.packetParseStatus = undefined;
         this.pendingBonusProtestEvent = undefined;
         this.pendingNewGame = undefined;
         this.pendingNewPlayer = undefined;
@@ -34,6 +36,10 @@ export class UIState {
     @observable
     @ignore
     public buzzMenuVisible: boolean;
+
+    @observable
+    @ignore
+    public packetParseStatus: IPacketParseStatus | undefined;
 
     @observable
     @ignore
@@ -67,6 +73,11 @@ export class UIState {
         if (this.pendingNewGame != undefined) {
             this.pendingNewGame?.secondTeamPlayers.push(player);
         }
+    }
+
+    @action
+    public clearPacketStatus(): void {
+        this.packetParseStatus = undefined;
     }
 
     @action
@@ -132,6 +143,11 @@ export class UIState {
     }
 
     @action
+    public setPacketStatus(packetStatus: IPacketParseStatus): void {
+        this.packetParseStatus = packetStatus;
+    }
+
+    @action
     public setPendingBonusProtest(teamName: string, questionIndex: number, part: number): void {
         this.pendingBonusProtestEvent = {
             partIndex: part,
@@ -179,6 +195,7 @@ export class UIState {
     @action
     public resetPendingNewGame(): void {
         this.pendingNewGame = undefined;
+        this.packetParseStatus = undefined;
     }
 
     @action
