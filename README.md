@@ -57,13 +57,13 @@ Next items to work on (figure out an order)
     -   Could also export to a Google Sheet. Might be best to make this an option on new game, so it can always be
         persisted there in case we get into a bad state.
 -   Add format rules so we can support powers (and see how the parser generates them)
+    -   Could have a text box for the power character (default to (\*))
 -   Add a button/text when we've run out of tossups (or bonuses?) to do one of the following
     -   Import more questions, so we can track the data
     -   Add buttons/menu to add buzzes manually (with no tracking, so position = -1), and to add another cycle
 -   Investigating WebSockets, to see if integration with the Discord tournament assistant would work, and supply the
     teams/players/readers. The bot could also track scores in real-time and show who's on top, and maybe allow for
     rebrackets.
--   Look into changing parsers; the current one may be too fragile, and the one QuizDB uses expects it as an HTML file.
 -   Should look into the perf of the buzz menu; seems to be a noticeable delay the first time we click on a question.
     -   Using the profiler, doesn't seem directly related to the code
     -   We're using ES that supports Set<>, so use it more often (maybe for active players?). Would be nice for events,
