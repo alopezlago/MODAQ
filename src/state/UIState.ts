@@ -19,6 +19,7 @@ export class UIState {
         this.pendingNewPlayer = undefined;
         this.pendingTossupProtestEvent = undefined;
         this.sheetsState = new SheetState();
+        this.socketBuzzedInPlayer = undefined;
     }
 
     // TODO: Should we also include the Cycle? This would simplify anything that needs access to the cycle
@@ -60,6 +61,10 @@ export class UIState {
     @observable
     public sheetsState: SheetState;
 
+    @observable
+    @ignore
+    public socketBuzzedInPlayer?: string | undefined;
+
     // TODO: Feels off. Could generalize to array of teams
     @action
     public addPlayerToFirstTeamInPendingNewGame(player: Player): void {
@@ -78,6 +83,13 @@ export class UIState {
     @action
     public clearPacketStatus(): void {
         this.packetParseStatus = undefined;
+    }
+
+    @action
+    public clearSocketBuzzedInPlayer(): void {
+        // TODO: This should eventually just be the player, so that we don't need to show the whole menu, just
+        // Correct/Wrong
+        this.socketBuzzedInPlayer = undefined;
     }
 
     @action
@@ -180,6 +192,13 @@ export class UIState {
     @action
     public setSelectedWordIndex(newIndex: number): void {
         this.selectedWordIndex = newIndex;
+    }
+
+    @action
+    public setSocketBuzzedInPlayer(name: string): void {
+        // TODO: This should eventually just be the player, so that we don't need to show the whole menu, just
+        // Correct/Wrong
+        this.socketBuzzedInPlayer = name;
     }
 
     @action

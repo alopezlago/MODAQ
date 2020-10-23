@@ -93,6 +93,7 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
     try {
         const response: Response = await fetch(
             "https://yetanotherpacketparserazurefunction.azurewebsites.net/api/ParseDocx",
+            //"http://localhost:7071/api/ParseDocx",
             requestInfo
         );
 

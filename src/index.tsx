@@ -8,6 +8,7 @@ import { observer } from "mobx-react";
 import { AsyncTrunk } from "mobx-sync";
 import "mobx-react/batchingForReactDom";
 
+import * as Socket from "./socket/socket";
 import { Tossup, Bonus, PacketState, IBonusPart as BonusPart } from "./state/PacketState";
 import { GameState } from "./state/GameState";
 import { UIState } from "./state/UIState";
@@ -149,6 +150,10 @@ if (element) {
     const trunk = new AsyncTrunk(appState, { storage: localStorage, delay: 100 });
 
     trunk.init(appState).then(() => {
+        if (window.location.search?.length > 0) {
+            Socket.initializeSocket(window.location.search.substring(1), appState.uiState);
+        }
+
         ReactDOM.render(
             <ErrorBoundary>
                 <Root appState={appState} />

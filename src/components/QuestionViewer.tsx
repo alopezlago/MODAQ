@@ -58,6 +58,11 @@ export const QuestionViewer = observer((props: IQuestionViewerProps) => {
         );
     }
 
+    // TODO: style this
+    const buzzerIndicator: JSX.Element | undefined = props.uiState.socketBuzzedInPlayer ? (
+        <div className={classes.socketBuzzedInPlayer}>{`${props.uiState.socketBuzzedInPlayer} buzzed in`}</div>
+    ) : undefined;
+
     // TODO: Handle the case where tossup is undefined. Alternatively, we need to disable the throw out question button
     // when we're on the last tossup.
     // This also means we need a way to import more questions when we need tiebreakers.
@@ -65,6 +70,7 @@ export const QuestionViewer = observer((props: IQuestionViewerProps) => {
     return (
         <div className={classes.questionViewer}>
             {tossup}
+            {buzzerIndicator}
             <div className={classes.separator} />
             {bonus}
         </div>
@@ -79,6 +85,7 @@ export interface IQuestionViewerProps {
 interface IQuestionViewerClassNames {
     questionViewer: string;
     separator: string;
+    socketBuzzedInPlayer: string;
 }
 
 const getClassNames = (): IQuestionViewerClassNames =>
@@ -90,5 +97,9 @@ const getClassNames = (): IQuestionViewerClassNames =>
         separator: {
             borderTop: "1px dotted black",
             margin: "10px 0",
+        },
+        socketBuzzedInPlayer: {
+            paddingLeft: "24px",
+            marginTop: "10px",
         },
     });

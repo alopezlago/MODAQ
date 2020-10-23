@@ -4,6 +4,7 @@ const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 module.exports = {
     // TODO: Consider using source-map in production, so we can get more meaningful error messages
     devtool: "eval-cheap-module-source-map",
+    // devtool: "source-map",
     entry: [
         "webpack-dev-server/client?http://localhost:8080",
         "webpack-dev-server/client?http://localhost.quizbowlreader.com:8080",
