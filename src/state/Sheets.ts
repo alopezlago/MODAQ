@@ -1,6 +1,7 @@
 import { UIState } from "./UIState";
 import { LoadingState } from "./SheetState";
 import { GameState } from "./GameState";
+import { IPlayer } from "./TeamState";
 
 // TODO:
 // We can start with an "Export to Sheet" button that always creates a new sheet
@@ -68,7 +69,7 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
     // // }
     // Top line
 
-    const firstLineData: gapi.client.sheets.ValueRange[] = [
+    const valueRanges: gapi.client.sheets.ValueRange[] = [
         {
             range: "'Round 1'!C5:C5",
             values: [[game.teamNames[0]]],
@@ -79,6 +80,45 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
         },
     ];
 
+    // TODO: Add validation.
+    // - Can only handle 6 players
+    // - Can only handle 21 cycles (no bonuses on last one)
+    if (game.teamNames.length > 2) {
+        return;
+    } else if (game.cycles.length > 21) {
+        return;
+    }
+
+    // Build player<->column mapping, starting at B and R. Can do SpreadsheetColumn math to handle AA
+    let firstTeamColumn = "B";
+    let secondTeamColumn = "R";
+    const playerToColumnMapping: Map<IPlayer, string> = new Map();
+    for (const player of game.players) {
+        const isOnFirstTeam: boolean = player.teamName === game.teamNames[0];
+
+        // TODO: This should be a SpreadshetColumn, though it's okay here
+        let column: string;
+        if (isOnFirstTeam) {
+            firstTeamColumn = String.fromCharCode(firstTeamColumn.charCodeAt(0) + 1);
+            column = firstTeamColumn;
+        } else {
+            secondTeamColumn = String.fromCharCode(secondTeamColumn.charCodeAt(0) + 1);
+            column = secondTeamColumn;
+        }
+
+        playerToColumnMapping.set(player, column);
+        valueRanges.push({
+            range: `'Round 1'!${column}7:${column}7`,
+            values: [[player.name]],
+        });
+    }
+
+    // For each cycle
+    // Find negs/wrongs/corrects, find mapping to column, add the ValueRange
+    // If there's a bonus, add that too, with the binary format
+
+    // Add buzz points
+
     // TODO: This should always come from sheetId, and should not be null
     // const spreadsheetId: string = uiState.sheetsState.sheetId ?? "1ZWEIXEcDPpuYhMOqy7j8uKloKJ7xrMlx8Q8y4UCbjZA";
     const spreadsheetId: string = uiState.sheetsState.sheetId ?? "1ZWEIXEcDPpuYhMOqy7j8uKloKJ7xrMlx8Q8y4UCbjZA";
@@ -86,7 +126,7 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
         {
             spreadsheetId,
             resource: {
-                data: firstLineData,
+                data: valueRanges,
                 valueInputOption: "RAW",
             },
         }
