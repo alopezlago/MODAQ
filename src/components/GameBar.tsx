@@ -92,6 +92,8 @@ export const GameBar = observer(
 );
 
 async function googleSheetsDemo(props: IGameBarProps): Promise<void> {
+    // TODO: we should prompt the player, then get the URL and round, and pass that into Sheets
+    // Could make it its own component
     return Sheets.exportToSheet(props.game, props.uiState);
 }
 
@@ -259,8 +261,8 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
         },
         // TODO: This won't update when gapi does; it needs another prop change
         // I don't like commenting out code, but this isn't ready yet, and the work needs to be handed over
-        // disabled: window.gapi == undefined,
-        disabled: true,
+        disabled: window.gapi == undefined,
+        // disabled: true,
     });
 
     // TODO: Blob should probably be memoized, so we don't keep stringifying? It does appear that the link is the same
@@ -311,7 +313,7 @@ function isSubMenuItemData(data: ISubMenuItemData | undefined): data is ISubMenu
 
 // Adapted from this gist: https://gist.github.com/lgarron/d1dee380f4ed9d825ca7
 function copyText(text: string) {
-    return new Promise(function (resolve, reject) {
+    return new Promise<void>(function (resolve, reject) {
         let success = false;
         function listener(e: ClipboardEvent) {
             if (e == undefined || e.clipboardData == undefined) {

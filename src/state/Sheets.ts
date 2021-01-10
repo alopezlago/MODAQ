@@ -20,92 +20,71 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
     await initalizeIfNeeded(uiState);
 
     // https://developers.google.com/sheets/api/guides/create#javascript
-    if (uiState.sheetsState.sheetId == undefined) {
-        const title = `QBScoresheet_${game.teamNames.join("_")}`;
+    // if (uiState.sheetsState.sheetId == undefined) {
+    //// const title = `QBScoresheet_${game.teamNames.join("_")}`;
 
-        // Need to specify Sheet, as well as the grid properties
-        const createResponse: SheetsResponse = await gapi.client.sheets.spreadsheets.create({
-            resource: {
-                properties: {
-                    title,
-                },
-                sheets: [
-                    {
-                        properties: {
-                            gridProperties: {
-                                columnCount: 52,
-                            },
-                        },
-                    },
-                ],
-            },
-        });
+    // We shouldn't create a sheet, we should ask for a link to the scoresheet, and ask which round it is
+    // From there, we can build "Round X" for the scoresheet, and write values to the sheet
+    // Since  we're signed in with the readers creds, we don't need a separate service account to write to it
 
-        console.log("Response from creation");
-        console.log(createResponse);
+    // Need to specify Sheet, as well as the grid properties
+    // //     const createResponse: SheetsResponse = await gapi.client.sheets.spreadsheets.create({
+    // //         resource: {
+    // //             properties: {
+    // //                 title,
+    // //             },
+    // //             sheets: [
+    // //                 {
+    // //                     properties: {
+    // //                         gridProperties: {
+    // //                             columnCount: 52,
+    // //                         },
+    // //                     },
+    // //                 },
+    // //             ],
+    // //         },
+    // //     });
 
-        if (
-            createResponse.status != undefined &&
-            createResponse.status >= 200 &&
-            createResponse.status < 300 &&
-            createResponse.result.spreadsheetId != undefined
-        ) {
-            uiState.setSheetsId(createResponse.result.spreadsheetId);
-            console.log("New sheet ID: " + uiState.sheetsState.sheetId);
-            console.log("URL: " + createResponse.result.spreadsheetUrl);
-        }
-    }
+    // //     console.log("Response from creation");
+    // //     console.log(createResponse);
+
+    // //     if (
+    // //         createResponse.status != undefined &&
+    // //         createResponse.status >= 200 &&
+    // //         createResponse.status < 300 &&
+    // //         createResponse.result.spreadsheetId != undefined
+    // //     ) {
+    // //         uiState.setSheetsId(createResponse.result.spreadsheetId);
+    // //         console.log("New sheet ID: " + uiState.sheetsState.sheetId);
+    // //         console.log("URL: " + createResponse.result.spreadsheetUrl);
+    // //     }
+    // // }
 
     // https://developers.google.com/sheets/api/guides/values#javascript_3
     // Now create the spreadsheet. Would be easiest if we could just copy over an existing one...
 
-    if (uiState.sheetsState.sheetId == undefined) {
-        throw Error("SheetsId shouldn't be undefined here");
-    }
+    // // if (uiState.sheetsState.sheetId == undefined) {
+    // //     throw Error("SheetsId shouldn't be undefined here");
+    // // }
     // Top line
 
-    // This fails because AC is beyond grid limits. Can only do 26 columns
     const firstLineData: gapi.client.sheets.ValueRange[] = [
         {
-            range: "B5",
-            values: [["Team"]],
-        },
-        {
-            range: "C5",
+            range: "'Round 1'!C5:C5",
             values: [[game.teamNames[0]]],
         },
         {
-            range: "M5",
-            values: [["Score"]],
-        },
-        {
-            range: "N5",
-            values: [[game.finalScore[0]]],
-        },
-        {
-            range: "P5",
-            values: [["Status"]],
-        },
-        {
-            range: "R5",
-            values: [["Team"]],
-        },
-        {
-            range: "S5",
+            range: "'Round 1'!S5:S5",
             values: [[game.teamNames[1]]],
         },
-        {
-            range: "AC5",
-            values: [["Score"]],
-        },
-        {
-            range: "AD5",
-            values: [[game.finalScore[1]]],
-        },
     ];
+
+    // TODO: This should always come from sheetId, and should not be null
+    // const spreadsheetId: string = uiState.sheetsState.sheetId ?? "1ZWEIXEcDPpuYhMOqy7j8uKloKJ7xrMlx8Q8y4UCbjZA";
+    const spreadsheetId: string = uiState.sheetsState.sheetId ?? "1ZWEIXEcDPpuYhMOqy7j8uKloKJ7xrMlx8Q8y4UCbjZA";
     const firstLineUpdateResponse: BatchUpdateValuesResponse = await gapi.client.sheets.spreadsheets.values.batchUpdate(
         {
-            spreadsheetId: uiState.sheetsState.sheetId,
+            spreadsheetId,
             resource: {
                 data: firstLineData,
                 valueInputOption: "RAW",
@@ -116,17 +95,18 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
     console.log("Result from first line update");
     console.log(firstLineUpdateResponse);
 
-    try {
-        const sheet = await gapi.client.sheets.spreadsheets.get({
-            // spreadsheetId: "1dtqzA0cxrR6PlI6j1aKBjZu0kK1MLJKEcKF6N8lq19k",
-            spreadsheetId: "1h9Cxj3kNyQDse3uUWLOB8yqTCf8Kmc5DEzKu-UqzVUQ",
-            ranges: "Scoresheet template",
-        });
-        console.log("Sheet from GDoc");
-        console.log(sheet);
-    } catch (error) {
-        console.error(error);
-    }
+    // // try {
+    // //     const sheet = await gapi.client.sheets.spreadsheets.get({
+    // //         // spreadsheetId: "1dtqzA0cxrR6PlI6j1aKBjZu0kK1MLJKEcKF6N8lq19k",
+    // //         // spreadsheetId: "1h9Cxj3kNyQDse3uUWLOB8yqTCf8Kmc5DEzKu-UqzVUQ",
+    // //         spreadsheetId,
+    // //         ranges: "'Round 1'!C5:S5",
+    // //     });
+    // //     console.log("Sheet from GDoc");
+    // //     console.log(sheet);
+    // // } catch (error) {
+    // //     console.error(error);
+    // // }
 }
 
 // TODO: Copy an OphirStats sheet (either with a get call, or with the formats + formulas). Challenges are
@@ -155,8 +135,8 @@ async function initalizeIfNeeded(uiState: UIState): Promise<void> {
     // Bit of a hacky wait to wait until the callback is done
     uiState.setSheetsApiInitialized(LoadingState.Loading);
     const promise: Promise<void> = new Promise<void>((resolve, reject) => {
-        try {
-            gapi.load("client:auth2", async () => {
+        gapi.load("client:auth2", async () => {
+            try {
                 await gapi.client.init({
                     // TODO: See if we can get this injected by webpack somehow
                     apiKey: "AIzaSyBvt62emmPzKNegGgCjkeZ8n0Iqq7w6IhM",
@@ -175,13 +155,13 @@ async function initalizeIfNeeded(uiState: UIState): Promise<void> {
 
                 uiState.setSheetsApiInitialized(LoadingState.Loaded);
                 resolve();
-            });
-        } catch (error) {
-            console.log("Couldn't initialize Sheets API");
-            console.log(error);
-            uiState.setSheetsApiInitialized(LoadingState.Error);
-            reject(error);
-        }
+            } catch (error) {
+                console.log("Couldn't initialize Sheets API");
+                console.log(error);
+                uiState.setSheetsApiInitialized(LoadingState.Error);
+                reject(error);
+            }
+        });
     });
 
     await promise;
