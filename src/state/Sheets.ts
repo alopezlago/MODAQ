@@ -16,6 +16,7 @@ import { IPlayer } from "./TeamState";
 type Sheet = gapi.client.sheets.Spreadsheet;
 type SheetsResponse = gapi.client.Response<Sheet>;
 type BatchUpdateValuesResponse = gapi.client.Response<gapi.client.sheets.BatchUpdateValuesResponse>;
+type BatchClearValuesResponse = gapi.client.Response<gapi.client.sheets.BatchClearValuesResponse>;
 
 export async function exportToSheet(game: GameState, uiState: UIState): Promise<void> {
     await initalizeIfNeeded(uiState);
@@ -69,17 +70,6 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
     // // }
     // Top line
 
-    const valueRanges: gapi.client.sheets.ValueRange[] = [
-        {
-            range: "'Round 1'!C5:C5",
-            values: [[game.teamNames[0]]],
-        },
-        {
-            range: "'Round 1'!S5:S5",
-            values: [[game.teamNames[1]]],
-        },
-    ];
-
     // TODO: Add validation.
     // - Can only handle 6 players
     // - Can only handle 21 cycles (no bonuses on last one)
@@ -89,12 +79,34 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
         return;
     }
 
+    // TODO: Would be more efficient if we did a group-by operation, but the number of teams should be small
+    for (const teamName of game.teamNames) {
+        if (game.players.filter((player) => player.teamName === teamName).length > 6) {
+            return;
+        }
+    }
+
+    // TODO: This should come from the UI State
+    const sheetName = `Round ${1}`;
+    const firstTeamName: string = game.teamNames[0];
+
+    const valueRanges: gapi.client.sheets.ValueRange[] = [
+        {
+            range: `'${sheetName}'!C5:C5`,
+            values: [[game.teamNames[0]]],
+        },
+        {
+            range: `'${sheetName}'!S5:S5`,
+            values: [[game.teamNames[1]]],
+        },
+    ];
+
     // Build player<->column mapping, starting at B and R. Can do SpreadsheetColumn math to handle AA
     let firstTeamColumn = "B";
     let secondTeamColumn = "R";
     const playerToColumnMapping: Map<IPlayer, string> = new Map();
     for (const player of game.players) {
-        const isOnFirstTeam: boolean = player.teamName === game.teamNames[0];
+        const isOnFirstTeam: boolean = player.teamName === firstTeamName;
 
         // TODO: This should be a SpreadshetColumn, though it's okay here
         let column: string;
@@ -108,7 +120,7 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
 
         playerToColumnMapping.set(player, column);
         valueRanges.push({
-            range: `'Round 1'!${column}7:${column}7`,
+            range: `'${sheetName}'!${column}7:${column}7`,
             values: [[player.name]],
         });
     }
@@ -116,12 +128,102 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
     // For each cycle
     // Find negs/wrongs/corrects, find mapping to column, add the ValueRange
     // If there's a bonus, add that too, with the binary format
+    let row = 8;
+    for (const cycle of game.cycles) {
+        // cycle.
+        // cycle.
+        // Track: gets, negs, 0s, powers, bonuses, subs? (but can only sub in once)
+        // Protests? could include details, and separate from tossups and bonuses
+        if (cycle.negBuzz) {
+            const negColumn: string | undefined = playerToColumnMapping.get(cycle.negBuzz.marker.player);
+            if (negColumn != undefined) {
+                const negPositionColumn: string = getPositionColumn(cycle.negBuzz.marker.player, firstTeamName);
+                valueRanges.push(
+                    {
+                        range: `'${sheetName}'!${negColumn}${row}`,
+                        values: [[-5]],
+                    },
+                    {
+                        range: `'${sheetName}'!${negPositionColumn}${row}`,
+                        values: [[cycle.negBuzz.marker.position]],
+                    }
+                );
+            }
+        }
+
+        // We're not getting anything from playerToColumnMapping, so maybe it's bad?
+
+        if (cycle.correctBuzz) {
+            const correctColumn: string | undefined = playerToColumnMapping.get(cycle.correctBuzz.marker.player);
+            if (correctColumn != undefined) {
+                const correctPositionColumn: string = getPositionColumn(cycle.correctBuzz.marker.player, firstTeamName);
+                valueRanges.push(
+                    {
+                        range: `'${sheetName}'!${correctColumn}${row}`,
+                        // TODO: Calculate if this is a power or not
+                        values: [[10]],
+                    },
+                    {
+                        range: `'${sheetName}'!${correctPositionColumn}${row}`,
+                        values: [[cycle.correctBuzz.marker.position]],
+                    }
+                );
+            }
+
+            if (cycle.bonusAnswer) {
+                const bonusColumn: string = cycle.bonusAnswer.receivingTeamName === firstTeamName ? "H" : "X";
+
+                let bonusScore = "";
+                for (let i = 0; i < 3; i++) {
+                    // TODO: This isn't very efficient, though there are only 3 parts, so it's not too bad
+                    bonusScore += cycle.bonusAnswer.correctParts.findIndex((part) => part.index === i) >= 0 ? "1" : "0";
+                }
+
+                valueRanges.push({
+                    range: `'${sheetName}'!${bonusColumn}${row}`,
+                    // TODO: Calculate if this is a power or not
+                    values: [[bonusScore]],
+                });
+            }
+        }
+
+        // TODO: Implement protests columns (AF, AG, AH for bonuses)
+
+        // TODO: Implement subs
+
+        // No need to track no penalty buzzes, since OphirStats doesn't track buzz point data for it
+
+        row++;
+    }
 
     // Add buzz points
 
     // TODO: This should always come from sheetId, and should not be null
     // const spreadsheetId: string = uiState.sheetsState.sheetId ?? "1ZWEIXEcDPpuYhMOqy7j8uKloKJ7xrMlx8Q8y4UCbjZA";
     const spreadsheetId: string = uiState.sheetsState.sheetId ?? "1ZWEIXEcDPpuYhMOqy7j8uKloKJ7xrMlx8Q8y4UCbjZA";
+
+    // Clear the spreadsheet first, to remove anything we've undone/changed
+    const clearResponse: BatchClearValuesResponse = await gapi.client.sheets.spreadsheets.values.batchClear({
+        spreadsheetId,
+        resource: {
+            ranges: [
+                // Clear team names, then player names + buzzes, and then bonuses
+                `'${sheetName}'!C5:C5`,
+                `'${sheetName}'!S5:S5`,
+                `'${sheetName}'!B7:G28`,
+                `'${sheetName}'!R7:W28`,
+                `'${sheetName}'!H8:H27`,
+                `'${sheetName}'!X8:X27`,
+            ],
+        },
+    });
+
+    console.log("Result from clear request");
+    console.log(clearResponse);
+
+    console.log("Value Ranges");
+    console.log(valueRanges);
+
     const firstLineUpdateResponse: BatchUpdateValuesResponse = await gapi.client.sheets.spreadsheets.values.batchUpdate(
         {
             spreadsheetId,
@@ -206,3 +308,24 @@ async function initalizeIfNeeded(uiState: UIState): Promise<void> {
 
     await promise;
 }
+
+function getPositionColumn(player: IPlayer, firstTeamName: string): string {
+    return player.teamName === firstTeamName ? "AJ" : "AK";
+}
+
+// Need SpreadSheetColumn class or method
+// // function getNextColumn(column: string): string {
+// //     if (column == "ZZ") {
+// //         throw new Error("Only columns up to ZZ are supported");
+// //     } else if (column[column.length - 1] == "Z") {
+// //         column[column.length - 1] == "A";
+// //         if (column.length == 1) {
+// //             return "AA";
+// //         }
+// //     }
+
+// //     // Bad, need to break else-if up
+
+// //     // secondTeamColumn = String.fromCharCode(secondTeamColumn.charCodeAt(0) + 1);
+// //     return column;
+// // }
