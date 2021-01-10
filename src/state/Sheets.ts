@@ -92,11 +92,11 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
 
     const valueRanges: gapi.client.sheets.ValueRange[] = [
         {
-            range: `'${sheetName}'!C5:C5`,
+            range: `'${sheetName}'!C5`,
             values: [[game.teamNames[0]]],
         },
         {
-            range: `'${sheetName}'!S5:S5`,
+            range: `'${sheetName}'!S5`,
             values: [[game.teamNames[1]]],
         },
     ];
@@ -104,7 +104,7 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
     // Build player<->column mapping, starting at B and R. Can do SpreadsheetColumn math to handle AA
     let firstTeamColumn = "B";
     let secondTeamColumn = "R";
-    const playerToColumnMapping: Map<IPlayer, string> = new Map();
+    const playerToColumnMapping: Map<string, string> = new Map();
     for (const player of game.players) {
         const isOnFirstTeam: boolean = player.teamName === firstTeamName;
 
@@ -118,9 +118,9 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
             column = secondTeamColumn;
         }
 
-        playerToColumnMapping.set(player, column);
+        playerToColumnMapping.set(getPlayerKey(player), column);
         valueRanges.push({
-            range: `'${sheetName}'!${column}7:${column}7`,
+            range: `'${sheetName}'!${column}7`,
             values: [[player.name]],
         });
     }
@@ -135,7 +135,7 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
         // Track: gets, negs, 0s, powers, bonuses, subs? (but can only sub in once)
         // Protests? could include details, and separate from tossups and bonuses
         if (cycle.negBuzz) {
-            const negColumn: string | undefined = playerToColumnMapping.get(cycle.negBuzz.marker.player);
+            const negColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(cycle.negBuzz.marker.player));
             if (negColumn != undefined) {
                 const negPositionColumn: string = getPositionColumn(cycle.negBuzz.marker.player, firstTeamName);
                 valueRanges.push(
@@ -154,7 +154,9 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
         // We're not getting anything from playerToColumnMapping, so maybe it's bad?
 
         if (cycle.correctBuzz) {
-            const correctColumn: string | undefined = playerToColumnMapping.get(cycle.correctBuzz.marker.player);
+            const correctColumn: string | undefined = playerToColumnMapping.get(
+                getPlayerKey(cycle.correctBuzz.marker.player)
+            );
             if (correctColumn != undefined) {
                 const correctPositionColumn: string = getPositionColumn(cycle.correctBuzz.marker.player, firstTeamName);
                 valueRanges.push(
@@ -313,19 +315,6 @@ function getPositionColumn(player: IPlayer, firstTeamName: string): string {
     return player.teamName === firstTeamName ? "AJ" : "AK";
 }
 
-// Need SpreadSheetColumn class or method
-// // function getNextColumn(column: string): string {
-// //     if (column == "ZZ") {
-// //         throw new Error("Only columns up to ZZ are supported");
-// //     } else if (column[column.length - 1] == "Z") {
-// //         column[column.length - 1] == "A";
-// //         if (column.length == 1) {
-// //             return "AA";
-// //         }
-// //     }
-
-// //     // Bad, need to break else-if up
-
-// //     // secondTeamColumn = String.fromCharCode(secondTeamColumn.charCodeAt(0) + 1);
-// //     return column;
-// // }
+function getPlayerKey(player: IPlayer): string {
+    return `${player.teamName.replace(/;/g, ";;")};${player.name}`;
+}
