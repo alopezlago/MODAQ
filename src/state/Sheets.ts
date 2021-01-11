@@ -1,6 +1,7 @@
 import { UIState } from "./UIState";
 import { LoadingState } from "./SheetState";
 import { GameState } from "./GameState";
+import { IBonusProtestEvent } from "./Events";
 import { IPlayer } from "./TeamState";
 
 // TODO:
@@ -14,63 +15,13 @@ import { IPlayer } from "./TeamState";
 // Need to see what the sheet should look like. Alternative is copying the sheet, but requires more permissions
 
 type Sheet = gapi.client.sheets.Spreadsheet;
-type SheetsResponse = gapi.client.Response<Sheet>;
 type BatchUpdateValuesResponse = gapi.client.Response<gapi.client.sheets.BatchUpdateValuesResponse>;
 type BatchClearValuesResponse = gapi.client.Response<gapi.client.sheets.BatchClearValuesResponse>;
 
 export async function exportToSheet(game: GameState, uiState: UIState): Promise<void> {
     await initalizeIfNeeded(uiState);
 
-    // https://developers.google.com/sheets/api/guides/create#javascript
-    // if (uiState.sheetsState.sheetId == undefined) {
-    //// const title = `QBScoresheet_${game.teamNames.join("_")}`;
-
-    // We shouldn't create a sheet, we should ask for a link to the scoresheet, and ask which round it is
-    // From there, we can build "Round X" for the scoresheet, and write values to the sheet
-    // Since  we're signed in with the readers creds, we don't need a separate service account to write to it
-
-    // Need to specify Sheet, as well as the grid properties
-    // //     const createResponse: SheetsResponse = await gapi.client.sheets.spreadsheets.create({
-    // //         resource: {
-    // //             properties: {
-    // //                 title,
-    // //             },
-    // //             sheets: [
-    // //                 {
-    // //                     properties: {
-    // //                         gridProperties: {
-    // //                             columnCount: 52,
-    // //                         },
-    // //                     },
-    // //                 },
-    // //             ],
-    // //         },
-    // //     });
-
-    // //     console.log("Response from creation");
-    // //     console.log(createResponse);
-
-    // //     if (
-    // //         createResponse.status != undefined &&
-    // //         createResponse.status >= 200 &&
-    // //         createResponse.status < 300 &&
-    // //         createResponse.result.spreadsheetId != undefined
-    // //     ) {
-    // //         uiState.setSheetsId(createResponse.result.spreadsheetId);
-    // //         console.log("New sheet ID: " + uiState.sheetsState.sheetId);
-    // //         console.log("URL: " + createResponse.result.spreadsheetUrl);
-    // //     }
-    // // }
-
-    // https://developers.google.com/sheets/api/guides/values#javascript_3
-    // Now create the spreadsheet. Would be easiest if we could just copy over an existing one...
-
-    // // if (uiState.sheetsState.sheetId == undefined) {
-    // //     throw Error("SheetsId shouldn't be undefined here");
-    // // }
-    // Top line
-
-    // TODO: Add validation.
+    // TODO: Add validation; we shouldn't return void, we should return a result
     // - Can only handle 6 players
     // - Can only handle 21 cycles (no bonuses on last one)
     if (game.teamNames.length > 2) {
@@ -101,21 +52,20 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
         },
     ];
 
-    // Build player<->column mapping, starting at B and R. Can do SpreadsheetColumn math to handle AA
+    // Build a mapping between players and columns
     let firstTeamColumn = "B";
     let secondTeamColumn = "R";
     const playerToColumnMapping: Map<string, string> = new Map();
     for (const player of game.players) {
         const isOnFirstTeam: boolean = player.teamName === firstTeamName;
 
-        // TODO: This should be a SpreadshetColumn, though it's okay here
         let column: string;
         if (isOnFirstTeam) {
-            firstTeamColumn = String.fromCharCode(firstTeamColumn.charCodeAt(0) + 1);
             column = firstTeamColumn;
+            firstTeamColumn = String.fromCharCode(firstTeamColumn.charCodeAt(0) + 1);
         } else {
-            secondTeamColumn = String.fromCharCode(secondTeamColumn.charCodeAt(0) + 1);
             column = secondTeamColumn;
+            secondTeamColumn = String.fromCharCode(secondTeamColumn.charCodeAt(0) + 1);
         }
 
         playerToColumnMapping.set(getPlayerKey(player), column);
@@ -125,51 +75,109 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
         });
     }
 
-    // For each cycle
-    // Find negs/wrongs/corrects, find mapping to column, add the ValueRange
-    // If there's a bonus, add that too, with the binary format
+    // Players that aren't starters need to have Out in the first column
+    // See https://minkowski.space/quizbowl/manuals/scorekeeping/moderator.html#substitutions
+    for (const player of game.players.filter((p) => !p.isStarter)) {
+        const playerColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(player));
+        if (playerColumn != undefined) {
+            valueRanges.push({
+                range: `'${sheetName}'!${playerColumn}8`,
+                values: [["Out"]],
+            });
+        }
+    }
+
     let row = 8;
     for (const cycle of game.cycles) {
-        // cycle.
-        // cycle.
-        // Track: gets, negs, 0s, powers, bonuses, subs? (but can only sub in once)
-        // Protests? could include details, and separate from tossups and bonuses
-        if (cycle.negBuzz) {
-            const negColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(cycle.negBuzz.marker.player));
-            if (negColumn != undefined) {
-                const negPositionColumn: string = getPositionColumn(cycle.negBuzz.marker.player, firstTeamName);
+        // We must do substitutions first, since we may have to clear an Out value if a player was subbed in on the
+        // first tossup
+        if (cycle.subs) {
+            for (const sub of cycle.subs) {
+                const inPlayerColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(sub.inPlayer));
+                if (inPlayerColumn == undefined) {
+                    continue;
+                }
+
+                const outPlayerColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(sub.inPlayer));
+                if (outPlayerColumn == undefined) {
+                    continue;
+                }
+
+                // In goes in the previous row, unless they were subbed in on the first tossup, in which case replace Out
+                // with blank
+                // See https://minkowski.space/quizbowl/manuals/scorekeeping/moderator.html#substitutions
+                const inRow: number = row === 8 ? row : row - 1;
                 valueRanges.push(
                     {
-                        range: `'${sheetName}'!${negColumn}${row}`,
-                        values: [[-5]],
+                        range: `'${sheetName}'!${inPlayerColumn}${inRow}`,
+                        values: [[inRow === 8 ? "" : "In"]],
                     },
                     {
-                        range: `'${sheetName}'!${negPositionColumn}${row}`,
-                        values: [[cycle.negBuzz.marker.position]],
+                        range: `'${sheetName}'!${outPlayerColumn}${row}`,
+                        values: [["Out"]],
                     }
                 );
             }
         }
 
-        // We're not getting anything from playerToColumnMapping, so maybe it's bad?
+        if (cycle.playerLeaves) {
+            for (const leave of cycle.playerLeaves) {
+                const outPlayerColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(leave.outPlayer));
+                if (outPlayerColumn == undefined) {
+                    continue;
+                }
+
+                valueRanges.push({
+                    range: `'${sheetName}'!${outPlayerColumn}${row}`,
+                    values: [["Out"]],
+                });
+            }
+        }
+
+        if (cycle.playerJoins) {
+            for (const joins of cycle.playerJoins) {
+                const inPlayerColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(joins.inPlayer));
+                if (inPlayerColumn == undefined) {
+                    continue;
+                }
+
+                // In goes in the previous row, unless they were subbed in on the first tossup, in which case replace Out
+                // with blank
+                // See https://minkowski.space/quizbowl/manuals/scorekeeping/moderator.html#substitutions
+                const inRow: number = row === 8 ? row : row - 1;
+                valueRanges.push({
+                    range: `'${sheetName}'!${inPlayerColumn}${inRow}`,
+                    values: [[inRow === 8 ? "" : "In"]],
+                });
+            }
+        }
+
+        const buzzPoints: number[] = [];
+
+        if (cycle.negBuzz) {
+            const negColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(cycle.negBuzz.marker.player));
+            if (negColumn != undefined) {
+                valueRanges.push({
+                    range: `'${sheetName}'!${negColumn}${row}`,
+                    values: [[-5]],
+                });
+
+                buzzPoints.push(cycle.negBuzz.marker.position);
+            }
+        }
 
         if (cycle.correctBuzz) {
             const correctColumn: string | undefined = playerToColumnMapping.get(
                 getPlayerKey(cycle.correctBuzz.marker.player)
             );
             if (correctColumn != undefined) {
-                const correctPositionColumn: string = getPositionColumn(cycle.correctBuzz.marker.player, firstTeamName);
-                valueRanges.push(
-                    {
-                        range: `'${sheetName}'!${correctColumn}${row}`,
-                        // TODO: Calculate if this is a power or not
-                        values: [[10]],
-                    },
-                    {
-                        range: `'${sheetName}'!${correctPositionColumn}${row}`,
-                        values: [[cycle.correctBuzz.marker.position]],
-                    }
-                );
+                valueRanges.push({
+                    range: `'${sheetName}'!${correctColumn}${row}`,
+                    // TODO: Calculate if this is a power or not
+                    values: [[10]],
+                });
+
+                buzzPoints.push(cycle.correctBuzz.marker.position);
             }
 
             if (cycle.bonusAnswer) {
@@ -183,22 +191,45 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
 
                 valueRanges.push({
                     range: `'${sheetName}'!${bonusColumn}${row}`,
-                    // TODO: Calculate if this is a power or not
                     values: [[bonusScore]],
                 });
             }
         }
 
-        // TODO: Implement protests columns (AF, AG, AH for bonuses)
+        if (cycle.tossupProtests) {
+            for (const protest of cycle.tossupProtests) {
+                const protestColumn: string = protest.teamName === firstTeamName ? "AF" : "AG";
+                valueRanges.push({
+                    range: `'${sheetName}'!${protestColumn}${row}`,
+                    values: [[protest.reason]],
+                });
+            }
+        }
 
-        // TODO: Implement subs
+        if (cycle.bonusProtests) {
+            const protestReasons: string = cycle.bonusProtests.reduce((state: string, current: IBonusProtestEvent) => {
+                return state + "\n" + current.reason;
+            }, "");
+            valueRanges.push({
+                range: `'${sheetName}'!AH${row}`,
+                values: [[protestReasons.trim()]],
+            });
+        }
 
         // No need to track no penalty buzzes, since OphirStats doesn't track buzz point data for it
 
+        // Buzz points are expected to be in ascending order, so sort the list and write them to the columns
+        buzzPoints.sort();
+        for (let i = 0; i < 2 && i < buzzPoints.length; i++) {
+            const column: string = i === 0 ? "AJ" : "AK";
+            valueRanges.push({
+                range: `'${sheetName}'!${column}${row}`,
+                values: [[buzzPoints[i]]],
+            });
+        }
+
         row++;
     }
-
-    // Add buzz points
 
     // TODO: This should always come from sheetId, and should not be null
     // const spreadsheetId: string = uiState.sheetsState.sheetId ?? "1ZWEIXEcDPpuYhMOqy7j8uKloKJ7xrMlx8Q8y4UCbjZA";
@@ -212,10 +243,20 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
                 // Clear team names, then player names + buzzes, and then bonuses
                 `'${sheetName}'!C5:C5`,
                 `'${sheetName}'!S5:S5`,
+
+                // Clear player names and buzzes plus bonuses
                 `'${sheetName}'!B7:G28`,
-                `'${sheetName}'!R7:W28`,
                 `'${sheetName}'!H8:H27`,
+
+                // Clear bonuses
+                `'${sheetName}'!R7:W28`,
                 `'${sheetName}'!X8:X27`,
+
+                // Clear protests
+                `'${sheetName}'!AF8:AH28`,
+
+                // Clear buzz points
+                `'${sheetName}'!AJ8:AK28`,
             ],
         },
     });
@@ -238,19 +279,6 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
 
     console.log("Result from first line update");
     console.log(firstLineUpdateResponse);
-
-    // // try {
-    // //     const sheet = await gapi.client.sheets.spreadsheets.get({
-    // //         // spreadsheetId: "1dtqzA0cxrR6PlI6j1aKBjZu0kK1MLJKEcKF6N8lq19k",
-    // //         // spreadsheetId: "1h9Cxj3kNyQDse3uUWLOB8yqTCf8Kmc5DEzKu-UqzVUQ",
-    // //         spreadsheetId,
-    // //         ranges: "'Round 1'!C5:S5",
-    // //     });
-    // //     console.log("Sheet from GDoc");
-    // //     console.log(sheet);
-    // // } catch (error) {
-    // //     console.error(error);
-    // // }
 }
 
 // TODO: Copy an OphirStats sheet (either with a get call, or with the formats + formulas). Challenges are
@@ -309,10 +337,6 @@ async function initalizeIfNeeded(uiState: UIState): Promise<void> {
     });
 
     await promise;
-}
-
-function getPositionColumn(player: IPlayer, firstTeamName: string): string {
-    return player.teamName === firstTeamName ? "AJ" : "AK";
 }
 
 function getPlayerKey(player: IPlayer): string {
