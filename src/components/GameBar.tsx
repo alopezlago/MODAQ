@@ -8,7 +8,7 @@ import {
     CommandBar,
 } from "@fluentui/react";
 
-import * as Sheets from "src/state/Sheets";
+import * as Sheets from "src/sheets/Sheets";
 import { GameState } from "src/state/GameState";
 import { UIState } from "src/state/UIState";
 import { Cycle } from "src/state/Cycle";

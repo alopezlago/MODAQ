@@ -1,14 +1,20 @@
-import { UIState } from "./UIState";
-import { LoadingState } from "./SheetState";
-import { GameState } from "./GameState";
-import { IBonusProtestEvent } from "./Events";
-import { IPlayer } from "./TeamState";
+import { UIState } from "src/state/UIState";
+import { LoadingState } from "src/state/SheetState";
+import { GameState } from "src/state/GameState";
+import { IBonusProtestEvent } from "src/state/Events";
+import { IPlayer } from "src/state/TeamState";
 
 // TODO:
-// We can start with an "Export to Sheet" button that always creates a new sheet
-// Later, we should have an Export drop menu. It can export to a new Sheet, an existing Sheet, or just a JSON file with
-// the cycles.
-// First, write to the sheet
+// - UI for writing to the sheet. It should have two input fields: a URL to the sheet, and the round number
+//     - Validation to do: make sure that we can pull the spreadsheetId from the URL
+//     - We store this in the SheetState, and use that to drive this
+// - UI for picking teams from the sheet.
+//     - We need to make "+ New Game" a split button; one for "manual teams" and one for "from OphirStats"
+//     - From OphirStats should have an input field for the URL and a button to load the teams/players
+//         - If we can't connect/whatever, we should show an error message
+//         - If we connect, then show the two teams and the list of players
+//         - We need to hook this up to the state
+// - Make exportToSheet return a result, so that we can verify if the export was successful, or why it failed
 
 // Ideally, next steps would be to have a autorun or reaction when cycles change, so we can update the scoresheet.
 // But to keep things simple at first, can just export (adding players > 8 could cause problems, as could multiple tiebreakers)
@@ -288,13 +294,6 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
 // - May depend on other spreadsheets to get teams/player names, which we may have to do eventually
 // - Pretty large
 // - Assumes standard 3-part, 10 point bonuses
-
-// Might be best to do simple one
-// Reader name (if we ask for it)
-// Round number (or packet name)
-// Row with "Team", first team name ... , "Team", second team name
-// Row with headers. First team player names, then bonus, bonus points, bonus + tossup, score, Question #, second player names, bonus, bonus points, bonus + tossup, score, buzz indexes, tossup protests
-// Just something as a proof of concept. Should really do something like the OphirStats spreadsheet (much nicer presentation)
 
 async function initalizeIfNeeded(uiState: UIState): Promise<void> {
     if (
