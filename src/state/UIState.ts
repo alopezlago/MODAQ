@@ -1,11 +1,12 @@
 import { observable, action } from "mobx";
-import { ITossupProtestEvent, IBonusProtestEvent } from "./Events";
 import { ignore } from "mobx-sync";
+
+import { ITossupProtestEvent, IBonusProtestEvent } from "./Events";
 import { IPendingNewGame } from "./IPendingNewGame";
 import { PacketState } from "./PacketState";
 import { Player } from "./TeamState";
 import { LoadingState, SheetState } from "./SheetState";
-import { IPacketParseStatus } from "./IPacketParseStatus";
+import { IStatus } from "../IStatus";
 
 export class UIState {
     constructor() {
@@ -13,6 +14,7 @@ export class UIState {
         this.isEditingCycleIndex = false;
         this.selectedWordIndex = -1;
         this.buzzMenuVisible = false;
+        this.exportDialogVisible = false;
         this.packetParseStatus = undefined;
         this.pendingBonusProtestEvent = undefined;
         this.pendingNewGame = undefined;
@@ -40,7 +42,11 @@ export class UIState {
 
     @observable
     @ignore
-    public packetParseStatus: IPacketParseStatus | undefined;
+    public exportDialogVisible: boolean;
+
+    @observable
+    @ignore
+    public packetParseStatus: IStatus | undefined;
 
     @observable
     @ignore
@@ -153,9 +159,8 @@ export class UIState {
     public setIsEditingCycleIndex(isEditingCycleIndex: boolean): void {
         this.isEditingCycleIndex = isEditingCycleIndex;
     }
-
     @action
-    public setPacketStatus(packetStatus: IPacketParseStatus): void {
+    public setPacketStatus(packetStatus: IStatus): void {
         this.packetParseStatus = packetStatus;
     }
 
@@ -202,8 +207,18 @@ export class UIState {
     }
 
     @action
+    public showExportDialog(): void {
+        this.exportDialogVisible = true;
+    }
+
+    @action
     public hideBuzzMenu(): void {
         this.buzzMenuVisible = false;
+    }
+
+    @action
+    public hideExportDialog(): void {
+        this.exportDialogVisible = false;
     }
 
     @action

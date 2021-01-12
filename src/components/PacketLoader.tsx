@@ -88,7 +88,7 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
         mode: "cors",
     };
 
-    props.uiState.setPacketStatus({ status: "Contacting parsing service..." });
+    props.uiState.setPacketStatus({ isError: false, status: "Contacting parsing service..." });
 
     try {
         const response: Response = await fetch(
@@ -125,6 +125,7 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
 
 function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
     props.uiState.setPacketStatus({
+        isError: false,
         status: "Loading packet...",
     });
 
@@ -169,6 +170,7 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
     packet.setBonuses(bonuses);
 
     props.uiState.setPacketStatus({
+        isError: false,
         status: `Packet loaded. ${tossups.length} tossup(s), ${bonuses.length} bonus(es).`,
     });
 

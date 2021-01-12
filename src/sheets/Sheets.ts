@@ -8,13 +8,16 @@ import { IPlayer } from "src/state/TeamState";
 // - UI for writing to the sheet. It should have two input fields: a URL to the sheet, and the round number
 //     - Validation to do: make sure that we can pull the spreadsheetId from the URL
 //     - We store this in the SheetState, and use that to drive this
+//     - Message dialog should show the failure, and the user can click a Close button
 // - UI for picking teams from the sheet.
 //     - We need to make "+ New Game" a split button; one for "manual teams" and one for "from OphirStats"
 //     - From OphirStats should have an input field for the URL and a button to load the teams/players
 //         - If we can't connect/whatever, we should show an error message
 //         - If we connect, then show the two teams and the list of players
 //         - We need to hook this up to the state
-// - Make exportToSheet return a result, so that we can verify if the export was successful, or why it failed
+// - Split the logic for creating ranges from the logic for export. Maybe have some IGoogleSheetsApi that can sign in
+//   and send the clear/update requests, so that the rest of it is testable
+//    - Alternatively, split this into Sheet.ts and SheetsApi.ts, and have the UI call SheetsApi, which calls Sheet.ts
 
 // Ideally, next steps would be to have a autorun or reaction when cycles change, so we can update the scoresheet.
 // But to keep things simple at first, can just export (adding players > 8 could cause problems, as could multiple tiebreakers)
@@ -25,20 +28,33 @@ type BatchUpdateValuesResponse = gapi.client.Response<gapi.client.sheets.BatchUp
 type BatchClearValuesResponse = gapi.client.Response<gapi.client.sheets.BatchClearValuesResponse>;
 
 export async function exportToSheet(game: GameState, uiState: UIState): Promise<void> {
+    uiState.sheetsState?.clearExportStatus();
     await initalizeIfNeeded(uiState);
 
     // TODO: Add validation; we shouldn't return void, we should return a result
     // - Can only handle 6 players
     // - Can only handle 21 cycles (no bonuses on last one)
     if (game.teamNames.length > 2) {
+        uiState.sheetsState.setExportStatus({
+            isError: true,
+            status: "Export not allowed with more than two teams",
+        });
         return;
     } else if (game.cycles.length > 21) {
+        uiState.sheetsState.setExportStatus({
+            isError: true,
+            status: "Export not allowed with more than 21 rounds (not enough rows)",
+        });
         return;
     }
 
     // TODO: Would be more efficient if we did a group-by operation, but the number of teams should be small
     for (const teamName of game.teamNames) {
         if (game.players.filter((player) => player.teamName === teamName).length > 6) {
+            uiState.sheetsState.setExportStatus({
+                isError: true,
+                status: "Export not allowed with more than six players per a team",
+            });
             return;
         }
     }
@@ -241,50 +257,63 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
     // const spreadsheetId: string = uiState.sheetsState.sheetId ?? "1ZWEIXEcDPpuYhMOqy7j8uKloKJ7xrMlx8Q8y4UCbjZA";
     const spreadsheetId: string = uiState.sheetsState.sheetId ?? "1ZWEIXEcDPpuYhMOqy7j8uKloKJ7xrMlx8Q8y4UCbjZA";
 
-    // Clear the spreadsheet first, to remove anything we've undone/changed
-    const clearResponse: BatchClearValuesResponse = await gapi.client.sheets.spreadsheets.values.batchClear({
-        spreadsheetId,
-        resource: {
-            ranges: [
-                // Clear team names, then player names + buzzes, and then bonuses
-                `'${sheetName}'!C5:C5`,
-                `'${sheetName}'!S5:S5`,
-
-                // Clear player names and buzzes plus bonuses
-                `'${sheetName}'!B7:G28`,
-                `'${sheetName}'!H8:H27`,
-
-                // Clear bonuses
-                `'${sheetName}'!R7:W28`,
-                `'${sheetName}'!X8:X27`,
-
-                // Clear protests
-                `'${sheetName}'!AF8:AH28`,
-
-                // Clear buzz points
-                `'${sheetName}'!AJ8:AK28`,
-            ],
-        },
-    });
-
-    console.log("Result from clear request");
-    console.log(clearResponse);
-
-    console.log("Value Ranges");
-    console.log(valueRanges);
-
-    const firstLineUpdateResponse: BatchUpdateValuesResponse = await gapi.client.sheets.spreadsheets.values.batchUpdate(
-        {
+    try {
+        // Clear the spreadsheet first, to remove anything we've undone/changed
+        const clearResponse: BatchClearValuesResponse = await gapi.client.sheets.spreadsheets.values.batchClear({
             spreadsheetId,
             resource: {
-                data: valueRanges,
-                valueInputOption: "RAW",
-            },
-        }
-    );
+                ranges: [
+                    // Clear team names, then player names + buzzes, and then bonuses
+                    `'${sheetName}'!C5:C5`,
+                    `'${sheetName}'!S5:S5`,
 
-    console.log("Result from first line update");
-    console.log(firstLineUpdateResponse);
+                    // Clear player names and buzzes plus bonuses
+                    `'${sheetName}'!B7:G28`,
+                    `'${sheetName}'!H8:H27`,
+
+                    // Clear bonuses
+                    `'${sheetName}'!R7:W28`,
+                    `'${sheetName}'!X8:X27`,
+
+                    // Clear protests
+                    `'${sheetName}'!AF8:AH28`,
+
+                    // Clear buzz points
+                    `'${sheetName}'!AJ8:AK28`,
+                ],
+            },
+        });
+
+        console.log("Result from clear request");
+        console.log(clearResponse);
+
+        console.log("Value Ranges");
+        console.log(valueRanges);
+
+        const batchUpdateResponse: BatchUpdateValuesResponse = await gapi.client.sheets.spreadsheets.values.batchUpdate(
+            {
+                spreadsheetId,
+                resource: {
+                    data: valueRanges,
+                    valueInputOption: "RAW",
+                },
+            }
+        );
+
+        console.log("Result from first line update");
+        console.log(batchUpdateResponse);
+
+        // clear status
+        uiState.sheetsState.setExportStatus({
+            isError: false,
+            status: "Export completed",
+        });
+    } catch (e) {
+        uiState.sheetsState?.setExportStatus({
+            isError: true,
+            status: `Export failed. Error: ${e.message}`,
+        });
+    }
 }
 
 // TODO: Copy an OphirStats sheet (either with a get call, or with the formats + formulas). Challenges are
