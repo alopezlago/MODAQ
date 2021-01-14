@@ -14,6 +14,10 @@ export class SheetState {
 
     @observable
     @ignore
+    public exportState: ExportState | undefined;
+
+    @observable
+    @ignore
     public sheetId?: string;
 
     @observable
@@ -23,6 +27,7 @@ export class SheetState {
     constructor() {
         this.apiInitialized = LoadingState.Unloaded;
         this.exportStatus = undefined;
+        this.exportState = undefined;
         this.sheetId = undefined;
         this.roundNumber = undefined;
     }
@@ -30,6 +35,7 @@ export class SheetState {
     @action
     public clearExportStatus(): void {
         this.exportStatus = undefined;
+        this.exportState = undefined;
     }
 
     @action
@@ -38,8 +44,9 @@ export class SheetState {
     }
 
     @action
-    public setExportStatus(exportStatus: IStatus): void {
-        this.exportStatus = exportStatus;
+    public setExportStatus(status: IStatus, state: ExportState): void {
+        this.exportStatus = status;
+        this.exportState = state;
     }
 
     @action

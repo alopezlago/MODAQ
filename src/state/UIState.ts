@@ -7,6 +7,7 @@ import { PacketState } from "./PacketState";
 import { Player } from "./TeamState";
 import { LoadingState, SheetState } from "./SheetState";
 import { IStatus } from "../IStatus";
+import { IPendingSheet } from "./IPendingSheet";
 
 export class UIState {
     constructor() {
@@ -14,11 +15,11 @@ export class UIState {
         this.isEditingCycleIndex = false;
         this.selectedWordIndex = -1;
         this.buzzMenuVisible = false;
-        this.exportDialogVisible = false;
         this.packetParseStatus = undefined;
         this.pendingBonusProtestEvent = undefined;
         this.pendingNewGame = undefined;
         this.pendingNewPlayer = undefined;
+        this.pendingSheet = undefined;
         this.pendingTossupProtestEvent = undefined;
         this.sheetsState = new SheetState();
         this.socketBuzzedInPlayer = undefined;
@@ -42,10 +43,6 @@ export class UIState {
 
     @observable
     @ignore
-    public exportDialogVisible: boolean;
-
-    @observable
-    @ignore
     public packetParseStatus: IStatus | undefined;
 
     @observable
@@ -59,6 +56,10 @@ export class UIState {
     @observable
     @ignore
     public pendingNewPlayer?: Player;
+
+    @observable
+    @ignore
+    public pendingSheet?: IPendingSheet;
 
     @observable
     @ignore
@@ -130,7 +131,15 @@ export class UIState {
 
     @action
     public createPendingNewPlayer(teamName: string): void {
-        this.pendingNewPlayer = new Player(name, teamName, /* isStarter */ false);
+        this.pendingNewPlayer = new Player("", teamName, /* isStarter */ false);
+    }
+
+    @action
+    public createPendingSheet(): void {
+        this.pendingSheet = {
+            roundNumber: 1,
+            sheetId: "",
+        };
     }
 
     @action
@@ -207,18 +216,8 @@ export class UIState {
     }
 
     @action
-    public showExportDialog(): void {
-        this.exportDialogVisible = true;
-    }
-
-    @action
     public hideBuzzMenu(): void {
         this.buzzMenuVisible = false;
-    }
-
-    @action
-    public hideExportDialog(): void {
-        this.exportDialogVisible = false;
     }
 
     @action
@@ -235,6 +234,11 @@ export class UIState {
     @action
     public resetPendingNewPlayer(): void {
         this.pendingNewPlayer = undefined;
+    }
+
+    @action
+    public resetPendingSheet(): void {
+        this.pendingSheet = undefined;
     }
 
     @action
@@ -285,5 +289,23 @@ export class UIState {
         }
 
         this.pendingNewPlayer.teamName = teamName;
+    }
+
+    @action
+    public updatePendingSheetRoundNumber(roundNumber: number): void {
+        if (this.pendingSheet == undefined) {
+            return;
+        }
+
+        this.pendingSheet.roundNumber = roundNumber;
+    }
+
+    @action
+    public updatePendingSheetId(sheetId: string): void {
+        if (this.pendingSheet == undefined) {
+            return;
+        }
+
+        this.pendingSheet.sheetId = sheetId;
     }
 }

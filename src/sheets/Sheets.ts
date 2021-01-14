@@ -1,14 +1,13 @@
 import { UIState } from "src/state/UIState";
-import { LoadingState } from "src/state/SheetState";
+import { ExportState, LoadingState } from "src/state/SheetState";
 import { GameState } from "src/state/GameState";
 import { IBonusProtestEvent } from "src/state/Events";
 import { IPlayer } from "src/state/TeamState";
 
 // TODO:
 // - UI for writing to the sheet. It should have two input fields: a URL to the sheet, and the round number
-//     - Validation to do: make sure that we can pull the spreadsheetId from the URL
-//     - We store this in the SheetState, and use that to drive this
-//     - Message dialog should show the failure, and the user can click a Close button
+//     - Needs validation
+//     - Doesn't update the state right away... stays on the main screen, then changes later...
 // - UI for picking teams from the sheet.
 //     - We need to make "+ New Game" a split button; one for "manual teams" and one for "from OphirStats"
 //     - From OphirStats should have an input field for the URL and a button to load the teams/players
@@ -35,32 +34,41 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
     // - Can only handle 6 players
     // - Can only handle 21 cycles (no bonuses on last one)
     if (game.teamNames.length > 2) {
-        uiState.sheetsState.setExportStatus({
-            isError: true,
-            status: "Export not allowed with more than two teams",
-        });
+        uiState.sheetsState.setExportStatus(
+            {
+                isError: true,
+                status: "Export not allowed with more than two teams",
+            },
+            ExportState.Error
+        );
         return;
     } else if (game.cycles.length > 21) {
-        uiState.sheetsState.setExportStatus({
-            isError: true,
-            status: "Export not allowed with more than 21 rounds (not enough rows)",
-        });
+        uiState.sheetsState.setExportStatus(
+            {
+                isError: true,
+                status: "Export not allowed with more than 21 rounds (not enough rows)",
+            },
+            ExportState.Error
+        );
         return;
     }
 
     // TODO: Would be more efficient if we did a group-by operation, but the number of teams should be small
     for (const teamName of game.teamNames) {
         if (game.players.filter((player) => player.teamName === teamName).length > 6) {
-            uiState.sheetsState.setExportStatus({
-                isError: true,
-                status: "Export not allowed with more than six players per a team",
-            });
+            uiState.sheetsState.setExportStatus(
+                {
+                    isError: true,
+                    status: "Export not allowed with more than six players per a team",
+                },
+                ExportState.Error
+            );
             return;
         }
     }
 
     // TODO: This should come from the UI State
-    const sheetName = `Round ${1}`;
+    const sheetName = `Round ${uiState.sheetsState.roundNumber ?? 1}`;
     const firstTeamName: string = game.teamNames[0];
 
     const valueRanges: gapi.client.sheets.ValueRange[] = [
@@ -304,15 +312,21 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
         console.log(batchUpdateResponse);
 
         // clear status
-        uiState.sheetsState.setExportStatus({
-            isError: false,
-            status: "Export completed",
-        });
+        uiState.sheetsState.setExportStatus(
+            {
+                isError: false,
+                status: "Export completed",
+            },
+            ExportState.Success
+        );
     } catch (e) {
-        uiState.sheetsState?.setExportStatus({
-            isError: true,
-            status: `Export failed. Error: ${e.message}`,
-        });
+        uiState.sheetsState?.setExportStatus(
+            {
+                isError: true,
+                status: `Export failed. Error: ${e.message}`,
+            },
+            ExportState.Error
+        );
     }
 }
 
