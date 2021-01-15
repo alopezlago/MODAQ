@@ -93,7 +93,8 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
     try {
         const response: Response = await fetch(
             "https://yetanotherpacketparserazurefunction.azurewebsites.net/api/ParseDocx",
-            //"http://localhost:7071/api/ParseDocx",
+            // "http://localhost:7071/api/ParseDocx",
+            // "http://localhost.quizbowlreader.com:7071/api/ParseDocx",
             requestInfo
         );
 
@@ -101,7 +102,10 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
             let errorMessage = "";
             if (response.status == 400) {
                 const errorMessageMap: IParsingServiceErrorMessage = await response.json();
-                errorMessage = errorMessageMap.errorMessage[0];
+
+                // TODO: This will now send an array of error messages. We should record all of them, and have them appear
+                // line by line. Or, alternatively, fetch the top 3/4 and say how many others there are.
+                errorMessage = errorMessageMap.errorMessage.join("\n");
             }
 
             props.uiState.setPacketStatus({
