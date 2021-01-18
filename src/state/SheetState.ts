@@ -44,9 +44,12 @@ export class SheetState {
     }
 
     @action
-    public setExportStatus(status: IStatus, state: ExportState): void {
+    public setExportStatus(status: IStatus, state: ExportState | undefined = undefined): void {
         this.exportStatus = status;
-        this.exportState = state;
+
+        if (state != undefined) {
+            this.exportState = state;
+        }
     }
 
     @action

@@ -30,7 +30,7 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
     uiState.sheetsState.setExportStatus(
         {
             isError: false,
-            status: "Beginning export",
+            status: "Signing in to Sheets",
         },
         ExportState.Exporting
     );
@@ -59,6 +59,11 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
         );
         return;
     }
+
+    uiState.sheetsState.setExportStatus({
+        isError: false,
+        status: "Signed into Sheets. Exporting...",
+    });
 
     // TODO: Would be more efficient if we did a group-by operation, but the number of teams should be small
     for (const teamName of game.teamNames) {
@@ -301,6 +306,11 @@ export async function exportToSheet(game: GameState, uiState: UIState): Promise<
 
         console.log("Result from clear request");
         console.log(clearResponse);
+
+        uiState.sheetsState.setExportStatus({
+            isError: false,
+            status: "Export halfway completed...",
+        });
 
         console.log("Value Ranges");
         console.log(valueRanges);
