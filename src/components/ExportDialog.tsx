@@ -51,40 +51,36 @@ export const ExportDialog = observer(
         const cancelHandler = React.useCallback(() => onClose(props), [props]);
 
         // Can't use React.useCallback since it only appears in the first stage
-        const exportHandler = React.useCallback(() => onExport(props), [props]);
+        const exportHandler = () => onExport(props);
 
-        return (
-            <Dialog
-                hidden={props.uiState.pendingSheet == undefined || props.uiState.sheetsState?.exportState != undefined}
-                dialogContentProps={content}
-                modalProps={modalProps}
-                onDismiss={cancelHandler}
-            >
-                <ExportSettingsDialogBody {...props} />
+        let body: JSX.Element | undefined;
+        let footer: JSX.Element | undefined;
+        if (props.uiState.sheetsState?.exportState == undefined) {
+            body = <ExportSettingsDialogBody {...props} />;
+            footer = (
                 <DialogFooter>
                     <DefaultButton text="Cancel" onClick={cancelHandler} />
                     <PrimaryButton text="Export" onClick={exportHandler} />
                 </DialogFooter>
-            </Dialog>
-        );
-    }
-);
-
-export const ExportStatusDialog = observer(
-    (props: IExportDialogProps): JSX.Element => {
-        const cancelHandler = React.useCallback(() => onClose(props), [props]);
+            );
+        } else {
+            body = <ExportStatusBody {...props} />;
+            footer = (
+                <DialogFooter>
+                    <PrimaryButton text="Close" onClick={cancelHandler} />
+                </DialogFooter>
+            );
+        }
 
         return (
             <Dialog
-                hidden={props.uiState.sheetsState?.exportState == undefined}
+                hidden={props.uiState.pendingSheet == undefined}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
             >
-                <ExportStatusBody {...props} />
-                <DialogFooter>
-                    <PrimaryButton text="Close" onClick={cancelHandler} />
-                </DialogFooter>
+                {body}
+                {footer}
             </Dialog>
         );
     }
@@ -189,8 +185,6 @@ function onExport(props: IExportDialogProps): void {
     props.uiState.sheetsState.setRoundNumber(props.uiState.pendingSheet.roundNumber);
     props.uiState.sheetsState.setSheetId(props.uiState.pendingSheet.sheetId);
 
-    // props.uiState.resetPendingSheet(); // Can't do this because pending is what determines if this is here
-
     Sheets.exportToSheet(props.game, props.uiState);
     return;
 }
@@ -201,8 +195,8 @@ function onClose(props: IExportDialogProps): void {
 
 function hideDialog(props: IExportDialogProps): void {
     props.uiState.resetPendingSheet();
-    props.uiState.sheetsState.clearExportStatus();
     props.uiState.sheetsState.clearRoundNumber();
+    props.uiState.sheetsState.clearExportStatus();
 }
 
 export interface IExportDialogProps {

@@ -15,7 +15,7 @@ import { Bonus } from "src/state/PacketState";
 import { AddPlayerDialog } from "./AddPlayerDialog";
 import { Player } from "src/state/TeamState";
 import { ITossupAnswerEvent } from "src/state/Events";
-import { ExportDialog, ExportStatusDialog } from "./ExportDialog";
+import { ExportDialog } from "./ExportDialog";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
@@ -87,7 +87,6 @@ export const GameBar = observer(
                 <CommandBar items={items} overflowButtonProps={overflowProps} />
                 <AddPlayerDialog game={props.game} uiState={props.uiState} />
                 <ExportDialog game={props.game} uiState={props.uiState} />
-                <ExportStatusDialog game={props.game} uiState={props.uiState} />
             </>
         );
     }
