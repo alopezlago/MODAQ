@@ -27,7 +27,14 @@ type BatchUpdateValuesResponse = gapi.client.Response<gapi.client.sheets.BatchUp
 type BatchClearValuesResponse = gapi.client.Response<gapi.client.sheets.BatchClearValuesResponse>;
 
 export async function exportToSheet(game: GameState, uiState: UIState): Promise<void> {
-    uiState.sheetsState?.clearExportStatus();
+    uiState.sheetsState.setExportStatus(
+        {
+            isError: false,
+            status: "Beginning export",
+        },
+        ExportState.Exporting
+    );
+
     await initalizeIfNeeded(uiState);
 
     // TODO: Add validation; we shouldn't return void, we should return a result

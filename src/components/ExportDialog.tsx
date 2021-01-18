@@ -17,7 +17,7 @@ import * as Sheets from "src/sheets/Sheets";
 import { UIState } from "src/state/UIState";
 import { GameState } from "src/state/GameState";
 import { IPendingSheet } from "src/state/IPendingSheet";
-import { ExportState, SheetState } from "src/state/SheetState";
+import { SheetState } from "src/state/SheetState";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -51,40 +51,40 @@ export const ExportDialog = observer(
         const cancelHandler = React.useCallback(() => onClose(props), [props]);
 
         // Can't use React.useCallback since it only appears in the first stage
-        const exportHandler = async () => onExport(props);
-
-        // The dialog footer should change: if an export hasn't started, it should be "Cancel"; if it's done, it
-        // should be "close"
-        // TODO: We should change the buttons based on the state
-        // - Do we need to setup the export fields
-        let body: JSX.Element | undefined = undefined;
-        let footer: JSX.Element | undefined = undefined;
-        if (props.uiState.sheetsState?.exportState == undefined) {
-            footer = (
-                <DialogFooter>
-                    <DefaultButton text="Cancel" onClick={cancelHandler} />
-                    <PrimaryButton text="Export" onClick={exportHandler} />
-                </DialogFooter>
-            );
-            body = <ExportSettingsDialogBody {...props} />;
-        } else {
-            footer = (
-                <DialogFooter>
-                    <PrimaryButton text="Close" onClick={cancelHandler} />
-                </DialogFooter>
-            );
-            body = <ExportStatusBody {...props} />;
-        }
+        const exportHandler = React.useCallback(() => onExport(props), [props]);
 
         return (
             <Dialog
-                hidden={props.uiState.pendingSheet == undefined}
+                hidden={props.uiState.pendingSheet == undefined || props.uiState.sheetsState?.exportState != undefined}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
             >
-                {body}
-                {footer}
+                <ExportSettingsDialogBody {...props} />
+                <DialogFooter>
+                    <DefaultButton text="Cancel" onClick={cancelHandler} />
+                    <PrimaryButton text="Export" onClick={exportHandler} />
+                </DialogFooter>
+            </Dialog>
+        );
+    }
+);
+
+export const ExportStatusDialog = observer(
+    (props: IExportDialogProps): JSX.Element => {
+        const cancelHandler = React.useCallback(() => onClose(props), [props]);
+
+        return (
+            <Dialog
+                hidden={props.uiState.sheetsState?.exportState == undefined}
+                dialogContentProps={content}
+                modalProps={modalProps}
+                onDismiss={cancelHandler}
+            >
+                <ExportStatusBody {...props} />
+                <DialogFooter>
+                    <PrimaryButton text="Close" onClick={cancelHandler} />
+                </DialogFooter>
             </Dialog>
         );
     }
@@ -134,10 +134,6 @@ const ExportSettingsDialogBody = observer(
             [props]
         );
 
-        // ISSUE: We're updating the state, so if they cancel, we still have these old values. This needs to belong
-        // to a PendingSheetsState (minus initialized). Once we click submit, then update the actual SheetsState
-        // This doesn't include the initialized flag, which should always be in the real one
-
         const sheet: IPendingSheet | undefined = props.uiState.pendingSheet;
         if (sheet === undefined) {
             return <></>;
@@ -162,10 +158,6 @@ const ExportSettingsDialogBody = observer(
 
 const ExportStatusBody = observer(
     (props: IExportDialogProps): JSX.Element => {
-        // ISSUE: We're updating the state, so if they cancel, we still have these old values. This needs to belong
-        // to a PendingSheetsState (minus initialized). Once we click submit, then update the actual SheetsState
-        // This doesn't include the initialized flag, which should always be in the real one
-
         const sheet: SheetState | undefined = props.uiState.sheetsState;
         if (sheet === undefined) {
             return <></>;
@@ -179,10 +171,7 @@ const ExportStatusBody = observer(
     }
 );
 
-async function onExport(props: IExportDialogProps): Promise<void> {
-    // TODO: Set the exportStatusVisible flag to true
-    // Set the SheetsState to the URL and round #
-    // We should have PendingExportState, since we need the URL and the round #
+function onExport(props: IExportDialogProps): void {
     if (props.uiState.pendingSheet == undefined) {
         hideDialog(props);
         return;
@@ -199,17 +188,11 @@ async function onExport(props: IExportDialogProps): Promise<void> {
 
     props.uiState.sheetsState.setRoundNumber(props.uiState.pendingSheet.roundNumber);
     props.uiState.sheetsState.setSheetId(props.uiState.pendingSheet.sheetId);
-    props.uiState.sheetsState.setExportStatus(
-        {
-            isError: false,
-            status: "Beginning export",
-        },
-        ExportState.Exporting
-    );
 
-    // TODO: Seems like we're stuck in the old dialog until this finishes... don't know why. May need to split out
-    // dialogs, which is okay.
-    return Sheets.exportToSheet(props.game, props.uiState);
+    // props.uiState.resetPendingSheet(); // Can't do this because pending is what determines if this is here
+
+    Sheets.exportToSheet(props.game, props.uiState);
+    return;
 }
 
 function onClose(props: IExportDialogProps): void {

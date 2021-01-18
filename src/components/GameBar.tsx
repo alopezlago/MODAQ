@@ -8,7 +8,6 @@ import {
     CommandBar,
 } from "@fluentui/react";
 
-//// import * as Sheets from "src/sheets/Sheets";
 import { GameState } from "src/state/GameState";
 import { UIState } from "src/state/UIState";
 import { Cycle } from "src/state/Cycle";
@@ -16,7 +15,7 @@ import { Bonus } from "src/state/PacketState";
 import { AddPlayerDialog } from "./AddPlayerDialog";
 import { Player } from "src/state/TeamState";
 import { ITossupAnswerEvent } from "src/state/Events";
-import { ExportDialog } from "./ExportDialog";
+import { ExportDialog, ExportStatusDialog } from "./ExportDialog";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
@@ -88,6 +87,7 @@ export const GameBar = observer(
                 <CommandBar items={items} overflowButtonProps={overflowProps} />
                 <AddPlayerDialog game={props.game} uiState={props.uiState} />
                 <ExportDialog game={props.game} uiState={props.uiState} />
+                <ExportStatusDialog game={props.game} uiState={props.uiState} />
             </>
         );
     }
