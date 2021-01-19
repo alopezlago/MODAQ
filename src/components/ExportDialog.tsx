@@ -90,7 +90,7 @@ export const ExportDialog = observer(
 );
 
 const settingsStackTokens: Partial<IStackTokens> = { childrenGap: 10 };
-const maximumRoundNumber: number = 30;
+const maximumRoundNumber = 30;
 
 const ExportSettingsDialogBody = observer(
     (props: IExportDialogProps): JSX.Element => {
