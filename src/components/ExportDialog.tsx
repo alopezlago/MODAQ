@@ -60,10 +60,12 @@ export const ExportDialog = observer(
         let footer: JSX.Element | undefined;
         if (props.uiState.sheetsState?.exportState == undefined) {
             body = <ExportSettingsDialogBody {...props} />;
+
+            const exportDisabled: boolean = (props.uiState.pendingSheet?.sheetId ?? "") === "";
             footer = (
                 <DialogFooter>
-                    <DefaultButton text="Cancel" onClick={cancelHandler} />
-                    <PrimaryButton text="Export" onClick={exportHandler} />
+                    <DefaultButton text="Cancel" onClick={cancelHandler} autoFocus={false} />
+                    <PrimaryButton text="Export" onClick={exportHandler} disabled={exportDisabled} autoFocus={false} />
                 </DialogFooter>
             );
         } else {
@@ -90,6 +92,7 @@ export const ExportDialog = observer(
 );
 
 const settingsStackTokens: Partial<IStackTokens> = { childrenGap: 10 };
+const sheetsPrefix = "https://docs.google.com/spreadsheets/d/";
 const maximumRoundNumber = 30;
 
 const ExportSettingsDialogBody = observer(
@@ -103,9 +106,6 @@ const ExportSettingsDialogBody = observer(
                 }
 
                 newValue = newValue.trim();
-
-                // TODO: This should be a const outside of the function when we move it
-                const sheetsPrefix = "https://docs.google.com/spreadsheets/d/";
                 if (newValue.startsWith(sheetsPrefix)) {
                     const nextSlash: number = newValue.indexOf("/", sheetsPrefix.length);
                     const sheetsId: string = newValue.substring(
@@ -114,6 +114,8 @@ const ExportSettingsDialogBody = observer(
                     );
 
                     props.uiState.updatePendingSheetId(sheetsId.trim());
+                } else {
+                    props.uiState.updatePendingSheetId("");
                 }
             },
             [props]
@@ -173,17 +175,16 @@ const ExportSettingsDialogBody = observer(
         const roundNumber: number = sheet.roundNumber ?? 1;
 
         // TODO: TextField needs to be wider
-        // TODO: Valdiate SheetsUrl and round number.
-        // - SheetsUrl must be a sheet we can parse
-        // - Round number must be numeric/non-empty. Could also make round number a switcher/counter control?
-        //     - Should be a SpinButton! Can avoid validation that way
         return (
             <Stack tokens={settingsStackTokens}>
                 <TextField
                     label="SheetsUrl"
                     required={true}
                     onChange={sheetsUrlChangeHandler}
+                    onGetErrorMessage={validateSheetsUrl}
                     validateOnFocusOut={true}
+                    validateOnLoad={false}
+                    autoFocus={true}
                 />
                 <SpinButton
                     defaultValue={"1"}
@@ -202,6 +203,21 @@ const ExportSettingsDialogBody = observer(
         );
     }
 );
+
+function validateSheetsUrl(url: string): string | undefined {
+    if (url == undefined) {
+        return undefined;
+    } else if (url.trim() === "") {
+        return "URL is required";
+    }
+
+    url = url.trim();
+    if (!url.startsWith(sheetsPrefix)) {
+        return "The URL must start with \"https://docs.google.com/spreadsheets/d/\"";
+    }
+
+    return undefined;
+}
 
 const ExportStatusBody = observer(
     (props: IExportDialogProps): JSX.Element => {
