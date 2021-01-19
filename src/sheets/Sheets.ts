@@ -5,9 +5,10 @@ import { IBonusProtestEvent } from "src/state/Events";
 import { IPlayer } from "src/state/TeamState";
 
 // TODO:
+// - Refactor dialogs so there's a ModalDialogManager, which can handle rendering dialogs. Could be stacked, though maybe
+//   it makes sense to just render modals?
 // - UI for writing to the sheet. It should have two input fields: a URL to the sheet, and the round number
 //     - Needs validation
-//     - Doesn't update the state right away... stays on the main screen, then changes later...
 // - UI for picking teams from the sheet.
 //     - We need to make "+ New Game" a split button; one for "manual teams" and one for "from OphirStats"
 //     - From OphirStats should have an input field for the URL and a button to load the teams/players
@@ -17,6 +18,12 @@ import { IPlayer } from "src/state/TeamState";
 // - Split the logic for creating ranges from the logic for export. Maybe have some IGoogleSheetsApi that can sign in
 //   and send the clear/update requests, so that the rest of it is testable
 //    - Alternatively, split this into Sheet.ts and SheetsApi.ts, and have the UI call SheetsApi, which calls Sheet.ts
+// - Socket integration! Can be very tricky because of how the cycle/phases are backed differently
+//     - Need to send a message when a tossup is scored. Need to send one when a bonus is scored, but it shouldn't be
+//       sent until "Next Question" is clicked.
+//         - Alternatively, we should have a different Game implementation, and we should move it to an interface (IGame).
+//         - Ones that use advanced stats would support phases that have advanced stats, and would allow us to jump to
+//           any phase.
 
 // Ideally, next steps would be to have a autorun or reaction when cycles change, so we can update the scoresheet.
 // But to keep things simple at first, can just export (adding players > 8 could cause problems, as could multiple tiebreakers)

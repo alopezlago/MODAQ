@@ -11,6 +11,9 @@ import {
     PrimaryButton,
     DefaultButton,
     Label,
+    SpinButton,
+    Stack,
+    IStackTokens,
 } from "@fluentui/react";
 
 import * as Sheets from "src/sheets/Sheets";
@@ -86,6 +89,9 @@ export const ExportDialog = observer(
     }
 );
 
+const settingsStackTokens: Partial<IStackTokens> = { childrenGap: 10 };
+const maximumRoundNumber: number = 30;
+
 const ExportSettingsDialogBody = observer(
     (props: IExportDialogProps): JSX.Element => {
         const sheetsUrlChangeHandler = React.useCallback(
@@ -114,18 +120,47 @@ const ExportSettingsDialogBody = observer(
         );
 
         const roundNumberChangeHandler = React.useCallback(
-            (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+            (newValue: string) => {
                 if (newValue == undefined) {
                     return;
                 }
 
-                const roundNumber: number | undefined = parseInt(newValue, 10);
-                if (isNaN(roundNumber)) {
+                const roundNumber: number = parseInt(newValue, 10);
+                if (isNaN(roundNumber) || roundNumber < 1 || roundNumber > maximumRoundNumber) {
                     // Don't accept the input if it's not a number
                     return;
                 }
 
                 props.uiState.updatePendingSheetRoundNumber(roundNumber);
+                return roundNumber.toString();
+            },
+            [props]
+        );
+
+        const roundNumberDecrementHandler = React.useCallback(
+            (newValue: string) => {
+                const roundNumber: number = parseInt(newValue, 10);
+                if (isNaN(roundNumber) || roundNumber <= 1) {
+                    return;
+                }
+
+                const newRoundNumber: number = roundNumber - 1;
+                props.uiState.updatePendingSheetRoundNumber(newRoundNumber);
+                return newRoundNumber.toString();
+            },
+            [props]
+        );
+
+        const roundNumberIncrementHandler = React.useCallback(
+            (newValue: string) => {
+                const roundNumber: number = parseInt(newValue, 10);
+                if (isNaN(roundNumber) || roundNumber >= maximumRoundNumber) {
+                    return;
+                }
+
+                const newRoundNumber: number = roundNumber + 1;
+                props.uiState.updatePendingSheetRoundNumber(newRoundNumber);
+                return newRoundNumber.toString();
             },
             [props]
         );
@@ -138,16 +173,32 @@ const ExportSettingsDialogBody = observer(
         const roundNumber: number = sheet.roundNumber ?? 1;
 
         // TODO: TextField needs to be wider
+        // TODO: Valdiate SheetsUrl and round number.
+        // - SheetsUrl must be a sheet we can parse
+        // - Round number must be numeric/non-empty. Could also make round number a switcher/counter control?
+        //     - Should be a SpinButton! Can avoid validation that way
         return (
-            <>
-                <TextField label="SheetsUrl" required={true} onChange={sheetsUrlChangeHandler} />
+            <Stack tokens={settingsStackTokens}>
                 <TextField
-                    label="RoundNumber"
-                    value={roundNumber.toString()}
+                    label="SheetsUrl"
                     required={true}
-                    onChange={roundNumberChangeHandler}
+                    onChange={sheetsUrlChangeHandler}
+                    validateOnFocusOut={true}
                 />
-            </>
+                <SpinButton
+                    defaultValue={"1"}
+                    label="Round Number"
+                    onIncrement={roundNumberIncrementHandler}
+                    onDecrement={roundNumberDecrementHandler}
+                    onValidate={roundNumberChangeHandler}
+                    value={roundNumber.toString()}
+                    min={1}
+                    max={maximumRoundNumber}
+                    step={1}
+                    incrementButtonAriaLabel={"Increase round nubmer by 1"}
+                    decrementButtonAriaLabel={"Decrease round number by 1"}
+                />
+            </Stack>
         );
     }
 );
