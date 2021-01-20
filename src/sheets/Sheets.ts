@@ -3,9 +3,9 @@ import { ExportState, LoadingState } from "src/state/SheetState";
 import { GameState } from "src/state/GameState";
 import { IBonusProtestEvent } from "src/state/Events";
 import { IPlayer } from "src/state/TeamState";
+import { AppState } from "src/state/AppState";
 
 // TODO:
-// - Refactor so that game/UI state travel in an appState prop
 // - Refactor dialogs so there's a ModalDialogManager, which can handle rendering dialogs. Could be stacked, though maybe
 //   it makes sense to just render modals?
 // - UI for picking teams from the sheet.
@@ -29,7 +29,10 @@ import { IPlayer } from "src/state/TeamState";
 
 const firstCycleRow = 8;
 
-export async function exportToSheet(game: GameState, uiState: UIState): Promise<void> {
+export async function exportToSheet(appState: AppState): Promise<void> {
+    const game: GameState = appState.game;
+    const uiState: UIState = appState.uiState;
+
     uiState.sheetsState.setExportStatus(
         {
             isError: false,

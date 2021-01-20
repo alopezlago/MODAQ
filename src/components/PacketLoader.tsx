@@ -4,6 +4,7 @@ import { Label, ILabelStyles } from "@fluentui/react";
 
 import { UIState } from "src/state/UIState";
 import { Tossup, Bonus, IBonusPart, PacketState } from "src/state/PacketState";
+import { AppState } from "src/state/AppState";
 
 export const PacketLoader = observer(
     (props: IPacketLoaderProps): JSX.Element => {
@@ -19,7 +20,7 @@ export const PacketLoader = observer(
 
         const statusStyles: ILabelStyles = {
             root: {
-                color: props.uiState.packetParseStatus?.isError ?? false ? "rgb(128, 0, 0)" : undefined,
+                color: props.appState.uiState.packetParseStatus?.isError ?? false ? "rgb(128, 0, 0)" : undefined,
             },
         };
 
@@ -34,7 +35,7 @@ export const PacketLoader = observer(
                     ref={fileInput}
                     onChange={uploadHandler}
                 />
-                <Label styles={statusStyles}>{props.uiState.packetParseStatus?.status}</Label>
+                <Label styles={statusStyles}>{props.appState.uiState.packetParseStatus?.status}</Label>
             </div>
         );
     }
@@ -47,7 +48,7 @@ function onChange(
     event: React.ChangeEvent<HTMLInputElement>
 ): void {
     event.preventDefault();
-    props.uiState.clearPacketStatus();
+    props.appState.uiState.clearPacketStatus();
 
     if (fileInput.current?.files == undefined) {
         return;
@@ -68,7 +69,7 @@ function onChange(
 function onLoad(ev: ProgressEvent<FileReader>, props: IPacketLoaderProps): void {
     // TODO: This should appear in the UI. Maybe set something in UIState.
     if (ev.target == undefined || ev.target.result == undefined) {
-        props.uiState.setPacketStatus({ isError: true, status: "Error loading packet: no file uploaded." });
+        props.appState.uiState.setPacketStatus({ isError: true, status: "Error loading packet: no file uploaded." });
         throw "Error loading packet: no file uploaded.";
     }
 
@@ -88,7 +89,7 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
         mode: "cors",
     };
 
-    props.uiState.setPacketStatus({ isError: false, status: "Contacting parsing service..." });
+    props.appState.uiState.setPacketStatus({ isError: false, status: "Contacting parsing service..." });
 
     try {
         const response: Response = await fetch(
@@ -106,7 +107,7 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
                 errorMessage = errorMessageMap.errorMessage.join("\n");
             }
 
-            props.uiState.setPacketStatus({
+            props.appState.uiState.setPacketStatus({
                 isError: true,
                 status: `Error loading packet: Parsing service returned an error (${response.status}). Message: ${errorMessage}`,
             });
@@ -117,7 +118,7 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
         loadJsonPacket(props, responseJson);
     } catch (e) {
         const error: Error = e;
-        props.uiState.setPacketStatus({
+        props.appState.uiState.setPacketStatus({
             isError: true,
             status: "Error loading packet: request to parsing service failed. Error: " + error.message,
         });
@@ -126,14 +127,16 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
 }
 
 function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
-    props.uiState.setPacketStatus({
+    const uiState: UIState = props.appState.uiState;
+
+    uiState.setPacketStatus({
         isError: false,
         status: "Loading packet...",
     });
 
     const parsedPacket: IPacket = JSON.parse(json) as IPacket;
     if (parsedPacket.tossups == undefined) {
-        props.uiState.setPacketStatus({
+        uiState.setPacketStatus({
             isError: true,
             status: "Error loading packet: Packet doesn't have a tossups field.",
         });
@@ -147,7 +150,7 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
         bonuses = parsedPacket.bonuses.map((bonus, index) => {
             if (bonus.answers.length !== bonus.parts.length || bonus.answers.length !== bonus.values.length) {
                 const errorMessage = `Error loading packet: Unequal number of parts, answers, and values for bonus ${index}. Answers #: ${bonus.answers.length}, Parts #: ${bonus.parts.length}, Values #: ${bonus.values.length}`;
-                props.uiState.setPacketStatus({
+                uiState.setPacketStatus({
                     isError: true,
                     status: errorMessage,
                 });
@@ -171,7 +174,7 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
     packet.setTossups(tossups);
     packet.setBonuses(bonuses);
 
-    props.uiState.setPacketStatus({
+    uiState.setPacketStatus({
         isError: false,
         status: `Packet loaded. ${tossups.length} tossup(s), ${bonuses.length} bonus(es).`,
     });
@@ -181,7 +184,7 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
 
 export interface IPacketLoaderProps {
     loadPacketIntoGame?: boolean;
-    uiState: UIState;
+    appState: AppState;
 
     onLoad(packet: PacketState): void;
 }

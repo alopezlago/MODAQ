@@ -4,7 +4,6 @@ import { mergeStyleSets } from "@fluentui/react";
 import { observer } from "mobx-react";
 
 import * as FormattedTextParser from "src/parser/FormattedTextParser";
-import { UIState } from "src/state/UIState";
 import { IBonusPart } from "src/state/PacketState";
 import { Cycle } from "src/state/Cycle";
 import { Answer } from "./Answer";
@@ -55,7 +54,6 @@ export interface IBonusQuestionPartProps {
     cycle: Cycle;
     disabled: boolean;
     partNumber: number;
-    uiState: UIState;
 }
 
 interface IBonusQuestionPartClassNames {

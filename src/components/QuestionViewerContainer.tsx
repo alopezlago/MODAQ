@@ -2,15 +2,14 @@ import React from "react";
 import { observer } from "mobx-react";
 import { mergeStyleSets } from "@fluentui/react";
 
-import { UIState } from "src/state/UIState";
 import { CycleChooser } from "./CycleChooser";
-import { GameState } from "src/state/GameState";
 import { QuestionViewer } from "./QuestionViewer";
+import { AppState } from "src/state/AppState";
 
 export const QuestionViewerContainer = observer((props: IQuestionViewerContainerProps) => {
     const classes: IQuestionViewerContainerClassNames = getClassNames();
 
-    if (!props.game.isLoaded) {
+    if (!props.appState.game.isLoaded) {
         return null;
     }
 
@@ -25,8 +24,7 @@ export const QuestionViewerContainer = observer((props: IQuestionViewerContainer
 });
 
 export interface IQuestionViewerContainerProps {
-    game: GameState;
-    uiState: UIState;
+    appState: AppState;
 }
 
 interface IQuestionViewerContainerClassNames {

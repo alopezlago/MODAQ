@@ -8,11 +8,11 @@ import { Tossup } from "src/state/PacketState";
 import { QuestionWord } from "./QuestionWord";
 import { Cycle } from "src/state/Cycle";
 import { BuzzMenu } from "./BuzzMenu";
-import { GameState } from "src/state/GameState";
 import { Answer } from "./Answer";
 import { IFormattedText } from "src/parser/IFormattedText";
 import { TossupProtestDialog } from "./TossupProtestDialog";
 import { CancelButton } from "./CancelButton";
+import { AppState } from "src/state/AppState";
 
 export const TossupQuestion = observer(
     (props: IQuestionProps): JSX.Element => {
@@ -56,13 +56,13 @@ export const TossupQuestion = observer(
         );
         const throwOutClickHandler: () => void = React.useCallback(() => {
             props.cycle.addThrownOutTossup(props.tossupNumber - 1);
-            props.uiState.setSelectedWordIndex(-1);
+            props.appState.uiState.setSelectedWordIndex(-1);
         }, [props]);
 
         // Need tossuptext/answer in one container, X in the other
         return (
             <div className={classes.tossupContainer}>
-                <TossupProtestDialog cycle={props.cycle} uiState={props.uiState} />
+                <TossupProtestDialog appState={props.appState} cycle={props.cycle} />
                 <div className={classes.tossupText}>
                     <div
                         className={classes.tossupQuestionText}
@@ -96,9 +96,10 @@ function onTossupTextClicked(props: IQuestionProps, event: React.MouseEvent<HTML
         return;
     }
 
-    const selectedIndex = props.uiState.selectedWordIndex === index ? -1 : index;
-    props.uiState.setSelectedWordIndex(selectedIndex);
-    props.uiState.showBuzzMenu();
+    const uiState: UIState = props.appState.uiState;
+    const selectedIndex = uiState.selectedWordIndex === index ? -1 : index;
+    uiState.setSelectedWordIndex(selectedIndex);
+    uiState.showBuzzMenu();
 
     event.preventDefault();
     event.stopPropagation();
@@ -106,19 +107,19 @@ function onTossupTextClicked(props: IQuestionProps, event: React.MouseEvent<HTML
 
 // We need to use a wrapper component so we can give it a key. Otherwise, React will complain
 const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
-    const selected: boolean = props.index === props.uiState.selectedWordIndex;
+    const uiState: UIState = props.appState.uiState;
+    const selected: boolean = props.index === uiState.selectedWordIndex;
 
     const buzzMenu: JSX.Element | undefined =
-        selected && props.uiState.buzzMenuVisible ? (
+        selected && uiState.buzzMenuVisible ? (
             <BuzzMenu
+                appState={props.appState}
                 bonusIndex={props.bonusIndex}
                 cycle={props.cycle}
-                game={props.game}
                 position={props.index}
                 target={props.selectedWordRef}
                 tossup={props.tossup}
                 tossupNumber={props.tossupNumber}
-                uiState={props.uiState}
             />
         ) : undefined;
 
@@ -127,7 +128,7 @@ const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
             <QuestionWord
                 index={props.index}
                 word={props.word}
-                selected={props.index === props.uiState.selectedWordIndex}
+                selected={props.index === uiState.selectedWordIndex}
                 correct={props.index === props.correctBuzzIndex}
                 wrong={props.wrongBuzzIndexes.findIndex((position) => position === props.index) >= 0}
                 componentRef={selected ? props.selectedWordRef : undefined}
@@ -139,24 +140,22 @@ const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
 });
 
 export interface IQuestionProps {
+    appState: AppState;
     bonusIndex: number;
     cycle: Cycle;
-    game: GameState;
     tossup: Tossup;
     tossupNumber: number;
-    uiState: UIState;
 }
 
 interface IQuestionWordWrapperProps {
+    appState: AppState;
     bonusIndex: number;
     correctBuzzIndex: number;
     cycle: Cycle;
-    game: GameState;
     index: number;
     selectedWordRef: React.MutableRefObject<null>;
     tossup: Tossup;
     tossupNumber: number;
-    uiState: UIState;
     word: IFormattedText[];
     wrongBuzzIndexes: number[];
 }

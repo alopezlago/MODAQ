@@ -16,36 +16,40 @@ import { AddPlayerDialog } from "./AddPlayerDialog";
 import { Player } from "src/state/TeamState";
 import { ITossupAnswerEvent } from "src/state/Events";
 import { ExportDialog } from "./ExportDialog";
+import { AppState } from "src/state/AppState";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
 export const GameBar = observer(
     (props: IGameBarProps): JSX.Element => {
         // This should pop up the new game handler
+        const uiState: UIState = props.appState.uiState;
+        const game: GameState = props.appState.game;
+
         const newGameHandler = React.useCallback(() => {
-            props.uiState.createPendingNewGame();
-        }, [props]);
+            uiState.createPendingNewGame();
+        }, [uiState]);
         const protestBonusHandler = React.useCallback(() => {
             // Issue: pending protest needs existing index. Need to update it to include the part number
             // Means bonus protest dialog should include a dropdown or radio box
-            const cycle: Cycle = props.game.cycles[props.uiState.cycleIndex];
+            const cycle: Cycle = game.cycles[uiState.cycleIndex];
             if (cycle == undefined || cycle.bonusAnswer == undefined) {
                 return;
             }
 
-            const bonusIndex: number = props.game.getBonusIndex(props.uiState.cycleIndex);
-            const bonus: Bonus | undefined = props.game.packet.bonuses[bonusIndex];
+            const bonusIndex: number = game.getBonusIndex(uiState.cycleIndex);
+            const bonus: Bonus | undefined = game.packet.bonuses[bonusIndex];
             if (bonus == undefined) {
                 // Something is wrong... the bonus is undefined, but this handler can be accessed?
                 throw new Error(`Impossible to add bonus protest for bonus question ${bonusIndex}`);
             }
 
             const protestableParts: number[] = cycle.getProtestableBonusPartIndexes(bonus.parts.length);
-            props.uiState.setPendingBonusProtest(cycle.bonusAnswer.receivingTeamName, bonusIndex, protestableParts[0]);
-        }, [props]);
+            uiState.setPendingBonusProtest(cycle.bonusAnswer.receivingTeamName, bonusIndex, protestableParts[0]);
+        }, [game, uiState]);
         const addPlayerHandler = React.useCallback(() => {
-            props.uiState.createPendingNewPlayer(props.game.teamNames[0]);
-        }, [props]);
+            uiState.createPendingNewPlayer(game.teamNames[0]);
+        }, [uiState, game]);
 
         const items: ICommandBarItemProps[] = [
             {
@@ -85,15 +89,15 @@ export const GameBar = observer(
         return (
             <>
                 <CommandBar items={items} overflowButtonProps={overflowProps} />
-                <AddPlayerDialog game={props.game} uiState={props.uiState} />
-                <ExportDialog game={props.game} uiState={props.uiState} />
+                <AddPlayerDialog appState={props.appState} />
+                <ExportDialog appState={props.appState} />
             </>
         );
     }
 );
 
 async function exportToSheets(props: IGameBarProps): Promise<void> {
-    props.uiState.createPendingSheet();
+    props.appState.uiState.createPendingSheet();
     return;
 }
 
@@ -103,12 +107,14 @@ function getActionSubMenuItems(
     protestBonusHandler: () => void
 ): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
+    const uiState: UIState = props.appState.uiState;
+    const game: GameState = props.appState.game;
 
-    const teamNames: string[] = props.game.teamNames;
+    const teamNames: string[] = props.appState.game.teamNames;
     const swapActivePlayerMenus: ICommandBarItemProps[] = [];
     for (const teamName of teamNames) {
-        const players: Player[] = props.game.getPlayers(teamName);
-        const activePlayers: Set<Player> = props.game.getActivePlayers(teamName, props.uiState.cycleIndex);
+        const players: Player[] = game.getPlayers(teamName);
+        const activePlayers: Set<Player> = game.getActivePlayers(teamName, uiState.cycleIndex);
 
         // Potential issue: if we have an "add player" sub, they shouldn't appear before they were added?
         const subs: Player[] = players.filter((player) => !activePlayers.has(player));
@@ -201,11 +207,11 @@ function getActionSubMenuItems(
 
     items.push(playerManagementSection);
 
-    const cycle: Cycle = props.game.cycles[props.uiState.cycleIndex];
+    const cycle: Cycle = game.cycles[uiState.cycleIndex];
     let protestBonusItem: ICommandBarItemProps | undefined = undefined;
     if (cycle && cycle.bonusAnswer != undefined) {
-        const bonusIndex: number = props.game.getBonusIndex(props.uiState.cycleIndex);
-        const bonus: Bonus = props.game.packet.bonuses[bonusIndex];
+        const bonusIndex: number = game.getBonusIndex(uiState.cycleIndex);
+        const bonus: Bonus = game.packet.bonuses[bonusIndex];
         if (cycle.getProtestableBonusPartIndexes(bonus.parts.length).length > 0) {
             protestBonusItem = {
                 key: "protestBonus",
@@ -230,13 +236,14 @@ function getActionSubMenuItems(
 
 function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
+    const game: GameState = props.appState.game;
 
     items.push({
         key: "copyBuzzPoints",
         text: "Copy buzz points",
         onClick: () => {
-            const teamNames: string[] = props.game.teamNames;
-            const buzzPoints: [number?, number?][] = props.game.cycles.map((cycle) => {
+            const teamNames: string[] = game.teamNames;
+            const buzzPoints: [number?, number?][] = game.cycles.map((cycle) => {
                 const result: [number?, number?] = [undefined, undefined];
                 const buzzes: ITossupAnswerEvent[] = cycle.orderedBuzzes;
                 for (const buzz of buzzes) {
@@ -265,12 +272,12 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
 
     // TODO: Blob should probably be memoized, so we don't keep stringifying? It does appear that the link is the same
     // if the cycles haven't changed.
-    const cyclesJson = new Blob([JSON.stringify(props.game.cycles)], { type: "application/json" });
+    const cyclesJson = new Blob([JSON.stringify(game.cycles)], { type: "application/json" });
     items.push({
         key: "downloadJson",
         text: "Download events (JSON)",
         href: URL.createObjectURL(cyclesJson),
-        download: `${props.game.teamNames.join("_")}_Events.json`,
+        download: `${game.teamNames.join("_")}_Events.json`,
     });
 
     return items;
@@ -286,7 +293,9 @@ function onRemovePlayerClick(
         return;
     }
 
-    item.data.props.game.cycles[item.data.props.uiState.cycleIndex].addPlayerLeaves(item.data.activePlayer);
+    item.data.props.appState.game.cycles[item.data.props.appState.uiState.cycleIndex].addPlayerLeaves(
+        item.data.activePlayer
+    );
 }
 
 function onSwapPlayerClick(
@@ -299,7 +308,7 @@ function onSwapPlayerClick(
         return;
     }
 
-    item.data.props.game.cycles[item.data.props.uiState.cycleIndex].addSwapSubstitution(
+    item.data.props.appState.game.cycles[item.data.props.appState.uiState.cycleIndex].addSwapSubstitution(
         item.data.player,
         item.data.activePlayer
     );
@@ -335,8 +344,7 @@ function copyText(text: string) {
 }
 
 export interface IGameBarProps {
-    game: GameState;
-    uiState: UIState;
+    appState: AppState;
 }
 
 interface ISubMenuItemData {

@@ -5,32 +5,34 @@ import { ProtestDialogBase } from "./ProtestDialogBase";
 import { UIState } from "src/state/UIState";
 import { Cycle } from "src/state/Cycle";
 import { ITossupProtestEvent } from "src/state/Events";
+import { AppState } from "src/state/AppState";
 
 export const TossupProtestDialog = observer(
     (props: ITossupProtestDialogProps): JSX.Element => {
+        const uiState: UIState = props.appState.uiState;
         const submitHandler = React.useCallback(() => onSubmit(props), [props]);
-        const hideHandler = React.useCallback(() => props.uiState.resetPendingTossupProtest(), [props]);
+        const hideHandler = React.useCallback(() => uiState.resetPendingTossupProtest(), [uiState]);
 
-        if (props.uiState.pendingTossupProtestEvent == undefined) {
+        if (uiState.pendingTossupProtestEvent == undefined) {
             // Nothing to render if there's no pending protest event.
             return <></>;
         }
 
         return (
             <ProtestDialogBase
+                appState={props.appState}
                 autoFocusOnReason={true}
-                hidden={props.uiState.pendingTossupProtestEvent == undefined}
+                hidden={uiState.pendingTossupProtestEvent == undefined}
                 hideDialog={hideHandler}
                 onSubmit={submitHandler}
-                reason={props.uiState.pendingTossupProtestEvent?.reason}
-                uiState={props.uiState}
+                reason={uiState.pendingTossupProtestEvent?.reason}
             />
         );
     }
 );
 
 function onSubmit(props: ITossupProtestDialogProps): void {
-    const pendingProtestEvent: ITossupProtestEvent | undefined = props.uiState.pendingTossupProtestEvent;
+    const pendingProtestEvent: ITossupProtestEvent | undefined = props.appState.uiState.pendingTossupProtestEvent;
     if (pendingProtestEvent) {
         props.cycle.addTossupProtest(
             pendingProtestEvent.teamName,
@@ -38,11 +40,11 @@ function onSubmit(props: ITossupProtestDialogProps): void {
             pendingProtestEvent.position,
             pendingProtestEvent.reason
         );
-        props.uiState.resetPendingTossupProtest();
+        props.appState.uiState.resetPendingTossupProtest();
     }
 }
 
 export interface ITossupProtestDialogProps {
+    appState: AppState;
     cycle: Cycle;
-    uiState: UIState;
 }

@@ -4,7 +4,7 @@ import { DefaultButton, IButtonStyles } from "@fluentui/react/lib/Button";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
 
 import { UIState } from "src/state/UIState";
-import { GameState } from "src/state/GameState";
+import { AppState } from "src/state/AppState";
 
 const ReturnKeyCode = 13;
 const questionNumberTextStyle: Partial<ITextFieldStyles> = {
@@ -40,12 +40,14 @@ export const CycleChooser = observer((props: ICycleChooserProps) => {
     );
     const onQuestionLabelDoubleClickHandler = React.useCallback(() => onQuestionLabelDoubleClick(props), [props]);
 
+    const uiState: UIState = props.appState.uiState;
+
     // TODO: Move away from buttons to something like images
     const previousButton: JSX.Element = (
         <DefaultButton
             key="previousButton"
             onClick={onPreviousClickHandler}
-            disabled={props.uiState.cycleIndex === 0}
+            disabled={uiState.cycleIndex === 0}
             styles={previousButtonStyle}
         >
             &larr; Previous
@@ -62,9 +64,9 @@ export const CycleChooser = observer((props: ICycleChooserProps) => {
         </DefaultButton>
     );
 
-    const questionNumber: number = props.uiState.cycleIndex + 1;
+    const questionNumber: number = uiState.cycleIndex + 1;
     let questionNumberViewer: JSX.Element | null = null;
-    if (props.uiState.isEditingCycleIndex) {
+    if (uiState.isEditingCycleIndex) {
         questionNumberViewer = (
             <TextField
                 type="text"
@@ -99,7 +101,7 @@ export const CycleChooser = observer((props: ICycleChooserProps) => {
 
 // We may want these to be computed properties in the UIState, but that requires it having access to the packet
 function nextDisabled(props: ICycleChooserProps): boolean {
-    return props.uiState.cycleIndex + 1 < props.game.packet.tossups.length;
+    return props.appState.uiState.cycleIndex + 1 < props.appState.game.packet.tossups.length;
 }
 
 function onProposedQuestionNumberBlur(event: React.FocusEvent<HTMLInputElement>, props: ICycleChooserProps): void {
@@ -116,16 +118,16 @@ function onProposedQuestionNumberKeyDown(
 }
 
 function onNextClick(props: ICycleChooserProps): void {
-    props.uiState.nextCycle();
+    props.appState.uiState.nextCycle();
 }
 
 function onPreviousClick(props: ICycleChooserProps): void {
-    props.uiState.previousCycle();
+    props.appState.uiState.previousCycle();
 }
 
 function onQuestionLabelDoubleClick(props: ICycleChooserProps): void {
     // The question number is one higher than the cycle index
-    props.uiState.setIsEditingCycleIndex(true);
+    props.appState.uiState.setIsEditingCycleIndex(true);
 }
 
 function commitCycleIndex(props: ICycleChooserProps, value: string): void {
@@ -134,14 +136,13 @@ function commitCycleIndex(props: ICycleChooserProps, value: string): void {
     }
 
     const propsedCycleIndex: number = parseInt(value, 10);
-    if (propsedCycleIndex >= 1 && propsedCycleIndex <= props.game.packet.tossups.length) {
-        props.uiState.setCycleIndex(propsedCycleIndex - 1);
+    if (propsedCycleIndex >= 1 && propsedCycleIndex <= props.appState.game.packet.tossups.length) {
+        props.appState.uiState.setCycleIndex(propsedCycleIndex - 1);
     }
 
-    props.uiState.setIsEditingCycleIndex(false);
+    props.appState.uiState.setIsEditingCycleIndex(false);
 }
 
 export interface ICycleChooserProps {
-    game: GameState;
-    uiState: UIState;
+    appState: AppState;
 }

@@ -18,6 +18,7 @@ import * as NewGameValidator from "src/state/NewGameValidator";
 import { UIState } from "src/state/UIState";
 import { GameState } from "src/state/GameState";
 import { Player, IPlayer } from "src/state/TeamState";
+import { AppState } from "src/state/AppState";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -50,7 +51,7 @@ export const AddPlayerDialog = observer(
 
         return (
             <Dialog
-                hidden={props.uiState.pendingNewPlayer === undefined}
+                hidden={props.appState.uiState.pendingNewPlayer === undefined}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
@@ -67,27 +68,29 @@ export const AddPlayerDialog = observer(
 
 const AddPlayerDialogBody = observer(
     (props: INewGameDialogProps): JSX.Element => {
+        const uiState: UIState = props.appState.uiState;
+
         const teamChangeHandler = React.useCallback(
             (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
                 if (option?.text != undefined) {
-                    props.uiState.updatePendingNewPlayerTeamName(option.text);
+                    uiState.updatePendingNewPlayerTeamName(option.text);
                 }
             },
-            [props]
+            [uiState]
         );
 
         const nameChangeHandler = React.useCallback(
             (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) =>
-                props.uiState.updatePendingNewPlayerName(newValue ?? ""),
-            [props]
+                uiState.updatePendingNewPlayerName(newValue ?? ""),
+            [uiState]
         );
 
-        const newPlayer: IPlayer | undefined = props.uiState.pendingNewPlayer;
+        const newPlayer: IPlayer | undefined = uiState.pendingNewPlayer;
         if (newPlayer === undefined) {
             return <></>;
         }
 
-        const teamOptions: IDropdownOption[] = props.game.teamNames.map((teamName, index) => {
+        const teamOptions: IDropdownOption[] = props.appState.game.teamNames.map((teamName, index) => {
             return {
                 key: index,
                 text: teamName,
@@ -105,7 +108,10 @@ const AddPlayerDialogBody = observer(
 );
 
 function onSubmit(props: INewGameDialogProps): void {
-    const newPlayer: Player | undefined = props.uiState.pendingNewPlayer;
+    const game: GameState = props.appState.game;
+    const uiState: UIState = props.appState.uiState;
+
+    const newPlayer: Player | undefined = uiState.pendingNewPlayer;
     if (newPlayer == undefined) {
         throw new Error("Tried adding a player with no new player");
     }
@@ -116,17 +122,17 @@ function onSubmit(props: INewGameDialogProps): void {
         return;
     }
 
-    props.uiState.updatePendingNewPlayerName(trimmedPlayerName);
+    uiState.updatePendingNewPlayerName(trimmedPlayerName);
 
-    const playersOnTeam: Player[] = props.game.getPlayers(newPlayer.teamName);
+    const playersOnTeam: Player[] = game.getPlayers(newPlayer.teamName);
     if (NewGameValidator.newPlayerNameUnique(playersOnTeam, trimmedPlayerName) !== undefined) {
         return;
     }
 
-    props.game.addPlayer(newPlayer);
+    game.addPlayer(newPlayer);
 
     // TODO: Only do this if the number of active players is less than the maximum number of active players
-    props.game.cycles[props.uiState.cycleIndex].addPlayerJoins(newPlayer);
+    game.cycles[uiState.cycleIndex].addPlayerJoins(newPlayer);
 
     hideDialog(props);
 }
@@ -136,10 +142,9 @@ function onCancel(props: INewGameDialogProps): void {
 }
 
 function hideDialog(props: INewGameDialogProps): void {
-    props.uiState.resetPendingNewPlayer();
+    props.appState.uiState.resetPendingNewPlayer();
 }
 
 export interface INewGameDialogProps {
-    game: GameState;
-    uiState: UIState;
+    appState: AppState;
 }

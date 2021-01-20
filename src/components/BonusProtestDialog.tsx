@@ -3,26 +3,26 @@ import { observer } from "mobx-react";
 import { Dropdown, IDropdownOption } from "@fluentui/react/lib/Dropdown";
 
 import { ProtestDialogBase } from "./ProtestDialogBase";
-import { UIState } from "src/state/UIState";
 import { Cycle } from "src/state/Cycle";
 import { IBonusProtestEvent } from "src/state/Events";
 import { Bonus } from "src/state/PacketState";
+import { AppState } from "src/state/AppState";
 
 export const BonusProtestDialog = observer(
     (props: IBonusProtestDialogProps): JSX.Element => {
         const partChangeHandler = React.useCallback(
             (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
                 if (option?.text != undefined) {
-                    props.uiState.updatePendingBonusProtestPart(option.key);
+                    props.appState.uiState.updatePendingBonusProtestPart(option.key);
                 }
             },
             [props]
         );
 
         const submitHandler = React.useCallback(() => onSubmit(props), [props]);
-        const hideHandler = React.useCallback(() => props.uiState.resetPendingBonusProtest(), [props]);
+        const hideHandler = React.useCallback(() => props.appState.uiState.resetPendingBonusProtest(), [props]);
 
-        const protestEvent: IBonusProtestEvent | undefined = props.uiState.pendingBonusProtestEvent;
+        const protestEvent: IBonusProtestEvent | undefined = props.appState.uiState.pendingBonusProtestEvent;
         if (protestEvent == undefined) {
             // We shouldn't be showing anything if there's no pending bonus protest. Return undefined.
             return <></>;
@@ -43,11 +43,11 @@ export const BonusProtestDialog = observer(
 
         return (
             <ProtestDialogBase
-                hidden={props.uiState.pendingBonusProtestEvent == undefined}
+                appState={props.appState}
+                hidden={props.appState.uiState.pendingBonusProtestEvent == undefined}
                 hideDialog={hideHandler}
                 onSubmit={submitHandler}
                 reason={protestEvent.reason}
-                uiState={props.uiState}
             >
                 {children}
             </ProtestDialogBase>
@@ -56,19 +56,19 @@ export const BonusProtestDialog = observer(
 );
 
 function onSubmit(props: IBonusProtestDialogProps): void {
-    const pendingProtestEvent: IBonusProtestEvent | undefined = props.uiState.pendingBonusProtestEvent;
+    const pendingProtestEvent: IBonusProtestEvent | undefined = props.appState.uiState.pendingBonusProtestEvent;
     if (pendingProtestEvent) {
         props.cycle.addBonusProtest(
             pendingProtestEvent.questionIndex,
             pendingProtestEvent.partIndex,
             pendingProtestEvent.reason
         );
-        props.uiState.resetPendingBonusProtest();
+        props.appState.uiState.resetPendingBonusProtest();
     }
 }
 
 export interface IBonusProtestDialogProps {
+    appState: AppState;
     bonus: Bonus;
     cycle: Cycle;
-    uiState: UIState;
 }

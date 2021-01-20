@@ -3,34 +3,19 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { initializeIcons } from "@fluentui/react/lib/Icons";
-import { configure, observable } from "mobx";
 import { observer } from "mobx-react";
 import { AsyncTrunk } from "mobx-sync";
 import "mobx-react/batchingForReactDom";
 
 import { Tossup, Bonus, PacketState, IBonusPart as BonusPart } from "./state/PacketState";
-import { GameState } from "./state/GameState";
-import { UIState } from "./state/UIState";
 import { Cycle } from "./state/Cycle";
 import { GameViewer } from "./components/GameViewer";
 import { PacketLoader } from "./components/PacketLoader";
 import { NewGameDialog } from "./components/NewGameDialog";
+import { AppState } from "./state/AppState";
 
 const firstTeamName = "Alpha";
 const secondTeamName = "B 2";
-
-class AppState {
-    @observable game: GameState;
-
-    @observable uiState: UIState;
-
-    constructor() {
-        configure({ enforceActions: "observed", computedRequiresReaction: true });
-
-        this.game = new GameState();
-        this.uiState = new UIState();
-    }
-}
 
 @observer
 class Root extends React.Component<{ appState: AppState }> {
@@ -39,9 +24,9 @@ class Root extends React.Component<{ appState: AppState }> {
             <div>
                 <button onClick={this.onInitialize}>Initialize game state</button>
                 <button onClick={this.onClear}>Clear state</button>
-                <PacketLoader onLoad={this.onPacketLoaded} uiState={this.props.appState.uiState} />
-                <NewGameDialog game={this.props.appState.game} uiState={this.props.appState.uiState} />
-                <GameViewer game={this.props.appState.game} uiState={this.props.appState.uiState} />
+                <PacketLoader onLoad={this.onPacketLoaded} appState={this.props.appState} />
+                <NewGameDialog appState={this.props.appState} />
+                <GameViewer appState={this.props.appState} />
             </div>
         );
     }

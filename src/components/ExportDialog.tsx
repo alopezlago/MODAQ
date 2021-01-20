@@ -18,9 +18,9 @@ import {
 
 import * as Sheets from "src/sheets/Sheets";
 import { UIState } from "src/state/UIState";
-import { GameState } from "src/state/GameState";
 import { IPendingSheet } from "src/state/IPendingSheet";
 import { SheetState } from "src/state/SheetState";
+import { AppState } from "src/state/AppState";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -53,6 +53,7 @@ const settingsStackTokens: Partial<IStackTokens> = { childrenGap: 10 };
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const ExportDialog = observer(
     (props: IExportDialogProps): JSX.Element => {
+        const uiState: UIState = props.appState.uiState;
         const cancelHandler = React.useCallback(() => onClose(props), [props]);
 
         // Can't use React.useCallback since it only appears in the first stage
@@ -60,10 +61,10 @@ export const ExportDialog = observer(
 
         let body: JSX.Element | undefined;
         let footer: JSX.Element | undefined;
-        if (props.uiState.sheetsState?.exportState == undefined) {
+        if (uiState.sheetsState?.exportState == undefined) {
             body = <ExportSettingsDialogBody {...props} />;
 
-            const exportDisabled: boolean = (props.uiState.pendingSheet?.sheetId ?? "") === "";
+            const exportDisabled: boolean = (uiState.pendingSheet?.sheetId ?? "") === "";
             footer = (
                 <DialogFooter>
                     <DefaultButton text="Cancel" onClick={cancelHandler} autoFocus={false} />
@@ -81,7 +82,7 @@ export const ExportDialog = observer(
 
         return (
             <Dialog
-                hidden={props.uiState.pendingSheet == undefined}
+                hidden={uiState.pendingSheet == undefined}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
@@ -95,6 +96,8 @@ export const ExportDialog = observer(
 
 const ExportSettingsDialogBody = observer(
     (props: IExportDialogProps): JSX.Element => {
+        const uiState: UIState = props.appState.uiState;
+
         const sheetsUrlChangeHandler = React.useCallback(
             (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
                 // URLs look like https://docs.google.com/spreadsheets/d/1ZWEIXEcDPpuYhMOqy7j8uKloKJ7xrMlx8Q8y4UCbjZA/edit#gid=17040017
@@ -111,12 +114,12 @@ const ExportSettingsDialogBody = observer(
                         nextSlash === -1 ? undefined : nextSlash
                     );
 
-                    props.uiState.updatePendingSheetId(sheetsId.trim());
+                    uiState.updatePendingSheetId(sheetsId.trim());
                 } else {
-                    props.uiState.updatePendingSheetId("");
+                    uiState.updatePendingSheetId("");
                 }
             },
-            [props]
+            [uiState]
         );
 
         const roundNumberChangeHandler = React.useCallback(
@@ -131,10 +134,10 @@ const ExportSettingsDialogBody = observer(
                     return;
                 }
 
-                props.uiState.updatePendingSheetRoundNumber(roundNumber);
+                uiState.updatePendingSheetRoundNumber(roundNumber);
                 return roundNumber.toString();
             },
-            [props]
+            [uiState]
         );
 
         const roundNumberDecrementHandler = React.useCallback(
@@ -145,10 +148,10 @@ const ExportSettingsDialogBody = observer(
                 }
 
                 const newRoundNumber: number = roundNumber - 1;
-                props.uiState.updatePendingSheetRoundNumber(newRoundNumber);
+                uiState.updatePendingSheetRoundNumber(newRoundNumber);
                 return newRoundNumber.toString();
             },
-            [props]
+            [uiState]
         );
 
         const roundNumberIncrementHandler = React.useCallback(
@@ -159,13 +162,13 @@ const ExportSettingsDialogBody = observer(
                 }
 
                 const newRoundNumber: number = roundNumber + 1;
-                props.uiState.updatePendingSheetRoundNumber(newRoundNumber);
+                uiState.updatePendingSheetRoundNumber(newRoundNumber);
                 return newRoundNumber.toString();
             },
-            [props]
+            [uiState]
         );
 
-        const sheet: IPendingSheet | undefined = props.uiState.pendingSheet;
+        const sheet: IPendingSheet | undefined = uiState.pendingSheet;
         if (sheet === undefined) {
             return <></>;
         }
@@ -220,7 +223,7 @@ function validateSheetsUrl(url: string): string | undefined {
 
 const ExportStatusBody = observer(
     (props: IExportDialogProps): JSX.Element => {
-        const sheet: SheetState | undefined = props.uiState.sheetsState;
+        const sheet: SheetState | undefined = props.appState.uiState.sheetsState;
         if (sheet === undefined) {
             return <></>;
         }
@@ -230,23 +233,25 @@ const ExportStatusBody = observer(
 );
 
 function onExport(props: IExportDialogProps): void {
-    if (props.uiState.pendingSheet == undefined) {
+    const uiState: UIState = props.appState.uiState;
+
+    if (uiState.pendingSheet == undefined) {
         hideDialog(props);
         return;
     }
 
     if (
-        props.uiState.pendingSheet.roundNumber == undefined ||
-        props.uiState.pendingSheet.sheetId == undefined ||
-        props.uiState.pendingSheet.sheetId.trim() === ""
+        uiState.pendingSheet.roundNumber == undefined ||
+        uiState.pendingSheet.sheetId == undefined ||
+        uiState.pendingSheet.sheetId.trim() === ""
     ) {
         return;
     }
 
-    props.uiState.sheetsState.setRoundNumber(props.uiState.pendingSheet.roundNumber);
-    props.uiState.sheetsState.setSheetId(props.uiState.pendingSheet.sheetId);
+    uiState.sheetsState.setRoundNumber(uiState.pendingSheet.roundNumber);
+    uiState.sheetsState.setSheetId(uiState.pendingSheet.sheetId);
 
-    Sheets.exportToSheet(props.game, props.uiState);
+    Sheets.exportToSheet(props.appState);
     return;
 }
 
@@ -255,12 +260,12 @@ function onClose(props: IExportDialogProps): void {
 }
 
 function hideDialog(props: IExportDialogProps): void {
-    props.uiState.resetPendingSheet();
-    props.uiState.sheetsState.clearRoundNumber();
-    props.uiState.sheetsState.clearExportStatus();
+    const uiState: UIState = props.appState.uiState;
+    uiState.resetPendingSheet();
+    uiState.sheetsState.clearRoundNumber();
+    uiState.sheetsState.clearExportStatus();
 }
 
 export interface IExportDialogProps {
-    game: GameState;
-    uiState: UIState;
+    appState: AppState;
 }

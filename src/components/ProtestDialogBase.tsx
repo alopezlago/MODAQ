@@ -5,7 +5,7 @@ import { ContextualMenu } from "@fluentui/react/lib/ContextualMenu";
 import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
 
 import { TextField } from "@fluentui/react/lib/TextField";
-import { UIState } from "src/state/UIState";
+import { AppState } from "src/state/AppState";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -26,7 +26,7 @@ const modalProps: IModalProps = {
 export const ProtestDialogBase = (props: React.PropsWithChildren<IProtestDialogBaseProps>): JSX.Element => {
     const changeHandler = React.useCallback(
         (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) =>
-            props.uiState.updatePendingProtestReason(newValue ?? ""),
+            props.appState.uiState.updatePendingProtestReason(newValue ?? ""),
         [props]
     );
     const submitHandler = React.useCallback(() => onSubmit(props), [props]);
@@ -60,10 +60,10 @@ function onCancel(props: IProtestDialogBaseProps): void {
 }
 
 export interface IProtestDialogBaseProps {
+    appState: AppState;
     autoFocusOnReason?: boolean;
     hidden: boolean;
     reason: string;
-    uiState: UIState;
 
     hideDialog: () => void;
     onSubmit: () => void;

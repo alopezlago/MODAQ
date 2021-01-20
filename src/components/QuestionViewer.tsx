@@ -7,23 +7,26 @@ import { TossupQuestion } from "./TossupQuestion";
 import { BonusQuestion } from "./BonusQuestion";
 import { Cycle } from "src/state/Cycle";
 import { mergeStyleSets } from "@fluentui/react";
+import { AppState } from "src/state/AppState";
 
 export const QuestionViewer = observer((props: IQuestionViewerProps) => {
     const classes: IQuestionViewerClassNames = getClassNames();
+    const game: GameState = props.appState.game;
+    const uiState: UIState = props.appState.uiState;
 
-    const cycle: Cycle = props.game.cycles[props.uiState.cycleIndex];
-    const tossupIndex: number = props.game.getTossupIndex(props.uiState.cycleIndex);
-    const bonusIndex: number = props.game.getBonusIndex(props.uiState.cycleIndex);
+    const cycle: Cycle = game.cycles[uiState.cycleIndex];
+    const tossupIndex: number = game.getTossupIndex(uiState.cycleIndex);
+    const bonusIndex: number = game.getBonusIndex(uiState.cycleIndex);
 
     let bonus: JSX.Element | null = null;
     const bonusInPlay: boolean = cycle.correctBuzz != undefined;
-    if (bonusIndex >= 0 && bonusIndex < props.game.packet.bonuses.length) {
+    if (bonusIndex >= 0 && bonusIndex < game.packet.bonuses.length) {
         bonus = (
             <BonusQuestion
-                bonus={props.game.packet.bonuses[bonusIndex]}
+                appState={props.appState}
+                bonus={game.packet.bonuses[bonusIndex]}
                 bonusIndex={bonusIndex}
                 cycle={cycle}
-                uiState={props.uiState}
                 inPlay={bonusInPlay}
             />
         );
@@ -37,15 +40,14 @@ export const QuestionViewer = observer((props: IQuestionViewerProps) => {
     }
 
     let tossup: JSX.Element | null = null;
-    if (tossupIndex >= 0 && tossupIndex < props.game.packet.tossups.length) {
+    if (tossupIndex >= 0 && tossupIndex < game.packet.tossups.length) {
         tossup = (
             <TossupQuestion
+                appState={props.appState}
                 bonusIndex={bonusIndex}
                 tossupNumber={tossupIndex + 1}
                 cycle={cycle}
-                tossup={props.game.packet.tossups[tossupIndex]}
-                game={props.game}
-                uiState={props.uiState}
+                tossup={game.packet.tossups[tossupIndex]}
             />
         );
     } else {
@@ -72,8 +74,7 @@ export const QuestionViewer = observer((props: IQuestionViewerProps) => {
 });
 
 export interface IQuestionViewerProps {
-    game: GameState;
-    uiState: UIState;
+    appState: AppState;
 }
 
 interface IQuestionViewerClassNames {

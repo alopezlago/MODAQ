@@ -2,21 +2,19 @@ import React from "react";
 import { mergeStyleSets } from "@fluentui/react";
 
 import { observer } from "mobx-react";
-import { GameState } from "src/state/GameState";
-import { UIState } from "src/state/UIState";
+import { AppState } from "src/state/AppState";
 
 export const Scoreboard = observer((props: IScoreboardProps) => {
     const classes: IScoreboardStyle = getClassNames();
 
-    const scores: [number, number] = props.game.finalScore;
-    const teamNames = props.game.teamNames;
+    const scores: [number, number] = props.appState.game.finalScore;
+    const teamNames = props.appState.game.teamNames;
     const result = teamNames.length >= 2 ? `${teamNames[0]}: ${scores[0]}, ${teamNames[1]}: ${scores[1]}` : "";
     return <div className={classes.board}>{result}</div>;
 });
 
 export interface IScoreboardProps {
-    game: GameState;
-    uiState: UIState;
+    appState: AppState;
 }
 
 interface IScoreboardStyle {

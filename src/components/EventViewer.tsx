@@ -2,12 +2,11 @@ import * as React from "react";
 import { observer } from "mobx-react";
 import { DetailsList, CheckboxVisibility, SelectionMode, IColumn } from "@fluentui/react/lib/DetailsList";
 import { Label } from "@fluentui/react/lib/Label";
-import { GameState } from "src/state/GameState";
-import { UIState } from "src/state/UIState";
 import { mergeStyleSets } from "@fluentui/react";
 
 import { CycleItemList } from "./cycleItems/CycleItemList";
 import { Cycle } from "src/state/Cycle";
+import { AppState } from "src/state/AppState";
 
 const numberKey = "number";
 const cycleKey = "cycle";
@@ -18,10 +17,10 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
     const activeItemChangedHandler = React.useCallback(
         (item: IEventViewerRow, index?: number) => {
             if (index != undefined) {
-                props.uiState.setCycleIndex(index);
+                props.appState.uiState.setCycleIndex(index);
             }
         },
-        [props]
+        [props.appState.uiState]
     );
 
     const renderColumnHandler = React.useCallback((item?: Cycle, index?: number, column?: IColumn): JSX.Element => {
@@ -55,7 +54,7 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
             // TODO: Consider adding autoruns for scores/finalScore so we don't have to consider what context it's run
             // in. Just swapping scores with a scores2 value set during autorun didn't work initially, so it needs more
             // investigation.
-            data: props.game.scores,
+            data: props.appState.game.scores,
         },
     ];
 
@@ -65,7 +64,7 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
                 checkboxVisibility={CheckboxVisibility.hidden}
                 selectionMode={SelectionMode.single}
                 columns={columns}
-                items={props.game.cycles}
+                items={props.appState.game.cycles}
                 onActiveItemChanged={activeItemChangedHandler}
                 onRenderItemColumn={renderColumnHandler}
             />
@@ -97,8 +96,7 @@ function onRenderItemColumn(item: Cycle, index: number, column: IColumn): JSX.El
 }
 
 export interface IEventViewerProps {
-    game: GameState;
-    uiState: UIState;
+    appState: AppState;
 }
 
 interface IEventViewerClassNames {

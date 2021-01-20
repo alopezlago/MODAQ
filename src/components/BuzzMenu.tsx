@@ -12,17 +12,16 @@ import { observer } from "mobx-react";
 import { ContextualMenu, ContextualMenuItemType, IContextualMenuItem } from "@fluentui/react/lib/ContextualMenu";
 
 import * as CompareUtils from "src/state/CompareUtils";
-import { GameState } from "src/state/GameState";
-import { UIState } from "src/state/UIState";
 import { Player } from "src/state/TeamState";
 import { Cycle } from "src/state/Cycle";
 import { Tossup } from "src/state/PacketState";
 import { IBuzzMarker } from "src/state/IBuzzMarker";
+import { AppState } from "src/state/AppState";
 
 export const BuzzMenu = observer((props: IBuzzMenuProps) => {
     const onHideBuzzMenu: () => void = React.useCallback(() => onBuzzMenuDismissed(props), [props]);
 
-    const teamNames: string[] = props.game.teamNames;
+    const teamNames: string[] = props.appState.game.teamNames;
     const menuItems: IContextualMenuItem[] = [];
     for (const teamName of teamNames) {
         const subMenuItems: IContextualMenuItem[] = getPlayerMenuItems(props, teamName);
@@ -39,7 +38,7 @@ export const BuzzMenu = observer((props: IBuzzMenuProps) => {
 
     return (
         <ContextualMenu
-            hidden={!props.uiState.buzzMenuVisible}
+            hidden={!props.appState.uiState.buzzMenuVisible}
             target={props.target}
             items={menuItems}
             onDismiss={onHideBuzzMenu}
@@ -54,7 +53,7 @@ function getPlayerMenuItems(props: IBuzzMenuProps, teamName: string): IContextua
     // TODO: Need to support Wrong (1st buzz) and Wrong (2nd buzz)
     // TODO: Add some highlighting/indicator on the player to show that they have a buzz in a different word
 
-    const players: Set<Player> = props.game.getActivePlayers(teamName, props.uiState.cycleIndex);
+    const players: Set<Player> = props.appState.game.getActivePlayers(teamName, props.appState.uiState.cycleIndex);
     const menuItems: IContextualMenuItem[] = [];
 
     let index = 0;
@@ -126,8 +125,8 @@ function getPlayerMenuItems(props: IBuzzMenuProps, teamName: string): IContextua
 }
 
 function onBuzzMenuDismissed(props: IBuzzMenuProps): void {
-    props.uiState.hideBuzzMenu();
-    props.uiState.setSelectedWordIndex(-1);
+    props.appState.uiState.hideBuzzMenu();
+    props.appState.uiState.setSelectedWordIndex(-1);
 }
 
 function onCorrectClicked(
@@ -199,7 +198,7 @@ function onProtestClicked(
     if (item.checked) {
         props.cycle.removeTossupProtest(player.teamName);
     } else if (item.checked === false) {
-        props.uiState.setPendingTossupProtest(player.teamName, props.tossupNumber - 1, props.position);
+        props.appState.uiState.setPendingTossupProtest(player.teamName, props.tossupNumber - 1, props.position);
     }
 }
 
@@ -208,14 +207,13 @@ function isBuzzMenuItemData(data: IBuzzMenuItemData | undefined): data is IBuzzM
 }
 
 export interface IBuzzMenuProps {
+    appState: AppState;
     bonusIndex: number;
     cycle: Cycle;
-    game: GameState;
     position: number;
     target: React.MutableRefObject<null>;
     tossup: Tossup;
     tossupNumber: number;
-    uiState: UIState;
 }
 
 interface IBuzzMenuItemData {

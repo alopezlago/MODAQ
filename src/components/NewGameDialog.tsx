@@ -28,6 +28,7 @@ import { PacketState } from "src/state/PacketState";
 import { TeamEntry } from "./TeamEntry";
 import { Player } from "src/state/TeamState";
 import { IPendingNewGame } from "src/state/IPendingNewGame";
+import { AppState } from "src/state/AppState";
 
 const playerListHeight = "25vh";
 
@@ -69,7 +70,7 @@ export const NewGameDialog = observer(
 
         return (
             <Dialog
-                hidden={props.uiState.pendingNewGame === undefined}
+                hidden={props.appState.uiState.pendingNewGame === undefined}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
@@ -87,13 +88,15 @@ export const NewGameDialog = observer(
 const NewGameDialogBody = observer(
     (props: INewGameDialogProps): JSX.Element => {
         const classes: INewGameDialogBodyClassNames = getClassNames();
+        const uiState: UIState = props.appState.uiState;
+
         const packetLoadHandler = React.useCallback(
             (packet: PacketState) => {
-                if (props.uiState.pendingNewGame) {
-                    props.uiState.pendingNewGame.packet = packet;
+                if (uiState.pendingNewGame) {
+                    uiState.pendingNewGame.packet = packet;
                 }
             },
-            [props]
+            [uiState]
         );
 
         // If we ever support an arbitrary number of teams, turn this into an array, or find a way to identify which
@@ -111,17 +114,17 @@ const NewGameDialogBody = observer(
             [props]
         );
         const teamNameValidationHandler = React.useCallback((): string | undefined => {
-            if (props.uiState.pendingNewGame == undefined) {
+            if (uiState.pendingNewGame == undefined) {
                 return undefined;
             }
 
             return NewGameValidator.playerTeamsUnique(
-                props.uiState.pendingNewGame.firstTeamPlayers,
-                props.uiState.pendingNewGame.secondTeamPlayers
+                uiState.pendingNewGame.firstTeamPlayers,
+                uiState.pendingNewGame.secondTeamPlayers
             );
-        }, [props.uiState.pendingNewGame]);
+        }, [uiState.pendingNewGame]);
 
-        const newGame: IPendingNewGame | undefined = props.uiState.pendingNewGame;
+        const newGame: IPendingNewGame | undefined = uiState.pendingNewGame;
         if (newGame === undefined) {
             return <></>;
         }
@@ -156,60 +159,65 @@ const NewGameDialogBody = observer(
                         validateTeamName={teamNameValidationHandler}
                     />
                 </div>
-                <PacketLoader uiState={props.uiState} onLoad={packetLoadHandler} />
+                <PacketLoader appState={props.appState} onLoad={packetLoadHandler} />
             </Stack>
         );
     }
 );
 
 function onAddPlayer(props: INewGameDialogProps, players: Player[]): void {
-    if (props.uiState.pendingNewGame != undefined) {
+    const uiState: UIState = props.appState.uiState;
+
+    if (uiState.pendingNewGame != undefined) {
         // TODO: Use the format to determine if they are a starter
         const teamName: string = players[0].teamName;
         const newPlayer: Player = new Player("", teamName, players.length < 4);
 
-        if (players === props.uiState.pendingNewGame.firstTeamPlayers) {
-            props.uiState.addPlayerToFirstTeamInPendingNewGame(newPlayer);
+        if (players === uiState.pendingNewGame.firstTeamPlayers) {
+            uiState.addPlayerToFirstTeamInPendingNewGame(newPlayer);
         } else {
-            props.uiState.addPlayerToSecondTeamInPendingNewGame(newPlayer);
+            uiState.addPlayerToSecondTeamInPendingNewGame(newPlayer);
         }
     }
 }
 
 function onRemovePlayer(props: INewGameDialogProps, player: Player): void {
-    if (props.uiState.pendingNewGame != undefined) {
-        if (player.teamName === props.uiState.pendingNewGame.firstTeamPlayers[0].teamName) {
-            props.uiState.removePlayerToFirstTeamInPendingNewGame(player);
+    const uiState: UIState = props.appState.uiState;
+
+    if (uiState.pendingNewGame != undefined) {
+        if (player.teamName === uiState.pendingNewGame.firstTeamPlayers[0].teamName) {
+            uiState.removePlayerToFirstTeamInPendingNewGame(player);
         } else {
-            props.uiState.removePlayerToSecondTeamInPendingNewGame(player);
+            uiState.removePlayerToSecondTeamInPendingNewGame(player);
         }
     }
 }
 
 // We need this to recreate the game, so we may need to add more methods to it
 function onSubmit(props: INewGameDialogProps): void {
-    if (props.uiState.pendingNewGame == undefined) {
+    const uiState: UIState = props.appState.uiState;
+
+    if (uiState.pendingNewGame == undefined) {
         throw new Error("Tried creating a new game with no pending game");
     }
 
     // Trim all the player names now
-    for (const player of props.uiState.pendingNewGame.firstTeamPlayers.concat(
-        props.uiState.pendingNewGame.secondTeamPlayers
-    )) {
+    for (const player of uiState.pendingNewGame.firstTeamPlayers.concat(uiState.pendingNewGame.secondTeamPlayers)) {
         player.setName(player.name.trim());
     }
 
     // TODO: Improve validation by return an error message specifying which field is bad. For example, no players in
     // one team isn't reported
-    if (!NewGameValidator.isValid(props.uiState.pendingNewGame)) {
+    if (!NewGameValidator.isValid(uiState.pendingNewGame)) {
         return;
     }
 
     // We need to set the game's packet, players, etc. to the values in the uiState
-    props.game.clear();
-    props.game.addPlayers(props.uiState.pendingNewGame.firstTeamPlayers.filter((player) => player.name !== ""));
-    props.game.addPlayers(props.uiState.pendingNewGame.secondTeamPlayers.filter((player) => player.name !== ""));
-    props.game.loadPacket(props.uiState.pendingNewGame.packet);
+    const game: GameState = props.appState.game;
+    game.clear();
+    game.addPlayers(uiState.pendingNewGame.firstTeamPlayers.filter((player) => player.name !== ""));
+    game.addPlayers(uiState.pendingNewGame.secondTeamPlayers.filter((player) => player.name !== ""));
+    game.loadPacket(uiState.pendingNewGame.packet);
 
     hideDialog(props);
 }
@@ -219,12 +227,11 @@ function onCancel(props: INewGameDialogProps): void {
 }
 
 function hideDialog(props: INewGameDialogProps): void {
-    props.uiState.resetPendingNewGame();
+    props.appState.uiState.resetPendingNewGame();
 }
 
 export interface INewGameDialogProps {
-    game: GameState;
-    uiState: UIState;
+    appState: AppState;
 }
 
 interface INewGameDialogBodyClassNames {
