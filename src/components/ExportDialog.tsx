@@ -45,8 +45,10 @@ const modalProps: IModalProps = {
     topOffsetFixed: true,
 };
 
-// Have an Export/Cancel
-// When Export is clicked, move to a status dialog
+const maximumRoundNumber = 30;
+const sheetsPrefix = "https://docs.google.com/spreadsheets/d/";
+
+const settingsStackTokens: Partial<IStackTokens> = { childrenGap: 10 };
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const ExportDialog = observer(
@@ -90,10 +92,6 @@ export const ExportDialog = observer(
         );
     }
 );
-
-const settingsStackTokens: Partial<IStackTokens> = { childrenGap: 10 };
-const sheetsPrefix = "https://docs.google.com/spreadsheets/d/";
-const maximumRoundNumber = 30;
 
 const ExportSettingsDialogBody = observer(
     (props: IExportDialogProps): JSX.Element => {
@@ -174,7 +172,8 @@ const ExportSettingsDialogBody = observer(
 
         const roundNumber: number = sheet.roundNumber ?? 1;
 
-        // TODO: TextField needs to be wider
+        // It would be great to make the TextField wider, but that requires some changes to the dialog width that
+        // Fluent UI hates to do
         return (
             <Stack tokens={settingsStackTokens}>
                 <TextField
@@ -226,11 +225,7 @@ const ExportStatusBody = observer(
             return <></>;
         }
 
-        return (
-            <>
-                <Label>{sheet.exportStatus?.status}</Label>
-            </>
-        );
+        return <Label>{sheet.exportStatus?.status}</Label>;
     }
 );
 
@@ -245,7 +240,6 @@ function onExport(props: IExportDialogProps): void {
         props.uiState.pendingSheet.sheetId == undefined ||
         props.uiState.pendingSheet.sheetId.trim() === ""
     ) {
-        // TODO: set validation
         return;
     }
 
