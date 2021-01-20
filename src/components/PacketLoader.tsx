@@ -88,7 +88,7 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
         mode: "cors",
     };
 
-    props.uiState.setPacketStatus({ status: "Contacting parsing service..." });
+    props.uiState.setPacketStatus({ isError: false, status: "Contacting parsing service..." });
 
     try {
         const response: Response = await fetch(
@@ -100,7 +100,10 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
             let errorMessage = "";
             if (response.status == 400) {
                 const errorMessageMap: IParsingServiceErrorMessage = await response.json();
-                errorMessage = errorMessageMap.errorMessage[0];
+
+                // TODO: This will now send an array of error messages. We should record all of them, and have them appear
+                // line by line. Or, alternatively, fetch the top 3/4 and say how many others there are.
+                errorMessage = errorMessageMap.errorMessage.join("\n");
             }
 
             props.uiState.setPacketStatus({
@@ -124,6 +127,7 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
 
 function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
     props.uiState.setPacketStatus({
+        isError: false,
         status: "Loading packet...",
     });
 
@@ -168,6 +172,7 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
     packet.setBonuses(bonuses);
 
     props.uiState.setPacketStatus({
+        isError: false,
         status: `Packet loaded. ${tossups.length} tossup(s), ${bonuses.length} bonus(es).`,
     });
 

@@ -1,11 +1,13 @@
 import { observable, action } from "mobx";
-import { ITossupProtestEvent, IBonusProtestEvent } from "./Events";
 import { ignore } from "mobx-sync";
+
+import { ITossupProtestEvent, IBonusProtestEvent } from "./Events";
 import { IPendingNewGame } from "./IPendingNewGame";
 import { PacketState } from "./PacketState";
 import { Player } from "./TeamState";
 import { LoadingState, SheetState } from "./SheetState";
-import { IPacketParseStatus } from "./IPacketParseStatus";
+import { IStatus } from "../IStatus";
+import { IPendingSheet } from "./IPendingSheet";
 
 export class UIState {
     constructor() {
@@ -17,6 +19,7 @@ export class UIState {
         this.pendingBonusProtestEvent = undefined;
         this.pendingNewGame = undefined;
         this.pendingNewPlayer = undefined;
+        this.pendingSheet = undefined;
         this.pendingTossupProtestEvent = undefined;
         this.sheetsState = new SheetState();
     }
@@ -39,7 +42,7 @@ export class UIState {
 
     @observable
     @ignore
-    public packetParseStatus: IPacketParseStatus | undefined;
+    public packetParseStatus: IStatus | undefined;
 
     @observable
     @ignore
@@ -52,6 +55,10 @@ export class UIState {
     @observable
     @ignore
     public pendingNewPlayer?: Player;
+
+    @observable
+    @ignore
+    public pendingSheet?: IPendingSheet;
 
     @observable
     @ignore
@@ -112,7 +119,15 @@ export class UIState {
 
     @action
     public createPendingNewPlayer(teamName: string): void {
-        this.pendingNewPlayer = new Player(name, teamName, /* isStarter */ false);
+        this.pendingNewPlayer = new Player("", teamName, /* isStarter */ false);
+    }
+
+    @action
+    public createPendingSheet(): void {
+        this.pendingSheet = {
+            roundNumber: 1,
+            sheetId: "",
+        };
     }
 
     @action
@@ -141,9 +156,8 @@ export class UIState {
     public setIsEditingCycleIndex(isEditingCycleIndex: boolean): void {
         this.isEditingCycleIndex = isEditingCycleIndex;
     }
-
     @action
-    public setPacketStatus(packetStatus: IPacketParseStatus): void {
+    public setPacketStatus(packetStatus: IStatus): void {
         this.packetParseStatus = packetStatus;
     }
 
@@ -204,6 +218,11 @@ export class UIState {
     }
 
     @action
+    public resetPendingSheet(): void {
+        this.pendingSheet = undefined;
+    }
+
+    @action
     public resetPendingTossupProtest(): void {
         this.pendingTossupProtestEvent = undefined;
     }
@@ -251,5 +270,23 @@ export class UIState {
         }
 
         this.pendingNewPlayer.teamName = teamName;
+    }
+
+    @action
+    public updatePendingSheetRoundNumber(roundNumber: number): void {
+        if (this.pendingSheet == undefined) {
+            return;
+        }
+
+        this.pendingSheet.roundNumber = roundNumber;
+    }
+
+    @action
+    public updatePendingSheetId(sheetId: string): void {
+        if (this.pendingSheet == undefined) {
+            return;
+        }
+
+        this.pendingSheet.sheetId = sheetId;
     }
 }

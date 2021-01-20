@@ -8,7 +8,6 @@ import {
     CommandBar,
 } from "@fluentui/react";
 
-import * as Sheets from "src/state/Sheets";
 import { GameState } from "src/state/GameState";
 import { UIState } from "src/state/UIState";
 import { Cycle } from "src/state/Cycle";
@@ -16,6 +15,7 @@ import { Bonus } from "src/state/PacketState";
 import { AddPlayerDialog } from "./AddPlayerDialog";
 import { Player } from "src/state/TeamState";
 import { ITossupAnswerEvent } from "src/state/Events";
+import { ExportDialog } from "./ExportDialog";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
@@ -86,13 +86,15 @@ export const GameBar = observer(
             <>
                 <CommandBar items={items} overflowButtonProps={overflowProps} />
                 <AddPlayerDialog game={props.game} uiState={props.uiState} />
+                <ExportDialog game={props.game} uiState={props.uiState} />
             </>
         );
     }
 );
 
-async function googleSheetsDemo(props: IGameBarProps): Promise<void> {
-    return Sheets.exportToSheet(props.game, props.uiState);
+async function exportToSheets(props: IGameBarProps): Promise<void> {
+    props.uiState.createPendingSheet();
+    return;
 }
 
 function getActionSubMenuItems(
@@ -255,12 +257,10 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
         key: "exportSheets",
         text: "Export to Sheets",
         onClick: () => {
-            googleSheetsDemo(props);
+            exportToSheets(props);
         },
         // TODO: This won't update when gapi does; it needs another prop change
-        // I don't like commenting out code, but this isn't ready yet, and the work needs to be handed over
-        // disabled: window.gapi == undefined,
-        disabled: true,
+        disabled: window.gapi == undefined,
     });
 
     // TODO: Blob should probably be memoized, so we don't keep stringifying? It does appear that the link is the same
@@ -311,7 +311,7 @@ function isSubMenuItemData(data: ISubMenuItemData | undefined): data is ISubMenu
 
 // Adapted from this gist: https://gist.github.com/lgarron/d1dee380f4ed9d825ca7
 function copyText(text: string) {
-    return new Promise(function (resolve, reject) {
+    return new Promise<void>(function (resolve, reject) {
         let success = false;
         function listener(e: ClipboardEvent) {
             if (e == undefined || e.clipboardData == undefined) {

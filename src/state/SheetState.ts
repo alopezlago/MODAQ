@@ -1,5 +1,7 @@
-import { observable } from "mobx";
+import { action, observable } from "mobx";
 import { ignore } from "mobx-sync";
+
+import { IStatus } from "src/IStatus";
 
 export class SheetState {
     @observable
@@ -7,11 +9,57 @@ export class SheetState {
     apiInitialized: LoadingState;
 
     @observable
-    sheetId?: string;
+    @ignore
+    public exportStatus: IStatus | undefined;
+
+    @observable
+    @ignore
+    public exportState: ExportState | undefined;
+
+    @observable
+    @ignore
+    public sheetId?: string;
+
+    @observable
+    @ignore
+    public roundNumber?: number;
 
     constructor() {
         this.apiInitialized = LoadingState.Unloaded;
+        this.exportStatus = undefined;
+        this.exportState = undefined;
         this.sheetId = undefined;
+        this.roundNumber = undefined;
+    }
+
+    @action
+    public clearExportStatus(): void {
+        this.exportStatus = undefined;
+        this.exportState = undefined;
+    }
+
+    @action
+    public clearRoundNumber(): void {
+        this.roundNumber = undefined;
+    }
+
+    @action
+    public setExportStatus(status: IStatus, state: ExportState | undefined = undefined): void {
+        this.exportStatus = status;
+
+        if (state != undefined) {
+            this.exportState = state;
+        }
+    }
+
+    @action
+    public setSheetId(sheetId: string): void {
+        this.sheetId = sheetId;
+    }
+
+    @action
+    public setRoundNumber(roundNumber: number): void {
+        this.roundNumber = roundNumber;
     }
 }
 
@@ -20,4 +68,10 @@ export const enum LoadingState {
     Loading = 1,
     Loaded = 2,
     Error = 3,
+}
+
+export const enum ExportState {
+    Exporting = 0,
+    Success = 1,
+    Error = 2,
 }
