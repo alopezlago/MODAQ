@@ -2,7 +2,7 @@ import React from "react";
 import { observer } from "mobx-react";
 import { Checkbox, ICheckboxStyles } from "@fluentui/react/lib/Checkbox";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
-import { mergeStyleSets } from "@fluentui/react";
+import { ILabelStyles, Label, mergeStyleSets } from "@fluentui/react";
 
 import { Player } from "src/state/TeamState";
 import { CancelButton } from "./CancelButton";
@@ -10,7 +10,12 @@ import { CancelButton } from "./CancelButton";
 const playerNameStyle: Partial<ITextFieldStyles> = {
     root: {
         minWidth: 80,
-        maxWidth: 200,
+        marginRight: 20,
+    },
+};
+
+const playerNameLabelStyle: Partial<ILabelStyles> = {
+    root: {
         marginRight: 20,
     },
 };
@@ -18,20 +23,13 @@ const playerNameStyle: Partial<ITextFieldStyles> = {
 const starterCheckboxStyle: Partial<ICheckboxStyles> = {
     root: {
         alignItems: "center",
+        marginRight: 5,
     },
 };
 
 export const PlayerEntry = observer((props: IPlayerEntryProps) => {
     const classes: IPlayerEntryClassNames = getClassNames();
 
-    const nameChangeHandler = React.useCallback(
-        (ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newName?: string) => {
-            if (newName != undefined) {
-                props.player.setName(newName);
-            }
-        },
-        [props.player]
-    );
     const starterChangeHandler = React.useCallback(
         (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
             if (checked != undefined) {
@@ -40,16 +38,18 @@ export const PlayerEntry = observer((props: IPlayerEntryProps) => {
         },
         [props.player]
     );
-    const removeHandler = React.useCallback(() => props.onRemovePlayerClick(props.player), [props]);
 
-    const cancelButtonOrSpacer: JSX.Element = props.canRemove ? (
-        <CancelButton title="Remove" onClick={removeHandler} />
-    ) : (
-        <span className={classes.spacer} />
-    );
+    let playerName: JSX.Element;
+    let cancelButtonOrSpacer: JSX.Element | undefined;
+    if (isEditablePlayerEntryProps(props)) {
+        const nameChangeHandler = (ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newName?: string) => {
+            if (newName != undefined) {
+                props.player.setName(newName);
+            }
+        };
+        const removeHandler = () => props.onRemovePlayerClick(props.player);
 
-    return (
-        <div className={classes.playerEntryContainer}>
+        playerName = (
             <TextField
                 ariaLabel="Name"
                 onChange={nameChangeHandler}
@@ -59,6 +59,19 @@ export const PlayerEntry = observer((props: IPlayerEntryProps) => {
                 validateOnFocusOut={true}
                 value={props.player.name}
             />
+        );
+        cancelButtonOrSpacer = props.canRemove ? (
+            <CancelButton title="Remove" onClick={removeHandler} />
+        ) : (
+            <span className={classes.spacer} />
+        );
+    } else {
+        playerName = <Label styles={playerNameLabelStyle}>{props.player.name}</Label>;
+    }
+
+    return (
+        <div className={classes.playerEntryContainer}>
+            {playerName}
             <Checkbox
                 label="Starter"
                 onChange={starterChangeHandler}
@@ -70,12 +83,25 @@ export const PlayerEntry = observer((props: IPlayerEntryProps) => {
     );
 });
 
-export interface IPlayerEntryProps {
+function isEditablePlayerEntryProps(props: IPlayerEntryProps): props is IEditablePlayerEntryProps {
+    return props.player != undefined && (props as IEditablePlayerEntryProps).canRemove != undefined;
+}
+
+export type IPlayerEntryProps = IEditablePlayerEntryProps | IReadonlyPlayerEntryProps;
+
+interface IEditablePlayerEntryProps extends IBasePlayerEntryProps {
     canRemove: boolean;
-    player: Player;
     required?: boolean;
     onRemovePlayerClick(player: Player): void;
     validateName(newName: string): string | undefined;
+}
+
+interface IReadonlyPlayerEntryProps extends IBasePlayerEntryProps {
+    readonly: true;
+}
+
+interface IBasePlayerEntryProps {
+    player: Player;
 }
 
 interface IPlayerEntryClassNames {
@@ -86,7 +112,9 @@ interface IPlayerEntryClassNames {
 const getClassNames = (): IPlayerEntryClassNames =>
     mergeStyleSets({
         playerEntryContainer: {
-            display: "inline-flex",
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "space-between",
             margin: "5px 0",
         },
         spacer: {

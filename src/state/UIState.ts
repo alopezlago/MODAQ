@@ -2,7 +2,7 @@ import { observable, action } from "mobx";
 import { ignore } from "mobx-sync";
 
 import { ITossupProtestEvent, IBonusProtestEvent } from "./Events";
-import { IPendingNewGame } from "./IPendingNewGame";
+import { IPendingNewGame, PendingGameType } from "./IPendingNewGame";
 import { PacketState } from "./PacketState";
 import { Player } from "./TeamState";
 import { LoadingState, SheetState } from "./SheetState";
@@ -70,14 +70,14 @@ export class UIState {
     // TODO: Feels off. Could generalize to array of teams
     @action
     public addPlayerToFirstTeamInPendingNewGame(player: Player): void {
-        if (this.pendingNewGame != undefined) {
+        if (this.pendingNewGame?.type === PendingGameType.Manual) {
             this.pendingNewGame?.firstTeamPlayers.push(player);
         }
     }
 
     @action
     public addPlayerToSecondTeamInPendingNewGame(player: Player): void {
-        if (this.pendingNewGame != undefined) {
+        if (this.pendingNewGame?.type === PendingGameType.Manual) {
             this.pendingNewGame?.secondTeamPlayers.push(player);
         }
     }
@@ -89,15 +89,52 @@ export class UIState {
 
     @action
     public removePlayerToFirstTeamInPendingNewGame(player: Player): void {
-        if (this.pendingNewGame != undefined) {
+        if (this.pendingNewGame?.type === PendingGameType.Manual) {
             this.pendingNewGame.firstTeamPlayers = this.pendingNewGame?.firstTeamPlayers.filter((p) => p !== player);
         }
     }
 
     @action
     public removePlayerToSecondTeamInPendingNewGame(player: Player): void {
-        if (this.pendingNewGame != undefined) {
+        if (this.pendingNewGame?.type === PendingGameType.Manual) {
             this.pendingNewGame.secondTeamPlayers = this.pendingNewGame?.secondTeamPlayers.filter((p) => p !== player);
+        }
+    }
+
+    @action
+    public setPendingGameType(type: PendingGameType): void {
+        if (this.pendingNewGame != undefined) {
+            this.pendingNewGame.type = type;
+        }
+    }
+
+    @action
+    public setRostersForPendingGame(players: Player[]): void {
+        if (this.pendingNewGame?.type === PendingGameType.LifSheets) {
+            this.pendingNewGame.playersFromRosters = players;
+            this.pendingNewGame.firstTeamPlayersFromRosters = [];
+            this.pendingNewGame.secondTeamPlayersFromRosters = [];
+        }
+    }
+
+    @action
+    public setRostersUrlForPendingGame(url: string): void {
+        if (this.pendingNewGame?.type === PendingGameType.LifSheets) {
+            this.pendingNewGame.rostersUrl = url;
+        }
+    }
+
+    @action
+    public setFirstTeamPlayersFromRostersForPendingGame(players: Player[]): void {
+        if (this.pendingNewGame?.type === PendingGameType.LifSheets) {
+            this.pendingNewGame.firstTeamPlayersFromRosters = players;
+        }
+    }
+
+    @action
+    public setSecondTeamPlayersFromRostersForPendingGame(players: Player[]): void {
+        if (this.pendingNewGame?.type === PendingGameType.LifSheets) {
+            this.pendingNewGame.secondTeamPlayersFromRosters = players;
         }
     }
 
@@ -114,6 +151,7 @@ export class UIState {
             packet: new PacketState(),
             firstTeamPlayers,
             secondTeamPlayers,
+            type: PendingGameType.Manual,
         };
     }
 

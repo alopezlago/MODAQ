@@ -100,21 +100,9 @@ const ExportSettingsDialogBody = observer(
 
         const sheetsUrlChangeHandler = React.useCallback(
             (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-                // URLs look like https://docs.google.com/spreadsheets/d/1ZWEIXEcDPpuYhMOqy7j8uKloKJ7xrMlx8Q8y4UCbjZA/edit#gid=17040017
-                // The parsing should be done in a different method or place, so we can test it
-                if (newValue == undefined) {
-                    return;
-                }
-
-                newValue = newValue.trim();
-                if (newValue.startsWith(sheetsPrefix)) {
-                    const nextSlash: number = newValue.indexOf("/", sheetsPrefix.length);
-                    const sheetsId: string = newValue.substring(
-                        sheetsPrefix.length,
-                        nextSlash === -1 ? undefined : nextSlash
-                    );
-
-                    uiState.updatePendingSheetId(sheetsId.trim());
+                const sheetsId: string | undefined = Sheets.getSheetsId(newValue);
+                if (sheetsId != undefined) {
+                    uiState.updatePendingSheetId(sheetsId);
                 } else {
                     uiState.updatePendingSheetId("");
                 }
@@ -207,6 +195,7 @@ const ExportSettingsDialogBody = observer(
 );
 
 function validateSheetsUrl(url: string): string | undefined {
+    // TODO: Move to Sheets.ts?
     if (url == undefined) {
         return undefined;
     } else if (url.trim() === "") {

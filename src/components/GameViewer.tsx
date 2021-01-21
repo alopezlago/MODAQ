@@ -14,7 +14,6 @@ import { AppState } from "src/state/AppState";
 export const GameViewer = observer((props: IGameViewerProps) => {
     const classes: IGameViewerClassNames = getClassNames();
 
-    // TODO: If we begin adding more dialogs, create a DialogManager
     return (
         <div>
             <GameBar appState={props.appState} />

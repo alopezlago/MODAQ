@@ -18,19 +18,34 @@ import { IModalProps } from "@fluentui/react/lib/Modal";
 import { ContextualMenu } from "@fluentui/react/lib/ContextualMenu";
 import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
 import { observer } from "mobx-react";
-import { Separator, Stack, mergeStyleSets } from "@fluentui/react";
+import {
+    Separator,
+    Stack,
+    mergeStyleSets,
+    Pivot,
+    PivotItem,
+    StackItem,
+    TextField,
+    Label,
+    ITextFieldStyles,
+} from "@fluentui/react";
 
 import * as NewGameValidator from "src/state/NewGameValidator";
+import * as PendingNewGameUtils from "src/state/PendingNewGameUtils";
+import * as Sheets from "src/sheets/Sheets";
 import { UIState } from "src/state/UIState";
 import { PacketLoader } from "./PacketLoader";
 import { GameState } from "src/state/GameState";
 import { PacketState } from "src/state/PacketState";
-import { TeamEntry } from "./TeamEntry";
+import { ManualTeamEntry } from "./ManualTeamEntry";
 import { Player } from "src/state/TeamState";
-import { IPendingNewGame } from "src/state/IPendingNewGame";
+import { IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
 import { AppState } from "src/state/AppState";
+import { FromRostersTeamEntry } from "./FromRostersTeamEntry";
 
 const playerListHeight = "25vh";
+const manualPivotKey = "M";
+const fromLifsheetsPivotKey = "L";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -62,6 +77,8 @@ const modalProps: IModalProps = {
         },
     },
 };
+
+const rostersInputStyles: Partial<ITextFieldStyles> = { root: { marginRight: 10 } };
 
 export const NewGameDialog = observer(
     (props: INewGameDialogProps): JSX.Element => {
@@ -99,6 +116,41 @@ const NewGameDialogBody = observer(
             [uiState]
         );
 
+        const pivotClickHandler = React.useCallback(
+            (item?: PivotItem) => {
+                if (item == undefined) {
+                    return;
+                }
+
+                uiState.setPendingGameType(
+                    item.props.itemKey === manualPivotKey ? PendingGameType.Manual : PendingGameType.LifSheets
+                );
+                item.state;
+            },
+            [uiState]
+        );
+
+        return (
+            <>
+                <Pivot aria-label="Game type" onLinkClick={pivotClickHandler}>
+                    <PivotItem headerText="Manual" itemKey={manualPivotKey}>
+                        <ManualNewGamePivotBody appState={props.appState} classes={classes} />
+                    </PivotItem>
+                    <PivotItem headerText="From LifSheets" itemKey={fromLifsheetsPivotKey}>
+                        <FromLifSheetsNewGameBody appState={props.appState} classes={classes} />
+                    </PivotItem>
+                </Pivot>
+                <Separator />
+                <PacketLoader appState={props.appState} onLoad={packetLoadHandler} />
+            </>
+        );
+    }
+);
+
+const ManualNewGamePivotBody = observer(
+    (props: INewGamePivotItemProps): JSX.Element => {
+        const uiState: UIState = props.appState.uiState;
+
         // If we ever support an arbitrary number of teams, turn this into an array, or find a way to identify which
         // team to upadate (like an index)
         const addPlayerHandler = React.useCallback(
@@ -114,7 +166,7 @@ const NewGameDialogBody = observer(
             [props]
         );
         const teamNameValidationHandler = React.useCallback((): string | undefined => {
-            if (uiState.pendingNewGame == undefined) {
+            if (uiState.pendingNewGame == undefined || uiState.pendingNewGame.type !== PendingGameType.Manual) {
                 return undefined;
             }
 
@@ -124,23 +176,23 @@ const NewGameDialogBody = observer(
             );
         }, [uiState.pendingNewGame]);
 
-        const newGame: IPendingNewGame | undefined = uiState.pendingNewGame;
-        if (newGame === undefined) {
+        const pendingNewGame: IPendingNewGame | undefined = uiState.pendingNewGame;
+        if (pendingNewGame?.type !== PendingGameType.Manual) {
             return <></>;
         }
 
         const teamNameErrorMessage = NewGameValidator.playerTeamsUnique(
-            newGame.firstTeamPlayers,
-            newGame.secondTeamPlayers
+            pendingNewGame.firstTeamPlayers,
+            pendingNewGame.secondTeamPlayers
         );
 
         return (
             <Stack>
-                <div className={classes.teamEntriesContainer}>
-                    <TeamEntry
-                        defaultTeamName={newGame.firstTeamPlayers[0].teamName}
+                <div className={props.classes.teamEntriesContainer}>
+                    <ManualTeamEntry
+                        defaultTeamName={pendingNewGame.firstTeamPlayers[0].teamName}
                         playerListHeight={playerListHeight}
-                        players={newGame.firstTeamPlayers}
+                        players={pendingNewGame.firstTeamPlayers}
                         teamNameErrorMessage={teamNameErrorMessage}
                         teamLabel="First team"
                         onAddPlayerClick={addPlayerHandler}
@@ -148,10 +200,10 @@ const NewGameDialogBody = observer(
                         validateTeamName={teamNameValidationHandler}
                     />
                     <Separator vertical={true} />
-                    <TeamEntry
-                        defaultTeamName={newGame.secondTeamPlayers[0].teamName}
+                    <ManualTeamEntry
+                        defaultTeamName={pendingNewGame.secondTeamPlayers[0].teamName}
                         playerListHeight={playerListHeight}
-                        players={newGame.secondTeamPlayers}
+                        players={pendingNewGame.secondTeamPlayers}
                         teamNameErrorMessage={teamNameErrorMessage}
                         teamLabel="Second team"
                         onAddPlayerClick={addPlayerHandler}
@@ -159,7 +211,115 @@ const NewGameDialogBody = observer(
                         validateTeamName={teamNameValidationHandler}
                     />
                 </div>
-                <PacketLoader appState={props.appState} onLoad={packetLoadHandler} />
+            </Stack>
+        );
+    }
+);
+
+const FromLifSheetsNewGameBody = observer(
+    (props: INewGamePivotItemProps): JSX.Element => {
+        const uiState: UIState = props.appState.uiState;
+
+        const rostersUrlChangeHandler = React.useCallback(
+            (ev, newValue: string | undefined) => {
+                if (newValue != undefined) {
+                    uiState.setRostersUrlForPendingGame(newValue);
+                }
+            },
+            [uiState]
+        );
+
+        const loadHandler = React.useCallback(() => {
+            if (uiState.pendingNewGame?.type !== PendingGameType.LifSheets) {
+                return;
+            }
+
+            const url: string | undefined = uiState.pendingNewGame?.rostersUrl;
+            if (url == undefined) {
+                return;
+            }
+
+            const sheetsId: string | undefined = Sheets.getSheetsId(url);
+            if (sheetsId == undefined) {
+                return;
+            }
+
+            uiState.sheetsState.setSheetId(sheetsId);
+            Sheets.loadRosters(props.appState);
+        }, [props, uiState]);
+
+        const teamChangeHandler = React.useCallback(
+            (newTeamName: string, oldPlayers: Player[]): void => {
+                if (uiState.pendingNewGame?.type !== PendingGameType.LifSheets) {
+                    return;
+                }
+
+                // If rosters exist, then so do the players, so we can do strict equality to see which team needs to be updated
+                if (oldPlayers === uiState.pendingNewGame?.firstTeamPlayersFromRosters) {
+                    uiState.setFirstTeamPlayersFromRostersForPendingGame(
+                        uiState.pendingNewGame.playersFromRosters?.filter(
+                            (player) => player.teamName === newTeamName
+                        ) ?? []
+                    );
+                } else if (oldPlayers === uiState.pendingNewGame?.secondTeamPlayersFromRosters) {
+                    uiState.setSecondTeamPlayersFromRostersForPendingGame(
+                        uiState.pendingNewGame.playersFromRosters?.filter(
+                            (player) => player.teamName === newTeamName
+                        ) ?? []
+                    );
+                }
+            },
+            [uiState]
+        );
+
+        const pendingNewGame: IPendingNewGame | undefined = uiState.pendingNewGame;
+        if (pendingNewGame?.type !== PendingGameType.LifSheets) {
+            return <></>;
+        }
+
+        // We should only do this if we have any players from the rosters
+        const teamNameErrorMessage = NewGameValidator.playerTeamsUnique(
+            pendingNewGame.firstTeamPlayersFromRosters ?? [],
+            pendingNewGame.secondTeamPlayersFromRosters ?? []
+        );
+
+        const playersFromRosters: Player[] = pendingNewGame.playersFromRosters ?? [];
+
+        return (
+            <Stack>
+                <StackItem>
+                    <div className={props.classes.loadContainer}>
+                        <TextField
+                            styles={rostersInputStyles}
+                            label="URL to rosters"
+                            value={pendingNewGame.rostersUrl}
+                            onChange={rostersUrlChangeHandler}
+                        />
+                        <DefaultButton text="Load" onClick={loadHandler}></DefaultButton>
+                    </div>
+                    <Label>{props.appState.uiState.sheetsState?.rosterLoadStatus?.status}</Label>
+                </StackItem>
+                <Separator />
+                <StackItem>
+                    <div className={props.classes.teamEntriesContainer}>
+                        <FromRostersTeamEntry
+                            playerListHeight={playerListHeight}
+                            playerPool={playersFromRosters}
+                            players={pendingNewGame.firstTeamPlayersFromRosters ?? []}
+                            teamLabel="First team"
+                            onTeamChange={teamChangeHandler}
+                        />
+                        <Separator vertical={true} />
+                        <FromRostersTeamEntry
+                            playerListHeight={playerListHeight}
+                            playerPool={playersFromRosters}
+                            players={pendingNewGame.secondTeamPlayersFromRosters ?? []}
+                            teamNameErrorMessage={teamNameErrorMessage}
+                            teamLabel="Second team"
+                            onTeamChange={teamChangeHandler}
+                        />
+                    </div>
+                </StackItem>
             </Stack>
         );
     }
@@ -168,7 +328,7 @@ const NewGameDialogBody = observer(
 function onAddPlayer(props: INewGameDialogProps, players: Player[]): void {
     const uiState: UIState = props.appState.uiState;
 
-    if (uiState.pendingNewGame != undefined) {
+    if (uiState.pendingNewGame?.type === PendingGameType.Manual) {
         // TODO: Use the format to determine if they are a starter
         const teamName: string = players[0].teamName;
         const newPlayer: Player = new Player("", teamName, players.length < 4);
@@ -184,7 +344,7 @@ function onAddPlayer(props: INewGameDialogProps, players: Player[]): void {
 function onRemovePlayer(props: INewGameDialogProps, player: Player): void {
     const uiState: UIState = props.appState.uiState;
 
-    if (uiState.pendingNewGame != undefined) {
+    if (uiState.pendingNewGame?.type === PendingGameType.Manual) {
         if (player.teamName === uiState.pendingNewGame.firstTeamPlayers[0].teamName) {
             uiState.removePlayerToFirstTeamInPendingNewGame(player);
         } else {
@@ -201,23 +361,29 @@ function onSubmit(props: INewGameDialogProps): void {
         throw new Error("Tried creating a new game with no pending game");
     }
 
+    const pendingNewGame: IPendingNewGame = uiState.pendingNewGame;
+
+    const [firstTeamPlayers, secondTeamPlayers]: Player[][] = PendingNewGameUtils.getPendingNewGamePlayers(
+        pendingNewGame
+    );
+
     // Trim all the player names now
-    for (const player of uiState.pendingNewGame.firstTeamPlayers.concat(uiState.pendingNewGame.secondTeamPlayers)) {
+    for (const player of firstTeamPlayers.concat(secondTeamPlayers)) {
         player.setName(player.name.trim());
     }
 
     // TODO: Improve validation by return an error message specifying which field is bad. For example, no players in
     // one team isn't reported
-    if (!NewGameValidator.isValid(uiState.pendingNewGame)) {
+    if (!NewGameValidator.isValid(pendingNewGame)) {
         return;
     }
 
     // We need to set the game's packet, players, etc. to the values in the uiState
     const game: GameState = props.appState.game;
     game.clear();
-    game.addPlayers(uiState.pendingNewGame.firstTeamPlayers.filter((player) => player.name !== ""));
-    game.addPlayers(uiState.pendingNewGame.secondTeamPlayers.filter((player) => player.name !== ""));
-    game.loadPacket(uiState.pendingNewGame.packet);
+    game.addPlayers(firstTeamPlayers.filter((player) => player.name !== ""));
+    game.addPlayers(secondTeamPlayers.filter((player) => player.name !== ""));
+    game.loadPacket(pendingNewGame.packet);
 
     hideDialog(props);
 }
@@ -234,18 +400,30 @@ export interface INewGameDialogProps {
     appState: AppState;
 }
 
+interface INewGamePivotItemProps extends INewGameDialogProps {
+    classes: INewGameDialogBodyClassNames;
+}
+
 interface INewGameDialogBodyClassNames {
+    loadContainer: string;
     teamEntriesContainer: string;
     teamNameInput: string;
 }
 
 const getClassNames = (): INewGameDialogBodyClassNames =>
     mergeStyleSets({
+        loadContainer: {
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "flex-end",
+        },
         teamEntriesContainer: {
             // Grid should be more resize friendly than flex if we ever do responsive design
             display: "grid",
             gridTemplateColumns: "5fr 1fr 5fr",
             marginBottom: 20,
+            height: "40vh",
+            width: "50vw",
         },
         teamNameInput: {
             marginBottom: "10px",
