@@ -11,8 +11,8 @@ import { Tossup, Bonus, PacketState, IBonusPart as BonusPart } from "./state/Pac
 import { Cycle } from "./state/Cycle";
 import { GameViewer } from "./components/GameViewer";
 import { PacketLoader } from "./components/PacketLoader";
-import { NewGameDialog } from "./components/NewGameDialog";
 import { AppState } from "./state/AppState";
+import { ModalDialogContainer } from "./components/ModalDialogContainer";
 
 const firstTeamName = "Alpha";
 const secondTeamName = "B 2";
@@ -25,8 +25,8 @@ class Root extends React.Component<{ appState: AppState }> {
                 <button onClick={this.onInitialize}>Initialize game state</button>
                 <button onClick={this.onClear}>Clear state</button>
                 <PacketLoader onLoad={this.onPacketLoaded} appState={this.props.appState} />
-                <NewGameDialog appState={this.props.appState} />
                 <GameViewer appState={this.props.appState} />
+                <ModalDialogContainer appState={this.props.appState} />
             </div>
         );
     }
