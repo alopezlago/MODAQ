@@ -29,7 +29,6 @@ export const GameBar = observer(
         }, [uiState]);
         const protestBonusHandler = React.useCallback(() => {
             // Issue: pending protest needs existing index. Need to update it to include the part number
-            // Means bonus protest dialog should include a dropdown or radio box
             const cycle: Cycle = game.cycles[uiState.cycleIndex];
             if (cycle == undefined || cycle.bonusAnswer == undefined) {
                 return;

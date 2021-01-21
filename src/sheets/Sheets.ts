@@ -6,8 +6,6 @@ import { IPlayer } from "src/state/TeamState";
 import { AppState } from "src/state/AppState";
 
 // TODO:
-// - Refactor dialogs so there's a ModalDialogManager, which can handle rendering dialogs. Could be stacked, though maybe
-//   it makes sense to just render modals?
 // - UI for picking teams from the sheet.
 //     - We need to make "+ New Game" a split button; one for "manual teams" and one for "from OphirStats"
 //     - From OphirStats should have an input field for the URL and a button to load the teams/players
