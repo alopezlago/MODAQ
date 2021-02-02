@@ -2,16 +2,10 @@ import { UIState } from "src/state/UIState";
 import { ExportState, LoadingState } from "src/state/SheetState";
 import { GameState } from "src/state/GameState";
 import { IBonusProtestEvent } from "src/state/Events";
-import { IPlayer } from "src/state/TeamState";
+import { IPlayer, Player } from "src/state/TeamState";
 import { AppState } from "src/state/AppState";
 
 // TODO:
-// - UI for picking teams from the sheet.
-//     - We need to make "+ New Game" a split button; one for "manual teams" and one for "from OphirStats"
-//     - From OphirStats should have an input field for the URL and a button to load the teams/players
-//         - If we can't connect/whatever, we should show an error message
-//         - If we connect, then show the two teams and the list of players
-//         - We need to hook this up to the state
 // - Split the logic for creating ranges from the logic for export. Maybe have some IGoogleSheetsApi that can sign in
 //   and send the clear/update requests, so that the rest of it is testable
 //    - Alternatively, split this into Sheet.ts and SheetsApi.ts, and have the UI call SheetsApi, which calls Sheet.ts
@@ -25,6 +19,7 @@ import { AppState } from "src/state/AppState";
 // Ideally, next steps would be to have a autorun or reaction when cycles change, so we can update the scoresheet.
 // But to keep things simple at first, can just export (adding players > 6 could cause problems, as could multiple tiebreakers)
 
+const sheetsPrefix = "https://docs.google.com/spreadsheets/d/";
 const firstCycleRow = 8;
 
 export async function exportToSheet(appState: AppState): Promise<void> {
@@ -261,7 +256,7 @@ export async function exportToSheet(appState: AppState): Promise<void> {
         // No need to track no penalty buzzes, since OphirStats doesn't track buzz point data for it
 
         // Buzz points are expected to be in ascending order, so sort the list and write them to the columns
-        buzzPoints.sort();
+        buzzPoints.sort(compareNumbers);
         for (let i = 0; i < 2 && i < buzzPoints.length; i++) {
             const column: string = i === 0 ? "AJ" : "AK";
             valueRanges.push({
@@ -346,6 +341,147 @@ export async function exportToSheet(appState: AppState): Promise<void> {
     }
 }
 
+// TODO: Move to helper method, or place where we don't make API calls
+export function getSheetsId(url: string | undefined): string | undefined {
+    // URLs look like https://docs.google.com/spreadsheets/d/1ZWEIXEcDPpuYhMOqy7j8uKloKJ7xrMlx8Q8y4UCbjZA/edit#gid=17040017
+    if (url == undefined) {
+        return;
+    }
+
+    url = url.trim();
+    if (!url.startsWith(sheetsPrefix)) {
+        return undefined;
+    }
+
+    const nextSlash: number = url.indexOf("/", sheetsPrefix.length);
+    const sheetsId: string = url.substring(sheetsPrefix.length, nextSlash === -1 ? undefined : nextSlash);
+
+    return sheetsId.trim();
+}
+
+export async function loadRosters(appState: AppState): Promise<void> {
+    // This should load the teams and rosters from LifSheets
+    // UIState needs something like SheetsState, or maybe we need to have two copies of it?
+    // TeamName is in C2-C...
+    // Player1-Player6 is in D2-I2 for the first team, D3-I3 for the second, etc.
+    const uiState: UIState = appState.uiState;
+
+    uiState.sheetsState.setRosterLoadStatus(
+        {
+            isError: false,
+            status: "Signing in to Sheets",
+        },
+        LoadingState.Loading
+    );
+
+    await initalizeIfNeeded(uiState);
+
+    const spreadsheetId: string | undefined = uiState.sheetsState.sheetId;
+    if (spreadsheetId == undefined) {
+        return;
+    }
+
+    uiState.sheetsState.setRosterLoadStatus(
+        {
+            isError: false,
+            status: `Loading...`,
+        },
+        LoadingState.Loading
+    );
+
+    let valuesResponse: gapi.client.Response<gapi.client.sheets.ValueRange>;
+    let values: gapi.client.sheets.ValueRange;
+    try {
+        valuesResponse = await gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: "Rosters!C2:I49",
+        });
+
+        if (valuesResponse.status != 200) {
+            uiState.sheetsState.setRosterLoadStatus(
+                {
+                    isError: true,
+                    status: `Failed to load the sheet from Google Sheets (${valuesResponse.status}). Error: ${valuesResponse.body}`,
+                },
+                LoadingState.Error
+            );
+
+            return;
+        }
+
+        values = valuesResponse.result;
+    } catch (e) {
+        uiState.sheetsState.setRosterLoadStatus(
+            {
+                isError: true,
+                status: `Load failed. Error: ${e.message}`,
+            },
+            LoadingState.Error
+        );
+        return;
+    }
+
+    if (!values.values) {
+        uiState.sheetsState.setRosterLoadStatus(
+            {
+                isError: true,
+                status: `No teams found during loading.`,
+            },
+            LoadingState.Error
+        );
+        return;
+    } else if (values.values.length <= 1) {
+        uiState.sheetsState.setRosterLoadStatus(
+            {
+                isError: true,
+                status: `Not enough teams. Only found ${values.values.length} team(s).`,
+            },
+            LoadingState.Error
+        );
+        return;
+    } else if (values.values.some((range) => range.length <= 1)) {
+        uiState.sheetsState.setRosterLoadStatus(
+            {
+                isError: true,
+                status: `Not all teams have players. Check the roster sheet to make sure at least 1 player is on each team`,
+            },
+            LoadingState.Error
+        );
+        return;
+    }
+
+    // TODO: Need place for pendingNewGame teams. Can be its own interface, with team name and list of players.
+    // Picking the team from the drop down would set the team/players in the pendingNewGame.
+
+    uiState.sheetsState.setRosterLoadStatus(
+        {
+            isError: false,
+            status: `Load succeeded`,
+        },
+        LoadingState.Loaded
+    );
+
+    // Format: array of teams, first element is the team name, other elements are the players
+    const teamNames: string[] = values.values.map((row) => row[0]);
+    const players: Player[] = values.values
+        .map<Player[]>((row) => {
+            const teamName: string = row[0];
+            return row.splice(1).map((playerName, index) => new Player(playerName, teamName, index < 4));
+        })
+        .reduce((previous, current) => previous.concat(current));
+
+    uiState.setRostersForPendingGame(players);
+
+    const firstTeamName: string = teamNames[0];
+    const secondTeamName: string = teamNames[1];
+    uiState.setFirstTeamPlayersFromRostersForPendingGame(players.filter((player) => player.teamName === firstTeamName));
+    uiState.setSecondTeamPlayersFromRostersForPendingGame(
+        players.filter((player) => player.teamName === secondTeamName)
+    );
+
+    return;
+}
+
 async function initalizeIfNeeded(uiState: UIState): Promise<void> {
     if (
         uiState.sheetsState.apiInitialized === LoadingState.Loading ||
@@ -370,16 +506,12 @@ async function initalizeIfNeeded(uiState: UIState): Promise<void> {
                 const authInstance: gapi.auth2.GoogleAuth = gapi.auth2.getAuthInstance();
                 const isSignedIn: boolean = authInstance.isSignedIn.get();
                 if (!isSignedIn) {
-                    const user: gapi.auth2.GoogleUser = await authInstance.signIn();
-                    console.log("Logged in with user.");
-                    console.log(user);
+                    await authInstance.signIn();
                 }
 
                 uiState.setSheetsApiInitialized(LoadingState.Loaded);
                 resolve();
             } catch (error) {
-                console.log("Couldn't initialize Sheets API");
-                console.log(error);
                 uiState.setSheetsApiInitialized(LoadingState.Error);
                 reject(error);
             }
@@ -387,6 +519,10 @@ async function initalizeIfNeeded(uiState: UIState): Promise<void> {
     });
 
     await promise;
+}
+
+function compareNumbers(left: number, right: number): number {
+    return left - right;
 }
 
 function getPlayerKey(player: IPlayer): string {

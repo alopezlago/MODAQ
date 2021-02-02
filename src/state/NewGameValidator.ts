@@ -1,13 +1,18 @@
+import * as PendingNewGameUtils from "./PendingNewGameUtils";
 import { Player } from "./TeamState";
 import { IPendingNewGame } from "./IPendingNewGame";
 
 export function isValid(pendingNewGame: IPendingNewGame): boolean {
-    const nonEmptyFirstTeamPlayers: Player[] = pendingNewGame.firstTeamPlayers.filter((player) => player.name !== "");
+    const [firstTeamPlayers, secondTeamPlayers]: Player[][] = PendingNewGameUtils.getPendingNewGamePlayers(
+        pendingNewGame
+    );
+
+    const nonEmptyFirstTeamPlayers: Player[] = firstTeamPlayers.filter((player) => player.name !== "");
     if (nonEmptyFirstTeamPlayers.length === 0) {
         return false;
     }
 
-    const nonEmptySecondTeamPlayers: Player[] = pendingNewGame.secondTeamPlayers.filter((player) => player.name !== "");
+    const nonEmptySecondTeamPlayers: Player[] = secondTeamPlayers.filter((player) => player.name !== "");
     if (nonEmptySecondTeamPlayers.length === 0) {
         return false;
     }
@@ -23,7 +28,7 @@ export function isValid(pendingNewGame: IPendingNewGame): boolean {
 }
 
 export function playerTeamsUnique(firstTeamPlayers: Player[], secondTeamPlayers: Player[]): string | undefined {
-    if (firstTeamPlayers[0].teamName === secondTeamPlayers[0].teamName) {
+    if (firstTeamPlayers[0]?.teamName === secondTeamPlayers[0]?.teamName) {
         return "Team names must be unique";
     }
 

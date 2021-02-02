@@ -198,7 +198,8 @@ function getActionSubMenuItems(
 
     items.push(playerManagementSection);
 
-    const cycle: Cycle = game.cycles[uiState.cycleIndex];
+    const cycle: Cycle | undefined =
+        uiState.cycleIndex < game.cycles.length ? game.cycles[uiState.cycleIndex] : undefined;
     let protestBonusItem: ICommandBarItemProps | undefined = undefined;
     if (cycle && cycle.bonusAnswer != undefined) {
         const bonusIndex: number = game.getBonusIndex(uiState.cycleIndex);

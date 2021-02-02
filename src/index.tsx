@@ -10,7 +10,6 @@ import "mobx-react/batchingForReactDom";
 import { Tossup, Bonus, PacketState, IBonusPart as BonusPart } from "./state/PacketState";
 import { Cycle } from "./state/Cycle";
 import { GameViewer } from "./components/GameViewer";
-import { PacketLoader } from "./components/PacketLoader";
 import { AppState } from "./state/AppState";
 import { ModalDialogContainer } from "./components/ModalDialogContainer";
 
@@ -24,7 +23,6 @@ class Root extends React.Component<{ appState: AppState }> {
             <div>
                 <button onClick={this.onInitialize}>Initialize game state</button>
                 <button onClick={this.onClear}>Clear state</button>
-                <PacketLoader onLoad={this.onPacketLoaded} appState={this.props.appState} />
                 <GameViewer appState={this.props.appState} />
                 <ModalDialogContainer appState={this.props.appState} />
             </div>
@@ -35,13 +33,6 @@ class Root extends React.Component<{ appState: AppState }> {
         const trunk = new AsyncTrunk(this.props.appState, { storage: localStorage, delay: 100 });
         trunk.clear();
         location.reload();
-    };
-
-    private onPacketLoaded = (packet: PacketState): void => {
-        this.props.appState.game.addPlayersForDemo(firstTeamName, "Alan", "Alice", "Antonio");
-        this.props.appState.game.addPlayersForDemo(secondTeamName, "Betty", "Bradley");
-
-        this.props.appState.game.loadPacket(packet);
     };
 
     private onInitialize = (): void => {

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
 import * as NewGameValidator from "src/state/NewGameValidator";
-import { IPendingNewGame } from "src/state/IPendingNewGame";
+import { IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
 import { Player } from "src/state/TeamState";
 import { PacketState } from "src/state/PacketState";
 
@@ -19,6 +19,10 @@ describe("NewGameValidatorTests", () => {
                 [new Player("a", "teamB", false)],
                 [new Player("b", "teamB", false)]
             );
+            expect(result).to.not.equal(undefined);
+        });
+        it("Team names empty", () => {
+            const result: string | undefined = NewGameValidator.playerTeamsUnique([], []);
             expect(result).to.not.equal(undefined);
         });
     });
@@ -73,6 +77,7 @@ describe("NewGameValidatorTests", () => {
                 firstTeamPlayers: [],
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
+                type: PendingGameType.Manual,
             });
         });
         it("No players in second team", () => {
@@ -80,6 +85,29 @@ describe("NewGameValidatorTests", () => {
                 firstTeamPlayers: [new Player("a", "1", true)],
                 secondTeamPlayers: [],
                 packet: defaultPacket,
+                type: PendingGameType.Manual,
+            });
+        });
+        it("No players in first team (LifSheets)", () => {
+            const playersFromRosters: Player[] = [new Player("b", "2", true)];
+            assertNewGameIsInvalid({
+                rostersUrl: "",
+                playersFromRosters,
+                firstTeamPlayersFromRosters: [],
+                secondTeamPlayersFromRosters: playersFromRosters,
+                packet: defaultPacket,
+                type: PendingGameType.LifSheets,
+            });
+        });
+        it("No players in second team (LifSheets)", () => {
+            const playersFromRosters: Player[] = [new Player("1", "1", true)];
+            assertNewGameIsInvalid({
+                rostersUrl: "",
+                playersFromRosters,
+                firstTeamPlayersFromRosters: playersFromRosters,
+                secondTeamPlayersFromRosters: [],
+                packet: defaultPacket,
+                type: PendingGameType.LifSheets,
             });
         });
         it("Only empty names in first team", () => {
@@ -87,6 +115,7 @@ describe("NewGameValidatorTests", () => {
                 firstTeamPlayers: [new Player("", "1", true)],
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
+                type: PendingGameType.Manual,
             });
         });
         it("Only empty names in second team", () => {
@@ -94,6 +123,31 @@ describe("NewGameValidatorTests", () => {
                 firstTeamPlayers: [new Player("a", "1", true)],
                 secondTeamPlayers: [new Player("", "2", true)],
                 packet: defaultPacket,
+                type: PendingGameType.Manual,
+            });
+        });
+        it("Only empty names in first team (LifSheets)", () => {
+            const firstTeamPlayersFromRosters: Player[] = [new Player("", "1", true)];
+            const secondTeamPlayersFromRosters: Player[] = [new Player("b", "2", true)];
+            assertNewGameIsInvalid({
+                rostersUrl: "",
+                playersFromRosters: firstTeamPlayersFromRosters.concat(secondTeamPlayersFromRosters),
+                firstTeamPlayersFromRosters,
+                secondTeamPlayersFromRosters,
+                packet: defaultPacket,
+                type: PendingGameType.LifSheets,
+            });
+        });
+        it("Only empty names in second team (LifSheets)", () => {
+            const firstTeamPlayersFromRosters: Player[] = [new Player("a", "1", true)];
+            const secondTeamPlayersFromRosters: Player[] = [new Player("", "2", true)];
+            assertNewGameIsInvalid({
+                rostersUrl: "",
+                playersFromRosters: firstTeamPlayersFromRosters.concat(secondTeamPlayersFromRosters),
+                firstTeamPlayersFromRosters,
+                secondTeamPlayersFromRosters,
+                packet: defaultPacket,
+                type: PendingGameType.LifSheets,
             });
         });
         it("Same player names in first team", () => {
@@ -101,6 +155,7 @@ describe("NewGameValidatorTests", () => {
                 firstTeamPlayers: [new Player("a", "1", true), new Player("aa", "1", true), new Player("a", "1", true)],
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
+                type: PendingGameType.Manual,
             });
         });
         it("Same player names in second team", () => {
@@ -112,6 +167,39 @@ describe("NewGameValidatorTests", () => {
                     new Player("b", "2", true),
                 ],
                 packet: defaultPacket,
+                type: PendingGameType.Manual,
+            });
+        });
+        it("Same player names in first team (LifSheets)", () => {
+            const firstTeamPlayersFromRosters: Player[] = [
+                new Player("a", "1", true),
+                new Player("aa", "1", true),
+                new Player("a", "1", true),
+            ];
+            const secondTeamPlayersFromRosters: Player[] = [new Player("b", "2", true)];
+            assertNewGameIsInvalid({
+                rostersUrl: "",
+                playersFromRosters: firstTeamPlayersFromRosters.concat(secondTeamPlayersFromRosters),
+                firstTeamPlayersFromRosters,
+                secondTeamPlayersFromRosters,
+                packet: defaultPacket,
+                type: PendingGameType.LifSheets,
+            });
+        });
+        it("Same player names in second team (LifSheets)", () => {
+            const firstTeamPlayersFromRosters: Player[] = [new Player("a", "1", true)];
+            const secondTeamPlayersFromRosters: Player[] = [
+                new Player("b", "2", true),
+                new Player("bb", "2", true),
+                new Player("b", "2", true),
+            ];
+            assertNewGameIsInvalid({
+                rostersUrl: "",
+                playersFromRosters: firstTeamPlayersFromRosters.concat(secondTeamPlayersFromRosters),
+                firstTeamPlayersFromRosters,
+                secondTeamPlayersFromRosters,
+                packet: defaultPacket,
+                type: PendingGameType.LifSheets,
             });
         });
         it("No starters in first team", () => {
@@ -119,6 +207,7 @@ describe("NewGameValidatorTests", () => {
                 firstTeamPlayers: [new Player("a", "1", false)],
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
+                type: PendingGameType.Manual,
             });
         });
         it("No starters in second team", () => {
@@ -126,6 +215,31 @@ describe("NewGameValidatorTests", () => {
                 firstTeamPlayers: [new Player("a", "1", true)],
                 secondTeamPlayers: [new Player("b", "2", false)],
                 packet: defaultPacket,
+                type: PendingGameType.Manual,
+            });
+        });
+        it("No starters in first team (LifSheets)", () => {
+            const firstTeamPlayersFromRosters: Player[] = [new Player("a", "1", false)];
+            const secondTeamPlayersFromRosters: Player[] = [new Player("b", "2", true)];
+            assertNewGameIsInvalid({
+                rostersUrl: "",
+                playersFromRosters: firstTeamPlayersFromRosters.concat(secondTeamPlayersFromRosters),
+                firstTeamPlayersFromRosters,
+                secondTeamPlayersFromRosters,
+                packet: defaultPacket,
+                type: PendingGameType.LifSheets,
+            });
+        });
+        it("No starters in second team (LifSheets)", () => {
+            const firstTeamPlayersFromRosters: Player[] = [new Player("a", "1", true)];
+            const secondTeamPlayersFromRosters: Player[] = [new Player("b", "2", false)];
+            assertNewGameIsInvalid({
+                rostersUrl: "",
+                playersFromRosters: firstTeamPlayersFromRosters.concat(secondTeamPlayersFromRosters),
+                firstTeamPlayersFromRosters,
+                secondTeamPlayersFromRosters,
+                packet: defaultPacket,
+                type: PendingGameType.LifSheets,
             });
         });
         it("No tossups in packet", () => {
@@ -133,6 +247,7 @@ describe("NewGameValidatorTests", () => {
                 firstTeamPlayers: [new Player("a", "1", true)],
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: new PacketState(),
+                type: PendingGameType.Manual,
             });
         });
         it("Valid game", () => {
@@ -140,6 +255,21 @@ describe("NewGameValidatorTests", () => {
                 firstTeamPlayers: [new Player("a", "1", true)],
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
+                type: PendingGameType.Manual,
+            };
+            const result: boolean = NewGameValidator.isValid(newGame);
+            expect(result).to.be.true;
+        });
+        it("Valid game (LifSheets)", () => {
+            const firstTeamPlayersFromRosters: Player[] = [new Player("a", "1", true)];
+            const secondTeamPlayersFromRosters: Player[] = [new Player("b", "2", true)];
+            const newGame: IPendingNewGame = {
+                rostersUrl: "",
+                playersFromRosters: firstTeamPlayersFromRosters.concat(secondTeamPlayersFromRosters),
+                firstTeamPlayersFromRosters: [new Player("a", "1", true)],
+                secondTeamPlayersFromRosters: [new Player("b", "2", true)],
+                packet: defaultPacket,
+                type: PendingGameType.LifSheets,
             };
             const result: boolean = NewGameValidator.isValid(newGame);
             expect(result).to.be.true;

@@ -18,6 +18,14 @@ export class SheetState {
 
     @observable
     @ignore
+    public rosterLoadStatus: IStatus | undefined;
+
+    @observable
+    @ignore
+    public rosterLoadState: LoadingState | undefined;
+
+    @observable
+    @ignore
     public sheetId?: string;
 
     @observable
@@ -28,6 +36,8 @@ export class SheetState {
         this.apiInitialized = LoadingState.Unloaded;
         this.exportStatus = undefined;
         this.exportState = undefined;
+        this.rosterLoadStatus = undefined;
+        this.rosterLoadState = undefined;
         this.sheetId = undefined;
         this.roundNumber = undefined;
     }
@@ -49,6 +59,15 @@ export class SheetState {
 
         if (state != undefined) {
             this.exportState = state;
+        }
+    }
+
+    @action
+    public setRosterLoadStatus(status: IStatus, state: LoadingState | undefined = undefined): void {
+        this.rosterLoadStatus = status;
+
+        if (state != undefined) {
+            this.rosterLoadState = state;
         }
     }
 
