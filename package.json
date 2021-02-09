@@ -4,7 +4,7 @@
     "description": "Quiz Bowl Reader using TypeScript, React, and MobX",
     "repository": {
         "type": "git",
-        "url": "https://alopezlago.visualstudio.com/DefaultCollection/QuizBowlReader_TS_ReactMobx/_git/QuizBowlReader_TS_ReactMobx"
+        "url": "https://github.com/alopezlago/QuizBowlReader"
     },
     "author": "Alejandro Lopez-Lago",
     "license": "MIT",
@@ -35,6 +35,7 @@
         "ts-loader": "^7.0.5",
         "typescript": "^3.9.3",
         "webpack": "^4.43.0",
+        "webpack-bundle-analyzer": "^4.4.0",
         "webpack-cli": "^3.3.11",
         "webpack-dev-server": "^3.11.0"
     },

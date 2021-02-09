@@ -19,6 +19,8 @@ import { AppState } from "src/state/AppState";
 // Ideally, next steps would be to have a autorun or reaction when cycles change, so we can update the scoresheet.
 // But to keep things simple at first, can just export (adding players > 6 could cause problems, as could multiple tiebreakers)
 
+declare const __GOOGLE_CLIENT_ID__: string;
+
 const sheetsPrefix = "https://docs.google.com/spreadsheets/d/";
 const firstCycleRow = 8;
 
@@ -496,9 +498,7 @@ async function initalizeIfNeeded(uiState: UIState): Promise<void> {
         gapi.load("client:auth2", async () => {
             try {
                 await gapi.client.init({
-                    // TODO: See if we can get this injected by webpack somehow
-                    apiKey: "AIzaSyBvt62emmPzKNegGgCjkeZ8n0Iqq7w6IhM",
-                    clientId: "1038902414768-nj056sbrbe0oshavft2uq9et6tvbu2d5.apps.googleusercontent.com",
+                    clientId: __GOOGLE_CLIENT_ID__,
                     discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
                     scope: "https://www.googleapis.com/auth/spreadsheets",
                 });

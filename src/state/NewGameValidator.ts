@@ -28,7 +28,16 @@ export function isValid(pendingNewGame: IPendingNewGame): boolean {
 }
 
 export function playerTeamsUnique(firstTeamPlayers: Player[], secondTeamPlayers: Player[]): string | undefined {
-    if (firstTeamPlayers[0]?.teamName === secondTeamPlayers[0]?.teamName) {
+    if (
+        firstTeamPlayers == undefined ||
+        firstTeamPlayers.length === 0 ||
+        secondTeamPlayers == undefined ||
+        secondTeamPlayers.length === 0
+    ) {
+        return undefined;
+    }
+
+    if (firstTeamPlayers[0].teamName === secondTeamPlayers[0].teamName) {
         return "Team names must be unique";
     }
 
