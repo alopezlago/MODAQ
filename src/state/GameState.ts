@@ -28,12 +28,11 @@ export class GameState {
         this.cycles = [];
     }
 
-    @computed({ requiresReaction: true })
+    @computed
     public get isLoaded(): boolean {
         return this.packet.tossups.length > 0;
     }
 
-    @computed({ requiresReaction: true })
     public get teamNames(): string[] {
         const teamSet: Set<string> = new Set<string>(this.players.map((player) => player.teamName));
 

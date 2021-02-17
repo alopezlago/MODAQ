@@ -5,6 +5,8 @@
     "version": "0.2.0",
     "configurations": [
         {
+            // If you can't debug in VSCode, try adding this to the list below
+            // "sourceMaps": true
             "args": [
                 "--timeout",
                 "999999",
@@ -23,21 +25,20 @@
             "request": "launch",
             "skipFiles": ["<node_internals>/**"],
             "type": "pwa-node"
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against localhost",
+            "url": "https://localhost.quizbowlreader.com:8080",
+            "webRoot": "${workspaceFolder}"
+        },
+        {
+            "name": "Launch Edge",
+            "request": "launch",
+            "type": "pwa-msedge",
+            "url": "https://localhost.quizbowlreader.com:8080",
+            "webRoot": "${workspaceFolder}"
         }
-        // TODO: Once we have dev-server running properly, enable these
-        // // {
-        // //     "type": "chrome",
-        // //     "request": "launch",
-        // //     "name": "Launch Chrome against localhost",
-        // //     "url": "http://localhost:8080",
-        // //     "webRoot": "${workspaceFolder}"
-        // // },
-        // // {
-        // //     "name": "Launch Edge",
-        // //     "request": "launch",
-        // //     "type": "pwa-msedge",
-        // //     "url": "http://localhost:8080",
-        // //     "webRoot": "${workspaceFolder}"
-        // // }
     ]
 }

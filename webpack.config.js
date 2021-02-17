@@ -26,11 +26,6 @@ module.exports = (env, argv) => {
             filename: "bundle.js",
             publicPath: "/out/",
         },
-        watch: true,
-        watchOptions: {
-            aggregateTimeout: 1000,
-            ignored: /node_modules/,
-        },
         resolve: {
             extensions: [".ts", ".tsx", ".js"],
             alias: {
@@ -66,17 +61,27 @@ module.exports = (env, argv) => {
                     files: "./src/**/*.{ts,tsx,js,jsx}",
                 },
             }),
-            // If you want a different Google Sheets ID, replace this with your own
             new webpack.DefinePlugin({
+                // If you want a different Google Sheets ID, replace this with your own
                 __GOOGLE_CLIENT_ID__: JSON.stringify(
                     "1038902414768-nj056sbrbe0oshavft2uq9et6tvbu2d5.apps.googleusercontent.com"
                 ),
+                // If you're testing the YAPP Azure Function locally, use http://localhost:7071/api/ParseDocx
+                __YAPP_SERVICE__: JSON.stringify(
+                    "https://yetanotherpacketparserazurefunction.azurewebsites.net/api/ParseDocx"
+                ),
             }),
-            new BundleAnalyzerPlugin(),
         ],
     };
 
-    if (!isProduction) {
+    if (isProduction) {
+        // Open the bundle size analyzer in production, since it's not useful in debug builds
+        exports.plugins.push(new BundleAnalyzerPlugin());
+    } else {
+        exports.watchOptions = {
+            aggregateTimeout: 1000,
+            ignored: /node_modules/,
+        };
         exports.devServer = {
             allowedHosts: ["localhost:8080", "quizbowlreader.com", "localhost.quizbowlreader.com"],
             // TODO: Add script and option to

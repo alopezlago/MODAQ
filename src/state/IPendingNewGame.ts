@@ -1,7 +1,7 @@
 import { PacketState } from "./PacketState";
 import { Player } from "./TeamState";
 
-export type IPendingNewGame = IPendingManualNewGame | IPendingLifSheetsNewGame;
+export type IPendingNewGame = IPendingManualNewGame | IPendingLifsheetsNewGame;
 
 interface IPendingManualNewGame extends IBasePendingNewGame {
     firstTeamPlayers: Player[];
@@ -11,15 +11,15 @@ interface IPendingManualNewGame extends IBasePendingNewGame {
 
 export const enum PendingGameType {
     Manual,
-    LifSheets,
+    Lifsheets,
 }
 
-interface IPendingLifSheetsNewGame extends IBasePendingNewGame {
+interface IPendingLifsheetsNewGame extends IBasePendingNewGame {
     rostersUrl: string | undefined;
     playersFromRosters: Player[] | undefined;
     firstTeamPlayersFromRosters: Player[] | undefined;
     secondTeamPlayersFromRosters: Player[] | undefined;
-    type: PendingGameType.LifSheets;
+    type: PendingGameType.Lifsheets;
 }
 
 interface IBasePendingNewGame {

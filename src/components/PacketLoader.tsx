@@ -6,6 +6,8 @@ import { UIState } from "src/state/UIState";
 import { Tossup, Bonus, IBonusPart, PacketState } from "src/state/PacketState";
 import { AppState } from "src/state/AppState";
 
+declare const __YAPP_SERVICE__: string;
+
 export const PacketLoader = observer(
     (props: IPacketLoaderProps): JSX.Element => {
         // TODO: This probably doesn't need to be cached.
@@ -92,10 +94,7 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
     props.appState.uiState.setPacketStatus({ isError: false, status: "Contacting parsing service..." });
 
     try {
-        const response: Response = await fetch(
-            "https://yetanotherpacketparserazurefunction.azurewebsites.net/api/ParseDocx",
-            requestInfo
-        );
+        const response: Response = await fetch(__YAPP_SERVICE__, requestInfo);
 
         if (!response.ok) {
             let errorMessage = "";

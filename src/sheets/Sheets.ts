@@ -4,11 +4,11 @@ import { GameState } from "src/state/GameState";
 import { IBonusProtestEvent } from "src/state/Events";
 import { IPlayer, Player } from "src/state/TeamState";
 import { AppState } from "src/state/AppState";
+import { SheetsApi } from "src/sheets/SheetsApi";
+import { ISheetsApi, ISheetsGetResponse } from "./ISheetsApi";
+import { IStatus } from "src/IStatus";
 
 // TODO:
-// - Split the logic for creating ranges from the logic for export. Maybe have some IGoogleSheetsApi that can sign in
-//   and send the clear/update requests, so that the rest of it is testable
-//    - Alternatively, split this into Sheet.ts and SheetsApi.ts, and have the UI call SheetsApi, which calls Sheet.ts
 // - Socket integration! Can be very tricky because of how the cycle/phases are backed differently
 //     - Need to send a message when a tossup is scored. Need to send one when a bonus is scored, but it shouldn't be
 //       sent until "Next Question" is clicked.
@@ -19,12 +19,10 @@ import { AppState } from "src/state/AppState";
 // Ideally, next steps would be to have a autorun or reaction when cycles change, so we can update the scoresheet.
 // But to keep things simple at first, can just export (adding players > 6 could cause problems, as could multiple tiebreakers)
 
-declare const __GOOGLE_CLIENT_ID__: string;
-
 const sheetsPrefix = "https://docs.google.com/spreadsheets/d/";
 const firstCycleRow = 8;
 
-export async function exportToSheet(appState: AppState): Promise<void> {
+export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = SheetsApi): Promise<void> {
     const game: GameState = appState.game;
     const uiState: UIState = appState.uiState;
 
@@ -36,7 +34,7 @@ export async function exportToSheet(appState: AppState): Promise<void> {
         ExportState.Exporting
     );
 
-    await initalizeIfNeeded(uiState);
+    await sheetsApi.initializeIfNeeded(uiState);
 
     if (game.teamNames.length > 2) {
         uiState.sheetsState.setExportStatus(
@@ -64,6 +62,7 @@ export async function exportToSheet(appState: AppState): Promise<void> {
     });
 
     // TODO: Would be more efficient if we did a group-by operation, but the number of teams should be small
+    // TODO: This should count it by starters + subs, not just players
     for (const teamName of game.teamNames) {
         if (game.players.filter((player) => player.teamName === teamName).length > 6) {
             uiState.sheetsState.setExportStatus(
@@ -137,7 +136,7 @@ export async function exportToSheet(appState: AppState): Promise<void> {
                     continue;
                 }
 
-                const outPlayerColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(sub.inPlayer));
+                const outPlayerColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(sub.outPlayer));
                 if (outPlayerColumn == undefined) {
                     continue;
                 }
@@ -269,8 +268,6 @@ export async function exportToSheet(appState: AppState): Promise<void> {
 
         row++;
     }
-
-    // TODO: This should always come from sheetId, and should not be null
     if (uiState.sheetsState.sheetId == undefined) {
         uiState.sheetsState.setExportStatus(
             {
@@ -282,47 +279,56 @@ export async function exportToSheet(appState: AppState): Promise<void> {
         return;
     }
 
-    const spreadsheetId: string = uiState.sheetsState.sheetId;
-
     try {
         // Clear the spreadsheet first, to remove anything we've undone/changed
-        await gapi.client.sheets.spreadsheets.values.batchClear({
-            spreadsheetId,
-            resource: {
-                ranges: [
-                    // Clear team names, then player names + buzzes, and then bonuses
-                    `'${sheetName}'!C5:C5`,
-                    `'${sheetName}'!S5:S5`,
+        const ranges: string[] = [
+            // Clear team names, then player names + buzzes, and then bonuses
+            `'${sheetName}'!C5:C5`,
+            `'${sheetName}'!S5:S5`,
 
-                    // Clear player names and buzzes plus bonuses
-                    `'${sheetName}'!B7:G28`,
-                    `'${sheetName}'!H8:H27`,
+            // Clear player names and buzzes plus bonuses
+            `'${sheetName}'!B7:G28`,
+            `'${sheetName}'!H8:H27`,
 
-                    // Clear bonuses
-                    `'${sheetName}'!R7:W28`,
-                    `'${sheetName}'!X8:X27`,
+            // Clear bonuses
+            `'${sheetName}'!R7:W28`,
+            `'${sheetName}'!X8:X27`,
 
-                    // Clear protests
-                    `'${sheetName}'!AF8:AH28`,
+            // Clear protests
+            `'${sheetName}'!AF8:AH28`,
 
-                    // Clear buzz points
-                    `'${sheetName}'!AJ8:AK28`,
-                ],
-            },
-        });
+            // Clear buzz points
+            `'${sheetName}'!AJ8:AK28`,
+        ];
+
+        const clearStatus: IStatus = await sheetsApi.batchClear(uiState, ranges);
+        if (clearStatus.isError) {
+            uiState.sheetsState.setExportStatus(
+                {
+                    isError: true,
+                    status: `Error from Sheets API clearing the values. Error: ${clearStatus.status}`,
+                },
+                ExportState.Error
+            );
+            return;
+        }
 
         uiState.sheetsState.setExportStatus({
             isError: false,
             status: "Export halfway completed...",
         });
 
-        await gapi.client.sheets.spreadsheets.values.batchUpdate({
-            spreadsheetId,
-            resource: {
-                data: valueRanges,
-                valueInputOption: "RAW",
-            },
-        });
+        const updateStatus: IStatus = await sheetsApi.batchUpdate(uiState, valueRanges);
+        if (updateStatus.isError) {
+            uiState.sheetsState.setExportStatus(
+                {
+                    isError: true,
+                    status: `Error from Sheets API writing the values. Error: ${updateStatus.status}`,
+                },
+                ExportState.Error
+            );
+            return;
+        }
 
         // clear status
         uiState.sheetsState.setExportStatus(
@@ -361,8 +367,8 @@ export function getSheetsId(url: string | undefined): string | undefined {
     return sheetsId.trim();
 }
 
-export async function loadRosters(appState: AppState): Promise<void> {
-    // This should load the teams and rosters from LifSheets
+export async function loadRosters(appState: AppState, sheetsApi: ISheetsApi = SheetsApi): Promise<void> {
+    // This should load the teams and rosters from Lifsheets
     // UIState needs something like SheetsState, or maybe we need to have two copies of it?
     // TeamName is in C2-C...
     // Player1-Player6 is in D2-I2 for the first team, D3-I3 for the second, etc.
@@ -376,7 +382,7 @@ export async function loadRosters(appState: AppState): Promise<void> {
         LoadingState.Loading
     );
 
-    await initalizeIfNeeded(uiState);
+    await sheetsApi.initializeIfNeeded(uiState);
 
     const spreadsheetId: string | undefined = uiState.sheetsState.sheetId;
     if (spreadsheetId == undefined) {
@@ -391,19 +397,14 @@ export async function loadRosters(appState: AppState): Promise<void> {
         LoadingState.Loading
     );
 
-    let valuesResponse: gapi.client.Response<gapi.client.sheets.ValueRange>;
     let values: gapi.client.sheets.ValueRange;
     try {
-        valuesResponse = await gapi.client.sheets.spreadsheets.values.get({
-            spreadsheetId,
-            range: "Rosters!C2:I49",
-        });
-
-        if (valuesResponse.status != 200) {
+        const response: ISheetsGetResponse = await sheetsApi.get(uiState, "Rosters!C2:I49");
+        if (!response.success) {
             uiState.sheetsState.setRosterLoadStatus(
                 {
                     isError: true,
-                    status: `Failed to load the sheet from Google Sheets (${valuesResponse.status}). Error: ${valuesResponse.body}`,
+                    status: `Load failed. Error from Sheets API: ${response.errorMessage}`,
                 },
                 LoadingState.Error
             );
@@ -411,7 +412,7 @@ export async function loadRosters(appState: AppState): Promise<void> {
             return;
         }
 
-        values = valuesResponse.result;
+        values = response.valueRange;
     } catch (e) {
         uiState.sheetsState.setRosterLoadStatus(
             {
@@ -445,7 +446,7 @@ export async function loadRosters(appState: AppState): Promise<void> {
         uiState.sheetsState.setRosterLoadStatus(
             {
                 isError: true,
-                status: `Not all teams have players. Check the roster sheet to make sure at least 1 player is on each team`,
+                status: `Not all teams have players. Check the roster sheet to make sure at least 1 player is on each team.`,
             },
             LoadingState.Error
         );
@@ -468,57 +469,22 @@ export async function loadRosters(appState: AppState): Promise<void> {
     const players: Player[] = values.values
         .map<Player[]>((row) => {
             const teamName: string = row[0];
-            return row.splice(1).map((playerName, index) => new Player(playerName, teamName, index < 4));
+            return row.slice(1).map((playerName, index) => new Player(playerName, teamName, index < 4));
         })
         .reduce((previous, current) => previous.concat(current));
 
-    uiState.setRostersForPendingGame(players);
+    uiState.setRostersForPendingNewGame(players);
 
     const firstTeamName: string = teamNames[0];
     const secondTeamName: string = teamNames[1];
-    uiState.setFirstTeamPlayersFromRostersForPendingGame(players.filter((player) => player.teamName === firstTeamName));
-    uiState.setSecondTeamPlayersFromRostersForPendingGame(
+    uiState.setFirstTeamPlayersFromRostersForPendingNewGame(
+        players.filter((player) => player.teamName === firstTeamName)
+    );
+    uiState.setSecondTeamPlayersFromRostersForPendingNewGame(
         players.filter((player) => player.teamName === secondTeamName)
     );
 
     return;
-}
-
-async function initalizeIfNeeded(uiState: UIState): Promise<void> {
-    if (
-        uiState.sheetsState.apiInitialized === LoadingState.Loading ||
-        uiState.sheetsState.apiInitialized === LoadingState.Loaded
-    ) {
-        return;
-    }
-
-    // Bit of a hacky wait to wait until the callback is done
-    uiState.setSheetsApiInitialized(LoadingState.Loading);
-    const promise: Promise<void> = new Promise<void>((resolve, reject) => {
-        gapi.load("client:auth2", async () => {
-            try {
-                await gapi.client.init({
-                    clientId: __GOOGLE_CLIENT_ID__,
-                    discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
-                    scope: "https://www.googleapis.com/auth/spreadsheets",
-                });
-
-                const authInstance: gapi.auth2.GoogleAuth = gapi.auth2.getAuthInstance();
-                const isSignedIn: boolean = authInstance.isSignedIn.get();
-                if (!isSignedIn) {
-                    await authInstance.signIn();
-                }
-
-                uiState.setSheetsApiInitialized(LoadingState.Loaded);
-                resolve();
-            } catch (error) {
-                uiState.setSheetsApiInitialized(LoadingState.Error);
-                reject(error);
-            }
-        });
-    });
-
-    await promise;
 }
 
 function compareNumbers(left: number, right: number): number {

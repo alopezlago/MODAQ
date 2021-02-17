@@ -122,8 +122,8 @@ const NewGameDialogBody = observer(
                     return;
                 }
 
-                uiState.setPendingGameType(
-                    item.props.itemKey === manualPivotKey ? PendingGameType.Manual : PendingGameType.LifSheets
+                uiState.setPendingNewGameType(
+                    item.props.itemKey === manualPivotKey ? PendingGameType.Manual : PendingGameType.Lifsheets
                 );
                 item.state;
             },
@@ -136,8 +136,8 @@ const NewGameDialogBody = observer(
                     <PivotItem headerText="Manual" itemKey={manualPivotKey}>
                         <ManualNewGamePivotBody appState={props.appState} classes={classes} />
                     </PivotItem>
-                    <PivotItem headerText="From LifSheets" itemKey={fromLifsheetsPivotKey}>
-                        <FromLifSheetsNewGameBody appState={props.appState} classes={classes} />
+                    <PivotItem headerText="From Lifsheets" itemKey={fromLifsheetsPivotKey}>
+                        <FromLifsheetsNewGameBody appState={props.appState} classes={classes} />
                     </PivotItem>
                 </Pivot>
                 <Separator />
@@ -216,21 +216,21 @@ const ManualNewGamePivotBody = observer(
     }
 );
 
-const FromLifSheetsNewGameBody = observer(
+const FromLifsheetsNewGameBody = observer(
     (props: INewGamePivotItemProps): JSX.Element => {
         const uiState: UIState = props.appState.uiState;
 
         const rostersUrlChangeHandler = React.useCallback(
             (ev, newValue: string | undefined) => {
                 if (newValue != undefined) {
-                    uiState.setRostersUrlForPendingGame(newValue);
+                    uiState.setRostersUrlForPendingNewGame(newValue);
                 }
             },
             [uiState]
         );
 
         const loadHandler = React.useCallback(() => {
-            if (uiState.pendingNewGame?.type !== PendingGameType.LifSheets) {
+            if (uiState.pendingNewGame?.type !== PendingGameType.Lifsheets) {
                 return;
             }
 
@@ -250,19 +250,19 @@ const FromLifSheetsNewGameBody = observer(
 
         const teamChangeHandler = React.useCallback(
             (newTeamName: string, oldPlayers: Player[]): void => {
-                if (uiState.pendingNewGame?.type !== PendingGameType.LifSheets) {
+                if (uiState.pendingNewGame?.type !== PendingGameType.Lifsheets) {
                     return;
                 }
 
                 // If rosters exist, then so do the players, so we can do strict equality to see which team needs to be updated
                 if (oldPlayers === uiState.pendingNewGame?.firstTeamPlayersFromRosters) {
-                    uiState.setFirstTeamPlayersFromRostersForPendingGame(
+                    uiState.setFirstTeamPlayersFromRostersForPendingNewGame(
                         uiState.pendingNewGame.playersFromRosters?.filter(
                             (player) => player.teamName === newTeamName
                         ) ?? []
                     );
                 } else if (oldPlayers === uiState.pendingNewGame?.secondTeamPlayersFromRosters) {
-                    uiState.setSecondTeamPlayersFromRostersForPendingGame(
+                    uiState.setSecondTeamPlayersFromRostersForPendingNewGame(
                         uiState.pendingNewGame.playersFromRosters?.filter(
                             (player) => player.teamName === newTeamName
                         ) ?? []
@@ -273,7 +273,7 @@ const FromLifSheetsNewGameBody = observer(
         );
 
         const pendingNewGame: IPendingNewGame | undefined = uiState.pendingNewGame;
-        if (pendingNewGame?.type !== PendingGameType.LifSheets) {
+        if (pendingNewGame?.type !== PendingGameType.Lifsheets) {
             return <></>;
         }
 
