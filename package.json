@@ -49,8 +49,8 @@
     },
     "scripts": {
         "init": "yarn install",
-        "build": "webpack --mode development",
-        "buildrelease": "webpack --mode production",
+        "build": "webpack --mode development --watch",
+        "buildRelease": "webpack --mode production",
         "lint": "eslint . --ext .ts,.tsx",
         "start": "webpack-dev-server --config webpack.config.js",
         "test": "mocha --recursive tests/**/*.ts --exit --check-leaks -r ts-node/register -r tsconfig-paths/register"

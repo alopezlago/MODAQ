@@ -102,15 +102,15 @@ export class UIState {
     }
 
     @action
-    public setPendingGameType(type: PendingGameType): void {
+    public setPendingNewGameType(type: PendingGameType): void {
         if (this.pendingNewGame != undefined) {
             this.pendingNewGame.type = type;
         }
     }
 
     @action
-    public setRostersForPendingGame(players: Player[]): void {
-        if (this.pendingNewGame?.type === PendingGameType.LifSheets) {
+    public setRostersForPendingNewGame(players: Player[]): void {
+        if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
             this.pendingNewGame.playersFromRosters = players;
             this.pendingNewGame.firstTeamPlayersFromRosters = [];
             this.pendingNewGame.secondTeamPlayersFromRosters = [];
@@ -118,22 +118,22 @@ export class UIState {
     }
 
     @action
-    public setRostersUrlForPendingGame(url: string): void {
-        if (this.pendingNewGame?.type === PendingGameType.LifSheets) {
+    public setRostersUrlForPendingNewGame(url: string): void {
+        if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
             this.pendingNewGame.rostersUrl = url;
         }
     }
 
     @action
-    public setFirstTeamPlayersFromRostersForPendingGame(players: Player[]): void {
-        if (this.pendingNewGame?.type === PendingGameType.LifSheets) {
+    public setFirstTeamPlayersFromRostersForPendingNewGame(players: Player[]): void {
+        if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
             this.pendingNewGame.firstTeamPlayersFromRosters = players;
         }
     }
 
     @action
-    public setSecondTeamPlayersFromRostersForPendingGame(players: Player[]): void {
-        if (this.pendingNewGame?.type === PendingGameType.LifSheets) {
+    public setSecondTeamPlayersFromRostersForPendingNewGame(players: Player[]): void {
+        if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
             this.pendingNewGame.secondTeamPlayersFromRosters = players;
         }
     }

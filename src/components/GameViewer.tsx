@@ -12,7 +12,8 @@ import { AppState } from "src/state/AppState";
 // the height. We need to make sure the contents also don't grow beyond the page, and add overflow handling to the
 // viewer containers
 export const GameViewer = observer((props: IGameViewerProps) => {
-    const classes: IGameViewerClassNames = getClassNames();
+    const gameExists: boolean = props.appState.game.isLoaded;
+    const classes: IGameViewerClassNames = getClassNames(gameExists);
 
     return (
         <div>
@@ -41,7 +42,7 @@ interface IGameViewerClassNames {
 }
 
 // TODO: play around with flex-grow/flex-shrink to see what will work. Alternatively, have a minimum width for scoreboard
-const getClassNames = (): IGameViewerClassNames =>
+const getClassNames = (gameLoaded: boolean): IGameViewerClassNames =>
     mergeStyleSets({
         gameViewer: {
             // Grid should be more resize friendly than flex if we ever do responsive design
@@ -52,6 +53,7 @@ const getClassNames = (): IGameViewerClassNames =>
         scoreboardContainer: {
             margin: "0 10px",
             overflowY: "auto",
+            visibility: gameLoaded ? undefined : "hidden",
         },
         questionViewerContainer: {},
     });
