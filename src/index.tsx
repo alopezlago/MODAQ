@@ -3,85 +3,32 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { initializeIcons } from "@fluentui/react/lib/Icons";
+import { configure } from "mobx";
 import { observer } from "mobx-react";
 import { AsyncTrunk } from "mobx-sync";
-import "mobx-react/batchingForReactDom";
 
-import { Tossup, Bonus, PacketState, IBonusPart as BonusPart } from "./state/PacketState";
-import { Cycle } from "./state/Cycle";
 import { GameViewer } from "./components/GameViewer";
 import { AppState } from "./state/AppState";
 import { ModalDialogContainer } from "./components/ModalDialogContainer";
 
-const firstTeamName = "Alpha";
-const secondTeamName = "B 2";
-
-@observer
-class Root extends React.Component<{ appState: AppState }> {
-    public render() {
-        return (
-            <div>
-                <button onClick={this.onInitialize}>Initialize game state</button>
-                <button onClick={this.onClear}>Clear state</button>
-                <GameViewer appState={this.props.appState} />
-                <ModalDialogContainer appState={this.props.appState} />
-            </div>
-        );
-    }
-
-    private onClear = (): void => {
-        const trunk = new AsyncTrunk(this.props.appState, { storage: localStorage, delay: 100 });
+const Root = observer((props: IRootProps) => {
+    const onClear = (): void => {
+        const trunk = new AsyncTrunk(props.appState, { storage: localStorage, delay: 100 });
         trunk.clear();
         location.reload();
     };
 
-    private onInitialize = (): void => {
-        this.props.appState.game.addPlayersForDemo(firstTeamName, "Alan", "Alice", "Antonio");
-        this.props.appState.game.addPlayersForDemo(secondTeamName, "Betty", "Bradley");
+    return (
+        <div>
+            <button onClick={onClear}>Clear state</button>
+            <GameViewer appState={props.appState} />
+            <ModalDialogContainer appState={props.appState} />
+        </div>
+    );
+});
 
-        const packet = new PacketState();
-        packet.setTossups([
-            new Tossup("This American was the first president of the USA.", "George Washington"),
-            new Tossup("This is the first perfect number. For 10 points, name how many sides a hexagon has.", "6"),
-        ]);
-
-        packet.setBonuses([
-            new Bonus("This is a leadin", [
-                new BonusPart("This is the first part", "First answer"),
-                new BonusPart("This is the second part", "Second answer"),
-                new BonusPart("This is the third part", "Third answer"),
-            ]),
-            new Bonus("He wrote An Irishman Airman forsees his death", [
-                new BonusPart("Name this poet", "William Butler Yeats"),
-                new BonusPart(
-                    'Yeats also wrote this poem that contains the phrase "the center cannot hold".',
-                    "The Second Coming"
-                ),
-                new BonusPart("Yeats also wrote a poem about Leda and this animal that Zeus turned into.", "swan"),
-            ]),
-        ]);
-
-        this.props.appState.game.loadPacket(packet);
-
-        const firstCycle: Cycle = this.props.appState.game.cycles[0];
-        firstCycle.addNeg(
-            {
-                correct: false,
-                player: this.props.appState.game.getPlayers(secondTeamName)[0],
-                position: 2,
-            },
-            0
-        );
-        firstCycle.addCorrectBuzz(
-            {
-                correct: true,
-                player: this.props.appState.game.getPlayers(firstTeamName)[1],
-                position: 4,
-            },
-            0,
-            0
-        );
-    };
+interface IRootProps {
+    appState: AppState;
 }
 
 class ErrorBoundary extends React.Component<Record<string, unknown>, IErrorBoundaryState> {
@@ -121,6 +68,7 @@ initializeIcons();
 // This element might not exist when running tests. In that case, skip rendering the application.
 const element: HTMLElement | null = document.getElementById("root");
 if (element) {
+    configure({ enforceActions: "observed", computedRequiresReaction: true });
     const appState = new AppState();
     const trunk = new AsyncTrunk(appState, { storage: localStorage, delay: 100 });
 

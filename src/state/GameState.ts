@@ -1,4 +1,4 @@
-import { computed, observable, action } from "mobx";
+import { computed, observable, action, makeObservable } from "mobx";
 import { format } from "mobx-sync";
 
 import { PacketState, Bonus, Tossup } from "./PacketState";
@@ -7,14 +7,11 @@ import { Cycle, ICycle } from "./Cycle";
 import { ISubstitutionEvent, IPlayerJoinsEvent, IPlayerLeavesEvent } from "./Events";
 
 export class GameState {
-    @observable
     public packet: PacketState;
 
-    @observable
     public players: Player[];
 
     // Anything with methods/computeds not at the top level needs to use @format to deserialize correctly
-    @observable
     @format((deserializedArray: ICycle[]) => {
         return deserializedArray.map((deserializedCycle) => {
             return new Cycle(deserializedCycle);
@@ -23,12 +20,26 @@ export class GameState {
     public cycles: Cycle[];
 
     constructor() {
+        makeObservable(this, {
+            cycles: observable,
+            teamNames: computed,
+            packet: observable,
+            players: observable,
+            isLoaded: computed,
+            finalScore: computed({ requiresReaction: true }),
+            scores: computed({ requiresReaction: true }),
+            addPlayer: action,
+            addPlayers: action,
+            addPlayersForDemo: action,
+            clear: action,
+            loadPacket: action,
+        });
+
         this.packet = new PacketState();
         this.players = [];
         this.cycles = [];
     }
 
-    @computed
     public get isLoaded(): boolean {
         return this.packet.tossups.length > 0;
     }
@@ -45,12 +56,10 @@ export class GameState {
         return teamNames;
     }
 
-    @computed({ requiresReaction: true })
     public get finalScore(): [number, number] {
         return this.scores[this.cycles.length - 1];
     }
 
-    @computed({ requiresReaction: true })
     public get scores(): [number, number][] {
         const score: [number, number][] = [];
         let firstTeamPreviousScore = 0;
@@ -100,22 +109,18 @@ export class GameState {
         return change;
     }
 
-    @action
     public addPlayer(player: Player): void {
         this.players.push(player);
     }
 
-    @action
     public addPlayers(players: Player[]): void {
         this.players.push(...players);
     }
 
-    @action
     public addPlayersForDemo(teamName: string, ...names: string[]): void {
         this.players.push(...names.map((name) => new Player(name, teamName, /* isStarter */ true)));
     }
 
-    @action
     public clear(): void {
         this.packet = new PacketState();
         this.players = [];
@@ -231,7 +236,6 @@ export class GameState {
         return cycleIndex + thrownOutTossupsCount;
     }
 
-    @action
     public loadPacket(packet: PacketState): void {
         this.packet = packet;
 

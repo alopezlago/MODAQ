@@ -1,38 +1,33 @@
-import { action, observable } from "mobx";
+import { makeAutoObservable } from "mobx";
 import { ignore } from "mobx-sync";
 
 import { IStatus } from "src/IStatus";
 
 export class SheetState {
-    @observable
     @ignore
     apiInitialized: LoadingState;
 
-    @observable
     @ignore
     public exportStatus: IStatus | undefined;
 
-    @observable
     @ignore
     public exportState: ExportState | undefined;
 
-    @observable
     @ignore
     public rosterLoadStatus: IStatus | undefined;
 
-    @observable
     @ignore
     public rosterLoadState: LoadingState | undefined;
 
-    @observable
     @ignore
     public sheetId?: string;
 
-    @observable
     @ignore
     public roundNumber?: number;
 
     constructor() {
+        makeAutoObservable(this);
+
         this.apiInitialized = LoadingState.Unloaded;
         this.exportStatus = undefined;
         this.exportState = undefined;
@@ -42,18 +37,15 @@ export class SheetState {
         this.roundNumber = undefined;
     }
 
-    @action
     public clearExportStatus(): void {
         this.exportStatus = undefined;
         this.exportState = undefined;
     }
 
-    @action
     public clearRoundNumber(): void {
         this.roundNumber = undefined;
     }
 
-    @action
     public setExportStatus(status: IStatus, state: ExportState | undefined = undefined): void {
         this.exportStatus = status;
 
@@ -62,7 +54,6 @@ export class SheetState {
         }
     }
 
-    @action
     public setRosterLoadStatus(status: IStatus, state: LoadingState | undefined = undefined): void {
         this.rosterLoadStatus = status;
 
@@ -71,12 +62,10 @@ export class SheetState {
         }
     }
 
-    @action
     public setSheetId(sheetId: string): void {
         this.sheetId = sheetId;
     }
 
-    @action
     public setRoundNumber(roundNumber: number): void {
         this.roundNumber = roundNumber;
     }

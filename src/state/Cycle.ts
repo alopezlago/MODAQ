@@ -1,4 +1,4 @@
-import { observable, action, computed } from "mobx";
+import { observable, action, computed, makeObservable } from "mobx";
 
 import * as CompareUtils from "./CompareUtils";
 import * as Events from "./Events";
@@ -9,43 +9,70 @@ import { IPlayer } from "./TeamState";
 // (not as simple to go back)
 
 export class Cycle implements ICycle {
-    @observable
     negBuzz?: Events.ITossupAnswerEvent;
 
-    @observable
     correctBuzz?: Events.ITossupAnswerEvent;
 
-    @observable
     noPenaltyBuzzes?: Events.ITossupAnswerEvent[];
 
-    @observable
     bonusAnswer?: Events.IBonusAnswerEvent;
 
-    @observable
     playerJoins?: Events.IPlayerJoinsEvent[];
 
-    @observable
     playerLeaves?: Events.IPlayerLeavesEvent[];
 
-    @observable
     subs?: Events.ISubstitutionEvent[];
 
-    @observable
     timeouts?: Events.ITimeoutEvent[];
 
-    @observable
     bonusProtests?: Events.IBonusProtestEvent[];
 
-    @observable
     tossupProtests?: Events.ITossupProtestEvent[];
 
-    @observable
     thrownOutTossups?: Events.IThrowOutQuestionEvent[];
 
-    @observable
     thrownOutBonuses?: Events.IThrowOutQuestionEvent[];
 
     constructor(deserializedCycle?: ICycle) {
+        // We don't use makeAutoObservable because there are methods like getProtestableBonusPartIndexes which aren't
+        // actions
+        makeObservable(this, {
+            negBuzz: observable,
+            correctBuzz: observable,
+            noPenaltyBuzzes: observable,
+            bonusAnswer: observable,
+            playerJoins: observable,
+            playerLeaves: observable,
+            subs: observable,
+            timeouts: observable,
+            bonusProtests: observable,
+            tossupProtests: observable,
+            thrownOutTossups: observable,
+            thrownOutBonuses: observable,
+            incorrectBuzzes: computed({ requiresReaction: true }),
+            orderedBuzzes: computed({ requiresReaction: true }),
+            addCorrectBuzz: action,
+            addNeg: action,
+            addNoPenaltyBuzz: action,
+            addBonusProtest: action,
+            addPlayerJoins: action,
+            addPlayerLeaves: action,
+            addSwapSubstitution: action,
+            addThrownOutBonus: action,
+            addThrownOutTossup: action,
+            addTossupProtest: action,
+            removeBonusProtest: action,
+            removeCorrectBuzz: action,
+            removePlayerJoins: action,
+            removePlayerLeaves: action,
+            removeSubstitution: action,
+            removeThrownOutBonus: action,
+            removeThrownOutTossup: action,
+            removeTossupProtest: action,
+            removeWrongBuzz: action,
+            setBonusPartAnswer: action,
+        });
+
         if (deserializedCycle) {
             this.bonusAnswer = deserializedCycle.bonusAnswer;
             this.bonusProtests = deserializedCycle.bonusProtests;
@@ -61,13 +88,11 @@ export class Cycle implements ICycle {
         }
     }
 
-    @computed({ requiresReaction: true })
     public get incorrectBuzzes(): Events.ITossupAnswerEvent[] {
         const noPenaltyBuzzes: Events.ITossupAnswerEvent[] = this.noPenaltyBuzzes ?? [];
         return this.negBuzz != undefined ? noPenaltyBuzzes.concat(this.negBuzz) : noPenaltyBuzzes;
     }
 
-    @computed({ requiresReaction: true })
     public get orderedBuzzes(): Events.ITossupAnswerEvent[] {
         // Sort by tossupIndex, then by position. Tie breaker: negs before no penalties, negs/no penalties before correct
         const buzzes: Events.ITossupAnswerEvent[] = this.noPenaltyBuzzes ? [...this.noPenaltyBuzzes] : [];
@@ -103,7 +128,6 @@ export class Cycle implements ICycle {
         return buzzes;
     }
 
-    @action
     public addCorrectBuzz(marker: IBuzzMarker, tossupIndex: number, bonusIndex: number): void {
         this.removeTeamsBuzzes(marker.player.teamName, tossupIndex);
 
@@ -132,7 +156,6 @@ export class Cycle implements ICycle {
         }
     }
 
-    @action
     public addNeg(marker: IBuzzMarker, tossupIndex: number): void {
         this.removeTeamsBuzzes(marker.player.teamName, tossupIndex);
         this.negBuzz = {
@@ -146,7 +169,6 @@ export class Cycle implements ICycle {
         }
     }
 
-    @action
     public addNoPenaltyBuzz(marker: IBuzzMarker, tossupIndex: number, buzzIndex?: number): void {
         if (this.noPenaltyBuzzes == undefined) {
             this.noPenaltyBuzzes = [];
@@ -172,7 +194,6 @@ export class Cycle implements ICycle {
         }
     }
 
-    @action
     public addBonusProtest(questionIndex: number, partIndex: number, reason: string): void {
         if (this.correctBuzz == undefined) {
             // There's no correct buzz, so there's no one to protest the bonus
@@ -192,7 +213,6 @@ export class Cycle implements ICycle {
         });
     }
 
-    @action
     public addPlayerJoins(inPlayer: IPlayer): void {
         if (this.playerJoins == undefined) {
             this.playerJoins = [];
@@ -203,7 +223,6 @@ export class Cycle implements ICycle {
         });
     }
 
-    @action
     public addPlayerLeaves(outPlayer: IPlayer): void {
         if (this.playerLeaves == undefined) {
             this.playerLeaves = [];
@@ -214,7 +233,6 @@ export class Cycle implements ICycle {
         });
     }
 
-    @action
     public addSwapSubstitution(inPlayer: IPlayer, outPlayer: IPlayer): void {
         if (this.subs == undefined) {
             this.subs = [];
@@ -226,7 +244,6 @@ export class Cycle implements ICycle {
         });
     }
 
-    @action
     public addThrownOutBonus(bonusIndex: number): void {
         if (this.thrownOutBonuses == undefined) {
             this.thrownOutBonuses = [];
@@ -243,7 +260,6 @@ export class Cycle implements ICycle {
         }
     }
 
-    @action
     public addThrownOutTossup(tossupIndex: number): void {
         if (this.thrownOutTossups == undefined) {
             this.thrownOutTossups = [];
@@ -258,7 +274,6 @@ export class Cycle implements ICycle {
         this.removeCorrectBuzz();
     }
 
-    @action
     public addTossupProtest(teamName: string, questionIndex: number, position: number, reason: string): void {
         if (this.tossupProtests == undefined) {
             this.tossupProtests = [];
@@ -290,7 +305,6 @@ export class Cycle implements ICycle {
         return indexes;
     }
 
-    @action
     public removeBonusProtest(partIndex: number): void {
         if (this.bonusProtests == undefined) {
             return;
@@ -302,13 +316,11 @@ export class Cycle implements ICycle {
         }
     }
 
-    @action
     public removeCorrectBuzz(): void {
         this.correctBuzz = undefined;
         this.bonusAnswer = undefined;
     }
 
-    @action
     public removePlayerJoins(joinToRemove: Events.IPlayerJoinsEvent): void {
         if (this.playerJoins == undefined) {
             return;
@@ -317,7 +329,6 @@ export class Cycle implements ICycle {
         this.playerJoins = this.playerJoins.filter((join) => join !== joinToRemove);
     }
 
-    @action
     public removePlayerLeaves(leaveToRemove: Events.IPlayerLeavesEvent): void {
         if (this.playerLeaves == undefined) {
             return;
@@ -326,7 +337,6 @@ export class Cycle implements ICycle {
         this.playerLeaves = this.playerLeaves.filter((leave) => leave !== leaveToRemove);
     }
 
-    @action
     public removeSubstitution(subToRemove: Events.ISubstitutionEvent): void {
         if (this.subs == undefined) {
             return;
@@ -335,7 +345,6 @@ export class Cycle implements ICycle {
         this.subs = this.subs.filter((sub) => sub !== subToRemove);
     }
 
-    @action
     public removeThrownOutBonus(bonusIndex: number): void {
         if (this.thrownOutBonuses == undefined) {
             return;
@@ -355,7 +364,6 @@ export class Cycle implements ICycle {
         }
     }
 
-    @action
     public removeThrownOutTossup(tossupIndex: number): void {
         if (this.thrownOutTossups == undefined) {
             return;
@@ -372,7 +380,6 @@ export class Cycle implements ICycle {
         this.removeCorrectBuzz();
     }
 
-    @action
     public removeTossupProtest(teamName: string): void {
         if (this.tossupProtests == undefined) {
             return;
@@ -384,7 +391,6 @@ export class Cycle implements ICycle {
         }
     }
 
-    @action
     public removeWrongBuzz(player: IPlayer): void {
         if (this.negBuzz && CompareUtils.playersEqual(this.negBuzz.marker.player, player)) {
             this.negBuzz = undefined;
@@ -397,7 +403,6 @@ export class Cycle implements ICycle {
         this.removeTossupProtest(player.teamName);
     }
 
-    @action
     public setBonusPartAnswer(index: number, isCorrect: boolean, points = 0): void {
         // TODO: Remove this if statement when we start calling addCorrectBuzz.
         if (this.bonusAnswer == undefined) {

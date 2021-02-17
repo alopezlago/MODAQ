@@ -1,23 +1,21 @@
-import { observable, action } from "mobx";
+import { observable, makeObservable, makeAutoObservable } from "mobx";
 
 export class PacketState {
-    @observable
     public tossups: Tossup[];
 
-    @observable
     public bonuses: Bonus[];
 
     constructor() {
+        makeAutoObservable(this);
+
         this.tossups = [];
         this.bonuses = [];
     }
 
-    @action
     public setTossups(tossups: Tossup[]): void {
         this.tossups = tossups;
     }
 
-    @action
     public setBonuses(bonuses: Bonus[]): void {
         this.bonuses = bonuses;
     }
@@ -53,10 +51,14 @@ export class Tossup implements IQuestion {
 export class Bonus {
     public leadin: string;
 
-    @observable
     public parts: IBonusPart[];
 
     constructor(leadin: string, parts: IBonusPart[]) {
+        // We don't use makeAutoObservable because leadin doesn't need to be observable (never changes)
+        makeObservable(this, {
+            parts: observable,
+        });
+
         this.leadin = leadin;
         this.parts = parts;
     }

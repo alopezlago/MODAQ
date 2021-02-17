@@ -1,4 +1,4 @@
-import { observable, action } from "mobx";
+import { makeAutoObservable } from "mobx";
 import { ignore } from "mobx-sync";
 
 import { ITossupProtestEvent, IBonusProtestEvent } from "./Events";
@@ -10,7 +10,41 @@ import { IStatus } from "../IStatus";
 import { IPendingSheet } from "./IPendingSheet";
 
 export class UIState {
+    // TODO: Should we also include the Cycle? This would simplify anything that needs access to the cycle
+    public cycleIndex: number;
+
+    @ignore
+    public isEditingCycleIndex: boolean;
+
+    @ignore
+    public selectedWordIndex: number;
+
+    @ignore
+    public buzzMenuVisible: boolean;
+
+    @ignore
+    public packetParseStatus: IStatus | undefined;
+
+    @ignore
+    public pendingBonusProtestEvent?: IBonusProtestEvent;
+
+    @ignore
+    public pendingNewGame?: IPendingNewGame;
+
+    @ignore
+    public pendingNewPlayer?: Player;
+
+    @ignore
+    public pendingSheet?: IPendingSheet;
+
+    @ignore
+    public pendingTossupProtestEvent?: ITossupProtestEvent;
+
+    public sheetsState: SheetState;
+
     constructor() {
+        makeAutoObservable(this);
+
         this.cycleIndex = 0;
         this.isEditingCycleIndex = false;
         this.selectedWordIndex = -1;
@@ -24,91 +58,41 @@ export class UIState {
         this.sheetsState = new SheetState();
     }
 
-    // TODO: Should we also include the Cycle? This would simplify anything that needs access to the cycle
-    @observable
-    public cycleIndex: number;
-
-    @observable
-    @ignore
-    public isEditingCycleIndex: boolean;
-
-    @observable
-    @ignore
-    public selectedWordIndex: number;
-
-    @observable
-    @ignore
-    public buzzMenuVisible: boolean;
-
-    @observable
-    @ignore
-    public packetParseStatus: IStatus | undefined;
-
-    @observable
-    @ignore
-    public pendingBonusProtestEvent?: IBonusProtestEvent;
-
-    @observable
-    @ignore
-    public pendingNewGame?: IPendingNewGame;
-
-    @observable
-    @ignore
-    public pendingNewPlayer?: Player;
-
-    @observable
-    @ignore
-    public pendingSheet?: IPendingSheet;
-
-    @observable
-    @ignore
-    public pendingTossupProtestEvent?: ITossupProtestEvent;
-
-    @observable
-    public sheetsState: SheetState;
-
     // TODO: Feels off. Could generalize to array of teams
-    @action
     public addPlayerToFirstTeamInPendingNewGame(player: Player): void {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
             this.pendingNewGame?.firstTeamPlayers.push(player);
         }
     }
 
-    @action
     public addPlayerToSecondTeamInPendingNewGame(player: Player): void {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
             this.pendingNewGame?.secondTeamPlayers.push(player);
         }
     }
 
-    @action
     public clearPacketStatus(): void {
         this.packetParseStatus = undefined;
     }
 
-    @action
     public removePlayerToFirstTeamInPendingNewGame(player: Player): void {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
             this.pendingNewGame.firstTeamPlayers = this.pendingNewGame?.firstTeamPlayers.filter((p) => p !== player);
         }
     }
 
-    @action
     public removePlayerToSecondTeamInPendingNewGame(player: Player): void {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
             this.pendingNewGame.secondTeamPlayers = this.pendingNewGame?.secondTeamPlayers.filter((p) => p !== player);
         }
     }
 
-    @action
     public setPendingNewGameType(type: PendingGameType): void {
         if (this.pendingNewGame != undefined) {
             this.pendingNewGame.type = type;
         }
     }
 
-    @action
     public setRostersForPendingNewGame(players: Player[]): void {
         if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
             this.pendingNewGame.playersFromRosters = players;
@@ -117,28 +101,24 @@ export class UIState {
         }
     }
 
-    @action
     public setRostersUrlForPendingNewGame(url: string): void {
         if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
             this.pendingNewGame.rostersUrl = url;
         }
     }
 
-    @action
     public setFirstTeamPlayersFromRostersForPendingNewGame(players: Player[]): void {
         if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
             this.pendingNewGame.firstTeamPlayersFromRosters = players;
         }
     }
 
-    @action
     public setSecondTeamPlayersFromRostersForPendingNewGame(players: Player[]): void {
         if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
             this.pendingNewGame.secondTeamPlayersFromRosters = players;
         }
     }
 
-    @action
     public createPendingNewGame(): void {
         const firstTeamPlayers: Player[] = [];
         const secondTeamPlayers: Player[] = [];
@@ -155,12 +135,10 @@ export class UIState {
         };
     }
 
-    @action
     public createPendingNewPlayer(teamName: string): void {
         this.pendingNewPlayer = new Player("", teamName, /* isStarter */ false);
     }
 
-    @action
     public createPendingSheet(): void {
         this.pendingSheet = {
             roundNumber: 1,
@@ -168,19 +146,16 @@ export class UIState {
         };
     }
 
-    @action
     public nextCycle(): void {
         this.setCycleIndex(this.cycleIndex + 1);
     }
 
-    @action
     public previousCycle(): void {
         if (this.cycleIndex > 0) {
             this.setCycleIndex(this.cycleIndex - 1);
         }
     }
 
-    @action
     public setCycleIndex(newIndex: number): void {
         if (newIndex >= 0) {
             this.cycleIndex = newIndex;
@@ -190,16 +165,13 @@ export class UIState {
         }
     }
 
-    @action
     public setIsEditingCycleIndex(isEditingCycleIndex: boolean): void {
         this.isEditingCycleIndex = isEditingCycleIndex;
     }
-    @action
     public setPacketStatus(packetStatus: IStatus): void {
         this.packetParseStatus = packetStatus;
     }
 
-    @action
     public setPendingBonusProtest(teamName: string, questionIndex: number, part: number): void {
         this.pendingBonusProtestEvent = {
             partIndex: part,
@@ -209,7 +181,6 @@ export class UIState {
         };
     }
 
-    @action
     public setPendingTossupProtest(teamName: string, questionIndex: number, position: number): void {
         this.pendingTossupProtestEvent = {
             position,
@@ -219,63 +190,51 @@ export class UIState {
         };
     }
 
-    @action
     public setSheetsApiInitialized(state: LoadingState): void {
         this.sheetsState.apiInitialized = state;
     }
 
-    @action
     public setSheetsId(id: string): void {
         this.sheetsState.sheetId = id;
     }
 
-    @action
     public setSelectedWordIndex(newIndex: number): void {
         this.selectedWordIndex = newIndex;
     }
 
-    @action
     public hideBuzzMenu(): void {
         this.buzzMenuVisible = false;
     }
 
-    @action
     public resetPendingBonusProtest(): void {
         this.pendingBonusProtestEvent = undefined;
     }
 
-    @action
     public resetPendingNewGame(): void {
         this.pendingNewGame = undefined;
         this.packetParseStatus = undefined;
     }
 
-    @action
     public resetPendingNewPlayer(): void {
         this.pendingNewPlayer = undefined;
     }
 
-    @action
     public resetPendingSheet(): void {
         this.pendingSheet = undefined;
     }
 
-    @action
     public resetPendingTossupProtest(): void {
         this.pendingTossupProtestEvent = undefined;
     }
 
-    @action
     public resetSheetsId(): void {
         this.sheetsState.sheetId = undefined;
     }
 
-    @action
     public showBuzzMenu(): void {
         this.buzzMenuVisible = true;
     }
 
-    @action
     public updatePendingProtestReason(reason: string): void {
         if (this.pendingBonusProtestEvent != undefined) {
             this.pendingBonusProtestEvent.reason = reason;
@@ -284,7 +243,6 @@ export class UIState {
         }
     }
 
-    @action
     public updatePendingBonusProtestPart(part: string | number): void {
         if (this.pendingBonusProtestEvent != undefined) {
             const partIndex = typeof part === "string" ? parseInt(part, 10) : part;
@@ -292,7 +250,6 @@ export class UIState {
         }
     }
 
-    @action
     public updatePendingNewPlayerName(name: string): void {
         if (this.pendingNewPlayer == undefined) {
             return;
@@ -301,7 +258,6 @@ export class UIState {
         this.pendingNewPlayer.name = name;
     }
 
-    @action
     public updatePendingNewPlayerTeamName(teamName: string): void {
         if (this.pendingNewPlayer == undefined) {
             return;
@@ -310,7 +266,6 @@ export class UIState {
         this.pendingNewPlayer.teamName = teamName;
     }
 
-    @action
     public updatePendingSheetRoundNumber(roundNumber: number): void {
         if (this.pendingSheet == undefined) {
             return;
@@ -319,7 +274,6 @@ export class UIState {
         this.pendingSheet.roundNumber = roundNumber;
     }
 
-    @action
     public updatePendingSheetId(sheetId: string): void {
         if (this.pendingSheet == undefined) {
             return;
