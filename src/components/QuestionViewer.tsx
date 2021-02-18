@@ -1,5 +1,5 @@
 import React from "react";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 
 import { UIState } from "src/state/UIState";
 import { GameState } from "src/state/GameState";

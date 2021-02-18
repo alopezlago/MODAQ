@@ -1,6 +1,6 @@
 {
     "name": "quizbowlreader_ts_react_mobx",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "description": "Quiz Bowl Reader using TypeScript, React, and MobX",
     "repository": {
         "type": "git",
@@ -38,7 +38,7 @@
     "dependencies": {
         "@fluentui/react": "^7.160.2",
         "mobx": "^6.1.7",
-        "mobx-react": "^7.1.0",
+        "mobx-react-lite": "^3.2.0",
         "mobx-sync": "^3.0.0",
         "react": "^16.13.1",
         "react-dom": "^16.13.1"

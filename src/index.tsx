@@ -4,7 +4,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { initializeIcons } from "@fluentui/react/lib/Icons";
 import { configure } from "mobx";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 import { AsyncTrunk } from "mobx-sync";
 
 import { GameViewer } from "./components/GameViewer";

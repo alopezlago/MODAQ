@@ -1,5 +1,5 @@
 import * as React from "react";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 
 import * as FormattedTextParser from "src/parser/FormattedTextParser";
 import { IFormattedText } from "src/parser/IFormattedText";

@@ -1,5 +1,5 @@
 import React from "react";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 
 import { Cycle } from "src/state/Cycle";
 import { ITossupAnswerEvent } from "src/state/Events";

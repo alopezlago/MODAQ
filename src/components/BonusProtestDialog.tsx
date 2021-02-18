@@ -1,5 +1,5 @@
 import * as React from "react";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 import { Dropdown, IDropdownOption } from "@fluentui/react/lib/Dropdown";
 
 import { ProtestDialogBase } from "./ProtestDialogBase";

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 import { mergeStyleSets } from "@fluentui/react";
 
 import { BonusQuestionPart } from "./BonusQuestionPart";

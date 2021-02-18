@@ -1,7 +1,7 @@
 import React from "react";
 import { Checkbox } from "@fluentui/react/lib/Checkbox";
 import { mergeStyleSets } from "@fluentui/react";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 
 import * as FormattedTextParser from "src/parser/FormattedTextParser";
 import { IBonusPart } from "src/state/PacketState";

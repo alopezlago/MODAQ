@@ -8,7 +8,7 @@
 // https://developer.microsoft.com/en-us/fluentui#/controls/web/contextualmenu
 
 import * as React from "react";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 import { ContextualMenu, ContextualMenuItemType, IContextualMenuItem } from "@fluentui/react/lib/ContextualMenu";
 
 import * as CompareUtils from "src/state/CompareUtils";
