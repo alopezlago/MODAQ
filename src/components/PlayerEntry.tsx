@@ -1,5 +1,5 @@
 import React from "react";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 import { Checkbox, ICheckboxStyles } from "@fluentui/react/lib/Checkbox";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
 import { ILabelStyles, Label, mergeStyleSets } from "@fluentui/react";

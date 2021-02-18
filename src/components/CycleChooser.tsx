@@ -1,5 +1,5 @@
 import React from "react";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 import { DefaultButton, IButtonStyles } from "@fluentui/react/lib/Button";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
 

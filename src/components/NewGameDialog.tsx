@@ -17,7 +17,7 @@ import { Dialog, DialogFooter, IDialogContentProps, DialogType } from "@fluentui
 import { IModalProps } from "@fluentui/react/lib/Modal";
 import { ContextualMenu } from "@fluentui/react/lib/ContextualMenu";
 import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 import {
     Separator,
     Stack,

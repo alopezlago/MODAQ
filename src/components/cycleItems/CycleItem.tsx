@@ -1,5 +1,5 @@
 import * as React from "react";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 import { Label } from "@fluentui/react/lib/Label";
 import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
 

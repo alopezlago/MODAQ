@@ -1,7 +1,7 @@
 import React from "react";
 import { mergeStyleSets } from "@fluentui/react";
 
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 import { AppState } from "src/state/AppState";
 
 export const Scoreboard = observer((props: IScoreboardProps) => {

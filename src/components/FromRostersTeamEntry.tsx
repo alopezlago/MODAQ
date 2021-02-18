@@ -1,5 +1,5 @@
 import React from "react";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 import { Dropdown, IDropdownOption, List, mergeStyleSets } from "@fluentui/react";
 
 import { Player } from "src/state/TeamState";

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { observer } from "mobx-react";
+import { observer } from "mobx-react-lite";
 import { DetailsList, CheckboxVisibility, SelectionMode, IColumn } from "@fluentui/react/lib/DetailsList";
 import { Label } from "@fluentui/react/lib/Label";
 import { mergeStyleSets } from "@fluentui/react";
