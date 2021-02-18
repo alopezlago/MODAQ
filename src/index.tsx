@@ -2,6 +2,18 @@
 
 import * as React from "react";
 import * as ReactDOM from "react-dom";
+import {
+    DefaultButton,
+    Dialog,
+    DialogFooter,
+    DialogType,
+    IButtonStyles,
+    IDialogContentProps,
+    Label,
+    PrimaryButton,
+    Stack,
+    StackItem,
+} from "@fluentui/react";
 import { initializeIcons } from "@fluentui/react/lib/Icons";
 import { configure } from "mobx";
 import { observer } from "mobx-react-lite";
@@ -12,15 +24,8 @@ import { AppState } from "./state/AppState";
 import { ModalDialogContainer } from "./components/ModalDialogContainer";
 
 const Root = observer((props: IRootProps) => {
-    const onClear = (): void => {
-        const trunk = new AsyncTrunk(props.appState, { storage: localStorage, delay: 100 });
-        trunk.clear();
-        location.reload();
-    };
-
     return (
         <div>
-            <button onClick={onClear}>Clear state</button>
             <GameViewer appState={props.appState} />
             <ModalDialogContainer appState={props.appState} />
         </div>
@@ -31,36 +36,111 @@ interface IRootProps {
     appState: AppState;
 }
 
-class ErrorBoundary extends React.Component<Record<string, unknown>, IErrorBoundaryState> {
-    constructor(props: Record<string, unknown>) {
+// TODO: Move to a separate file in Component?
+class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryState> {
+    private static readonly dialogContent: IDialogContentProps = {
+        type: DialogType.normal,
+        title: "Reset",
+        closeButtonAriaLabel: "Close",
+        subText: "Do you wish to reset the reader? You will lose your current game.",
+    };
+
+    private static readonly exportButtonStyle: IButtonStyles = {
+        root: {
+            marginRight: 20,
+            marginTop: 20,
+        },
+    };
+
+    constructor(props: IErrorBoundaryProps) {
         super(props);
 
-        this.state = { error: undefined };
+        this.state = { error: undefined, showClearPrompt: false };
     }
 
     static getDerivedStateFromError(error: Error | string): IErrorBoundaryState {
         // Update state so the next render will show the fallback UI.
-        return { error };
+        return { error, showClearPrompt: false };
     }
 
     // // componentDidCatch(error, errorInfo) {
-    // //     // You can also log the error to an error reporting service
-    // //     // logErrorToMyService(error, errorInfo);
+    // //     // You can also log the error to an error reporting service. We don't have a logging service for this
     // // }
 
-    // TODO: This should have a clear button reset the state
     public render() {
         if (this.state.error) {
-            const text: string = "Something went wrong. Error: " + this.state.error;
-            return <div>{text}</div>;
+            const text: string = "Error: " + this.state.error;
+
+            // This shouldn't re-render often, and the user should leave the page soon when this appears, so skip
+            // memoization
+            const onClear = (): void => {
+                const trunk = new AsyncTrunk(this.props.appState, { storage: localStorage, delay: 100 });
+                trunk.clear();
+                location.reload();
+            };
+
+            const hideDialog = (): void => {
+                this.setState({ showClearPrompt: false });
+            };
+
+            const showDialog = (): void => {
+                this.setState({ showClearPrompt: true });
+            };
+
+            const cyclesJson: Blob = new Blob([JSON.stringify(this.props.appState.game.cycles)], {
+                type: "application/json",
+            });
+            const url = URL.createObjectURL(cyclesJson);
+
+            return (
+                <Stack>
+                    <StackItem>
+                        <h2>Something went wrong</h2>
+                    </StackItem>
+                    <StackItem>
+                        <Label>{text}</Label>
+                    </StackItem>
+                    <StackItem>
+                        <Label>
+                            Refreshing the page fixes most errors. If you keep seeing errors, click on the first button
+                            to copy the JSON of all the events, then click on the second button to reset the app.
+                        </Label>
+                    </StackItem>
+                    <StackItem>
+                        <PrimaryButton
+                            aria-label="Export cycles (JSON)"
+                            text="Export cycles (JSON)"
+                            styles={ErrorBoundary.exportButtonStyle}
+                            href={url}
+                            download="QuizBowlReader_Events_Error.json"
+                        />
+                        <DefaultButton onClick={showDialog} text="Reset" />
+                    </StackItem>
+                    <Dialog
+                        hidden={!this.state.showClearPrompt}
+                        onDismiss={hideDialog}
+                        dialogContentProps={ErrorBoundary.dialogContent}
+                    >
+                        <DialogFooter>
+                            <PrimaryButton onClick={onClear} text="OK" />
+                            <DefaultButton onClick={hideDialog} text="Cancel" />
+                        </DialogFooter>
+                    </Dialog>
+                </Stack>
+            );
         }
 
         return this.props.children;
     }
 }
 
+interface IErrorBoundaryProps {
+    appState: AppState;
+}
+
 interface IErrorBoundaryState {
     error: Error | string | undefined;
+    showClearPrompt: boolean;
 }
 
 initializeIcons();
@@ -74,7 +154,7 @@ if (element) {
 
     trunk.init(appState).then(() => {
         ReactDOM.render(
-            <ErrorBoundary>
+            <ErrorBoundary appState={appState}>
                 <Root appState={appState} />
             </ErrorBoundary>,
             document.getElementById("root")

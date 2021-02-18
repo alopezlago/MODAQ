@@ -54,6 +54,8 @@ const getClassNames = memoizeFunction(
                         background: "rgba(128, 128, 128, 0.2)",
                         textDecoration: "underline double",
                     },
+                // Only highlight a word on hover if it's not in an existing state from selected/correct/wrong
+                !(selected || correct || wrong) && { "&:hover": { background: "rgba(200, 200, 0, 0.15)" } },
             ],
         })
 );

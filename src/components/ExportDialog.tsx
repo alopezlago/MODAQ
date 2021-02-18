@@ -177,7 +177,6 @@ const ExportSettingsDialogBody = observer(
                     autoFocus={true}
                 />
                 <SpinButton
-                    defaultValue={"1"}
                     label="Round Number"
                     onIncrement={roundNumberIncrementHandler}
                     onDecrement={roundNumberDecrementHandler}

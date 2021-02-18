@@ -385,6 +385,9 @@ function onSubmit(props: INewGameDialogProps): void {
     game.addPlayers(secondTeamPlayers.filter((player) => player.name !== ""));
     game.loadPacket(pendingNewGame.packet);
 
+    // If we've just started a new game, start at the beginning
+    props.appState.uiState.setCycleIndex(0);
+
     hideDialog(props);
 }
 
