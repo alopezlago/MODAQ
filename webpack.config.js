@@ -4,6 +4,7 @@ const BundleAnalyzerPlugin = require("webpack-bundle-analyzer").BundleAnalyzerPl
 const webpack = require("webpack");
 
 // TODO: Look into using webpack-merge and splitting these configs instead. See https://webpack.js.org/guides/production/
+// and https://webpack.js.org/guides/code-splitting/. It might make sense to split out the main code and code for Sheets
 const devEntries = [
     "webpack-dev-server/client?http://localhost:8080",
     "webpack-dev-server/client?http://localhost.quizbowlreader.com:8080",
