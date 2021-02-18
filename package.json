@@ -48,7 +48,7 @@
         "build": "webpack --mode development --watch",
         "buildRelease": "webpack --mode production",
         "lint": "eslint . --ext .ts,.tsx",
-        "start": "webpack-dev-server --config webpack.config.js",
+        "start": "webpack serve --color --config webpack.config.js --mode development",
         "test": "mocha --recursive tests/**/*.ts --exit --check-leaks -r ts-node/register -r tsconfig-paths/register"
     }
 }
