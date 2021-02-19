@@ -13,7 +13,6 @@ import { UIState } from "src/state/UIState";
 import { Cycle } from "src/state/Cycle";
 import { Bonus } from "src/state/PacketState";
 import { Player } from "src/state/TeamState";
-import { ITossupAnswerEvent } from "src/state/Events";
 import { AppState } from "src/state/AppState";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
@@ -203,13 +202,15 @@ function getActionSubMenuItems(
     let protestBonusItem: ICommandBarItemProps | undefined = undefined;
     if (cycle && cycle.bonusAnswer != undefined) {
         const bonusIndex: number = game.getBonusIndex(uiState.cycleIndex);
-        const bonus: Bonus = game.packet.bonuses[bonusIndex];
-        if (cycle.getProtestableBonusPartIndexes(bonus.parts.length).length > 0) {
-            protestBonusItem = {
-                key: "protestBonus",
-                text: "Protest bonus",
-                onClick: protestBonusHandler,
-            };
+        if (bonusIndex !== -1) {
+            const bonus: Bonus = game.packet.bonuses[bonusIndex];
+            if (cycle.getProtestableBonusPartIndexes(bonus.parts.length).length > 0) {
+                protestBonusItem = {
+                    key: "protestBonus",
+                    text: "Protest bonus",
+                    onClick: protestBonusHandler,
+                };
+            }
         }
     }
 
@@ -231,28 +232,6 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
     const game: GameState = props.appState.game;
 
     items.push({
-        key: "copyBuzzPoints",
-        text: "Copy buzz points",
-        onClick: () => {
-            const teamNames: string[] = game.teamNames;
-            const buzzPoints: [number?, number?][] = game.cycles.map((cycle) => {
-                const result: [number?, number?] = [undefined, undefined];
-                const buzzes: ITossupAnswerEvent[] = cycle.orderedBuzzes;
-                for (const buzz of buzzes) {
-                    const index: number = buzz.marker.player.teamName === teamNames[0] ? 0 : 1;
-                    result[index] = buzz.marker.position;
-                }
-
-                return result;
-            });
-
-            // Translate this to lines of tab delimited strings
-            const buzzPointsText: string = buzzPoints.map((points) => points.join("\t")).join("\n");
-            copyText(buzzPointsText);
-        },
-    });
-
-    items.push({
         key: "exportSheets",
         text: "Export to Sheets",
         onClick: () => {
@@ -260,6 +239,26 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
         },
         // TODO: This won't update when gapi does; it needs another prop change
         disabled: window.gapi == undefined,
+    });
+
+    // We have to compute this outside of onClick because MobX will complain about reading orderedBuzzes outside of a
+    // reaction otherwise
+    const buzzPoints: string[] = game.cycles.map((cycle) => {
+        const result: string[] = [];
+        for (const buzz of cycle.orderedBuzzes) {
+            result.push(buzz.marker.position.toString(10));
+        }
+
+        return result.join("\t");
+    });
+    items.push({
+        key: "copyBuzzPoints",
+        text: "Copy buzz points",
+        onClick: () => {
+            // Translate this to lines of tab delimited strings
+            const buzzPointsText: string = buzzPoints.join("\n");
+            copyText(buzzPointsText);
+        },
     });
 
     // TODO: Blob should probably be memoized, so we don't keep stringifying? It does appear that the link is the same
