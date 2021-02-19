@@ -31,9 +31,7 @@ export const PacketLoader = observer(
                 <Label required={true}>Load Packet</Label>
                 <input
                     type="file"
-                    accept={
-                        ".json,.docx,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    }
+                    accept={"application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
                     ref={fileInput}
                     onChange={uploadHandler}
                 />

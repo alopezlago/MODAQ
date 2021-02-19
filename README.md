@@ -1,6 +1,8 @@
 # Introduction
 
-This is a tool for reading, scorekeeping, and tracking buzz poins for quiz bowl matches.
+This is a tool for reading, scorekeeping, and tracking buzz points for quiz bowl matches.
+
+See [the wiki](https://github.com/alopezlago/QuizBowlReader/wiki) to learn how to use the reader.
 
 # Getting Started
 
