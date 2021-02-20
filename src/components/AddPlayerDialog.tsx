@@ -45,7 +45,7 @@ const modalProps: IModalProps = {
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const AddPlayerDialog = observer(
-    (props: INewGameDialogProps): JSX.Element => {
+    (props: IAddPlayerDialogProps): JSX.Element => {
         const submitHandler = React.useCallback(() => onSubmit(props), [props]);
         const cancelHandler = React.useCallback(() => onCancel(props), [props]);
 
@@ -67,7 +67,7 @@ export const AddPlayerDialog = observer(
 );
 
 const AddPlayerDialogBody = observer(
-    (props: INewGameDialogProps): JSX.Element => {
+    (props: IAddPlayerDialogProps): JSX.Element => {
         const uiState: UIState = props.appState.uiState;
 
         const teamChangeHandler = React.useCallback(
@@ -85,6 +85,8 @@ const AddPlayerDialogBody = observer(
             [uiState]
         );
 
+        const onGetErrorMessageHandler = React.useCallback((): string | undefined => validatePlayer(props), [props]);
+
         const newPlayer: IPlayer | undefined = uiState.pendingNewPlayer;
         if (newPlayer === undefined) {
             return <></>;
@@ -101,32 +103,31 @@ const AddPlayerDialogBody = observer(
         return (
             <>
                 <Dropdown label="Team" options={teamOptions} onChange={teamChangeHandler} />
-                <TextField label="Name" value={newPlayer.name} required={true} onChange={nameChangeHandler} />
+                <TextField
+                    label="Name"
+                    value={newPlayer.name}
+                    required={true}
+                    onChange={nameChangeHandler}
+                    onGetErrorMessage={onGetErrorMessageHandler}
+                    validateOnFocusOut={true}
+                    validateOnLoad={false}
+                />
             </>
         );
     }
 );
 
-function onSubmit(props: INewGameDialogProps): void {
+function onSubmit(props: IAddPlayerDialogProps): void {
     const game: GameState = props.appState.game;
     const uiState: UIState = props.appState.uiState;
+
+    if (validatePlayer(props) != undefined) {
+        return;
+    }
 
     const newPlayer: Player | undefined = uiState.pendingNewPlayer;
     if (newPlayer == undefined) {
         throw new Error("Tried adding a player with no new player");
-    }
-
-    // Trim the player name on submit, so the user can type in spaces while creating the name in the UI
-    const trimmedPlayerName: string = newPlayer.name.trim();
-    if (trimmedPlayerName.length === 0) {
-        return;
-    }
-
-    uiState.updatePendingNewPlayerName(trimmedPlayerName);
-
-    const playersOnTeam: Player[] = game.getPlayers(newPlayer.teamName);
-    if (NewGameValidator.newPlayerNameUnique(playersOnTeam, trimmedPlayerName) !== undefined) {
-        return;
     }
 
     game.addPlayer(newPlayer);
@@ -137,14 +138,30 @@ function onSubmit(props: INewGameDialogProps): void {
     hideDialog(props);
 }
 
-function onCancel(props: INewGameDialogProps): void {
+function validatePlayer(props: IAddPlayerDialogProps): string | undefined {
+    const newPlayer: Player | undefined = props.appState.uiState.pendingNewPlayer;
+    if (newPlayer == undefined) {
+        throw new Error("Tried adding a player with no new player");
+    }
+
+    // Trim the player name on submit, so the user can type in spaces while creating the name in the UI
+    const trimmedPlayerName: string = newPlayer.name.trim();
+    if (trimmedPlayerName.length === 0) {
+        return "Player name cannot be blank";
+    }
+
+    const playersOnTeam: Player[] = [...props.appState.game.getPlayers(newPlayer.teamName), newPlayer];
+    return NewGameValidator.newPlayerNameUnique(playersOnTeam, trimmedPlayerName);
+}
+
+function onCancel(props: IAddPlayerDialogProps): void {
     hideDialog(props);
 }
 
-function hideDialog(props: INewGameDialogProps): void {
+function hideDialog(props: IAddPlayerDialogProps): void {
     props.appState.uiState.resetPendingNewPlayer();
 }
 
-export interface INewGameDialogProps {
+export interface IAddPlayerDialogProps {
     appState: AppState;
 }
