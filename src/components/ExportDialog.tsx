@@ -169,6 +169,11 @@ const ExportSettingsDialogBody = observer(
             <Stack tokens={settingsStackTokens}>
                 <TextField
                     label="SheetsUrl"
+                    defaultValue={
+                        sheet.sheetId == undefined || sheet.sheetId.length === 0
+                            ? ""
+                            : `${sheetsPrefix}${sheet.sheetId}`
+                    }
                     required={true}
                     onChange={sheetsUrlChangeHandler}
                     onGetErrorMessage={validateSheetsUrl}
@@ -250,7 +255,6 @@ function onClose(props: IExportDialogProps): void {
 function hideDialog(props: IExportDialogProps): void {
     const uiState: UIState = props.appState.uiState;
     uiState.resetPendingSheet();
-    uiState.sheetsState.clearRoundNumber();
     uiState.sheetsState.clearExportStatus();
 }
 

@@ -44,4 +44,4 @@ If you want to use the Dev Server (required for testing Google Sheets), then do 
 
 # Contribute
 
-Contributions are welcomed.
+Contributions are welcomed. Please verify that `npm lint` and `npm test` succeed without warnings or failures before submitting a pull request.
