@@ -19,10 +19,10 @@ export class SheetState {
     @ignore
     public rosterLoadState: LoadingState | undefined;
 
-    @ignore
+    // We need to remember sheetId, since we only input it when creating the game
     public sheetId?: string;
 
-    @ignore
+    // We want to remember the round number, so we can keep exporting to the same round
     public roundNumber?: number;
 
     constructor() {

@@ -399,7 +399,7 @@ export async function loadRosters(appState: AppState, sheetsApi: ISheetsApi = Sh
 
     let values: gapi.client.sheets.ValueRange;
     try {
-        const response: ISheetsGetResponse = await sheetsApi.get(uiState, "Rosters!C2:I49");
+        const response: ISheetsGetResponse = await sheetsApi.get(uiState, "Rosters!A2:L");
         if (!response.success) {
             uiState.sheetsState.setRosterLoadStatus(
                 {
@@ -438,6 +438,16 @@ export async function loadRosters(appState: AppState, sheetsApi: ISheetsApi = Sh
             {
                 isError: true,
                 status: `Not enough teams. Only found ${values.values.length} team(s).`,
+            },
+            LoadingState.Error
+        );
+        return;
+    } else if (values.values[0].length > 2 && values.values[0][0] === "1" && values.values[0][1] === "") {
+        uiState.sheetsState.setRosterLoadStatus(
+            {
+                isError: true,
+                status:
+                    "Roster spreadsheet is from the control sheet instead of the reader's scoresheet. Please paste the URL to your scoresheet.",
             },
             LoadingState.Error
         );

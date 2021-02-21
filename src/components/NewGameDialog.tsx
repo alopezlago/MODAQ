@@ -291,7 +291,7 @@ const FromLifsheetsNewGameBody = observer(
                     <div className={props.classes.loadContainer}>
                         <TextField
                             styles={rostersInputStyles}
-                            label="URL to rosters"
+                            label="URL to room scoresheet"
                             value={pendingNewGame.rostersUrl}
                             onChange={rostersUrlChangeHandler}
                         />
@@ -386,7 +386,15 @@ function onSubmit(props: INewGameDialogProps): void {
     game.loadPacket(pendingNewGame.packet);
 
     // If we've just started a new game, start at the beginning
-    props.appState.uiState.setCycleIndex(0);
+    uiState.setCycleIndex(0);
+
+    // If we're manually entering names, clear the sheetsId field, since we don't have a scoresheet for this game
+    if (pendingNewGame.type === PendingGameType.Manual) {
+        uiState.resetSheetsId();
+    }
+
+    // We always want to reset the round number, since this could be for a different round
+    uiState.sheetsState.clearRoundNumber();
 
     hideDialog(props);
 }

@@ -754,6 +754,28 @@ describe("SheetsTests", () => {
                 "Not all teams have players. Check the roster sheet to make sure at least 1 player is on each team."
             );
         });
+        it("Control sheet", async () => {
+            const appState: AppState = createAppStateForRosters();
+
+            const mockSheetsApi: ISheetsApi = createMockApi({
+                get: () =>
+                    Promise.resolve<ISheetsGetResponse>({
+                        success: true,
+                        valueRange: {
+                            values: [
+                                ["1", "", "Alpha", "Alice", "Andrew", "Ana"],
+                                ["2", "", "Beta", "Bob"],
+                            ],
+                        },
+                    }),
+            });
+
+            await verifyLoadRostersError(
+                appState,
+                mockSheetsApi,
+                "Roster spreadsheet is from the control sheet instead of the reader's scoresheet. Please paste the URL to your scoresheet."
+            );
+        });
         it("API failure", async () => {
             const appState: AppState = createAppStateForRosters();
 

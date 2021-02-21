@@ -141,8 +141,8 @@ export class UIState {
 
     public createPendingSheet(): void {
         this.pendingSheet = {
-            roundNumber: 1,
-            sheetId: "",
+            roundNumber: this.sheetsState.roundNumber ?? 1,
+            sheetId: this.sheetsState.sheetId ?? "",
         };
     }
 
