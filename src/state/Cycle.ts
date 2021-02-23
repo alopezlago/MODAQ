@@ -77,6 +77,7 @@ export class Cycle implements ICycle {
             this.bonusAnswer = deserializedCycle.bonusAnswer;
             this.bonusProtests = deserializedCycle.bonusProtests;
             this.correctBuzz = deserializedCycle.correctBuzz;
+            this.noPenaltyBuzzes = deserializedCycle.noPenaltyBuzzes;
             this.negBuzz = deserializedCycle.negBuzz;
             this.playerJoins = deserializedCycle.playerJoins;
             this.playerLeaves = deserializedCycle.playerLeaves;
@@ -291,13 +292,11 @@ export class Cycle implements ICycle {
     public getProtestableBonusPartIndexes(bonusPartsCount: number): number[] {
         const indexes: number[] = [];
 
-        const protestIndexes: number[] = this.bonusProtests?.map((protest) => protest.partIndex) ?? [];
-        const protestedOrCorrectIndexes: number[] =
-            this.bonusAnswer?.correctParts.map((part) => part.index).concat(protestIndexes) ?? protestIndexes;
-        const protestedOrCorrectIndexesSet = new Set(protestedOrCorrectIndexes);
+        const protestedIndexes: number[] = this.bonusProtests?.map((protest) => protest.partIndex) ?? [];
+        const protestedIndexesSet = new Set(protestedIndexes);
 
         for (let i = 0; i < bonusPartsCount; i++) {
-            if (!protestedOrCorrectIndexesSet.has(i)) {
+            if (!protestedIndexesSet.has(i)) {
                 indexes.push(i);
             }
         }

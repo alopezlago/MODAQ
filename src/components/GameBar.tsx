@@ -11,9 +11,10 @@ import {
 import { GameState } from "src/state/GameState";
 import { UIState } from "src/state/UIState";
 import { Cycle } from "src/state/Cycle";
-import { Bonus } from "src/state/PacketState";
+import { Bonus, Tossup } from "src/state/PacketState";
 import { Player } from "src/state/TeamState";
 import { AppState } from "src/state/AppState";
+import { ITossupAnswerEvent } from "src/state/Events";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
@@ -26,10 +27,11 @@ export const GameBar = observer(
         const newGameHandler = React.useCallback(() => {
             uiState.createPendingNewGame();
         }, [uiState]);
+
         const protestBonusHandler = React.useCallback(() => {
             // Issue: pending protest needs existing index. Need to update it to include the part number
             const cycle: Cycle = game.cycles[uiState.cycleIndex];
-            if (cycle == undefined || cycle.bonusAnswer == undefined) {
+            if (cycle?.bonusAnswer == undefined) {
                 return;
             }
 
@@ -43,6 +45,7 @@ export const GameBar = observer(
             const protestableParts: number[] = cycle.getProtestableBonusPartIndexes(bonus.parts.length);
             uiState.setPendingBonusProtest(cycle.bonusAnswer.receivingTeamName, bonusIndex, protestableParts[0]);
         }, [game, uiState]);
+
         const addPlayerHandler = React.useCallback(() => {
             uiState.createPendingNewPlayer(game.teamNames[0]);
         }, [uiState, game]);
@@ -199,8 +202,59 @@ function getActionSubMenuItems(
 
     const cycle: Cycle | undefined =
         uiState.cycleIndex < game.cycles.length ? game.cycles[uiState.cycleIndex] : undefined;
+
+    let protestTossupItems: ICommandBarItemProps | undefined = undefined;
     let protestBonusItem: ICommandBarItemProps | undefined = undefined;
-    if (cycle && cycle.bonusAnswer != undefined) {
+
+    if (cycle?.orderedBuzzes != undefined) {
+        const tossupIndex: number = game.getTossupIndex(uiState.cycleIndex);
+        if (tossupIndex !== -1) {
+            const protestSubMenuItems: ICommandBarItemProps[] = [];
+            for (const buzz of cycle.orderedBuzzes) {
+                const { name, teamName } = buzz.marker.player;
+                const tossupProtestItemData: ITossupProtestMenuItemData = {
+                    props,
+                    buzz,
+                };
+
+                const protestExists: boolean =
+                    cycle.tossupProtests != undefined &&
+                    cycle.tossupProtests.findIndex((protest) => protest.teamName === teamName) >= 0;
+
+                const protestSubMenuItem: ICommandBarItemProps = {
+                    key: `protest${teamName}_${name}`,
+                    text: `${name} (${teamName})`,
+                    canCheck: true,
+                    checked: protestExists,
+                    data: tossupProtestItemData,
+                    onClick: onProtestTossupClick,
+                };
+
+                const protestSection: ICommandBarItemProps = {
+                    key: `protestSection${teamName}_${name}`,
+                    itemType: ContextualMenuItemType.Section,
+                    sectionProps: {
+                        bottomDivider: true,
+                        title: teamName,
+                        items: [protestSubMenuItem],
+                    },
+                };
+
+                protestSubMenuItems.push(protestSection);
+            }
+
+            protestTossupItems = {
+                key: "protestTossup",
+                text: "Protest tossup",
+                subMenuProps: {
+                    items: protestSubMenuItems,
+                },
+                disabled: protestSubMenuItems.length === 0,
+            };
+        }
+    }
+
+    if (cycle?.bonusAnswer != undefined) {
         const bonusIndex: number = game.getBonusIndex(uiState.cycleIndex);
         if (bonusIndex !== -1) {
             const bonus: Bonus = game.packet.bonuses[bonusIndex];
@@ -214,14 +268,23 @@ function getActionSubMenuItems(
         }
     }
 
-    if (protestBonusItem == undefined) {
-        protestBonusItem = {
-            key: "protestBonus",
-            text: "Protest bonus",
+    if (protestTossupItems == undefined) {
+        protestTossupItems = {
+            key: "protestTossup",
+            text: "Protest tossup...",
             disabled: true,
         };
     }
 
+    if (protestBonusItem == undefined) {
+        protestBonusItem = {
+            key: "protestBonus",
+            text: "Protest bonus...",
+            disabled: true,
+        };
+    }
+
+    items.push(protestTossupItems);
     items.push(protestBonusItem);
 
     return items;
@@ -274,6 +337,41 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
     return items;
 }
 
+function onProtestTossupClick(
+    ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
+    item?: IContextualMenuItem
+): void {
+    if (item == undefined) {
+        return;
+    } else if (!isTossupProtestMenuItemData(item.data)) {
+        return;
+    }
+
+    const { game, uiState } = item.data.props.appState;
+
+    const cycle: Cycle = game.cycles[uiState.cycleIndex];
+    if (cycle?.orderedBuzzes == undefined) {
+        return;
+    }
+
+    const teamName: string = item.data.buzz.marker.player.teamName;
+
+    // If this item is checked, then clear the protest
+    if (item.checked === true) {
+        cycle.removeTossupProtest(teamName);
+        return;
+    }
+
+    const tossupIndex: number = game.getTossupIndex(uiState.cycleIndex);
+    const tossup: Tossup | undefined = game.packet.tossups[tossupIndex];
+    if (tossup == undefined) {
+        // Something is wrong... the tossup is undefined, but this handler can be accessed?
+        throw new Error(`Impossible to add tossup protest for tossup question ${tossupIndex}`);
+    }
+
+    uiState.setPendingTossupProtest(teamName, tossupIndex, item.data.buzz.marker.position);
+}
+
 function onRemovePlayerClick(
     ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
     item?: IContextualMenuItem
@@ -309,6 +407,10 @@ function isSubMenuItemData(data: ISubMenuItemData | undefined): data is ISubMenu
     return data?.props !== undefined && data.activePlayer !== undefined;
 }
 
+function isTossupProtestMenuItemData(data: ITossupProtestMenuItemData | undefined): data is ITossupProtestMenuItemData {
+    return data?.props !== undefined && data.buzz !== undefined;
+}
+
 // Adapted from this gist: https://gist.github.com/lgarron/d1dee380f4ed9d825ca7
 function copyText(text: string) {
     return new Promise<void>(function (resolve, reject) {
@@ -342,4 +444,9 @@ interface ISubMenuItemData {
     props: IGameBarProps;
     activePlayer: Player;
     player?: Player;
+}
+
+interface ITossupProtestMenuItemData {
+    props: IGameBarProps;
+    buzz: ITossupAnswerEvent;
 }

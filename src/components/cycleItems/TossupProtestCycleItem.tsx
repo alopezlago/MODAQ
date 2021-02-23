@@ -11,7 +11,14 @@ export const TossupProtestCycleItem = observer(
             props.cycle.removeTossupProtest(props.protest.teamName);
         };
 
-        const text = `${props.protest.teamName} protests tossup #${props.protest.questionIndex + 1} at word ${
+        // If the buzz was correct, the team isn't protesting themselves. To futureproof us from dealing with the 3+
+        // team case, call it "the other team"
+        const teamName: string =
+            props.cycle.correctBuzz?.marker.player.teamName === props.protest.teamName
+                ? "The other team"
+                : props.protest.teamName;
+
+        const text = `${teamName} protests tossup #${props.protest.questionIndex + 1} at word ${
             props.protest.position + 1
         }`;
         return <CycleItem text={text} onDelete={deleteHandler} />;

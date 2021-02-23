@@ -69,7 +69,6 @@ function getPlayerMenuItems(props: IBuzzMenuProps, teamName: string): IContextua
                     CompareUtils.playersEqual(buzz.marker.player, player) && buzz.marker.position === props.position
             ) >= 0;
         const isProtestChecked: boolean =
-            isWrongChecked &&
             props.cycle.tossupProtests?.findIndex((protest) => protest.position === props.position) != undefined;
 
         const buzzMenuItemData: IBuzzMenuItemData = { props, player };
@@ -93,7 +92,7 @@ function getPlayerMenuItems(props: IBuzzMenuProps, teamName: string): IContextua
             },
         ];
 
-        if (isWrongChecked) {
+        if (isWrongChecked || isCorrectChecked) {
             subMenuItems.push({
                 key: `${topLevelKey}_protest`,
                 text: "Protest",
