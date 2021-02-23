@@ -77,6 +77,7 @@ export class Cycle implements ICycle {
             this.bonusAnswer = deserializedCycle.bonusAnswer;
             this.bonusProtests = deserializedCycle.bonusProtests;
             this.correctBuzz = deserializedCycle.correctBuzz;
+            this.noPenaltyBuzzes = deserializedCycle.noPenaltyBuzzes;
             this.negBuzz = deserializedCycle.negBuzz;
             this.playerJoins = deserializedCycle.playerJoins;
             this.playerLeaves = deserializedCycle.playerLeaves;

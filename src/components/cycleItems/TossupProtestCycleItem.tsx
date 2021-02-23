@@ -11,7 +11,16 @@ export const TossupProtestCycleItem = observer(
             props.cycle.removeTossupProtest(props.protest.teamName);
         };
 
-        const text = `${props.protest.teamName} protests tossup #${props.protest.questionIndex + 1} at word ${
+        // If the buzz was correct, the team name should be the other team.
+        // If for some reason we can't find another team, we have to default to the team we were given
+        // TODO: Handle this for the non 2-team case, if we ever decide to generalize this to multiple teams. This means
+        // the dialog will need a dropdown when protesting a correct buzz
+        const teamName: string =
+            props.cycle.correctBuzz?.marker.player.teamName === props.protest.teamName
+                ? "The other team"
+                : props.protest.teamName;
+
+        const text = `${teamName} protests tossup #${props.protest.questionIndex + 1} at word ${
             props.protest.position + 1
         }`;
         return <CycleItem text={text} onDelete={deleteHandler} />;
