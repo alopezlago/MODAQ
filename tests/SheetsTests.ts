@@ -608,6 +608,79 @@ describe("SheetsTests", () => {
                 "Export not allowed with more than 21 rounds (not enough rows)"
             );
         });
+        it("Filled in sheet gets prompted", async () => {
+            const appState: AppState = createAppStateForExport();
+
+            let updateCount = 0;
+            const mockSheetsApi: ISheetsApi = createMockApi({
+                get: () =>
+                    Promise.resolve<ISheetsGetResponse>({
+                        success: true,
+                        valueRange: {
+                            values: [["A"]],
+                        },
+                    }),
+                batchUpdate: () => {
+                    updateCount++;
+                    return Promise.resolve({ isError: false, status: "" });
+                },
+            });
+
+            await Sheets.exportToSheet(appState, mockSheetsApi);
+
+            expect(appState.uiState.sheetsState.exportState).to.equal(ExportState.OverwritePrompt);
+            expect(updateCount).to.equal(0);
+        });
+        it("Export after prompt check succeeds", async () => {
+            const appState: AppState = createAppStateForExport();
+
+            let getCount = 0;
+            const mockSheetsApi: ISheetsApi = createMockApi({
+                get: () => {
+                    getCount++;
+                    return Promise.resolve<ISheetsGetResponse>({
+                        success: true,
+                        valueRange: {
+                            values: [["A"]],
+                        },
+                    });
+                },
+            });
+
+            appState.uiState.sheetsState.setExportStatus({ isError: false, status: "" }, ExportState.OverwritePrompt);
+
+            await Sheets.exportToSheet(appState, mockSheetsApi);
+
+            expect(appState.uiState.sheetsState).to.exist;
+            expect(appState.uiState.sheetsState.exportStatus?.isError).to.exist;
+            expect(appState.uiState.sheetsState.exportStatus?.isError).to.be.false;
+            expect(appState.uiState.sheetsState.exportState).to.equal(ExportState.Success);
+            expect(getCount).to.equal(0);
+        });
+        it("Empty value in sheet skips prompt and completes export", async () => {
+            const appState: AppState = createAppStateForExport();
+
+            let getCount = 0;
+            const mockSheetsApi: ISheetsApi = createMockApi({
+                get: () => {
+                    getCount++;
+                    return Promise.resolve<ISheetsGetResponse>({
+                        success: true,
+                        valueRange: {
+                            values: [[]],
+                        },
+                    });
+                },
+            });
+
+            await Sheets.exportToSheet(appState, mockSheetsApi);
+
+            expect(appState.uiState.sheetsState).to.exist;
+            expect(appState.uiState.sheetsState.exportStatus?.isError).to.exist;
+            expect(appState.uiState.sheetsState.exportStatus?.isError).to.be.false;
+            expect(appState.uiState.sheetsState.exportState).to.equal(ExportState.Success);
+            expect(getCount).to.equal(0);
+        });
     });
 
     describe("getSheetsId", () => {

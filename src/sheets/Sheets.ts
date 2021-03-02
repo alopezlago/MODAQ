@@ -26,17 +26,21 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
     const game: GameState = appState.game;
     const uiState: UIState = appState.uiState;
 
+    // Don't change the state to CheckingOverwrite if we were just asking about it
     uiState.sheetsState.setExportStatus(
         {
             isError: false,
             status: "Signing in to Sheets",
         },
-        ExportState.Exporting
+        uiState.sheetsState.exportState !== ExportState.OverwritePrompt ? ExportState.CheckingOvewrite : undefined
     );
 
     await sheetsApi.initializeIfNeeded(uiState);
 
-    if (game.teamNames.length > 2) {
+    if (uiState.sheetsState.exportState == undefined) {
+        // Cancelled, leave early
+        return;
+    } else if (game.teamNames.length > 2) {
         uiState.sheetsState.setExportStatus(
             {
                 isError: true,
@@ -56,10 +60,73 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
         return;
     }
 
-    uiState.sheetsState.setExportStatus({
-        isError: false,
-        status: "Signed into Sheets. Exporting...",
-    });
+    const sheetName = `Round ${uiState.sheetsState.roundNumber ?? 1}`;
+
+    if (uiState.sheetsState.exportState !== ExportState.OverwritePrompt) {
+        uiState.sheetsState.setExportStatus({
+            isError: false,
+            status: "Signed into Sheets. Checking if scoresheet already filled in...",
+        });
+
+        let values: gapi.client.sheets.ValueRange;
+        try {
+            const response: ISheetsGetResponse = await sheetsApi.get(uiState, `'${sheetName}'!C5`);
+            if (!response.success) {
+                uiState.sheetsState.setExportStatus(
+                    {
+                        isError: true,
+                        status: `Check failed. Error from Sheets API: ${response.errorMessage}`,
+                    },
+                    ExportState.Error
+                );
+
+                return;
+            }
+
+            values = response.valueRange;
+        } catch (e) {
+            uiState.sheetsState.setExportStatus(
+                {
+                    isError: true,
+                    status: `Check failed. Error: ${e.message}`,
+                },
+                ExportState.Error
+            );
+            return;
+        }
+
+        if (uiState.sheetsState.exportState == undefined) {
+            // Cancelled, leave early
+            return;
+        }
+
+        if (
+            values.values != undefined &&
+            values.values.findIndex((value) => value != undefined && value.length > 0) !== -1
+        ) {
+            uiState.sheetsState.setExportStatus(
+                {
+                    isError: false,
+                    status: `The round you are scoring (${sheetName}) already has values in it. Are you sure you want to ovewrite this scoresheet?`,
+                },
+                ExportState.OverwritePrompt
+            );
+            return;
+        }
+    }
+
+    if (uiState.sheetsState.exportState == undefined) {
+        // Cancelled
+        return;
+    }
+
+    uiState.sheetsState.setExportStatus(
+        {
+            isError: false,
+            status: "Exporting...",
+        },
+        ExportState.Exporting
+    );
 
     // TODO: Would be more efficient if we did a group-by operation, but the number of teams should be small
     // TODO: This should count it by starters + subs, not just players
@@ -75,14 +142,11 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
             return;
         }
     }
-
-    const sheetName = `Round ${uiState.sheetsState.roundNumber ?? 1}`;
     const firstTeamName: string = game.teamNames[0];
-
     const valueRanges: gapi.client.sheets.ValueRange[] = [
         {
             range: `'${sheetName}'!C5`,
-            values: [[game.teamNames[0]]],
+            values: [[firstTeamName]],
         },
         {
             range: `'${sheetName}'!S5`,
@@ -279,6 +343,11 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
         return;
     }
 
+    if (uiState.sheetsState.exportState == undefined) {
+        // Cancelled, leave early
+        return;
+    }
+
     try {
         // Clear the spreadsheet first, to remove anything we've undone/changed
         const ranges: string[] = [
@@ -317,6 +386,11 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
             isError: false,
             status: "Export halfway completed...",
         });
+
+        if (uiState.sheetsState.exportState == undefined) {
+            // Cancelled, leave early
+            return;
+        }
 
         const updateStatus: IStatus = await sheetsApi.batchUpdate(uiState, valueRanges);
         if (updateStatus.isError) {

@@ -14,12 +14,15 @@ import {
     SpinButton,
     Stack,
     IStackTokens,
+    Icon,
+    StackItem,
+    IIconStyles,
 } from "@fluentui/react";
 
 import * as Sheets from "src/sheets/Sheets";
 import { UIState } from "src/state/UIState";
 import { IPendingSheet } from "src/state/IPendingSheet";
-import { SheetState } from "src/state/SheetState";
+import { ExportState } from "src/state/SheetState";
 import { AppState } from "src/state/AppState";
 
 const content: IDialogContentProps = {
@@ -45,6 +48,12 @@ const modalProps: IModalProps = {
     topOffsetFixed: true,
 };
 
+const warningIconStyles: IIconStyles = {
+    root: {
+        marginRight: 5,
+    },
+};
+
 const maximumRoundNumber = 30;
 const sheetsPrefix = "https://docs.google.com/spreadsheets/d/";
 
@@ -56,26 +65,37 @@ export const ExportDialog = observer(
         const uiState: UIState = props.appState.uiState;
         const cancelHandler = React.useCallback(() => onClose(props), [props]);
 
-        // Can't use React.useCallback since it only appears in the first stage
-        const exportHandler = () => onExport(props);
-
-        let body: JSX.Element | undefined;
         let footer: JSX.Element | undefined;
-        if (uiState.sheetsState?.exportState == undefined) {
-            body = <ExportSettingsDialogBody {...props} />;
+        if (
+            uiState.sheetsState?.exportState == undefined ||
+            uiState.sheetsState.exportState === ExportState.OverwritePrompt
+        ) {
+            // Can't use React.useCallback since it only appears in the first stage
+            const exportHandler = () => onExport(props);
 
             const exportDisabled: boolean = (uiState.pendingSheet?.sheetId ?? "") === "";
+            const exportText: string =
+                uiState.sheetsState.exportState === ExportState.OverwritePrompt ? "Continue" : "Export";
             footer = (
                 <DialogFooter>
                     <DefaultButton text="Cancel" onClick={cancelHandler} autoFocus={false} />
-                    <PrimaryButton text="Export" onClick={exportHandler} disabled={exportDisabled} autoFocus={false} />
+                    <PrimaryButton
+                        text={exportText}
+                        onClick={exportHandler}
+                        disabled={exportDisabled}
+                        autoFocus={false}
+                    />
                 </DialogFooter>
             );
         } else {
-            body = <ExportStatusBody {...props} />;
+            const text: string =
+                uiState.sheetsState.exportState === ExportState.CheckingOvewrite ||
+                uiState.sheetsState.exportState === ExportState.Exporting
+                    ? "Cancel"
+                    : "Close";
             footer = (
                 <DialogFooter>
-                    <PrimaryButton text="Close" onClick={cancelHandler} />
+                    <PrimaryButton text={text} onClick={cancelHandler} />
                 </DialogFooter>
             );
         }
@@ -87,7 +107,7 @@ export const ExportDialog = observer(
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
             >
-                {body}
+                <ExportSettingsDialogBody {...props} />
                 {footer}
             </Dialog>
         );
@@ -161,38 +181,70 @@ const ExportSettingsDialogBody = observer(
             return <></>;
         }
 
+        let warningIconName: string | undefined;
+        switch (uiState.sheetsState.exportState) {
+            case ExportState.OverwritePrompt:
+                warningIconName = "Warning";
+                break;
+            case ExportState.Error:
+                warningIconName = "Error";
+                break;
+            default:
+                warningIconName = undefined;
+                break;
+        }
+
+        const warningIcon: JSX.Element | false = warningIconName != undefined && (
+            <Icon iconName={warningIconName} styles={warningIconStyles} />
+        );
+
         const roundNumber: number = sheet.roundNumber ?? 1;
+
+        const status: string | undefined = uiState.sheetsState.exportStatus?.status;
+        const controlsDisabled: boolean = uiState.sheetsState.exportState != undefined;
 
         // It would be great to make the TextField wider, but that requires some changes to the dialog width that
         // Fluent UI hates to do
         return (
             <Stack tokens={settingsStackTokens}>
-                <TextField
-                    label="SheetsUrl"
-                    defaultValue={
-                        sheet.sheetId == undefined || sheet.sheetId.length === 0
-                            ? ""
-                            : `${sheetsPrefix}${sheet.sheetId}`
-                    }
-                    required={true}
-                    onChange={sheetsUrlChangeHandler}
-                    onGetErrorMessage={validateSheetsUrl}
-                    validateOnFocusOut={true}
-                    validateOnLoad={false}
-                    autoFocus={true}
-                />
-                <SpinButton
-                    label="Round Number"
-                    onIncrement={roundNumberIncrementHandler}
-                    onDecrement={roundNumberDecrementHandler}
-                    onValidate={roundNumberChangeHandler}
-                    value={roundNumber.toString()}
-                    min={1}
-                    max={maximumRoundNumber}
-                    step={1}
-                    incrementButtonAriaLabel={"Increase round nubmer by 1"}
-                    decrementButtonAriaLabel={"Decrease round number by 1"}
-                />
+                <StackItem>
+                    <TextField
+                        label="SheetsUrl"
+                        defaultValue={
+                            sheet.sheetId == undefined || sheet.sheetId.length === 0
+                                ? ""
+                                : `${sheetsPrefix}${sheet.sheetId}`
+                        }
+                        disabled={controlsDisabled}
+                        required={true}
+                        onChange={sheetsUrlChangeHandler}
+                        onGetErrorMessage={validateSheetsUrl}
+                        validateOnFocusOut={true}
+                        validateOnLoad={false}
+                        autoFocus={true}
+                    />
+                </StackItem>
+                <StackItem>
+                    <SpinButton
+                        label="Round Number"
+                        onIncrement={roundNumberIncrementHandler}
+                        onDecrement={roundNumberDecrementHandler}
+                        onValidate={roundNumberChangeHandler}
+                        disabled={controlsDisabled}
+                        value={roundNumber.toString()}
+                        min={1}
+                        max={maximumRoundNumber}
+                        step={1}
+                        incrementButtonAriaLabel={"Increase round nubmer by 1"}
+                        decrementButtonAriaLabel={"Decrease round number by 1"}
+                    />
+                </StackItem>
+                <StackItem>
+                    <Label>
+                        {warningIcon}
+                        {status}
+                    </Label>
+                </StackItem>
             </Stack>
         );
     }
@@ -214,18 +266,7 @@ function validateSheetsUrl(url: string): string | undefined {
     return undefined;
 }
 
-const ExportStatusBody = observer(
-    (props: IExportDialogProps): JSX.Element => {
-        const sheet: SheetState | undefined = props.appState.uiState.sheetsState;
-        if (sheet === undefined) {
-            return <></>;
-        }
-
-        return <Label>{sheet.exportStatus?.status}</Label>;
-    }
-);
-
-function onExport(props: IExportDialogProps): void {
+async function onExport(props: IExportDialogProps): Promise<void> {
     const uiState: UIState = props.appState.uiState;
 
     if (uiState.pendingSheet == undefined) {
@@ -244,8 +285,7 @@ function onExport(props: IExportDialogProps): void {
     uiState.sheetsState.setRoundNumber(uiState.pendingSheet.roundNumber);
     uiState.sheetsState.setSheetId(uiState.pendingSheet.sheetId);
 
-    Sheets.exportToSheet(props.appState);
-    return;
+    await Sheets.exportToSheet(props.appState);
 }
 
 function onClose(props: IExportDialogProps): void {
