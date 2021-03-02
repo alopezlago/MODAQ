@@ -79,7 +79,9 @@ export const enum LoadingState {
 }
 
 export const enum ExportState {
-    Exporting = 0,
-    Success = 1,
-    Error = 2,
+    CheckingOvewrite = 0,
+    OverwritePrompt = 1,
+    Exporting = 2,
+    Success = 3,
+    Error = 4,
 }
