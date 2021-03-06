@@ -6,7 +6,7 @@ import { BonusQuestionPart } from "./BonusQuestionPart";
 import { Bonus } from "src/state/PacketState";
 import { Cycle } from "src/state/Cycle";
 import { CancelButton } from "./CancelButton";
-import { BonusProtestDialog } from "./BonusProtestDialog";
+import { BonusProtestDialog } from "./dialogs/BonusProtestDialog";
 import { AppState } from "src/state/AppState";
 
 export const BonusQuestion = observer((props: IBonusQuestionProps) => {

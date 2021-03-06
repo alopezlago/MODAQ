@@ -87,10 +87,10 @@ class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryS
                 this.setState({ showClearPrompt: true });
             };
 
-            const cyclesJson: Blob = new Blob([JSON.stringify(this.props.appState.game.cycles)], {
+            const gameJson: Blob = new Blob([JSON.stringify(this.props.appState.game)], {
                 type: "application/json",
             });
-            const url = URL.createObjectURL(cyclesJson);
+            const url = URL.createObjectURL(gameJson);
 
             return (
                 <Stack>
@@ -108,11 +108,11 @@ class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryS
                     </StackItem>
                     <StackItem>
                         <PrimaryButton
-                            aria-label="Export cycles (JSON)"
-                            text="Export cycles (JSON)"
+                            aria-label="Export game (JSON)"
+                            text="Export game (JSON)"
                             styles={ErrorBoundary.exportButtonStyle}
                             href={url}
-                            download="QuizBowlReader_Events_Error.json"
+                            download="QuizBowlReader_Game_Error.json"
                         />
                         <DefaultButton onClick={showDialog} text="Reset" />
                     </StackItem>
@@ -150,7 +150,7 @@ const element: HTMLElement | null = document.getElementById("root");
 if (element) {
     configure({ enforceActions: "observed", computedRequiresReaction: true });
     const appState = new AppState();
-    const trunk = new AsyncTrunk(appState, { storage: localStorage, delay: 100 });
+    const trunk = new AsyncTrunk(appState, { storage: localStorage, delay: 200 });
 
     trunk.init(appState).then(() => {
         ReactDOM.render(

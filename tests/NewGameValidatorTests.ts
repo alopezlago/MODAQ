@@ -4,6 +4,7 @@ import * as NewGameValidator from "src/state/NewGameValidator";
 import { IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
 import { Player } from "src/state/TeamState";
 import { PacketState } from "src/state/PacketState";
+import { Cycle } from "src/state/Cycle";
 
 describe("NewGameValidatorTests", () => {
     describe("playerTeamsUnique", () => {
@@ -250,8 +251,28 @@ describe("NewGameValidatorTests", () => {
                 type: PendingGameType.Manual,
             });
         });
-        it("Valid game", () => {
+        it("Empty cycles array", () => {
+            assertNewGameIsInvalid({
+                cycles: [],
+                firstTeamPlayers: [new Player("a", "1", true)],
+                secondTeamPlayers: [new Player("b", "2", true)],
+                packet: defaultPacket,
+                type: PendingGameType.Manual,
+            });
+        });
+        it("Valid game (Manual)", () => {
             const newGame: IPendingNewGame = {
+                firstTeamPlayers: [new Player("a", "1", true)],
+                secondTeamPlayers: [new Player("b", "2", true)],
+                packet: defaultPacket,
+                type: PendingGameType.Manual,
+            };
+            const result: boolean = NewGameValidator.isValid(newGame);
+            expect(result).to.be.true;
+        });
+        it("Valid game (Manual with cycles)", () => {
+            const newGame: IPendingNewGame = {
+                cycles: defaultPacket.tossups.map(() => new Cycle()),
                 firstTeamPlayers: [new Player("a", "1", true)],
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,

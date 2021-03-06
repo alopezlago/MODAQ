@@ -1,5 +1,6 @@
 import { makeAutoObservable } from "mobx";
 import { ignore } from "mobx-sync";
+import { assertNever } from "office-ui-fabric-react";
 
 import { ITossupProtestEvent, IBonusProtestEvent } from "./Events";
 import { IPendingNewGame, PendingGameType } from "./IPendingNewGame";
@@ -8,6 +9,7 @@ import { Player } from "./TeamState";
 import { LoadingState, SheetState } from "./SheetState";
 import { IStatus } from "../IStatus";
 import { IPendingSheet } from "./IPendingSheet";
+import { Cycle } from "./Cycle";
 
 export class UIState {
     // TODO: Should we also include the Cycle? This would simplify anything that needs access to the cycle
@@ -21,6 +23,21 @@ export class UIState {
 
     @ignore
     public buzzMenuVisible: boolean;
+
+    @ignore
+    public exportToJsonDialogVisible: boolean;
+
+    @ignore
+    public importGameStatus: IStatus | undefined;
+
+    @ignore
+    public importGameDialogVisible: boolean;
+
+    @ignore
+    public newGameDialogVisible: boolean;
+
+    @ignore
+    public packetFilename: string | undefined;
 
     @ignore
     public packetParseStatus: IStatus | undefined;
@@ -49,6 +66,11 @@ export class UIState {
         this.isEditingCycleIndex = false;
         this.selectedWordIndex = -1;
         this.buzzMenuVisible = false;
+        this.exportToJsonDialogVisible = false;
+        this.importGameStatus = undefined;
+        this.importGameDialogVisible = false;
+        this.newGameDialogVisible = false;
+        this.packetFilename = undefined;
         this.packetParseStatus = undefined;
         this.pendingBonusProtestEvent = undefined;
         this.pendingNewGame = undefined;
@@ -73,50 +95,6 @@ export class UIState {
 
     public clearPacketStatus(): void {
         this.packetParseStatus = undefined;
-    }
-
-    public removePlayerToFirstTeamInPendingNewGame(player: Player): void {
-        if (this.pendingNewGame?.type === PendingGameType.Manual) {
-            this.pendingNewGame.firstTeamPlayers = this.pendingNewGame?.firstTeamPlayers.filter((p) => p !== player);
-        }
-    }
-
-    public removePlayerToSecondTeamInPendingNewGame(player: Player): void {
-        if (this.pendingNewGame?.type === PendingGameType.Manual) {
-            this.pendingNewGame.secondTeamPlayers = this.pendingNewGame?.secondTeamPlayers.filter((p) => p !== player);
-        }
-    }
-
-    public setPendingNewGameType(type: PendingGameType): void {
-        if (this.pendingNewGame != undefined) {
-            this.pendingNewGame.type = type;
-        }
-    }
-
-    public setRostersForPendingNewGame(players: Player[]): void {
-        if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
-            this.pendingNewGame.playersFromRosters = players;
-            this.pendingNewGame.firstTeamPlayersFromRosters = [];
-            this.pendingNewGame.secondTeamPlayersFromRosters = [];
-        }
-    }
-
-    public setRostersUrlForPendingNewGame(url: string): void {
-        if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
-            this.pendingNewGame.rostersUrl = url;
-        }
-    }
-
-    public setFirstTeamPlayersFromRostersForPendingNewGame(players: Player[]): void {
-        if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
-            this.pendingNewGame.firstTeamPlayersFromRosters = players;
-        }
-    }
-
-    public setSecondTeamPlayersFromRostersForPendingNewGame(players: Player[]): void {
-        if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
-            this.pendingNewGame.secondTeamPlayersFromRosters = players;
-        }
     }
 
     public createPendingNewGame(): void {
@@ -146,6 +124,78 @@ export class UIState {
         };
     }
 
+    public removePlayerToFirstTeamInPendingNewGame(player: Player): void {
+        if (this.pendingNewGame?.type === PendingGameType.Manual) {
+            this.pendingNewGame.firstTeamPlayers = this.pendingNewGame?.firstTeamPlayers.filter((p) => p !== player);
+        }
+    }
+
+    public removePlayerToSecondTeamInPendingNewGame(player: Player): void {
+        if (this.pendingNewGame?.type === PendingGameType.Manual) {
+            this.pendingNewGame.secondTeamPlayers = this.pendingNewGame?.secondTeamPlayers.filter((p) => p !== player);
+        }
+    }
+
+    public setPendingNewGameType(type: PendingGameType): void {
+        if (this.pendingNewGame != undefined) {
+            this.pendingNewGame.type = type;
+        }
+    }
+
+    public setPendingNewGameCycles(cycles: Cycle[]): void {
+        if (this.pendingNewGame?.type === PendingGameType.Manual) {
+            this.pendingNewGame.cycles = cycles;
+        }
+    }
+
+    public setPendingNewGameRosters(players: Player[]): void {
+        if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
+            this.pendingNewGame.playersFromRosters = players;
+            this.pendingNewGame.firstTeamPlayersFromRosters = [];
+            this.pendingNewGame.secondTeamPlayersFromRosters = [];
+        }
+    }
+
+    public setPendingNewGameRostersUrl(url: string): void {
+        if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
+            this.pendingNewGame.rostersUrl = url;
+        }
+    }
+
+    public setPendingNewGameFirstTeamPlayers(players: Player[]): void {
+        if (this.pendingNewGame?.type == undefined) {
+            return;
+        }
+
+        switch (this.pendingNewGame.type) {
+            case PendingGameType.Lifsheets:
+                this.pendingNewGame.firstTeamPlayersFromRosters = players;
+                break;
+            case PendingGameType.Manual:
+                this.pendingNewGame.firstTeamPlayers = players;
+                break;
+            default:
+                assertNever(this.pendingNewGame);
+        }
+    }
+
+    public setPendingNewGameSecondTeamPlayers(players: Player[]): void {
+        if (this.pendingNewGame?.type == undefined) {
+            return;
+        }
+
+        switch (this.pendingNewGame.type) {
+            case PendingGameType.Lifsheets:
+                this.pendingNewGame.secondTeamPlayersFromRosters = players;
+                break;
+            case PendingGameType.Manual:
+                this.pendingNewGame.secondTeamPlayers = players;
+                break;
+            default:
+                assertNever(this.pendingNewGame);
+        }
+    }
+
     public nextCycle(): void {
         this.setCycleIndex(this.cycleIndex + 1);
     }
@@ -165,9 +215,18 @@ export class UIState {
         }
     }
 
+    public setImportGameStatus(status: IStatus): void {
+        this.importGameStatus = status;
+    }
+
     public setIsEditingCycleIndex(isEditingCycleIndex: boolean): void {
         this.isEditingCycleIndex = isEditingCycleIndex;
     }
+
+    public setPacketFilename(name: string): void {
+        this.packetFilename = name;
+    }
+
     public setPacketStatus(packetStatus: IStatus): void {
         this.packetParseStatus = packetStatus;
     }
@@ -206,6 +265,22 @@ export class UIState {
         this.buzzMenuVisible = false;
     }
 
+    public hideExportToJsonDialog(): void {
+        this.exportToJsonDialogVisible = false;
+    }
+
+    public hideImportGameDialog(): void {
+        this.importGameDialogVisible = false;
+    }
+
+    public hideNewGameDialog(): void {
+        this.newGameDialogVisible = false;
+    }
+
+    public resetPacketFilename(): void {
+        this.packetFilename = undefined;
+    }
+
     public resetPendingBonusProtest(): void {
         this.pendingBonusProtestEvent = undefined;
     }
@@ -213,6 +288,7 @@ export class UIState {
     public resetPendingNewGame(): void {
         this.pendingNewGame = undefined;
         this.packetParseStatus = undefined;
+        this.importGameStatus = undefined;
     }
 
     public resetPendingNewPlayer(): void {
@@ -233,6 +309,18 @@ export class UIState {
 
     public showBuzzMenu(): void {
         this.buzzMenuVisible = true;
+    }
+
+    public showExportToJsonDialog(): void {
+        this.exportToJsonDialogVisible = true;
+    }
+
+    public showImportGameDialog(): void {
+        this.importGameDialogVisible = true;
+    }
+
+    public showNewGameDialog(): void {
+        this.newGameDialogVisible = true;
     }
 
     public updatePendingProtestReason(reason: string): void {

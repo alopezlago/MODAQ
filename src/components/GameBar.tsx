@@ -26,6 +26,11 @@ export const GameBar = observer(
 
         const newGameHandler = React.useCallback(() => {
             uiState.createPendingNewGame();
+            uiState.showNewGameDialog();
+        }, [uiState]);
+        const importGameHandler = React.useCallback(() => {
+            uiState.createPendingNewGame();
+            uiState.showImportGameDialog();
         }, [uiState]);
 
         const protestBonusHandler = React.useCallback(() => {
@@ -55,6 +60,23 @@ export const GameBar = observer(
                 key: "newGame",
                 text: "New game",
                 iconProps: { iconName: "Add" },
+                split: true,
+                subMenuProps: {
+                    items: [
+                        {
+                            key: "newGameSubMenuItem",
+                            text: "New game...",
+                            iconProps: { iconName: "Add" },
+                            onClick: newGameHandler,
+                        },
+                        {
+                            key: "importGame",
+                            text: "Import game...",
+                            iconProps: { iconName: "Download" },
+                            onClick: importGameHandler,
+                        },
+                    ],
+                },
                 onClick: newGameHandler,
             },
         ];
@@ -296,7 +318,7 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
 
     items.push({
         key: "exportSheets",
-        text: "Export to Sheets",
+        text: "Export to Sheets...",
         onClick: () => {
             exportToSheets(props);
         },
@@ -324,14 +346,12 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
         },
     });
 
-    // TODO: Blob should probably be memoized, so we don't keep stringifying? It does appear that the link is the same
-    // if the cycles haven't changed.
-    const cyclesJson = new Blob([JSON.stringify(game.cycles)], { type: "application/json" });
     items.push({
         key: "downloadJson",
-        text: "Download events (JSON)",
-        href: URL.createObjectURL(cyclesJson),
-        download: `${game.teamNames.join("_")}_Events.json`,
+        text: "Export to JSON...",
+        onClick: () => {
+            props.appState.uiState.showExportToJsonDialog();
+        },
     });
 
     return items;

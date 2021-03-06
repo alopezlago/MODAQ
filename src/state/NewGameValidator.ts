@@ -1,6 +1,6 @@
 import * as PendingNewGameUtils from "./PendingNewGameUtils";
 import { Player } from "./TeamState";
-import { IPendingNewGame } from "./IPendingNewGame";
+import { IPendingNewGame, PendingGameType } from "./IPendingNewGame";
 
 export function isValid(pendingNewGame: IPendingNewGame): boolean {
     const [firstTeamPlayers, secondTeamPlayers]: Player[][] = PendingNewGameUtils.getPendingNewGamePlayers(
@@ -23,6 +23,7 @@ export function isValid(pendingNewGame: IPendingNewGame): boolean {
         playerNamesUnique(nonEmptySecondTeamPlayers) &&
         atLeastOneStarter(nonEmptyFirstTeamPlayers) &&
         atLeastOneStarter(nonEmptySecondTeamPlayers) &&
+        atLeastOneCycleIfCyclesExist(pendingNewGame) &&
         pendingNewGame.packet.tossups.length !== 0
     );
 }
@@ -76,4 +77,12 @@ function playerNamesUnique(players: Player[]): boolean {
 
 function atLeastOneStarter(players: Player[]): boolean {
     return players.some((player) => player.isStarter);
+}
+
+function atLeastOneCycleIfCyclesExist(pendingNewGame: IPendingNewGame): boolean {
+    return (
+        pendingNewGame.type !== PendingGameType.Manual ||
+        pendingNewGame.cycles == undefined ||
+        pendingNewGame.cycles.length > 0
+    );
 }
