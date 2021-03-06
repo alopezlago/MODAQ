@@ -33,6 +33,7 @@ export class GameState {
             addPlayersForDemo: action,
             clear: action,
             loadPacket: action,
+            setCycles: action,
         });
 
         this.packet = new PacketState();
@@ -245,5 +246,9 @@ export class GameState {
                 this.cycles.push(new Cycle());
             }
         }
+    }
+
+    public setCycles(cycles: Cycle[]): void {
+        this.cycles = cycles;
     }
 }

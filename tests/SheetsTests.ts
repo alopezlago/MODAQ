@@ -679,7 +679,7 @@ describe("SheetsTests", () => {
             expect(appState.uiState.sheetsState.exportStatus?.isError).to.exist;
             expect(appState.uiState.sheetsState.exportStatus?.isError).to.be.false;
             expect(appState.uiState.sheetsState.exportState).to.equal(ExportState.Success);
-            expect(getCount).to.equal(0);
+            expect(getCount).to.equal(1);
         });
     });
 

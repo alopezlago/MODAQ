@@ -5,17 +5,16 @@ import { Label, ILabelStyles } from "@fluentui/react";
 import { UIState } from "src/state/UIState";
 import { Tossup, Bonus, IBonusPart, PacketState } from "src/state/PacketState";
 import { AppState } from "src/state/AppState";
+import { FilePicker } from "./FilePicker";
 
 declare const __YAPP_SERVICE__: string;
 
 export const PacketLoader = observer(
     (props: IPacketLoaderProps): JSX.Element => {
-        // TODO: This probably doesn't need to be cached.
-        const fileInput: React.MutableRefObject<null> = React.useRef(null);
         const onLoadHandler = React.useCallback((ev: ProgressEvent<FileReader>) => onLoad(ev, props), [props]);
         const uploadHandler = React.useCallback(
-            (event: React.ChangeEvent<HTMLInputElement>) => {
-                onChange(props, fileInput, onLoadHandler, event);
+            (event: React.ChangeEvent<HTMLInputElement>, files: FileList | undefined | null) => {
+                onChange(props, files, onLoadHandler, event);
             },
             [props, onLoadHandler]
         );
@@ -28,11 +27,11 @@ export const PacketLoader = observer(
 
         return (
             <div>
-                <Label required={true}>Load Packet</Label>
-                <input
-                    type="file"
-                    accept={"application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
-                    ref={fileInput}
+                <FilePicker
+                    accept="application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    buttonText="Load..."
+                    label="Packet"
+                    required={true}
                     onChange={uploadHandler}
                 />
                 <Label styles={statusStyles}>{props.appState.uiState.packetParseStatus?.status}</Label>
@@ -43,14 +42,14 @@ export const PacketLoader = observer(
 
 function onChange(
     props: IPacketLoaderProps,
-    fileInput: React.RefObject<HTMLInputElement>,
+    files: FileList | undefined | null,
     onLoadHandler: (ev: ProgressEvent<FileReader>) => void,
     event: React.ChangeEvent<HTMLInputElement>
 ): void {
     event.preventDefault();
     props.appState.uiState.clearPacketStatus();
 
-    if (fileInput.current?.files == undefined) {
+    if (files == undefined || files.length === 0) {
         return;
     }
 
@@ -58,7 +57,9 @@ function onChange(
     fileReader.onload = onLoadHandler;
 
     // docx files should be read as a binaray, while json should be read as text
-    const file: File = fileInput.current.files[0];
+    const file: File = files[0];
+    props.appState.uiState.setPacketFilename(file.name);
+
     if (file.type === "application/json" || file.type === "text/plain") {
         fileReader.readAsText(file);
     } else {
@@ -171,9 +172,10 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
     packet.setTossups(tossups);
     packet.setBonuses(bonuses);
 
+    const packetName: string = uiState.packetFilename != undefined ? `"${uiState.packetFilename}"` : "";
     uiState.setPacketStatus({
         isError: false,
-        status: `Packet loaded. ${tossups.length} tossup(s), ${bonuses.length} bonus(es).`,
+        status: `Packet ${packetName} loaded. ${tossups.length} tossup(s), ${bonuses.length} bonus(es).`,
     });
 
     props.onLoad(packet);

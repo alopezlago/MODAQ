@@ -1,3 +1,4 @@
+import { Cycle } from "./Cycle";
 import { PacketState } from "./PacketState";
 import { Player } from "./TeamState";
 
@@ -6,6 +7,7 @@ export type IPendingNewGame = IPendingManualNewGame | IPendingLifsheetsNewGame;
 interface IPendingManualNewGame extends IBasePendingNewGame {
     firstTeamPlayers: Player[];
     secondTeamPlayers: Player[];
+    cycles?: Cycle[];
     type: PendingGameType.Manual;
 }
 

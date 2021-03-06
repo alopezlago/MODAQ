@@ -10,7 +10,7 @@ import { Cycle } from "src/state/Cycle";
 import { BuzzMenu } from "./BuzzMenu";
 import { Answer } from "./Answer";
 import { IFormattedText } from "src/parser/IFormattedText";
-import { TossupProtestDialog } from "./TossupProtestDialog";
+import { TossupProtestDialog } from "./dialogs/TossupProtestDialog";
 import { CancelButton } from "./CancelButton";
 import { AppState } from "src/state/AppState";
 

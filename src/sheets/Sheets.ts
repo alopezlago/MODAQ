@@ -557,16 +557,12 @@ export async function loadRosters(appState: AppState, sheetsApi: ISheetsApi = Sh
         })
         .reduce((previous, current) => previous.concat(current));
 
-    uiState.setRostersForPendingNewGame(players);
+    uiState.setPendingNewGameRosters(players);
 
     const firstTeamName: string = teamNames[0];
     const secondTeamName: string = teamNames[1];
-    uiState.setFirstTeamPlayersFromRostersForPendingNewGame(
-        players.filter((player) => player.teamName === firstTeamName)
-    );
-    uiState.setSecondTeamPlayersFromRostersForPendingNewGame(
-        players.filter((player) => player.teamName === secondTeamName)
-    );
+    uiState.setPendingNewGameFirstTeamPlayers(players.filter((player) => player.teamName === firstTeamName));
+    uiState.setPendingNewGameSecondTeamPlayers(players.filter((player) => player.teamName === secondTeamName));
 
     return;
 }

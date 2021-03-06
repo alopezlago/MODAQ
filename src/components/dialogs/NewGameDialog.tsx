@@ -34,14 +34,14 @@ import * as NewGameValidator from "src/state/NewGameValidator";
 import * as PendingNewGameUtils from "src/state/PendingNewGameUtils";
 import * as Sheets from "src/sheets/Sheets";
 import { UIState } from "src/state/UIState";
-import { PacketLoader } from "./PacketLoader";
+import { PacketLoader } from "../PacketLoader";
 import { GameState } from "src/state/GameState";
 import { PacketState } from "src/state/PacketState";
-import { ManualTeamEntry } from "./ManualTeamEntry";
+import { ManualTeamEntry } from "../ManualTeamEntry";
 import { Player } from "src/state/TeamState";
 import { IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
 import { AppState } from "src/state/AppState";
-import { FromRostersTeamEntry } from "./FromRostersTeamEntry";
+import { FromRostersTeamEntry } from "../FromRostersTeamEntry";
 
 const playerListHeight = "25vh";
 const manualPivotKey = "M";
@@ -87,7 +87,7 @@ export const NewGameDialog = observer(
 
         return (
             <Dialog
-                hidden={props.appState.uiState.pendingNewGame === undefined}
+                hidden={!props.appState.uiState.newGameDialogVisible}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
@@ -223,7 +223,7 @@ const FromLifsheetsNewGameBody = observer(
         const rostersUrlChangeHandler = React.useCallback(
             (ev, newValue: string | undefined) => {
                 if (newValue != undefined) {
-                    uiState.setRostersUrlForPendingNewGame(newValue);
+                    uiState.setPendingNewGameRostersUrl(newValue);
                 }
             },
             [uiState]
@@ -256,13 +256,13 @@ const FromLifsheetsNewGameBody = observer(
 
                 // If rosters exist, then so do the players, so we can do strict equality to see which team needs to be updated
                 if (oldPlayers === uiState.pendingNewGame?.firstTeamPlayersFromRosters) {
-                    uiState.setFirstTeamPlayersFromRostersForPendingNewGame(
+                    uiState.setPendingNewGameFirstTeamPlayers(
                         uiState.pendingNewGame.playersFromRosters?.filter(
                             (player) => player.teamName === newTeamName
                         ) ?? []
                     );
                 } else if (oldPlayers === uiState.pendingNewGame?.secondTeamPlayersFromRosters) {
-                    uiState.setSecondTeamPlayersFromRostersForPendingNewGame(
+                    uiState.setPendingNewGameSecondTeamPlayers(
                         uiState.pendingNewGame.playersFromRosters?.filter(
                             (player) => player.teamName === newTeamName
                         ) ?? []
@@ -404,6 +404,7 @@ function onCancel(props: INewGameDialogProps): void {
 }
 
 function hideDialog(props: INewGameDialogProps): void {
+    props.appState.uiState.hideNewGameDialog();
     props.appState.uiState.resetPendingNewGame();
 }
 
