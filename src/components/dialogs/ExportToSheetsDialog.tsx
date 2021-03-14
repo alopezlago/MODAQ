@@ -17,12 +17,14 @@ import {
     Icon,
     StackItem,
     IIconStyles,
+    Dropdown,
+    IDropdownOption,
 } from "@fluentui/react";
 
 import * as Sheets from "src/sheets/Sheets";
 import { UIState } from "src/state/UIState";
 import { IPendingSheet } from "src/state/IPendingSheet";
-import { ExportState } from "src/state/SheetState";
+import { ExportState, SheetType } from "src/state/SheetState";
 import { AppState } from "src/state/AppState";
 
 const content: IDialogContentProps = {
@@ -53,6 +55,21 @@ const warningIconStyles: IIconStyles = {
         marginRight: 5,
     },
 };
+
+const typeOptions: IDropdownOption[] = [
+    {
+        key: SheetType.Lifsheets,
+        text: "Lifsheets",
+    },
+    {
+        key: SheetType.TJSheets,
+        text: "TJ Sheets",
+    },
+    {
+        key: SheetType.UCSDSheets,
+        text: "UCSD Sheets",
+    },
+];
 
 const maximumRoundNumber = 30;
 const sheetsPrefix = "https://docs.google.com/spreadsheets/d/";
@@ -131,6 +148,18 @@ const ExportSettingsDialogBody = observer(
             [uiState]
         );
 
+        const typeChangeHandler = React.useCallback(
+            (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
+                if (option == undefined) {
+                    return;
+                }
+
+                // The keys are always SheetType values
+                props.appState.uiState.sheetsState.setSheetType(option.key as SheetType);
+            },
+            [props]
+        );
+
         const roundNumberChangeHandler = React.useCallback(
             (newValue: string) => {
                 if (newValue == undefined) {
@@ -182,6 +211,9 @@ const ExportSettingsDialogBody = observer(
             return <></>;
         }
 
+        const selectedType: number = uiState.sheetsState.sheetType ?? SheetType.Lifsheets;
+        const roundNumber: number = sheet.roundNumber ?? 1;
+
         let warningIconName: string | undefined;
         switch (uiState.sheetsState.exportState) {
             case ExportState.OverwritePrompt:
@@ -198,8 +230,6 @@ const ExportSettingsDialogBody = observer(
         const warningIcon: JSX.Element | false = warningIconName != undefined && (
             <Icon iconName={warningIconName} styles={warningIconStyles} />
         );
-
-        const roundNumber: number = sheet.roundNumber ?? 1;
 
         const status: string | undefined = uiState.sheetsState.exportStatus?.status;
         const controlsDisabled: boolean = uiState.sheetsState.exportState != undefined;
@@ -223,6 +253,15 @@ const ExportSettingsDialogBody = observer(
                         validateOnFocusOut={true}
                         validateOnLoad={false}
                         autoFocus={true}
+                    />
+                </StackItem>
+                <StackItem>
+                    <Dropdown
+                        label="Type"
+                        disabled={controlsDisabled}
+                        options={typeOptions}
+                        selectedKey={selectedType}
+                        onChange={typeChangeHandler}
                     />
                 </StackItem>
                 <StackItem>

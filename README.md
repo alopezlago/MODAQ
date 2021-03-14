@@ -6,6 +6,8 @@ See [the wiki](https://github.com/alopezlago/MODAQ/wiki) to learn how to use the
 
 # Getting Started
 
+You will need to have [npm](https://www.npmjs.com/get-npm) and [yarn](https://yarnpkg.com/getting-started/install) installed on your system.
+
 To setup the project, run
 
 `npm init`

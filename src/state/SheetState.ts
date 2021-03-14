@@ -25,6 +25,9 @@ export class SheetState {
     // We want to remember the round number, so we can keep exporting to the same round
     public roundNumber?: number;
 
+    // We want to remember the sheet type so we can auto-fill it when we export
+    public sheetType?: SheetType;
+
     constructor() {
         makeAutoObservable(this);
 
@@ -33,8 +36,9 @@ export class SheetState {
         this.exportState = undefined;
         this.rosterLoadStatus = undefined;
         this.rosterLoadState = undefined;
-        this.sheetId = undefined;
         this.roundNumber = undefined;
+        this.sheetId = undefined;
+        this.sheetType = undefined;
     }
 
     public clearExportStatus(): void {
@@ -44,6 +48,10 @@ export class SheetState {
 
     public clearRoundNumber(): void {
         this.roundNumber = undefined;
+    }
+
+    public clearSheetType(): void {
+        this.sheetType = undefined;
     }
 
     public setExportStatus(status: IStatus, state: ExportState | undefined = undefined): void {
@@ -66,6 +74,10 @@ export class SheetState {
         this.sheetId = sheetId;
     }
 
+    public setSheetType(sheetType: SheetType): void {
+        this.sheetType = sheetType;
+    }
+
     public setRoundNumber(roundNumber: number): void {
         this.roundNumber = roundNumber;
     }
@@ -84,4 +96,10 @@ export const enum ExportState {
     Exporting = 2,
     Success = 3,
     Error = 4,
+}
+
+export const enum SheetType {
+    Lifsheets = 0,
+    TJSheets = 1,
+    UCSDSheets = 2,
 }
