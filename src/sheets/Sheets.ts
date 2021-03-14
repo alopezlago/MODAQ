@@ -1,12 +1,16 @@
+import * as PlayerToColumnMap from "./PlayerToColumnMap";
 import { UIState } from "src/state/UIState";
-import { ExportState, LoadingState } from "src/state/SheetState";
+import { ExportState, LoadingState, SheetType } from "src/state/SheetState";
 import { GameState } from "src/state/GameState";
-import { IBonusProtestEvent } from "src/state/Events";
-import { IPlayer, Player } from "src/state/TeamState";
 import { AppState } from "src/state/AppState";
 import { SheetsApi } from "src/sheets/SheetsApi";
-import { ISheetsApi, ISheetsGetResponse } from "./ISheetsApi";
+import { ISheetsApi, ISheetsBatchGetResponse, ISheetsGetResponse } from "./ISheetsApi";
 import { IStatus } from "src/IStatus";
+import { IRoster, ISheetsGenerator } from "./ISheetsGenerator";
+import { LifsheetsGenerator } from "./LifsheetsGenerator";
+import { TJSheetsGenerator } from "./TJSheetsGenerator";
+import { assertNever } from "office-ui-fabric-react";
+import { UCSDSheetsGenerator } from "./UCSDSheetsGenerator";
 
 // TODO:
 // - Socket integration! Can be very tricky because of how the cycle/phases are backed differently
@@ -15,13 +19,11 @@ import { IStatus } from "src/IStatus";
 //         - Alternatively, we should have a different Game implementation, and we should move it to an interface (IGame).
 //         - Ones that use advanced stats would support phases that have advanced stats, and would allow us to jump to
 //           any phase.
-
+// - Create Format. Should include: power marker (e.g. (*)), neg value, power value, bouncebacks (when supported)
 // Ideally, next steps would be to have a autorun or reaction when cycles change, so we can update the scoresheet.
 // But to keep things simple at first, can just export (adding players > 6 could cause problems, as could multiple tiebreakers)
 
 const sheetsPrefix = "https://docs.google.com/spreadsheets/d/";
-const firstCycleRow = 8;
-
 export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = SheetsApi): Promise<void> {
     const game: GameState = appState.game;
     const uiState: UIState = appState.uiState;
@@ -37,6 +39,8 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
 
     await sheetsApi.initializeIfNeeded(uiState);
 
+    const sheetsGenerator: ISheetsGenerator = getSheetsGenerator(appState.uiState);
+
     if (uiState.sheetsState.exportState == undefined) {
         // Cancelled, leave early
         return;
@@ -49,18 +53,18 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
             ExportState.Error
         );
         return;
-    } else if (game.cycles.length > 21) {
+    } else if (game.cycles.length > sheetsGenerator.cyclesLimit) {
         uiState.sheetsState.setExportStatus(
             {
                 isError: true,
-                status: "Export not allowed with more than 21 rounds (not enough rows)",
+                status: `Export not allowed with more than ${sheetsGenerator.cyclesLimit} rounds (not enough rows)`,
             },
             ExportState.Error
         );
         return;
     }
 
-    const sheetName = `Round ${uiState.sheetsState.roundNumber ?? 1}`;
+    const sheetName = sheetsGenerator.getSheetName(uiState.sheetsState.roundNumber ?? 1);
 
     if (uiState.sheetsState.exportState !== ExportState.OverwritePrompt) {
         uiState.sheetsState.setExportStatus({
@@ -68,9 +72,12 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
             status: "Signed into Sheets. Checking if scoresheet already filled in...",
         });
 
-        let values: gapi.client.sheets.ValueRange;
+        let values: gapi.client.sheets.ValueRange[];
         try {
-            const response: ISheetsGetResponse = await sheetsApi.get(uiState, `'${sheetName}'!C5`);
+            const response: ISheetsBatchGetResponse = await sheetsApi.batchGet(
+                uiState,
+                sheetsGenerator.overwriteCheckRanges.map((range) => `'${sheetName}'!${range}`)
+            );
             if (!response.success) {
                 uiState.sheetsState.setExportStatus(
                     {
@@ -83,7 +90,7 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
                 return;
             }
 
-            values = response.valueRange;
+            values = response.valueRanges;
         } catch (e) {
             uiState.sheetsState.setExportStatus(
                 {
@@ -101,8 +108,12 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
         }
 
         if (
-            values.values != undefined &&
-            values.values.findIndex((value) => value != undefined && value.length > 0) !== -1
+            values != undefined &&
+            values.some(
+                (valueRange) =>
+                    valueRange?.values != undefined &&
+                    valueRange.values.some((value) => value != undefined && value.length > 0)
+            )
         ) {
             uiState.sheetsState.setExportStatus(
                 {
@@ -131,7 +142,7 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
     // TODO: Would be more efficient if we did a group-by operation, but the number of teams should be small
     // TODO: This should count it by starters + subs, not just players
     for (const teamName of game.teamNames) {
-        if (game.players.filter((player) => player.teamName === teamName).length > 6) {
+        if (game.players.filter((player) => player.teamName === teamName).length > sheetsGenerator.playerPerTeamLimit) {
             uiState.sheetsState.setExportStatus(
                 {
                     isError: true,
@@ -143,21 +154,15 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
         }
     }
     const firstTeamName: string = game.teamNames[0];
-    const valueRanges: gapi.client.sheets.ValueRange[] = [
-        {
-            range: `'${sheetName}'!C5`,
-            values: [[firstTeamName]],
-        },
-        {
-            range: `'${sheetName}'!S5`,
-            values: [[game.teamNames[1]]],
-        },
-    ];
+    let valueRanges: gapi.client.sheets.ValueRange[] = sheetsGenerator.getValuesForTeams(game.teamNames, sheetName);
+
+    // We need to clear bonuses before other values (if clear didn't take care of it)
+    valueRanges = valueRanges.concat(sheetsGenerator.getValuesForBonusClear(sheetName));
 
     // Build a mapping between players and columns
-    let firstTeamColumn = "B";
-    let secondTeamColumn = "R";
-    const playerToColumnMapping: Map<string, string> = new Map();
+    let firstTeamColumn = sheetsGenerator.playerInitialColumns[0];
+    let secondTeamColumn = sheetsGenerator.playerInitialColumns[1];
+    const playerToColumnMapping: PlayerToColumnMap.IPlayerToColumnMap = PlayerToColumnMap.createPlayerToColumnMap();
     for (const player of game.players) {
         const isOnFirstTeam: boolean = player.teamName === firstTeamName;
 
@@ -170,165 +175,93 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
             secondTeamColumn = String.fromCharCode(secondTeamColumn.charCodeAt(0) + 1);
         }
 
-        playerToColumnMapping.set(getPlayerKey(player), column);
+        playerToColumnMapping.set(player, column);
         valueRanges.push({
-            range: `'${sheetName}'!${column}7`,
+            range: `'${sheetName}'!${column}${sheetsGenerator.playerRow}`,
             values: [[player.name]],
         });
     }
 
     // Players that aren't starters need to have Out in the first column
     // See https://minkowski.space/quizbowl/manuals/scorekeeping/moderator.html#substitutions
-    for (const player of game.players.filter((p) => !p.isStarter)) {
-        const playerColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(player));
-        if (playerColumn != undefined) {
-            valueRanges.push({
-                range: `'${sheetName}'!${playerColumn}${firstCycleRow}`,
-                values: [["Out"]],
-            });
-        }
-    }
+    valueRanges = valueRanges.concat(
+        sheetsGenerator.getValuesForStartingLineups(game.players, playerToColumnMapping, sheetName)
+    );
 
-    let row = firstCycleRow;
+    let row = sheetsGenerator.firstCycleRow;
     for (const cycle of game.cycles) {
         // We must do substitutions first, since we may have to clear an Out value if a player was subbed in on the
         // first tossup
         if (cycle.subs) {
             for (const sub of cycle.subs) {
-                const inPlayerColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(sub.inPlayer));
-                if (inPlayerColumn == undefined) {
-                    continue;
-                }
-
-                const outPlayerColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(sub.outPlayer));
-                if (outPlayerColumn == undefined) {
-                    continue;
-                }
-
-                // In goes in the previous row, unless they were subbed in on the first tossup, in which case replace Out
-                // with blank
-                // See https://minkowski.space/quizbowl/manuals/scorekeeping/moderator.html#substitutions
-                const inRow: number = row === firstCycleRow ? row : row - 1;
-                valueRanges.push(
-                    {
-                        range: `'${sheetName}'!${inPlayerColumn}${inRow}`,
-                        values: [[inRow === firstCycleRow ? "" : "In"]],
-                    },
-                    {
-                        range: `'${sheetName}'!${outPlayerColumn}${row}`,
-                        values: [["Out"]],
-                    }
+                valueRanges = valueRanges.concat(
+                    sheetsGenerator.getValuesForSubs(sub, playerToColumnMapping, sheetName, row)
                 );
             }
         }
 
         if (cycle.playerLeaves) {
             for (const leave of cycle.playerLeaves) {
-                const outPlayerColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(leave.outPlayer));
-                if (outPlayerColumn == undefined) {
-                    continue;
-                }
-
-                valueRanges.push({
-                    range: `'${sheetName}'!${outPlayerColumn}${row}`,
-                    values: [["Out"]],
-                });
+                valueRanges = valueRanges.concat(
+                    sheetsGenerator.getValuesForPlayerLeaves(leave, playerToColumnMapping, sheetName, row)
+                );
             }
         }
 
         if (cycle.playerJoins) {
             for (const joins of cycle.playerJoins) {
-                const inPlayerColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(joins.inPlayer));
-                if (inPlayerColumn == undefined) {
-                    continue;
-                }
-
-                // In goes in the previous row, unless they were subbed in on the first tossup, in which case replace Out
-                // with blank
-                // See https://minkowski.space/quizbowl/manuals/scorekeeping/moderator.html#substitutions
-                const inRow: number = row === firstCycleRow ? row : row - 1;
-                valueRanges.push({
-                    range: `'${sheetName}'!${inPlayerColumn}${inRow}`,
-                    values: [[inRow === firstCycleRow ? "" : "In"]],
-                });
+                valueRanges = valueRanges.concat(
+                    sheetsGenerator.getValuesForPlayerJoins(joins, playerToColumnMapping, sheetName, row)
+                );
             }
         }
 
         const buzzPoints: number[] = [];
 
         if (cycle.negBuzz) {
-            const negColumn: string | undefined = playerToColumnMapping.get(getPlayerKey(cycle.negBuzz.marker.player));
-            if (negColumn != undefined) {
-                valueRanges.push({
-                    range: `'${sheetName}'!${negColumn}${row}`,
-                    values: [[-5]],
-                });
+            valueRanges = valueRanges.concat(
+                sheetsGenerator.getValuesForNeg(cycle.negBuzz, playerToColumnMapping, sheetName, row)
+            );
 
+            const negColumn: string | undefined = playerToColumnMapping.get(cycle.negBuzz.marker.player);
+            if (negColumn != undefined) {
                 buzzPoints.push(cycle.negBuzz.marker.position);
             }
         }
 
         if (cycle.correctBuzz) {
-            const correctColumn: string | undefined = playerToColumnMapping.get(
-                getPlayerKey(cycle.correctBuzz.marker.player)
+            valueRanges = valueRanges.concat(
+                sheetsGenerator.getValuesForCorrectBuzz(cycle.correctBuzz, playerToColumnMapping, sheetName, row)
             );
-            if (correctColumn != undefined) {
-                valueRanges.push({
-                    range: `'${sheetName}'!${correctColumn}${row}`,
-                    // TODO: Calculate if this is a power or not
-                    values: [[10]],
-                });
 
+            const correctColumn: string | undefined = playerToColumnMapping.get(cycle.correctBuzz.marker.player);
+            if (correctColumn != undefined) {
                 buzzPoints.push(cycle.correctBuzz.marker.position);
             }
 
             if (cycle.bonusAnswer) {
-                const bonusColumn: string = cycle.bonusAnswer.receivingTeamName === firstTeamName ? "H" : "X";
-
-                let bonusScore = "";
-                for (let i = 0; i < 3; i++) {
-                    // TODO: This isn't very efficient, though there are only 3 parts, so it's not too bad
-                    bonusScore += cycle.bonusAnswer.correctParts.findIndex((part) => part.index === i) >= 0 ? "1" : "0";
-                }
-
-                valueRanges.push({
-                    range: `'${sheetName}'!${bonusColumn}${row}`,
-                    values: [[bonusScore]],
-                });
+                valueRanges = valueRanges.concat(
+                    sheetsGenerator.getValuesForBonusAnswer(cycle.bonusAnswer, game.teamNames, sheetName, row)
+                );
             }
+        } else {
+            valueRanges = valueRanges.concat(sheetsGenerator.getValuesForDeadQuestion(sheetName, row));
         }
 
         if (cycle.tossupProtests) {
-            for (const protest of cycle.tossupProtests) {
-                const protestColumn: string = protest.teamName === firstTeamName ? "AF" : "AG";
-                valueRanges.push({
-                    range: `'${sheetName}'!${protestColumn}${row}`,
-                    values: [[protest.reason]],
-                });
-            }
+            valueRanges = valueRanges.concat(
+                sheetsGenerator.getValuesForTossupProtests(cycle.tossupProtests, game.teamNames, sheetName, row)
+            );
         }
 
         if (cycle.bonusProtests) {
-            const protestReasons: string = cycle.bonusProtests.reduce((state: string, current: IBonusProtestEvent) => {
-                return state + "\n" + current.reason;
-            }, "");
-            valueRanges.push({
-                range: `'${sheetName}'!AH${row}`,
-                values: [[protestReasons.trim()]],
-            });
+            valueRanges = valueRanges.concat(
+                sheetsGenerator.getValuesForBonusProtests(cycle.bonusProtests, game.teamNames, sheetName, row)
+            );
         }
-
-        // No need to track no penalty buzzes, since OphirStats doesn't track buzz point data for it
 
         // Buzz points are expected to be in ascending order, so sort the list and write them to the columns
-        buzzPoints.sort(compareNumbers);
-        for (let i = 0; i < 2 && i < buzzPoints.length; i++) {
-            const column: string = i === 0 ? "AJ" : "AK";
-            valueRanges.push({
-                range: `'${sheetName}'!${column}${row}`,
-                values: [[buzzPoints[i]]],
-            });
-        }
+        valueRanges = valueRanges.concat(sheetsGenerator.getValuesForBuzzPoints(buzzPoints, sheetName, row));
 
         row++;
     }
@@ -343,6 +276,11 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
         return;
     }
 
+    // If we need to log the tossups we've heard, log them here
+    valueRanges = valueRanges.concat(
+        sheetsGenerator.getValuesForTossupsHeard(game.cycles, game.players, playerToColumnMapping, sheetName)
+    );
+
     if (uiState.sheetsState.exportState == undefined) {
         // Cancelled, leave early
         return;
@@ -350,25 +288,7 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
 
     try {
         // Clear the spreadsheet first, to remove anything we've undone/changed
-        const ranges: string[] = [
-            // Clear team names, then player names + buzzes, and then bonuses
-            `'${sheetName}'!C5:C5`,
-            `'${sheetName}'!S5:S5`,
-
-            // Clear player names and buzzes plus bonuses
-            `'${sheetName}'!B7:G28`,
-            `'${sheetName}'!H8:H27`,
-
-            // Clear bonuses
-            `'${sheetName}'!R7:W28`,
-            `'${sheetName}'!X8:X27`,
-
-            // Clear protests
-            `'${sheetName}'!AF8:AH28`,
-
-            // Clear buzz points
-            `'${sheetName}'!AJ8:AK28`,
-        ];
+        const ranges: string[] = sheetsGenerator.getClearRanges(sheetName);
 
         const clearStatus: IStatus = await sheetsApi.batchClear(uiState, ranges);
         if (clearStatus.isError) {
@@ -471,9 +391,11 @@ export async function loadRosters(appState: AppState, sheetsApi: ISheetsApi = Sh
         LoadingState.Loading
     );
 
+    const sheetsGenerator: ISheetsGenerator = getSheetsGenerator(appState.uiState);
+
     let values: gapi.client.sheets.ValueRange;
     try {
-        const response: ISheetsGetResponse = await sheetsApi.get(uiState, "Rosters!A2:L");
+        const response: ISheetsGetResponse = await sheetsApi.get(uiState, sheetsGenerator.rostersRange);
         if (!response.success) {
             uiState.sheetsState.setRosterLoadStatus(
                 {
@@ -507,16 +429,9 @@ export async function loadRosters(appState: AppState, sheetsApi: ISheetsApi = Sh
             LoadingState.Error
         );
         return;
-    } else if (values.values.length <= 1) {
-        uiState.sheetsState.setRosterLoadStatus(
-            {
-                isError: true,
-                status: `Not enough teams. Only found ${values.values.length} team(s).`,
-            },
-            LoadingState.Error
-        );
-        return;
-    } else if (values.values[0].length > 2 && values.values[0][0] === "1" && values.values[0][1] === "") {
+    }
+
+    if (sheetsGenerator.isControlSheet(values)) {
         uiState.sheetsState.setRosterLoadStatus(
             {
                 isError: true,
@@ -526,19 +441,46 @@ export async function loadRosters(appState: AppState, sheetsApi: ISheetsApi = Sh
             LoadingState.Error
         );
         return;
-    } else if (values.values.some((range) => range.length <= 1)) {
+    }
+
+    const rosters: IRoster | undefined = sheetsGenerator.getRosters(values);
+    if (rosters == undefined || rosters.teamNames == undefined) {
         uiState.sheetsState.setRosterLoadStatus(
             {
                 isError: true,
-                status: `Not all teams have players. Check the roster sheet to make sure at least 1 player is on each team.`,
+                status: `Couldn't parse the rosters spreadsheet`,
+            },
+            LoadingState.Error
+        );
+        return;
+    } else if (rosters.teamNames.length <= 1) {
+        uiState.sheetsState.setRosterLoadStatus(
+            {
+                isError: true,
+                status: `Not enough teams. Only found ${rosters.teamNames.length} team(s).`,
             },
             LoadingState.Error
         );
         return;
     }
 
-    // TODO: Need place for pendingNewGame teams. Can be its own interface, with team name and list of players.
-    // Picking the team from the drop down would set the team/players in the pendingNewGame.
+    const playerTeams: Set<string> = new Set<string>();
+    for (const player of rosters.players) {
+        playerTeams.add(player.teamName);
+    }
+
+    for (const teamName of rosters.teamNames) {
+        if (!playerTeams.has(teamName)) {
+            uiState.sheetsState.setRosterLoadStatus(
+                {
+                    isError: true,
+                    status: `Team "${teamName}" doesn't have any players. Check the roster sheet to make sure at least 1 player is on each team.`,
+                },
+                LoadingState.Error
+            );
+            return;
+        }
+    }
 
     uiState.sheetsState.setRosterLoadStatus(
         {
@@ -548,29 +490,27 @@ export async function loadRosters(appState: AppState, sheetsApi: ISheetsApi = Sh
         LoadingState.Loaded
     );
 
-    // Format: array of teams, first element is the team name, other elements are the players
-    const teamNames: string[] = values.values.map((row) => row[0]);
-    const players: Player[] = values.values
-        .map<Player[]>((row) => {
-            const teamName: string = row[0];
-            return row.slice(1).map((playerName, index) => new Player(playerName, teamName, index < 4));
-        })
-        .reduce((previous, current) => previous.concat(current));
+    uiState.setPendingNewGameRosters(rosters.players);
 
-    uiState.setPendingNewGameRosters(players);
-
-    const firstTeamName: string = teamNames[0];
-    const secondTeamName: string = teamNames[1];
-    uiState.setPendingNewGameFirstTeamPlayers(players.filter((player) => player.teamName === firstTeamName));
-    uiState.setPendingNewGameSecondTeamPlayers(players.filter((player) => player.teamName === secondTeamName));
+    const firstTeamName: string = rosters.teamNames[0];
+    const secondTeamName: string = rosters.teamNames[1];
+    uiState.setPendingNewGameFirstTeamPlayers(rosters.players.filter((player) => player.teamName === firstTeamName));
+    uiState.setPendingNewGameSecondTeamPlayers(rosters.players.filter((player) => player.teamName === secondTeamName));
 
     return;
 }
 
-function compareNumbers(left: number, right: number): number {
-    return left - right;
-}
-
-function getPlayerKey(player: IPlayer): string {
-    return `${player.teamName.replace(/;/g, ";;")};${player.name}`;
+function getSheetsGenerator(uiState: UIState): ISheetsGenerator {
+    switch (uiState.sheetsState.sheetType) {
+        // Default to Lifsheets if undefined
+        case undefined:
+        case SheetType.Lifsheets:
+            return LifsheetsGenerator;
+        case SheetType.TJSheets:
+            return TJSheetsGenerator;
+        case SheetType.UCSDSheets:
+            return UCSDSheetsGenerator;
+        default:
+            assertNever(uiState.sheetsState.sheetType);
+    }
 }

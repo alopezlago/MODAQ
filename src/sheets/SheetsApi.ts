@@ -1,7 +1,7 @@
 import { IStatus } from "src/IStatus";
 import { LoadingState } from "src/state/SheetState";
 import { UIState } from "src/state/UIState";
-import { ISheetsApi, ISheetsGetResponse } from "./ISheetsApi";
+import { ISheetsApi, ISheetsBatchGetResponse, ISheetsGetResponse } from "./ISheetsApi";
 
 declare const __GOOGLE_CLIENT_ID__: string;
 
@@ -70,6 +70,36 @@ export const SheetsApi: ISheetsApi = {
                 status: error.message,
             };
         }
+    },
+    batchGet: async (uiState: UIState, ranges: string[]): Promise<ISheetsBatchGetResponse> => {
+        if (uiState.sheetsState?.sheetId == undefined) {
+            return {
+                success: false,
+                errorMessage: "No Sheet specified",
+            };
+        }
+
+        const spreadsheetId: string = uiState.sheetsState.sheetId;
+
+        const valuesResponse: gapi.client.Response<gapi.client.sheets.BatchGetValuesResponse> = await gapi.client.sheets.spreadsheets.values.batchGet(
+            {
+                spreadsheetId,
+                ranges,
+            }
+        );
+
+        if (valuesResponse.status != 200) {
+            return {
+                success: false,
+                errorMessage: `Failed to load the sheet from Google Sheets (${valuesResponse.status}). Error: ${valuesResponse.body}`,
+            };
+        }
+
+        const valueRanges: gapi.client.sheets.ValueRange[] = valuesResponse.result.valueRanges ?? [];
+        return {
+            success: true,
+            valueRanges,
+        };
     },
     batchUpdate: async (uiState: UIState, valueRanges: gapi.client.sheets.ValueRange[]): Promise<IStatus> => {
         if (uiState.sheetsState?.sheetId == undefined) {

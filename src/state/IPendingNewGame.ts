@@ -2,9 +2,9 @@ import { Cycle } from "./Cycle";
 import { PacketState } from "./PacketState";
 import { Player } from "./TeamState";
 
-export type IPendingNewGame = IPendingManualNewGame | IPendingLifsheetsNewGame;
+export type IPendingNewGame = IPendingManualNewGame | IPendingFromSheetsNewGame;
 
-interface IPendingManualNewGame extends IBasePendingNewGame {
+export interface IPendingManualNewGame extends IBasePendingNewGame {
     firstTeamPlayers: Player[];
     secondTeamPlayers: Player[];
     cycles?: Cycle[];
@@ -14,14 +14,16 @@ interface IPendingManualNewGame extends IBasePendingNewGame {
 export const enum PendingGameType {
     Manual,
     Lifsheets,
+    TJSheets,
+    UCSDSheets,
 }
 
-interface IPendingLifsheetsNewGame extends IBasePendingNewGame {
+export interface IPendingFromSheetsNewGame extends IBasePendingNewGame {
     rostersUrl: string | undefined;
     playersFromRosters: Player[] | undefined;
     firstTeamPlayersFromRosters: Player[] | undefined;
     secondTeamPlayersFromRosters: Player[] | undefined;
-    type: PendingGameType.Lifsheets;
+    type: PendingGameType.Lifsheets | PendingGameType.TJSheets | PendingGameType.UCSDSheets;
 }
 
 interface IBasePendingNewGame {

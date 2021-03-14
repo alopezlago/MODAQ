@@ -138,6 +138,14 @@ export class UIState {
 
     public setPendingNewGameType(type: PendingGameType): void {
         if (this.pendingNewGame != undefined) {
+            // If we're changing between different Sheets types (e.g. Lifsheets and TJ Sheets), clear the pending game
+            if (type != PendingGameType.Manual && this.pendingNewGame.type != PendingGameType.Manual) {
+                this.pendingNewGame.firstTeamPlayersFromRosters = undefined;
+                this.pendingNewGame.playersFromRosters = undefined;
+                this.pendingNewGame.rostersUrl = undefined;
+                this.pendingNewGame.secondTeamPlayersFromRosters = undefined;
+            }
+
             this.pendingNewGame.type = type;
         }
     }
@@ -149,7 +157,11 @@ export class UIState {
     }
 
     public setPendingNewGameRosters(players: Player[]): void {
-        if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
+        if (this.pendingNewGame == undefined) {
+            return;
+        }
+
+        if (this.pendingNewGame?.type !== PendingGameType.Manual) {
             this.pendingNewGame.playersFromRosters = players;
             this.pendingNewGame.firstTeamPlayersFromRosters = [];
             this.pendingNewGame.secondTeamPlayersFromRosters = [];
@@ -157,7 +169,11 @@ export class UIState {
     }
 
     public setPendingNewGameRostersUrl(url: string): void {
-        if (this.pendingNewGame?.type === PendingGameType.Lifsheets) {
+        if (this.pendingNewGame == undefined) {
+            return;
+        }
+
+        if (this.pendingNewGame?.type !== PendingGameType.Manual) {
             this.pendingNewGame.rostersUrl = url;
         }
     }
@@ -169,6 +185,8 @@ export class UIState {
 
         switch (this.pendingNewGame.type) {
             case PendingGameType.Lifsheets:
+            case PendingGameType.TJSheets:
+            case PendingGameType.UCSDSheets:
                 this.pendingNewGame.firstTeamPlayersFromRosters = players;
                 break;
             case PendingGameType.Manual:
@@ -186,6 +204,8 @@ export class UIState {
 
         switch (this.pendingNewGame.type) {
             case PendingGameType.Lifsheets:
+            case PendingGameType.TJSheets:
+            case PendingGameType.UCSDSheets:
                 this.pendingNewGame.secondTeamPlayersFromRosters = players;
                 break;
             case PendingGameType.Manual:

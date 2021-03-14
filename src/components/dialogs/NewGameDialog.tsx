@@ -28,6 +28,7 @@ import {
     TextField,
     Label,
     ITextFieldStyles,
+    assertNever,
 } from "@fluentui/react";
 
 import * as NewGameValidator from "src/state/NewGameValidator";
@@ -42,10 +43,16 @@ import { Player } from "src/state/TeamState";
 import { IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
 import { AppState } from "src/state/AppState";
 import { FromRostersTeamEntry } from "../FromRostersTeamEntry";
+import { SheetType } from "src/state/SheetState";
 
 const playerListHeight = "25vh";
-const manualPivotKey = "M";
-const fromLifsheetsPivotKey = "L";
+
+const enum PivotKey {
+    Manual = "M",
+    Lifsheets = "L",
+    TJSheets = "T",
+    UCSDSheets = "U",
+}
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -122,10 +129,27 @@ const NewGameDialogBody = observer(
                     return;
                 }
 
-                uiState.setPendingNewGameType(
-                    item.props.itemKey === manualPivotKey ? PendingGameType.Manual : PendingGameType.Lifsheets
-                );
-                item.state;
+                let newGameType: PendingGameType = PendingGameType.Manual;
+                const itemPivotKey = item.props.itemKey as PivotKey;
+                switch (itemPivotKey) {
+                    case PivotKey.Manual:
+                    case undefined:
+                        newGameType = PendingGameType.Manual;
+                        break;
+                    case PivotKey.Lifsheets:
+                        newGameType = PendingGameType.Lifsheets;
+                        break;
+                    case PivotKey.TJSheets:
+                        newGameType = PendingGameType.TJSheets;
+                        break;
+                    case PivotKey.UCSDSheets:
+                        newGameType = PendingGameType.UCSDSheets;
+                        break;
+                    default:
+                        assertNever(itemPivotKey);
+                }
+
+                uiState.setPendingNewGameType(newGameType);
             },
             [uiState]
         );
@@ -133,11 +157,17 @@ const NewGameDialogBody = observer(
         return (
             <>
                 <Pivot aria-label="Game type" onLinkClick={pivotClickHandler}>
-                    <PivotItem headerText="Manual" itemKey={manualPivotKey}>
+                    <PivotItem headerText="Manual" itemKey={PivotKey.Manual}>
                         <ManualNewGamePivotBody appState={props.appState} classes={classes} />
                     </PivotItem>
-                    <PivotItem headerText="From Lifsheets" itemKey={fromLifsheetsPivotKey}>
-                        <FromLifsheetsNewGameBody appState={props.appState} classes={classes} />
+                    <PivotItem headerText="From Lifsheets" itemKey={PivotKey.Lifsheets}>
+                        <FromSheetsNewGameBody appState={props.appState} classes={classes} />
+                    </PivotItem>
+                    <PivotItem headerText="From TJ Sheets" itemKey={PivotKey.TJSheets}>
+                        <FromSheetsNewGameBody appState={props.appState} classes={classes} />
+                    </PivotItem>
+                    <PivotItem headerText="From UCSD Sheets" itemKey={PivotKey.UCSDSheets}>
+                        <FromSheetsNewGameBody appState={props.appState} classes={classes} />
                     </PivotItem>
                 </Pivot>
                 <Separator />
@@ -216,7 +246,7 @@ const ManualNewGamePivotBody = observer(
     }
 );
 
-const FromLifsheetsNewGameBody = observer(
+const FromSheetsNewGameBody = observer(
     (props: INewGamePivotItemProps): JSX.Element => {
         const uiState: UIState = props.appState.uiState;
 
@@ -230,7 +260,7 @@ const FromLifsheetsNewGameBody = observer(
         );
 
         const loadHandler = React.useCallback(() => {
-            if (uiState.pendingNewGame?.type !== PendingGameType.Lifsheets) {
+            if (uiState.pendingNewGame == undefined || uiState.pendingNewGame.type === PendingGameType.Manual) {
                 return;
             }
 
@@ -244,13 +274,31 @@ const FromLifsheetsNewGameBody = observer(
                 return;
             }
 
+            let sheetType: SheetType = SheetType.Lifsheets;
+            const pendingNewGameType: PendingGameType = uiState.pendingNewGame.type;
+            switch (pendingNewGameType) {
+                case undefined:
+                case PendingGameType.Lifsheets:
+                    sheetType = SheetType.Lifsheets;
+                    break;
+                case PendingGameType.TJSheets:
+                    sheetType = SheetType.TJSheets;
+                    break;
+                case PendingGameType.UCSDSheets:
+                    sheetType = SheetType.UCSDSheets;
+                    break;
+                default:
+                    assertNever(pendingNewGameType);
+            }
+
             uiState.sheetsState.setSheetId(sheetsId);
+            uiState.sheetsState.setSheetType(sheetType);
             Sheets.loadRosters(props.appState);
         }, [props, uiState]);
 
         const teamChangeHandler = React.useCallback(
             (newTeamName: string, oldPlayers: Player[]): void => {
-                if (uiState.pendingNewGame?.type !== PendingGameType.Lifsheets) {
+                if (uiState.pendingNewGame == undefined || uiState.pendingNewGame.type === PendingGameType.Manual) {
                     return;
                 }
 
@@ -273,7 +321,7 @@ const FromLifsheetsNewGameBody = observer(
         );
 
         const pendingNewGame: IPendingNewGame | undefined = uiState.pendingNewGame;
-        if (pendingNewGame?.type !== PendingGameType.Lifsheets) {
+        if (pendingNewGame == undefined || pendingNewGame.type === PendingGameType.Manual) {
             return <></>;
         }
 

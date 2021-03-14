@@ -174,8 +174,12 @@ function onWrongClicked(
             correct: false,
         };
 
-        // If we're at the end of the question, or if there's already been a neg, then make it a no penalty buzz
-        if (props.position >= props.tossup.question.length || props.cycle.negBuzz != undefined) {
+        // If we're at the end of the question, or if there's already been a neg from a different team, then make it a
+        // no penalty buzz
+        if (
+            props.position >= props.tossup.question.length ||
+            (props.cycle.negBuzz != undefined && props.cycle.negBuzz.marker.player.teamName !== player.teamName)
+        ) {
             props.cycle.addNoPenaltyBuzz(marker, props.tossupNumber - 1);
         } else {
             props.cycle.addNeg(marker, props.tossupNumber - 1);
