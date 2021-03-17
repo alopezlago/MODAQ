@@ -15,7 +15,7 @@ export const SheetsApi: ISheetsApi = {
         }
 
         // Bit of a hacky wait to wait until the callback is done
-        uiState.setSheetsApiInitialized(LoadingState.Loading);
+        uiState.sheetsState.setSheetsApiInitialized(LoadingState.Loading);
         const promise: Promise<void> = new Promise<void>((resolve, reject) => {
             gapi.load("client:auth2", async () => {
                 try {
@@ -31,10 +31,10 @@ export const SheetsApi: ISheetsApi = {
                         await authInstance.signIn();
                     }
 
-                    uiState.setSheetsApiInitialized(LoadingState.Loaded);
+                    uiState.sheetsState.setSheetsApiInitialized(LoadingState.Loaded);
                     resolve();
                 } catch (error) {
-                    uiState.setSheetsApiInitialized(LoadingState.Error);
+                    uiState.sheetsState.setSheetsApiInitialized(LoadingState.Error);
                     reject(error);
                 }
             });

@@ -21,6 +21,12 @@ const modalProps: IModalProps = {
         closeMenuItemText: "Close",
         menu: ContextualMenu,
     },
+    styles: {
+        main: {
+            top: "25vh",
+        },
+    },
+    topOffsetFixed: true,
 };
 
 export const ProtestDialogBase = (props: React.PropsWithChildren<IProtestDialogBaseProps>): JSX.Element => {

@@ -26,11 +26,11 @@ export const GameBar = observer(
 
         const newGameHandler = React.useCallback(() => {
             uiState.createPendingNewGame();
-            uiState.showNewGameDialog();
+            uiState.dialogState.showNewGameDialog();
         }, [uiState]);
         const importGameHandler = React.useCallback(() => {
             uiState.createPendingNewGame();
-            uiState.showImportGameDialog();
+            uiState.dialogState.showImportGameDialog();
         }, [uiState]);
 
         const protestBonusHandler = React.useCallback(() => {
@@ -81,6 +81,15 @@ export const GameBar = observer(
             },
         ];
 
+        const optionsSubMenuItems: ICommandBarItemProps[] = getOptionsSubMenuItems(props);
+        items.push({
+            key: "options",
+            text: "Options",
+            subMenuProps: {
+                items: optionsSubMenuItems,
+            },
+        });
+
         // TODO: Look into memoizing; React.useMemo with just props doesn't seem to recognize when the cycle changes.
         const actionSubMenuItems: ICommandBarItemProps[] = getActionSubMenuItems(
             props,
@@ -89,7 +98,7 @@ export const GameBar = observer(
         );
         items.push({
             key: "actions",
-            text: "Actions...",
+            text: "Actions",
             subMenuProps: {
                 items: actionSubMenuItems,
             },
@@ -99,7 +108,7 @@ export const GameBar = observer(
         const exportSubMenuItems: ICommandBarItemProps[] = getExportSubMenuItems(props);
         items.push({
             key: "export",
-            text: "Export...",
+            text: "Export",
             subMenuProps: {
                 items: exportSubMenuItems,
             },
@@ -267,7 +276,7 @@ function getActionSubMenuItems(
 
             protestTossupItems = {
                 key: "protestTossup",
-                text: "Protest tossup",
+                text: "Protest tossup...",
                 subMenuProps: {
                     items: protestSubMenuItems,
                 },
@@ -283,7 +292,7 @@ function getActionSubMenuItems(
             if (cycle.getProtestableBonusPartIndexes(bonus.parts.length).length > 0) {
                 protestBonusItem = {
                     key: "protestBonus",
-                    text: "Protest bonus",
+                    text: "Protest bonus...",
                     onClick: protestBonusHandler,
                 };
             }
@@ -350,7 +359,21 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
         key: "downloadJson",
         text: "Export to JSON...",
         onClick: () => {
-            props.appState.uiState.showExportToJsonDialog();
+            props.appState.uiState.dialogState.showExportToJsonDialog();
+        },
+    });
+
+    return items;
+}
+
+function getOptionsSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
+    const items: ICommandBarItemProps[] = [];
+
+    items.push({
+        key: "font",
+        text: "Font...",
+        onClick: () => {
+            props.appState.uiState.setPendingQuestionFontSize(props.appState.uiState.questionFontSize);
         },
     });
 

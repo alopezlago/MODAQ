@@ -47,6 +47,11 @@ const modalProps: IModalProps = {
         closeMenuItemText: "Close",
         menu: ContextualMenu,
     },
+    styles: {
+        main: {
+            top: "25vh",
+        },
+    },
     topOffsetFixed: true,
 };
 
@@ -59,7 +64,7 @@ export const ImportGameDialog = observer(
 
         return (
             <Dialog
-                hidden={!props.appState.uiState.importGameDialogVisible}
+                hidden={!props.appState.uiState.dialogState.importGameDialogVisible}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
@@ -241,7 +246,7 @@ function onLoad(event: ProgressEvent<FileReader>, props: IImportGameDialogProps)
 }
 
 function hideDialog(props: IImportGameDialogProps): void {
-    props.appState.uiState.hideImportGameDialog();
+    props.appState.uiState.dialogState.hideImportGameDialog();
     props.appState.uiState.resetPendingNewGame();
 }
 

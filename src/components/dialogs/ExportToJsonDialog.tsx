@@ -34,6 +34,11 @@ const modalProps: IModalProps = {
         closeMenuItemText: "Close",
         menu: ContextualMenu,
     },
+    styles: {
+        main: {
+            top: "25vh",
+        },
+    },
     topOffsetFixed: true,
 };
 
@@ -55,7 +60,7 @@ export const ExportToJsonDialog = observer(
 
         return (
             <Dialog
-                hidden={!props.appState.uiState.exportToJsonDialogVisible}
+                hidden={!props.appState.uiState.dialogState.exportToJsonDialogVisible}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 maxWidth="40vw"
@@ -79,7 +84,7 @@ export const ExportToJsonDialog = observer(
 );
 
 function hideDialog(props: IExportToJsonDialogProps) {
-    props.appState.uiState.hideExportToJsonDialog();
+    props.appState.uiState.dialogState.hideExportToJsonDialog();
 }
 
 export interface IExportToJsonDialogProps {

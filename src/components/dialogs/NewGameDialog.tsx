@@ -81,6 +81,7 @@ const modalProps: IModalProps = {
             // requires you to pass in an entire theme to modify the max width. We could also use a modal, but that
             // requires building much of what Dialogs offer easily (close buttons, footer for buttons)
             maxWidth: "80% !important",
+            top: "10vh",
         },
     },
 };
@@ -94,7 +95,7 @@ export const NewGameDialog = observer(
 
         return (
             <Dialog
-                hidden={!props.appState.uiState.newGameDialogVisible}
+                hidden={!props.appState.uiState.dialogState.newGameDialogVisible}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
@@ -452,7 +453,7 @@ function onCancel(props: INewGameDialogProps): void {
 }
 
 function hideDialog(props: INewGameDialogProps): void {
-    props.appState.uiState.hideNewGameDialog();
+    props.appState.uiState.dialogState.hideNewGameDialog();
     props.appState.uiState.resetPendingNewGame();
 }
 

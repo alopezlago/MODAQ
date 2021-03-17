@@ -6,11 +6,18 @@ import { GameState } from "src/state/GameState";
 import { TossupQuestion } from "./TossupQuestion";
 import { BonusQuestion } from "./BonusQuestion";
 import { Cycle } from "src/state/Cycle";
-import { mergeStyleSets } from "@fluentui/react";
+import { ISeparatorStyles, mergeStyleSets, Separator } from "@fluentui/react";
 import { AppState } from "src/state/AppState";
 
+const separatorStyles: Partial<ISeparatorStyles> = {
+    root: {
+        margin: "15px 10px",
+    },
+};
+
 export const QuestionViewer = observer((props: IQuestionViewerProps) => {
-    const classes: IQuestionViewerClassNames = getClassNames();
+    const fontSize: number = props.appState.uiState.questionFontSize;
+    const classes: IQuestionViewerClassNames = getClassNames(fontSize);
     const game: GameState = props.appState.game;
     const uiState: UIState = props.appState.uiState;
 
@@ -67,7 +74,7 @@ export const QuestionViewer = observer((props: IQuestionViewerProps) => {
     return (
         <div className={classes.questionViewer}>
             {tossup}
-            <div className={classes.separator} />
+            <Separator styles={separatorStyles} />
             {bonus}
         </div>
     );
@@ -82,11 +89,12 @@ interface IQuestionViewerClassNames {
     separator: string;
 }
 
-const getClassNames = (): IQuestionViewerClassNames =>
+const getClassNames = (fontSize: number): IQuestionViewerClassNames =>
     mergeStyleSets({
         questionViewer: {
             border: "1px solid darkgray",
             padding: "5px 10px",
+            fontSize,
         },
         separator: {
             borderTop: "1px dotted black",
