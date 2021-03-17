@@ -70,6 +70,10 @@ export class SheetState {
         }
     }
 
+    public setSheetsApiInitialized(state: LoadingState): void {
+        this.apiInitialized = state;
+    }
+
     public setSheetId(sheetId: string): void {
         this.sheetId = sheetId;
     }

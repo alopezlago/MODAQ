@@ -55,7 +55,7 @@ function createAppStateForExport(sheetType: SheetType = SheetType.Lifsheets): Ap
 
     appState.game.loadPacket(packet);
 
-    appState.uiState.setSheetsId("1");
+    appState.uiState.sheetsState.setSheetId("1");
     appState.uiState.sheetsState.setSheetType(sheetType);
 
     return appState;
@@ -72,7 +72,7 @@ function createAppStateForRosters(
 
     appState.uiState.createPendingNewGame();
     appState.uiState.setPendingNewGameType(pendingGameType);
-    appState.uiState.setSheetsId("1");
+    appState.uiState.sheetsState.setSheetId("1");
     appState.uiState.sheetsState.setSheetType(sheetType);
 
     return appState;

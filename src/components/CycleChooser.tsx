@@ -5,6 +5,7 @@ import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
 
 import { UIState } from "src/state/UIState";
 import { AppState } from "src/state/AppState";
+import { ILabelStyles, Label } from "@fluentui/react";
 
 const ReturnKeyCode = 13;
 const questionNumberTextStyle: Partial<ITextFieldStyles> = {
@@ -20,6 +21,11 @@ const questionNumberTextStyle: Partial<ITextFieldStyles> = {
 const previousButtonStyle: Partial<IButtonStyles> = {
     root: {
         marginRight: 10,
+    },
+};
+const questionLableStyle: Partial<ILabelStyles> = {
+    root: {
+        display: "inline-flex",
     },
 };
 const nextButtonStyle: Partial<IButtonStyles> = {
@@ -80,13 +86,9 @@ export const CycleChooser = observer((props: ICycleChooserProps) => {
         );
     } else {
         questionNumberViewer = (
-            <span
-                key="questionViewer"
-                className="current-question-label"
-                onDoubleClick={onQuestionLabelDoubleClickHandler}
-            >
+            <Label key="questionViewer" styles={questionLableStyle} onDoubleClick={onQuestionLabelDoubleClickHandler}>
                 Question #{questionNumber}
-            </span>
+            </Label>
         );
     }
 

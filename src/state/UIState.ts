@@ -1,19 +1,28 @@
+import { assertNever } from "@fluentui/react";
 import { makeAutoObservable } from "mobx";
 import { ignore } from "mobx-sync";
-import { assertNever } from "office-ui-fabric-react";
 
 import { ITossupProtestEvent, IBonusProtestEvent } from "./Events";
 import { IPendingNewGame, PendingGameType } from "./IPendingNewGame";
 import { PacketState } from "./PacketState";
 import { Player } from "./TeamState";
-import { LoadingState, SheetState } from "./SheetState";
+import { SheetState } from "./SheetState";
 import { IStatus } from "../IStatus";
 import { IPendingSheet } from "./IPendingSheet";
 import { Cycle } from "./Cycle";
+import { DialogState } from "./DialogState";
+
+// TODO: Look into breaking this up into individual UI component states. Lots of pendingX fields, which could be in
+// their own
+// Alternatively, keep certain component-local states in the component state, and only store values that could be used
+// outside of that component here.
 
 export class UIState {
     // TODO: Should we also include the Cycle? This would simplify anything that needs access to the cycle
     public cycleIndex: number;
+
+    @ignore
+    public dialogState: DialogState;
 
     @ignore
     public isEditingCycleIndex: boolean;
@@ -25,16 +34,7 @@ export class UIState {
     public buzzMenuVisible: boolean;
 
     @ignore
-    public exportToJsonDialogVisible: boolean;
-
-    @ignore
     public importGameStatus: IStatus | undefined;
-
-    @ignore
-    public importGameDialogVisible: boolean;
-
-    @ignore
-    public newGameDialogVisible: boolean;
 
     @ignore
     public packetFilename: string | undefined;
@@ -52,10 +52,15 @@ export class UIState {
     public pendingNewPlayer?: Player;
 
     @ignore
+    public pendingQuestionFontSize?: number;
+
+    @ignore
     public pendingSheet?: IPendingSheet;
 
     @ignore
     public pendingTossupProtestEvent?: ITossupProtestEvent;
+
+    public questionFontSize: number;
 
     public sheetsState: SheetState;
 
@@ -63,20 +68,22 @@ export class UIState {
         makeAutoObservable(this);
 
         this.cycleIndex = 0;
+        this.dialogState = new DialogState();
         this.isEditingCycleIndex = false;
         this.selectedWordIndex = -1;
         this.buzzMenuVisible = false;
-        this.exportToJsonDialogVisible = false;
         this.importGameStatus = undefined;
-        this.importGameDialogVisible = false;
-        this.newGameDialogVisible = false;
         this.packetFilename = undefined;
         this.packetParseStatus = undefined;
         this.pendingBonusProtestEvent = undefined;
         this.pendingNewGame = undefined;
         this.pendingNewPlayer = undefined;
+        this.pendingQuestionFontSize = undefined;
         this.pendingSheet = undefined;
         this.pendingTossupProtestEvent = undefined;
+
+        // The default font size is 16px
+        this.questionFontSize = 16;
         this.sheetsState = new SheetState();
     }
 
@@ -247,6 +254,10 @@ export class UIState {
         this.packetFilename = name;
     }
 
+    public setPendingQuestionFontSize(size: number): void {
+        this.pendingQuestionFontSize = size;
+    }
+
     public setPacketStatus(packetStatus: IStatus): void {
         this.packetParseStatus = packetStatus;
     }
@@ -269,12 +280,8 @@ export class UIState {
         };
     }
 
-    public setSheetsApiInitialized(state: LoadingState): void {
-        this.sheetsState.apiInitialized = state;
-    }
-
-    public setSheetsId(id: string): void {
-        this.sheetsState.sheetId = id;
+    public setQuestionFontSize(size: number): void {
+        this.questionFontSize = size;
     }
 
     public setSelectedWordIndex(newIndex: number): void {
@@ -283,18 +290,6 @@ export class UIState {
 
     public hideBuzzMenu(): void {
         this.buzzMenuVisible = false;
-    }
-
-    public hideExportToJsonDialog(): void {
-        this.exportToJsonDialogVisible = false;
-    }
-
-    public hideImportGameDialog(): void {
-        this.importGameDialogVisible = false;
-    }
-
-    public hideNewGameDialog(): void {
-        this.newGameDialogVisible = false;
     }
 
     public resetPacketFilename(): void {
@@ -315,6 +310,10 @@ export class UIState {
         this.pendingNewPlayer = undefined;
     }
 
+    public resetPendingQuestionFontSize(): void {
+        this.pendingQuestionFontSize = undefined;
+    }
+
     public resetPendingSheet(): void {
         this.pendingSheet = undefined;
     }
@@ -329,18 +328,6 @@ export class UIState {
 
     public showBuzzMenu(): void {
         this.buzzMenuVisible = true;
-    }
-
-    public showExportToJsonDialog(): void {
-        this.exportToJsonDialogVisible = true;
-    }
-
-    public showImportGameDialog(): void {
-        this.importGameDialogVisible = true;
-    }
-
-    public showNewGameDialog(): void {
-        this.newGameDialogVisible = true;
     }
 
     public updatePendingProtestReason(reason: string): void {

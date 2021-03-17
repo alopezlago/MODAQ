@@ -48,6 +48,11 @@ const modalProps: IModalProps = {
         menu: ContextualMenu,
     },
     topOffsetFixed: true,
+    styles: {
+        main: {
+            top: "25vh",
+        },
+    },
 };
 
 const warningIconStyles: IIconStyles = {

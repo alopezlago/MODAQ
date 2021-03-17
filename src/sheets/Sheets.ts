@@ -1,3 +1,5 @@
+import { assertNever } from "@fluentui/react";
+
 import * as PlayerToColumnMap from "./PlayerToColumnMap";
 import { UIState } from "src/state/UIState";
 import { ExportState, LoadingState, SheetType } from "src/state/SheetState";
@@ -9,7 +11,6 @@ import { IStatus } from "src/IStatus";
 import { IRoster, ISheetsGenerator } from "./ISheetsGenerator";
 import { LifsheetsGenerator } from "./LifsheetsGenerator";
 import { TJSheetsGenerator } from "./TJSheetsGenerator";
-import { assertNever } from "office-ui-fabric-react";
 import { UCSDSheetsGenerator } from "./UCSDSheetsGenerator";
 
 // TODO:

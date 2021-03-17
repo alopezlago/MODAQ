@@ -174,7 +174,7 @@ const getClassNames = (): ITossupQuestionClassNames =>
             justifyContent: "space-between",
         },
         tossupQuestionText: {
-            display: "inline",
+            display: "inline-block",
         },
         tossupText: {
             maxHeight: "37.5vh",
