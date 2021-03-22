@@ -2,7 +2,6 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { mergeStyleSets } from "@fluentui/react";
 
-import * as FormattedTextParser from "src/parser/FormattedTextParser";
 import { UIState } from "src/state/UIState";
 import { Tossup } from "src/state/PacketState";
 import { QuestionWord } from "./QuestionWord";
@@ -25,19 +24,28 @@ export const TossupQuestion = observer(
             .filter((buzz) => buzz.tossupIndex === props.tossupNumber - 1)
             .map((buzz) => buzz.marker.position);
 
-        // We need a last character that the reader can click on if the player buzzes in at the end.
-        const questionFormattedTexts: IFormattedText[][] = React.useMemo(
-            () =>
-                FormattedTextParser.splitFormattedTextIntoWords(props.tossup.question).concat([
-                    [{ text: "■", emphasized: false, required: false }],
-                ]),
-            [props]
-        );
+        const questionFormattedTexts: IFormattedText[][] = props.tossup.formattedQuestionText;
 
-        const questionWords: JSX.Element[] = questionFormattedTexts.map((word, index) => {
-            return (
+        const questionWords: JSX.Element[] = [];
+        let wordIndex = 0;
+        let nonwordIndex = 0;
+        for (const word of questionFormattedTexts) {
+            const fullText = word.reduce((result, text) => result + text.text, "");
+
+            // We need to skip over power markers and not count them when we calculate buzz points
+            let index: number | undefined = wordIndex;
+            const trimmedText: string = fullText.trim();
+            const powerMarkerIndex: number = props.appState.game.gameFormat.powerMarkers.indexOf(trimmedText);
+            if (powerMarkerIndex >= 0) {
+                index = undefined;
+                nonwordIndex++;
+            } else {
+                wordIndex++;
+            }
+
+            questionWords.push(
                 <QuestionWordWrapper
-                    key={`qw_${index}`}
+                    key={index == undefined ? `qnw_${nonwordIndex}` : `qw_${index}`}
                     correctBuzzIndex={correctBuzzIndex}
                     index={index}
                     selectedWordRef={selectedWordRef}
@@ -46,7 +54,7 @@ export const TossupQuestion = observer(
                     {...props}
                 />
             );
-        });
+        }
 
         const wordClickHandler: React.MouseEventHandler = React.useCallback(
             (event: React.MouseEvent<HTMLDivElement>): void => {
@@ -91,8 +99,8 @@ function onTossupTextClicked(props: IQuestionProps, event: React.MouseEvent<HTML
         return;
     }
 
-    const index = parseInt(questionWord.getAttribute("data-value") ?? "", 10);
-    if (index < 0) {
+    const index = parseInt(questionWord.getAttribute("data-index") ?? "", 10);
+    if (index < 0 || isNaN(index)) {
         return;
     }
 
@@ -111,7 +119,7 @@ const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
     const selected: boolean = props.index === uiState.selectedWordIndex;
 
     const buzzMenu: JSX.Element | undefined =
-        selected && uiState.buzzMenuVisible ? (
+        selected && props.index != undefined && uiState.buzzMenuVisible ? (
             <BuzzMenu
                 appState={props.appState}
                 bonusIndex={props.bonusIndex}
@@ -152,7 +160,7 @@ interface IQuestionWordWrapperProps {
     bonusIndex: number;
     correctBuzzIndex: number;
     cycle: Cycle;
-    index: number;
+    index?: number;
     selectedWordRef: React.MutableRefObject<null>;
     tossup: Tossup;
     tossupNumber: number;

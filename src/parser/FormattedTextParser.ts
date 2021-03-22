@@ -7,19 +7,21 @@ export function parseFormattedText(text: string): IFormattedText[] {
         return result;
     }
 
+    let bolded = false;
     let emphasized = false;
     let required = false;
     let startIndex = 0;
 
     // If we need to support older browswers, use RegExp, exec, and a while loop. See
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/matchAll
-    const matchIterator: IterableIterator<RegExpMatchArray> = text.matchAll(/<\/?em>|<\/?req>/gi);
+    const matchIterator: IterableIterator<RegExpMatchArray> = text.matchAll(/<\/?em>|<\/?req>|<\/?b>/gi);
 
     for (const match of matchIterator) {
         const slice: string = text.substring(startIndex, match.index);
         if (slice.length > 0) {
             const formattedSlice: IFormattedText = {
                 text: text.substring(startIndex, match.index),
+                bolded,
                 emphasized,
                 required,
             };
@@ -41,6 +43,12 @@ export function parseFormattedText(text: string): IFormattedText[] {
             case "</req>":
                 required = false;
                 break;
+            case "<b>":
+                bolded = true;
+                break;
+            case "</b>":
+                bolded = false;
+                break;
             default:
                 throw `Unknown match: ${tag}`;
         }
@@ -52,6 +60,7 @@ export function parseFormattedText(text: string): IFormattedText[] {
     if (startIndex < text.length) {
         result.push({
             text: text.substring(startIndex),
+            bolded,
             emphasized,
             required,
         });
@@ -91,6 +100,7 @@ export function splitFormattedTextIntoWords(text: string): IFormattedText[][] {
         } else {
             previousWord.push({
                 text: firstWord,
+                bolded: value.bolded,
                 emphasized: value.emphasized,
                 required: value.required,
             });
@@ -106,6 +116,7 @@ export function splitFormattedTextIntoWords(text: string): IFormattedText[][] {
             if (word.length > 0) {
                 const formattedWord: IFormattedText = {
                     text: word,
+                    bolded: value.bolded,
                     emphasized: value.emphasized,
                     required: value.required,
                 };
@@ -117,6 +128,7 @@ export function splitFormattedTextIntoWords(text: string): IFormattedText[][] {
         if (lastSegment.length > 0) {
             previousWord.push({
                 text: lastSegment,
+                bolded: value.bolded,
                 emphasized: value.emphasized,
                 required: value.required,
             });

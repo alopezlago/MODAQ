@@ -11,7 +11,7 @@ describe("CycleTests", () => {
             const marker: IBuzzMarker = {
                 player: new Player("Alice", "Alpha", /* isStarter */ true),
                 position: 10,
-                correct: true,
+                points: 10,
             };
             cycle.addCorrectBuzz(marker, 2, 1);
 

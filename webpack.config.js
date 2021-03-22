@@ -11,6 +11,8 @@ const devEntries = [
     "./src/index",
 ];
 const prodEntries = ["./src/index"];
+const dateString = new Date().toISOString();
+const version = dateString.substring(0, dateString.indexOf("T"));
 
 // TODO: Use the Define plugin to setup variables like the Google Sheets app client ID, etc. from the file system or
 // from env variables. See https://webpack.js.org/plugins/define-plugin/
@@ -62,7 +64,9 @@ module.exports = (env, argv) => {
                     files: "./src/**/*.{ts,tsx,js,jsx}",
                 },
             }),
+            // Update Tests\TestInit.js to include values for these constants
             new webpack.DefinePlugin({
+                __BUILD_VERSION__: JSON.stringify(`${isProduction ? "" : "dev_"}${version}`),
                 // If you want a different Google Sheets ID, replace this with your own
                 __GOOGLE_CLIENT_ID__: JSON.stringify(
                     "1038902414768-nj056sbrbe0oshavft2uq9et6tvbu2d5.apps.googleusercontent.com"

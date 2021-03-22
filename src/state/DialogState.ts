@@ -9,6 +9,9 @@ export class DialogState {
     public exportToJsonDialogVisible: boolean;
 
     @ignore
+    public helpDialogVisible: boolean;
+
+    @ignore
     public importGameDialogVisible: boolean;
 
     @ignore
@@ -19,16 +22,21 @@ export class DialogState {
 
         this.editFormatDialogVisible = false;
         this.exportToJsonDialogVisible = false;
+        this.helpDialogVisible = false;
         this.importGameDialogVisible = false;
         this.newGameDialogVisible = false;
     }
 
-    public hideEditformatDialog(): void {
+    public hideEditFormatDialog(): void {
         this.editFormatDialogVisible = false;
     }
 
     public hideExportToJsonDialog(): void {
         this.exportToJsonDialogVisible = false;
+    }
+
+    public hideHelpDialog(): void {
+        this.helpDialogVisible = false;
     }
 
     public hideImportGameDialog(): void {
@@ -45,6 +53,10 @@ export class DialogState {
 
     public showExportToJsonDialog(): void {
         this.exportToJsonDialogVisible = true;
+    }
+
+    public showHelpDialog(): void {
+        this.helpDialogVisible = true;
     }
 
     public showImportGameDialog(): void {

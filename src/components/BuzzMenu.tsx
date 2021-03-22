@@ -146,7 +146,7 @@ function onCorrectClicked(
             {
                 player,
                 position: item.data.props.position,
-                correct: true,
+                points: props.tossup.getPointsAtPosition(props.appState.game.gameFormat, item.data.props.position),
             },
             props.tossupNumber - 1,
             props.bonusIndex
@@ -171,7 +171,7 @@ function onWrongClicked(
         const marker: IBuzzMarker = {
             player,
             position: props.position,
-            correct: false,
+            points: 0,
         };
 
         // If we're at the end of the question, or if there's already been a neg from a different team, then make it a
@@ -182,6 +182,7 @@ function onWrongClicked(
         ) {
             props.cycle.addNoPenaltyBuzz(marker, props.tossupNumber - 1);
         } else {
+            marker.points = props.appState.game.gameFormat.negValue;
             props.cycle.addNeg(marker, props.tossupNumber - 1);
         }
     }

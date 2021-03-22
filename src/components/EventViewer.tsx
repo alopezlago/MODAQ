@@ -7,6 +7,7 @@ import { mergeStyleSets } from "@fluentui/react";
 import { CycleItemList } from "./cycleItems/CycleItemList";
 import { Cycle } from "src/state/Cycle";
 import { AppState } from "src/state/AppState";
+import { IGameFormat } from "src/state/IGameFormat";
 
 const numberKey = "number";
 const cycleKey = "cycle";
@@ -23,13 +24,16 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
         [props.appState.uiState]
     );
 
-    const renderColumnHandler = React.useCallback((item?: Cycle, index?: number, column?: IColumn): JSX.Element => {
-        if (item === undefined || index === undefined || column === undefined) {
-            return <></>;
-        }
+    const renderColumnHandler = React.useCallback(
+        (item?: Cycle, index?: number, column?: IColumn): JSX.Element => {
+            if (item === undefined || index === undefined || column === undefined) {
+                return <></>;
+            }
 
-        return onRenderItemColumn(item, index, column);
-    }, []);
+            return onRenderItemColumn(item, props.appState.game.gameFormat, index, column);
+        },
+        [props]
+    );
 
     const columns: IColumn[] = [
         {
@@ -72,7 +76,7 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
     );
 });
 
-function onRenderItemColumn(item: Cycle, index: number, column: IColumn): JSX.Element {
+function onRenderItemColumn(item: Cycle, gameFormat: IGameFormat, index: number, column: IColumn): JSX.Element {
     switch (column?.key) {
         case numberKey:
             if (index == undefined) {
@@ -86,7 +90,7 @@ function onRenderItemColumn(item: Cycle, index: number, column: IColumn): JSX.El
 
             return (
                 <>
-                    <CycleItemList cycle={item} />
+                    <CycleItemList cycle={item} gameFormat={gameFormat} />
                     <Label>{`(${scoreInCurrentCycle[0]} - ${scoreInCurrentCycle[1]})`}</Label>
                 </>
             );

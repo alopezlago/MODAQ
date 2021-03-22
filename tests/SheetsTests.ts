@@ -187,9 +187,9 @@ describe("SheetsTests", () => {
             const position = 1;
             appState.game.cycles[0].addNeg(
                 {
-                    correct: false,
                     player,
                     position,
+                    points: -5,
                 },
                 0
             );
@@ -220,9 +220,9 @@ describe("SheetsTests", () => {
             const position = 1;
             appState.game.cycles[0].addNeg(
                 {
-                    correct: false,
                     player,
                     position,
+                    points: -5,
                 },
                 0
             );
@@ -253,9 +253,9 @@ describe("SheetsTests", () => {
             const cycle: Cycle = appState.game.cycles[0];
             cycle.addCorrectBuzz(
                 {
-                    correct: true,
                     player,
                     position,
+                    points: 10,
                 },
                 0,
                 0
@@ -303,9 +303,9 @@ describe("SheetsTests", () => {
             const cycle: Cycle = appState.game.cycles[0];
             cycle.addCorrectBuzz(
                 {
-                    correct: true,
                     player,
                     position,
+                    points: 10,
                 },
                 0,
                 0
@@ -343,6 +343,56 @@ describe("SheetsTests", () => {
             });
         });
 
+        const playerPowersTest = async (
+            sheetType: SheetType,
+            verifyCells: (ranges: gapi.client.sheets.ValueRange[], position: number) => void
+        ): Promise<void> => {
+            const appState: AppState = createAppStateForExport(sheetType);
+
+            const player: Player = findPlayerOnTeam(appState, "Alpha");
+            const position = 2;
+            const cycle: Cycle = appState.game.cycles[0];
+            cycle.addCorrectBuzz(
+                {
+                    player,
+                    position,
+                    points: 15,
+                },
+                0,
+                0
+            );
+            cycle.setBonusPartAnswer(0, true, 10);
+            cycle.setBonusPartAnswer(1, true, 10);
+            cycle.setBonusPartAnswer(2, false, 0);
+
+            await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
+        };
+        it("First team player powers written to sheet (Lifsheets)", async () => {
+            await playerPowersTest(SheetType.Lifsheets, (ranges, position) => {
+                verifyCell(ranges, "B8", 15);
+                verifyCell(ranges, "AJ8", position);
+
+                // Verify bonus
+                verifyCell(ranges, "H8", "110");
+            });
+        });
+        it("First team player powers written to sheet (TJSheets)", async () => {
+            await playerPowersTest(SheetType.TJSheets, (ranges) => {
+                verifyCell(ranges, "C4", 15);
+
+                // Verify bonus
+                verifyCell(ranges, "I4", 20);
+            });
+        });
+        it("First team player powers written to sheet (UCSDSheets)", async () => {
+            await playerPowersTest(SheetType.UCSDSheets, (ranges) => {
+                verifyCell(ranges, "C4", 15);
+
+                // Verify bonus
+                verifyUCSDBonusCells(ranges, "I4:K4", [true, true, false]);
+            });
+        });
+
         const twoBuzzesInSameCycleTest = async (
             sheetType: SheetType,
             verifyCells: (ranges: gapi.client.sheets.ValueRange[], negPosition: number, correctPosition: number) => void
@@ -357,17 +407,17 @@ describe("SheetsTests", () => {
             const cycle: Cycle = appState.game.cycles[0];
             cycle.addNeg(
                 {
-                    correct: false,
                     player: secondTeamPlayer,
                     position: negPosition,
+                    points: -5,
                 },
                 0
             );
             cycle.addCorrectBuzz(
                 {
-                    correct: true,
                     player: firstTeamPlayer,
                     position: correctPosition,
+                    points: 10,
                 },
                 0,
                 0
@@ -416,9 +466,9 @@ describe("SheetsTests", () => {
             const position = 1;
             appState.game.cycles[0].addNeg(
                 {
-                    correct: false,
                     player,
                     position,
+                    points: -5,
                 },
                 0
             );
@@ -438,9 +488,9 @@ describe("SheetsTests", () => {
             const position = 1;
             appState.game.cycles[0].addNeg(
                 {
-                    correct: false,
                     player,
                     position,
+                    points: 10,
                 },
                 0
             );
@@ -461,9 +511,9 @@ describe("SheetsTests", () => {
             const cycle: Cycle = appState.game.cycles[0];
             cycle.addCorrectBuzz(
                 {
-                    correct: true,
                     player,
                     position,
+                    points: 10,
                 },
                 0,
                 0
@@ -490,9 +540,9 @@ describe("SheetsTests", () => {
             const cycle: Cycle = appState.game.cycles[0];
             cycle.addCorrectBuzz(
                 {
-                    correct: true,
                     player,
                     position,
+                    points: 10,
                 },
                 0,
                 0
@@ -519,9 +569,9 @@ describe("SheetsTests", () => {
             const cycle: Cycle = appState.game.cycles[0];
             cycle.addCorrectBuzz(
                 {
-                    correct: true,
                     player,
                     position,
+                    points: 10,
                 },
                 0,
                 0
@@ -795,9 +845,9 @@ describe("SheetsTests", () => {
             const position = 3;
             appState.game.cycles[tossupsScored - 1].addCorrectBuzz(
                 {
-                    correct: true,
                     player,
                     position,
+                    points: 10,
                 },
                 20,
                 0
