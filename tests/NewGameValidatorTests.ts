@@ -3,7 +3,7 @@ import { expect } from "chai";
 import * as NewGameValidator from "src/state/NewGameValidator";
 import { IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
 import { Player } from "src/state/TeamState";
-import { PacketState } from "src/state/PacketState";
+import { PacketState, Tossup } from "src/state/PacketState";
 import { Cycle } from "src/state/Cycle";
 
 describe("NewGameValidatorTests", () => {
@@ -66,12 +66,7 @@ describe("NewGameValidatorTests", () => {
     });
     describe("isValid", () => {
         const defaultPacket: PacketState = new PacketState();
-        defaultPacket.setTossups([
-            {
-                question: "Test question",
-                answer: "answer",
-            },
-        ]);
+        defaultPacket.setTossups([new Tossup("Test question", "answer")]);
 
         it("No players in first team", () => {
             assertNewGameIsInvalid({

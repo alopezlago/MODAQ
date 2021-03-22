@@ -1,10 +1,12 @@
 import { computed, observable, action, makeObservable } from "mobx";
 import { format } from "mobx-sync";
 
+import * as GameFormats from "./GameFormats";
 import { PacketState, Bonus, Tossup } from "./PacketState";
 import { Player } from "./TeamState";
 import { Cycle, ICycle } from "./Cycle";
 import { ISubstitutionEvent, IPlayerJoinsEvent, IPlayerLeavesEvent } from "./Events";
+import { IGameFormat } from "./IGameFormat";
 
 export class GameState {
     public packet: PacketState;
@@ -18,6 +20,9 @@ export class GameState {
         });
     })
     public cycles: Cycle[];
+
+    @format((deserializedFormat: IGameFormat) => GameFormats.getUpgradedFormatVersion(deserializedFormat))
+    public gameFormat: IGameFormat;
 
     constructor() {
         makeObservable(this, {
@@ -39,6 +44,7 @@ export class GameState {
         this.packet = new PacketState();
         this.players = [];
         this.cycles = [];
+        this.gameFormat = GameFormats.UndefinedGameFormat;
     }
 
     public get isLoaded(): boolean {
@@ -74,40 +80,6 @@ export class GameState {
         }
 
         return score;
-    }
-
-    // TODO: Update this to support powers, and take into account format rules (powers/super-powers, etc.)
-    public getScoreChangeFromCycle(cycle: Cycle): [number, number] {
-        const change: [number, number] = [0, 0];
-        if (cycle.correctBuzz) {
-            const indexToUpdate: number = this.teamNames.indexOf(cycle.correctBuzz.marker.player.teamName);
-            if (indexToUpdate < 0) {
-                throw new Error(
-                    `Correct buzz belongs to a non-existent team ${cycle.correctBuzz.marker.player.teamName}`
-                );
-            }
-
-            // More complex with powers. Need to convert buzzes to points, then add bonuses.
-            // Would want getScore(team) method to simplify it
-            change[indexToUpdate] += 10;
-            if (cycle.bonusAnswer) {
-                change[indexToUpdate] += cycle.bonusAnswer.correctParts.reduce(
-                    (previous, current) => previous + current.points,
-                    0
-                );
-            }
-        }
-
-        if (cycle.negBuzz) {
-            const indexToUpdate: number = this.teamNames.indexOf(cycle.negBuzz.marker.player.teamName);
-            if (indexToUpdate < 0) {
-                throw new Error(`Correct buzz belongs to a non-existent team ${cycle.negBuzz.marker.player.teamName}`);
-            }
-
-            change[indexToUpdate] -= 5;
-        }
-
-        return change;
     }
 
     public addPlayer(player: Player): void {
@@ -250,5 +222,40 @@ export class GameState {
 
     public setCycles(cycles: Cycle[]): void {
         this.cycles = cycles;
+    }
+
+    private getScoreChangeFromCycle(cycle: Cycle): [number, number] {
+        const change: [number, number] = [0, 0];
+        if (cycle.correctBuzz) {
+            const indexToUpdate: number = this.teamNames.indexOf(cycle.correctBuzz.marker.player.teamName);
+            if (indexToUpdate < 0) {
+                throw new Error(
+                    `Correct buzz belongs to a non-existent team ${cycle.correctBuzz.marker.player.teamName}`
+                );
+            }
+
+            // More complex with powers. Need to convert buzzes to points, then add bonuses.
+            // Would want getScore(team) method to simplify it
+            // If points isn't specified, this is an old game that relied on the correct flag. It only supported 10
+            // points
+            change[indexToUpdate] += cycle.correctBuzz.marker.points;
+            if (cycle.bonusAnswer) {
+                change[indexToUpdate] += cycle.bonusAnswer.correctParts.reduce(
+                    (previous, current) => previous + current.points,
+                    0
+                );
+            }
+        }
+
+        if (cycle.negBuzz && this.gameFormat.negValue !== 0) {
+            const indexToUpdate: number = this.teamNames.indexOf(cycle.negBuzz.marker.player.teamName);
+            if (indexToUpdate < 0) {
+                throw new Error(`Correct buzz belongs to a non-existent team ${cycle.negBuzz.marker.player.teamName}`);
+            }
+
+            change[indexToUpdate] += cycle.negBuzz.marker.points ?? this.gameFormat.negValue;
+        }
+
+        return change;
     }
 }

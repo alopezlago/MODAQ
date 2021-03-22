@@ -21,6 +21,12 @@ import { UCSDSheetsGenerator } from "./UCSDSheetsGenerator";
 //         - Ones that use advanced stats would support phases that have advanced stats, and would allow us to jump to
 //           any phase.
 // - Create Format. Should include: power marker (e.g. (*)), neg value, power value, bouncebacks (when supported)
+//     - May be easier to support some basic things, like regulation tossup count. Could block Next -> if it's past that
+//         - Means we have to calculate how many TUs were read for the Sheets export
+//     - Could make Format something we only change in Options, but it should be part of the New Game flow. May require
+//       converting it to a wizard (add packet, add teams, choose format)
+//       - Format could also be a dropdown, with one option being "Custom..." that would open a popup. But we want to
+//         show what the format is too... could maybe do with collapsible panes.
 // Ideally, next steps would be to have a autorun or reaction when cycles change, so we can update the scoresheet.
 // But to keep things simple at first, can just export (adding players > 6 could cause problems, as could multiple tiebreakers)
 

@@ -21,6 +21,10 @@ const FormattedSegment = observer((props: IFormattedSegmentProps) => {
     // I used inline styles with divs for each individual element, but that messes up kerning when punctuation
     // following the text has a different format. Basic formatting tags (<b>, <u>, <i>) will keep them together.
     let element: JSX.Element = <>{props.segment.text}</>;
+    if (props.segment.bolded) {
+        element = <b>{element}</b>;
+    }
+
     if (props.segment.emphasized) {
         element = <i>{element}</i>;
     }

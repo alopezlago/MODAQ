@@ -37,9 +37,9 @@ describe("GameStateTests", () => {
             const buzzCycleIndex = 1;
             game.cycles[buzzCycleIndex].addNeg(
                 {
-                    correct: true,
                     player: firstTeamPlayer,
                     position: 1,
+                    points: -5,
                 },
                 0
             );
@@ -54,9 +54,9 @@ describe("GameStateTests", () => {
             const buzzCycleIndex = 1;
             game.cycles[buzzCycleIndex].addCorrectBuzz(
                 {
-                    correct: true,
                     player: firstTeamPlayer,
                     position: 1,
+                    points: 10,
                 },
                 0,
                 0
@@ -72,9 +72,9 @@ describe("GameStateTests", () => {
             const buzzCycleIndex = 1;
             game.cycles[buzzCycleIndex].addCorrectBuzz(
                 {
-                    correct: true,
                     player: firstTeamPlayer,
                     position: 1,
+                    points: 10,
                 },
                 0,
                 0
@@ -92,9 +92,9 @@ describe("GameStateTests", () => {
             const cycle: Cycle = game.cycles[buzzCycleIndex];
             cycle.addCorrectBuzz(
                 {
-                    correct: true,
                     player: firstTeamPlayer,
                     position: 1,
+                    points: 10,
                 },
                 0,
                 0
@@ -113,9 +113,9 @@ describe("GameStateTests", () => {
             const secondBuzzCycleIndex = 1;
             game.cycles[buzzCycleIndex].addCorrectBuzz(
                 {
-                    correct: true,
                     player: firstTeamPlayer,
                     position: 1,
+                    points: 10,
                 },
                 0,
                 0
@@ -123,9 +123,9 @@ describe("GameStateTests", () => {
 
             game.cycles[secondBuzzCycleIndex].addCorrectBuzz(
                 {
-                    correct: true,
                     player: secondTeamPlayer,
                     position: 2,
+                    points: 10,
                 },
                 1,
                 1
@@ -142,9 +142,9 @@ describe("GameStateTests", () => {
             const buzzCycle: Cycle = game.cycles[buzzCycleIndex];
             buzzCycle.addCorrectBuzz(
                 {
-                    correct: true,
                     player: firstTeamPlayer,
                     position: 1,
+                    points: 10,
                 },
                 0,
                 0
@@ -160,9 +160,9 @@ describe("GameStateTests", () => {
             const nextBuzzCycle: Cycle = game.cycles[nextBuzzCycleIndex];
             nextBuzzCycle.addCorrectBuzz(
                 {
-                    correct: true,
                     player: firstTeamPlayer,
                     position: 2,
+                    points: 10,
                 },
                 1,
                 game.packet.bonuses.length - 1

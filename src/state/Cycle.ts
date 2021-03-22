@@ -1,4 +1,5 @@
 import { observable, action, computed, makeObservable } from "mobx";
+import { format } from "mobx-sync";
 
 import * as CompareUtils from "./CompareUtils";
 import * as Events from "./Events";
@@ -9,10 +10,35 @@ import { IPlayer } from "./TeamState";
 // (not as simple to go back)
 
 export class Cycle implements ICycle {
+    @format((persistedNeg: Events.ITossupAnswerEvent & { correct: boolean }, currentNeg: Events.ITossupAnswerEvent) => {
+        // Old games would have a "correct" field instead of having points on the marker
+        if (persistedNeg.correct != undefined && persistedNeg.marker.points == undefined) {
+            currentNeg.marker.points = -5;
+        }
+
+        return currentNeg;
+    })
     negBuzz?: Events.ITossupAnswerEvent;
 
+    @format(
+        (persistedBuzz: Events.ITossupAnswerEvent & { correct: boolean }, currentBuzz: Events.ITossupAnswerEvent) => {
+            // Old games would have a "correct" field instead of having points on the marker
+            if (persistedBuzz.correct != undefined && persistedBuzz.marker.points == undefined) {
+                currentBuzz.marker.points = 10;
+            }
+
+            return currentBuzz;
+        }
+    )
     correctBuzz?: Events.ITossupAnswerEvent;
 
+    @format((persistedBuzzes: Events.ITossupAnswerEvent[], currentBuzzes: Events.ITossupAnswerEvent[]) => {
+        for (const buzz of currentBuzzes) {
+            buzz.marker.points = 0;
+        }
+
+        return currentBuzzes;
+    })
     noPenaltyBuzzes?: Events.ITossupAnswerEvent[];
 
     bonusAnswer?: Events.IBonusAnswerEvent;
@@ -120,7 +146,7 @@ export class Cycle implements ICycle {
 
             return buzz.tossupIndex < otherBuzz.tossupIndex ||
                 buzz.marker.position < otherBuzz.marker.position ||
-                (!buzz.marker.correct && otherBuzz.marker.correct) ||
+                (buzz.marker.points <= 0 && otherBuzz.marker.points > 0) ||
                 buzz === this.negBuzz
                 ? -1
                 : 1;
@@ -176,6 +202,9 @@ export class Cycle implements ICycle {
         }
 
         this.removeTeamsBuzzes(marker.player.teamName, tossupIndex);
+
+        // Make sure the point total is 0 (no penalty)
+        marker.points = 0;
 
         const event: Events.ITossupAnswerEvent = {
             marker,
@@ -393,6 +422,8 @@ export class Cycle implements ICycle {
     public removeWrongBuzz(player: IPlayer): void {
         if (this.negBuzz && CompareUtils.playersEqual(this.negBuzz.marker.player, player)) {
             this.negBuzz = undefined;
+            // TODO: If there's a no penalty buzz and it's not at the end, it must be converted to a neg
+            // https://github.com/alopezlago/MODAQ/issues/58
         } else {
             this.noPenaltyBuzzes = this.noPenaltyBuzzes?.filter(
                 (buzz) => !CompareUtils.playersEqual(buzz.marker.player, player)

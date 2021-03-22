@@ -55,6 +55,8 @@ export const GameBar = observer(
             uiState.createPendingNewPlayer(game.teamNames[0]);
         }, [uiState, game]);
 
+        const openHelpHandler = React.useCallback(() => props.appState.uiState.dialogState.showHelpDialog(), [props]);
+
         const items: ICommandBarItemProps[] = [
             {
                 key: "newGame",
@@ -114,7 +116,11 @@ export const GameBar = observer(
             },
         });
 
-        // Get the actions, and decide if there are any applicable ones
+        items.push({
+            key: "help",
+            text: "Help...",
+            onClick: openHelpHandler,
+        });
 
         return <CommandBar items={items} overflowButtonProps={overflowProps} />;
     }

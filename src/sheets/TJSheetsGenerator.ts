@@ -208,8 +208,7 @@ export const TJSheetsGenerator: ISheetsGenerator = {
         return [
             {
                 range: `'${sheetName}'!${column}${row}`,
-                // TODO: Calculate if this is a power or not
-                values: [[10]],
+                values: [[buzz.marker.points ?? 10]],
             },
         ];
     },
