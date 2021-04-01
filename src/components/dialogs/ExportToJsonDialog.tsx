@@ -60,7 +60,6 @@ export const ExportToJsonDialog = observer(
         const gameHref: string = URL.createObjectURL(gameJson);
         const gameFilename = `${joinedTeamNames}_Game.json`;
 
-        // TODO: Should this go into its own dialog? Likely makes more sense, and doesn't crowd the dialog as much
         const qbjJson: Blob = new Blob([QBJ.ToQBJ(game)], { type: "application/json" });
         const qbjHref: string = URL.createObjectURL(qbjJson);
         const qbjFilename = `${joinedTeamNames}.qbj`;

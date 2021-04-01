@@ -2,8 +2,6 @@ import { Cycle } from "src/state/Cycle";
 import { ICorrectBonusAnswerPart, ITossupAnswerEvent } from "src/state/Events";
 import { GameState } from "src/state/GameState";
 
-// TODO: See if we can fold negs/noPenaltyBuzzes into wrongBuzzes, now that we track points
-
 // Converts games into a QBJ file that conforms to the Match interface in the QB Schema
 export function ToQBJ(game: GameState): string {
     // Convert it to a Match, then use JSON.stringify

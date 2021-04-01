@@ -427,7 +427,6 @@ export class Cycle implements ICycle {
         }
     }
 
-    // TODO: Test!
     private removePlayerBuzzes(player: IPlayer): void {
         this.removeBuzzes((event) => CompareUtils.playersEqual(player, event.marker.player));
 
