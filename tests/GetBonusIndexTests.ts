@@ -35,7 +35,7 @@ describe("GameStateTests", () => {
         it("No correct buzzes, same bonus", () => {
             const game: GameState = createDefaultGame();
             const buzzCycleIndex = 1;
-            game.cycles[buzzCycleIndex].addNeg(
+            game.cycles[buzzCycleIndex].addWrongBuzz(
                 {
                     player: firstTeamPlayer,
                     position: 1,

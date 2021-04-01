@@ -67,9 +67,9 @@ export class Tossup implements IQuestion {
         ]);
     }
 
-    public getPointsAtPosition(format: IGameFormat, wordIndex: number): number {
+    public getPointsAtPosition(format: IGameFormat, wordIndex: number, isCorrect = true): number {
         // If there's no powers, default to 10 points
-        if (format.powerMarkers.length === 0) {
+        if (format.powerMarkers.length === 0 && isCorrect) {
             return 10;
         }
 
@@ -101,12 +101,23 @@ export class Tossup implements IQuestion {
             if (powerMarkerIndex >= 0) {
                 // We only want to correct the index for the power markers found. Some questions may not have
                 // superpowers, so don't count them if we didn't find them.
-                if (powerMarkerIndex !== lastWordIndex && wordIndex <= powerMarkerIndex - (powerMarkersFound + 1)) {
+                if (
+                    isCorrect &&
+                    powerMarkerIndex !== lastWordIndex &&
+                    wordIndex <= powerMarkerIndex - (powerMarkersFound + 1)
+                ) {
                     return format.pointsForPowers[i];
                 }
 
                 powerMarkersFound++;
             }
+        }
+
+        if (!isCorrect) {
+            // If we're at the end of the question, don't count it as a neg
+            // We add an extra word for the end of question marker, so remove that from the list of words, as well as all of
+            // the power markers we skipped
+            return wordIndex >= words.length - powerMarkersFound - 1 ? 0 : format.negValue;
         }
 
         // Not in power, so return the default value

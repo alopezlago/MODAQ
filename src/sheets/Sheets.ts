@@ -225,14 +225,16 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
 
         const buzzPoints: number[] = [];
 
-        if (cycle.negBuzz) {
-            valueRanges = valueRanges.concat(
-                sheetsGenerator.getValuesForNeg(cycle.negBuzz, playerToColumnMapping, sheetName, row)
-            );
+        if (cycle.wrongBuzzes) {
+            for (const buzz of cycle.wrongBuzzes.filter((b) => b.marker.points < 0)) {
+                valueRanges = valueRanges.concat(
+                    sheetsGenerator.getValuesForNeg(buzz, playerToColumnMapping, sheetName, row)
+                );
 
-            const negColumn: string | undefined = playerToColumnMapping.get(cycle.negBuzz.marker.player);
-            if (negColumn != undefined) {
-                buzzPoints.push(cycle.negBuzz.marker.position);
+                const negColumn: string | undefined = playerToColumnMapping.get(buzz.marker.player);
+                if (negColumn != undefined) {
+                    buzzPoints.push(buzz.marker.position);
+                }
             }
         }
 

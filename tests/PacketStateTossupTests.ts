@@ -107,5 +107,38 @@ describe("PacketStateTossupTests", () => {
             const points: number = tossup.getPointsAtPosition(superpowersGameFormat, 2);
             expect(points).to.equal(15);
         });
+
+        // Tossups include a special character to mark the end of the question, which is after the last word in the
+        // question, so the last index will be one greater than the number of words in the question.
+        it("Wrong before the last word (no powers)", () => {
+            const tossup: Tossup = new Tossup("This is my question", "Answer");
+            const points: number = tossup.getPointsAtPosition(noPowersGameFormat, 3, false);
+            expect(points).to.equal(-5);
+        });
+        it("Wrong at the last word (no powers)", () => {
+            const tossup: Tossup = new Tossup("This is my question", "Answer");
+            const points: number = tossup.getPointsAtPosition(noPowersGameFormat, 4, false);
+            expect(points).to.equal(0);
+        });
+        it("Wrong before the last word (powers)", () => {
+            const tossup: Tossup = new Tossup("This is (*) my question", "Answer");
+            const points: number = tossup.getPointsAtPosition(powersGameFormat, 3, false);
+            expect(points).to.equal(-5);
+        });
+        it("Wrong at the last word (powers)", () => {
+            const tossup: Tossup = new Tossup("This is (*) my question", "Answer");
+            const points: number = tossup.getPointsAtPosition(powersGameFormat, 4, false);
+            expect(points).to.equal(0);
+        });
+        it("Wrong before the last word (powers and superpowers)", () => {
+            const tossup: Tossup = new Tossup("This is (*) my question", "Answer");
+            const points: number = tossup.getPointsAtPosition(superpowersGameFormat, 3, false);
+            expect(points).to.equal(-5);
+        });
+        it("Wrong at the last word (powers and superpowers)", () => {
+            const tossup: Tossup = new Tossup("This (+) is (*) my question", "Answer");
+            const points: number = tossup.getPointsAtPosition(superpowersGameFormat, 4, false);
+            expect(points).to.equal(0);
+        });
     });
 });

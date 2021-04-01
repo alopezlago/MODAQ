@@ -17,6 +17,7 @@ import { Cycle } from "src/state/Cycle";
 import { Tossup } from "src/state/PacketState";
 import { IBuzzMarker } from "src/state/IBuzzMarker";
 import { AppState } from "src/state/AppState";
+import { ITossupAnswerEvent } from "src/state/Events";
 
 export const BuzzMenu = observer((props: IBuzzMenuProps) => {
     const onHideBuzzMenu: () => void = React.useCallback(() => onBuzzMenuDismissed(props), [props]);
@@ -62,14 +63,15 @@ function getPlayerMenuItems(props: IBuzzMenuProps, teamName: string): IContextua
         const isCorrectChecked: boolean =
             props.cycle.correctBuzz != undefined &&
             CompareUtils.playersEqual(props.cycle.correctBuzz.marker.player, player) &&
-            props.cycle.correctBuzz.marker.position === props.position;
+            props.cycle.correctBuzz.marker.position === props.wordIndex;
         const isWrongChecked: boolean =
-            props.cycle.incorrectBuzzes.findIndex(
+            props.cycle.wrongBuzzes != undefined &&
+            props.cycle.wrongBuzzes.findIndex(
                 (buzz) =>
-                    CompareUtils.playersEqual(buzz.marker.player, player) && buzz.marker.position === props.position
+                    CompareUtils.playersEqual(buzz.marker.player, player) && buzz.marker.position === props.wordIndex
             ) >= 0;
         const isProtestChecked: boolean =
-            props.cycle.tossupProtests?.findIndex((protest) => protest.position === props.position) != undefined;
+            props.cycle.tossupProtests?.findIndex((protest) => protest.position === props.wordIndex) != undefined;
 
         const buzzMenuItemData: IBuzzMenuItemData = { props, player };
 
@@ -145,8 +147,8 @@ function onCorrectClicked(
         props.cycle.addCorrectBuzz(
             {
                 player,
-                position: item.data.props.position,
-                points: props.tossup.getPointsAtPosition(props.appState.game.gameFormat, item.data.props.position),
+                position: item.data.props.wordIndex,
+                points: props.tossup.getPointsAtPosition(props.appState.game.gameFormat, item.data.props.wordIndex),
             },
             props.tossupNumber - 1,
             props.bonusIndex
@@ -170,21 +172,27 @@ function onWrongClicked(
     } else if (item.checked === false) {
         const marker: IBuzzMarker = {
             player,
-            position: props.position,
+            position: props.wordIndex,
             points: 0,
         };
 
         // If we're at the end of the question, or if there's already been a neg from a different team, then make it a
         // no penalty buzz
-        if (
-            props.position >= props.tossup.question.length ||
-            (props.cycle.negBuzz != undefined && props.cycle.negBuzz.marker.player.teamName !== player.teamName)
-        ) {
-            props.cycle.addNoPenaltyBuzz(marker, props.tossupNumber - 1);
-        } else {
-            marker.points = props.appState.game.gameFormat.negValue;
-            props.cycle.addNeg(marker, props.tossupNumber - 1);
+        const pointsAtPosition: number = props.tossup.getPointsAtPosition(
+            props.appState.game.gameFormat,
+            props.wordIndex,
+            false
+        );
+        if (pointsAtPosition < 0) {
+            const negBuzz: ITossupAnswerEvent | undefined = props.cycle.wrongBuzzes?.find(
+                (buzz) => buzz.marker.points < 0
+            );
+            if (negBuzz == undefined || negBuzz.marker.player.teamName === player.teamName) {
+                marker.points = pointsAtPosition;
+            }
         }
+
+        props.cycle.addWrongBuzz(marker, props.tossupNumber - 1);
     }
 }
 
@@ -202,7 +210,7 @@ function onProtestClicked(
     if (item.checked) {
         props.cycle.removeTossupProtest(player.teamName);
     } else if (item.checked === false) {
-        props.appState.uiState.setPendingTossupProtest(player.teamName, props.tossupNumber - 1, props.position);
+        props.appState.uiState.setPendingTossupProtest(player.teamName, props.tossupNumber - 1, props.wordIndex);
     }
 }
 
@@ -214,7 +222,7 @@ export interface IBuzzMenuProps {
     appState: AppState;
     bonusIndex: number;
     cycle: Cycle;
-    position: number;
+    wordIndex: number;
     target: React.MutableRefObject<null>;
     tossup: Tossup;
     tossupNumber: number;

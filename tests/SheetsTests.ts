@@ -185,7 +185,7 @@ describe("SheetsTests", () => {
 
             const player: Player = findPlayerOnTeam(appState, "Alpha");
             const position = 1;
-            appState.game.cycles[0].addNeg(
+            appState.game.cycles[0].addWrongBuzz(
                 {
                     player,
                     position,
@@ -218,7 +218,7 @@ describe("SheetsTests", () => {
 
             const player: Player = findPlayerOnTeam(appState, "Beta");
             const position = 1;
-            appState.game.cycles[0].addNeg(
+            appState.game.cycles[0].addWrongBuzz(
                 {
                     player,
                     position,
@@ -405,7 +405,7 @@ describe("SheetsTests", () => {
             const correctPosition = 4;
 
             const cycle: Cycle = appState.game.cycles[0];
-            cycle.addNeg(
+            cycle.addWrongBuzz(
                 {
                     player: secondTeamPlayer,
                     position: negPosition,
@@ -464,7 +464,7 @@ describe("SheetsTests", () => {
 
             const player: Player = findPlayerOnTeam(appState, "Alpha");
             const position = 1;
-            appState.game.cycles[0].addNeg(
+            appState.game.cycles[0].addWrongBuzz(
                 {
                     player,
                     position,
@@ -486,11 +486,11 @@ describe("SheetsTests", () => {
 
             const player: Player = findPlayerOnTeam(appState, "Beta");
             const position = 1;
-            appState.game.cycles[0].addNeg(
+            appState.game.cycles[0].addWrongBuzz(
                 {
                     player,
                     position,
-                    points: 10,
+                    points: -5,
                 },
                 0
             );
@@ -524,7 +524,7 @@ describe("SheetsTests", () => {
             cycle.setBonusPartAnswer(2, true, 0);
 
             const reason = "I was right";
-            cycle.addBonusProtest(0, 0, reason);
+            cycle.addBonusProtest(0, 0, reason, "Alpha");
 
             await verifyExportToSheetSuccess(appState, (ranges) => {
                 verifyCell(ranges, "B8", 10);
@@ -553,7 +553,7 @@ describe("SheetsTests", () => {
             cycle.setBonusPartAnswer(2, true, 0);
 
             const reason = "I was surely right";
-            cycle.addBonusProtest(0, 1, reason);
+            cycle.addBonusProtest(0, 1, reason, "Beta");
 
             await verifyExportToSheetSuccess(appState, (ranges) => {
                 verifyCell(ranges, "R8", 10);
@@ -583,8 +583,8 @@ describe("SheetsTests", () => {
 
             const firstReason = "I was right";
             const secondReason = "That was also right";
-            cycle.addBonusProtest(0, 0, firstReason);
-            cycle.addBonusProtest(0, 2, secondReason);
+            cycle.addBonusProtest(0, 0, firstReason, "Alpha");
+            cycle.addBonusProtest(0, 2, secondReason, "Alpha");
 
             await verifyExportToSheetSuccess(appState, (ranges) => {
                 verifyCell(ranges, "B8", 10);

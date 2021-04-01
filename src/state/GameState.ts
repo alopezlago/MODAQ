@@ -28,6 +28,7 @@ export class GameState {
         makeObservable(this, {
             cycles: observable,
             teamNames: computed,
+            gameFormat: observable,
             packet: observable,
             players: observable,
             isLoaded: computed,
@@ -39,6 +40,7 @@ export class GameState {
             clear: action,
             loadPacket: action,
             setCycles: action,
+            setGameFormat: action,
         });
 
         this.packet = new PacketState();
@@ -224,6 +226,10 @@ export class GameState {
         this.cycles = cycles;
     }
 
+    public setGameFormat(gameFormat: IGameFormat): void {
+        this.gameFormat = gameFormat;
+    }
+
     private getScoreChangeFromCycle(cycle: Cycle): [number, number] {
         const change: [number, number] = [0, 0];
         if (cycle.correctBuzz) {
@@ -247,13 +253,19 @@ export class GameState {
             }
         }
 
-        if (cycle.negBuzz && this.gameFormat.negValue !== 0) {
-            const indexToUpdate: number = this.teamNames.indexOf(cycle.negBuzz.marker.player.teamName);
-            if (indexToUpdate < 0) {
-                throw new Error(`Correct buzz belongs to a non-existent team ${cycle.negBuzz.marker.player.teamName}`);
-            }
+        if (cycle.wrongBuzzes != undefined && this.gameFormat.negValue !== 0) {
+            for (const buzz of cycle.wrongBuzzes) {
+                if (buzz.marker.points >= 0) {
+                    continue;
+                }
 
-            change[indexToUpdate] += cycle.negBuzz.marker.points ?? this.gameFormat.negValue;
+                const indexToUpdate: number = this.teamNames.indexOf(buzz.marker.player.teamName);
+                if (indexToUpdate < 0) {
+                    throw new Error(`Correct buzz belongs to a non-existent team ${buzz.marker.player.teamName}`);
+                }
+
+                change[indexToUpdate] += buzz.marker.points ?? this.gameFormat.negValue;
+            }
         }
 
         return change;
