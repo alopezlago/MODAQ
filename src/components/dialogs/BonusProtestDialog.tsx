@@ -57,11 +57,22 @@ export const BonusProtestDialog = observer(
 
 function onSubmit(props: IBonusProtestDialogProps): void {
     const pendingProtestEvent: IBonusProtestEvent | undefined = props.appState.uiState.pendingBonusProtestEvent;
+    let teamName = "";
+    if (props.cycle.correctBuzz != undefined && props.cycle.bonusAnswer != undefined) {
+        const bonusTeamName: string = props.cycle.correctBuzz.marker.player.teamName;
+        teamName =
+            props.cycle.bonusAnswer.correctParts.findIndex((part) => part.index === pendingProtestEvent?.partIndex) ===
+            -1
+                ? bonusTeamName
+                : props.appState.game.teamNames.find((name) => name !== bonusTeamName) ?? "";
+    }
+
     if (pendingProtestEvent) {
         props.cycle.addBonusProtest(
             pendingProtestEvent.questionIndex,
             pendingProtestEvent.partIndex,
-            pendingProtestEvent.reason
+            pendingProtestEvent.reason,
+            teamName
         );
         props.appState.uiState.resetPendingBonusProtest();
     }

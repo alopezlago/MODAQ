@@ -20,7 +20,7 @@ export const TossupQuestion = observer(
         const selectedWordRef: React.MutableRefObject<null> = React.useRef(null);
 
         const correctBuzzIndex: number = props.cycle.correctBuzz?.marker.position ?? -1;
-        const wrongBuzzIndexes: number[] = props.cycle.incorrectBuzzes
+        const wrongBuzzIndexes: number[] = (props.cycle.wrongBuzzes ?? [])
             .filter((buzz) => buzz.tossupIndex === props.tossupNumber - 1)
             .map((buzz) => buzz.marker.position);
 
@@ -124,7 +124,7 @@ const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
                 appState={props.appState}
                 bonusIndex={props.bonusIndex}
                 cycle={props.cycle}
-                position={props.index}
+                wordIndex={props.index}
                 target={props.selectedWordRef}
                 tossup={props.tossup}
                 tossupNumber={props.tossupNumber}

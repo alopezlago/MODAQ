@@ -11,6 +11,8 @@ import {
     IDialogContentProps,
     IModalProps,
 } from "@fluentui/react";
+
+import * as QBJ from "src/qbj/QBJ";
 import { AppState } from "src/state/AppState";
 import { GameState } from "src/state/GameState";
 
@@ -58,6 +60,11 @@ export const ExportToJsonDialog = observer(
         const gameHref: string = URL.createObjectURL(gameJson);
         const gameFilename = `${joinedTeamNames}_Game.json`;
 
+        // TODO: Should this go into its own dialog? Likely makes more sense, and doesn't crowd the dialog as much
+        const qbjJson: Blob = new Blob([QBJ.ToQBJ(game)], { type: "application/json" });
+        const qbjHref: string = URL.createObjectURL(qbjJson);
+        const qbjFilename = `${joinedTeamNames}.qbj`;
+
         return (
             <Dialog
                 hidden={!props.appState.uiState.dialogState.exportToJsonDialogVisible}
@@ -76,6 +83,7 @@ export const ExportToJsonDialog = observer(
                         href={cyclesHref}
                         download={cyclesFilename}
                     />
+                    <PrimaryButton text="Export QBJ" onClick={closeHandler} href={qbjHref} download={qbjFilename} />
                     <DefaultButton text="Cancel" onClick={closeHandler} />
                 </DialogFooter>
             </Dialog>

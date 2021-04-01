@@ -10,16 +10,6 @@ import { IPlayer } from "./TeamState";
 // (not as simple to go back)
 
 export class Cycle implements ICycle {
-    @format((persistedNeg: Events.ITossupAnswerEvent & { correct: boolean }, currentNeg: Events.ITossupAnswerEvent) => {
-        // Old games would have a "correct" field instead of having points on the marker
-        if (persistedNeg.correct != undefined && persistedNeg.marker.points == undefined) {
-            currentNeg.marker.points = -5;
-        }
-
-        return currentNeg;
-    })
-    negBuzz?: Events.ITossupAnswerEvent;
-
     @format(
         (persistedBuzz: Events.ITossupAnswerEvent & { correct: boolean }, currentBuzz: Events.ITossupAnswerEvent) => {
             // Old games would have a "correct" field instead of having points on the marker
@@ -32,14 +22,7 @@ export class Cycle implements ICycle {
     )
     correctBuzz?: Events.ITossupAnswerEvent;
 
-    @format((persistedBuzzes: Events.ITossupAnswerEvent[], currentBuzzes: Events.ITossupAnswerEvent[]) => {
-        for (const buzz of currentBuzzes) {
-            buzz.marker.points = 0;
-        }
-
-        return currentBuzzes;
-    })
-    noPenaltyBuzzes?: Events.ITossupAnswerEvent[];
+    wrongBuzzes?: Events.ITossupAnswerEvent[];
 
     bonusAnswer?: Events.IBonusAnswerEvent;
 
@@ -63,9 +46,8 @@ export class Cycle implements ICycle {
         // We don't use makeAutoObservable because there are methods like getProtestableBonusPartIndexes which aren't
         // actions
         makeObservable(this, {
-            negBuzz: observable,
             correctBuzz: observable,
-            noPenaltyBuzzes: observable,
+            wrongBuzzes: observable,
             bonusAnswer: observable,
             playerJoins: observable,
             playerLeaves: observable,
@@ -75,11 +57,9 @@ export class Cycle implements ICycle {
             tossupProtests: observable,
             thrownOutTossups: observable,
             thrownOutBonuses: observable,
-            incorrectBuzzes: computed({ requiresReaction: true }),
             orderedBuzzes: computed({ requiresReaction: true }),
             addCorrectBuzz: action,
-            addNeg: action,
-            addNoPenaltyBuzz: action,
+            addWrongBuzz: action,
             addBonusProtest: action,
             addPlayerJoins: action,
             addPlayerLeaves: action,
@@ -103,8 +83,7 @@ export class Cycle implements ICycle {
             this.bonusAnswer = deserializedCycle.bonusAnswer;
             this.bonusProtests = deserializedCycle.bonusProtests;
             this.correctBuzz = deserializedCycle.correctBuzz;
-            this.noPenaltyBuzzes = deserializedCycle.noPenaltyBuzzes;
-            this.negBuzz = deserializedCycle.negBuzz;
+            this.wrongBuzzes = deserializedCycle.wrongBuzzes;
             this.playerJoins = deserializedCycle.playerJoins;
             this.playerLeaves = deserializedCycle.playerLeaves;
             this.subs = deserializedCycle.subs;
@@ -112,20 +91,21 @@ export class Cycle implements ICycle {
             this.thrownOutBonuses = deserializedCycle.thrownOutBonuses;
             this.thrownOutTossups = deserializedCycle.thrownOutTossups;
             this.tossupProtests = deserializedCycle.tossupProtests;
-        }
-    }
 
-    public get incorrectBuzzes(): Events.ITossupAnswerEvent[] {
-        const noPenaltyBuzzes: Events.ITossupAnswerEvent[] = this.noPenaltyBuzzes ?? [];
-        return this.negBuzz != undefined ? noPenaltyBuzzes.concat(this.negBuzz) : noPenaltyBuzzes;
+            // Back-compat, when we split wrong buzzes based on if they were negs or not
+            if (deserializedCycle.noPenaltyBuzzes) {
+                this.wrongBuzzes = (this.wrongBuzzes ?? []).concat(deserializedCycle.noPenaltyBuzzes);
+            }
+
+            if (deserializedCycle.negBuzz) {
+                this.wrongBuzzes = (this.wrongBuzzes ?? []).concat(deserializedCycle.negBuzz);
+            }
+        }
     }
 
     public get orderedBuzzes(): Events.ITossupAnswerEvent[] {
         // Sort by tossupIndex, then by position. Tie breaker: negs before no penalties, negs/no penalties before correct
-        const buzzes: Events.ITossupAnswerEvent[] = this.noPenaltyBuzzes ? [...this.noPenaltyBuzzes] : [];
-        if (this.negBuzz) {
-            buzzes.push(this.negBuzz);
-        }
+        const buzzes: Events.ITossupAnswerEvent[] = this.wrongBuzzes ? [...this.wrongBuzzes] : [];
 
         if (this.correctBuzz) {
             buzzes.push(this.correctBuzz);
@@ -147,7 +127,7 @@ export class Cycle implements ICycle {
             return buzz.tossupIndex < otherBuzz.tossupIndex ||
                 buzz.marker.position < otherBuzz.marker.position ||
                 (buzz.marker.points <= 0 && otherBuzz.marker.points > 0) ||
-                buzz === this.negBuzz
+                (buzz.marker.points < 0 && otherBuzz.marker.points >= 0)
                 ? -1
                 : 1;
         });
@@ -174,48 +154,28 @@ export class Cycle implements ICycle {
         }
 
         // We should also remove all buzzes after this one, since a correct buzz should be the last one.
-        if (this.negBuzz && this.negBuzz.marker.position > marker.position) {
-            this.negBuzz = undefined;
-        }
-
-        if (this.noPenaltyBuzzes) {
-            this.noPenaltyBuzzes = this.noPenaltyBuzzes.filter((buzz) => buzz.marker.position <= marker.position);
+        if (this.wrongBuzzes) {
+            this.wrongBuzzes = this.wrongBuzzes.filter((buzz) => buzz.marker.position <= marker.position);
         }
     }
 
-    public addNeg(marker: IBuzzMarker, tossupIndex: number): void {
-        this.removeTeamsBuzzes(marker.player.teamName, tossupIndex);
-        this.negBuzz = {
-            marker,
-            tossupIndex,
-        };
-
-        // Clear the correct buzz if it's before this one, since the correct buzz should be the last one
-        if (this.correctBuzz && this.correctBuzz.marker.position < marker.position) {
-            this.removeCorrectBuzz();
-        }
-    }
-
-    public addNoPenaltyBuzz(marker: IBuzzMarker, tossupIndex: number, buzzIndex?: number): void {
-        if (this.noPenaltyBuzzes == undefined) {
-            this.noPenaltyBuzzes = [];
+    public addWrongBuzz(marker: IBuzzMarker, tossupIndex: number, buzzIndex?: number): void {
+        if (this.wrongBuzzes == undefined) {
+            this.wrongBuzzes = [];
         }
 
         this.removeTeamsBuzzes(marker.player.teamName, tossupIndex);
-
-        // Make sure the point total is 0 (no penalty)
-        marker.points = 0;
 
         const event: Events.ITossupAnswerEvent = {
             marker,
             tossupIndex,
         };
         if (buzzIndex == undefined) {
-            this.noPenaltyBuzzes.push(event);
+            this.wrongBuzzes.push(event);
         } else {
-            const laterBuzzes: Events.ITossupAnswerEvent[] = this.noPenaltyBuzzes.splice(buzzIndex);
-            this.noPenaltyBuzzes.push(event);
-            this.noPenaltyBuzzes = this.noPenaltyBuzzes.concat(laterBuzzes);
+            const laterBuzzes: Events.ITossupAnswerEvent[] = this.wrongBuzzes.splice(buzzIndex);
+            this.wrongBuzzes.push(event);
+            this.wrongBuzzes = this.wrongBuzzes.concat(laterBuzzes);
         }
 
         // Clear the correct buzz if it's before this one, since the correct buzz should be the last one
@@ -224,7 +184,7 @@ export class Cycle implements ICycle {
         }
     }
 
-    public addBonusProtest(questionIndex: number, partIndex: number, reason: string): void {
+    public addBonusProtest(questionIndex: number, partIndex: number, reason: string, teamName: string): void {
         if (this.correctBuzz == undefined) {
             // There's no correct buzz, so there's no one to protest the bonus
             return;
@@ -239,7 +199,7 @@ export class Cycle implements ICycle {
             reason: reason,
             partIndex,
             questionIndex,
-            teamName: this.correctBuzz.marker.player.teamName,
+            teamName,
         });
     }
 
@@ -261,6 +221,8 @@ export class Cycle implements ICycle {
         this.playerLeaves.push({
             outPlayer,
         });
+
+        this.removePlayerBuzzes(outPlayer);
     }
 
     public addSwapSubstitution(inPlayer: IPlayer, outPlayer: IPlayer): void {
@@ -272,6 +234,8 @@ export class Cycle implements ICycle {
             inPlayer,
             outPlayer,
         });
+
+        this.removePlayerBuzzes(outPlayer);
     }
 
     public addThrownOutBonus(bonusIndex: number): void {
@@ -347,6 +311,7 @@ export class Cycle implements ICycle {
     public removeCorrectBuzz(): void {
         this.correctBuzz = undefined;
         this.bonusAnswer = undefined;
+        this.bonusProtests = undefined;
     }
 
     public removePlayerJoins(joinToRemove: Events.IPlayerJoinsEvent): void {
@@ -420,15 +385,10 @@ export class Cycle implements ICycle {
     }
 
     public removeWrongBuzz(player: IPlayer): void {
-        if (this.negBuzz && CompareUtils.playersEqual(this.negBuzz.marker.player, player)) {
-            this.negBuzz = undefined;
-            // TODO: If there's a no penalty buzz and it's not at the end, it must be converted to a neg
-            // https://github.com/alopezlago/MODAQ/issues/58
-        } else {
-            this.noPenaltyBuzzes = this.noPenaltyBuzzes?.filter(
-                (buzz) => !CompareUtils.playersEqual(buzz.marker.player, player)
-            );
-        }
+        // TODO: If there's a no penalty buzz and it's not at the end, it must be converted to a neg
+        // https://github.com/alopezlago/MODAQ/issues/58
+        // We won't know that it's not at the end unless we add another field to BuzzMarker (celerity?)
+        this.wrongBuzzes = this.wrongBuzzes?.filter((buzz) => !CompareUtils.playersEqual(buzz.marker.player, player));
 
         this.removeTossupProtest(player.teamName);
     }
@@ -467,41 +427,32 @@ export class Cycle implements ICycle {
         }
     }
 
+    // TODO: Test!
+    private removePlayerBuzzes(player: IPlayer): void {
+        this.removeBuzzes((event) => CompareUtils.playersEqual(player, event.marker.player));
+
+        this.tossupProtests = this.tossupProtests?.filter((protest) => protest.teamName !== player.teamName);
+    }
+
     private removeTeamsBuzzes(teamName: string, tossupIndex: number): void {
-        if (
-            this.correctBuzz &&
-            this.correctBuzz.tossupIndex === tossupIndex &&
-            this.correctBuzz.marker.player.teamName === teamName
-        ) {
-            this.removeCorrectBuzz();
-        } else if (
-            this.negBuzz &&
-            this.negBuzz.tossupIndex === tossupIndex &&
-            this.negBuzz.marker.player.teamName === teamName
-        ) {
-            // There can still only be one neg if a tossup is thrown out, because the next buzz would have occurred after
-            // that buzz (i.e. been a missed buzz with no penalty)
-            this.negBuzz = undefined;
-        } else if (
-            this.noPenaltyBuzzes &&
-            this.noPenaltyBuzzes.findIndex(
-                (buzz) => buzz.tossupIndex === tossupIndex && buzz.marker.player.teamName === teamName
-            ) >= 0
-        ) {
-            this.noPenaltyBuzzes = this.noPenaltyBuzzes.filter(
-                (buzz) => buzz.tossupIndex !== tossupIndex || buzz.marker.player.teamName !== teamName
-            );
-        }
+        this.removeBuzzes((event) => event.tossupIndex === tossupIndex && event.marker.player.teamName === teamName);
 
         // TODO: Clear the (tossup) protests from this team. Figure out if we need to remove bonus protests too.
         this.tossupProtests = this.tossupProtests?.filter((protest) => protest.teamName !== teamName);
     }
+
+    private removeBuzzes(filter: (event: Events.ITossupAnswerEvent) => boolean): void {
+        if (this.correctBuzz && filter(this.correctBuzz)) {
+            this.removeCorrectBuzz();
+        } else if (this.wrongBuzzes && this.wrongBuzzes.findIndex((buzz) => filter(buzz)) >= 0) {
+            this.wrongBuzzes = this.wrongBuzzes.filter((buzz) => !filter(buzz));
+        }
+    }
 }
 
 export interface ICycle {
-    negBuzz?: Events.ITossupAnswerEvent;
     correctBuzz?: Events.ITossupAnswerEvent;
-    noPenaltyBuzzes?: Events.ITossupAnswerEvent[];
+    wrongBuzzes?: Events.ITossupAnswerEvent[];
     bonusAnswer?: Events.IBonusAnswerEvent;
     playerJoins?: Events.IPlayerJoinsEvent[];
     playerLeaves?: Events.IPlayerLeavesEvent[];
@@ -511,4 +462,8 @@ export interface ICycle {
     tossupProtests?: Events.ITossupProtestEvent[];
     thrownOutTossups?: Events.IThrowOutQuestionEvent[];
     thrownOutBonuses?: Events.IThrowOutQuestionEvent[];
+
+    // Obsolete; remove after a few release versions
+    noPenaltyBuzzes?: Events.ITossupAnswerEvent[];
+    negBuzz?: Events.ITossupAnswerEvent;
 }
