@@ -190,8 +190,10 @@ describe("SheetsTests", () => {
                     player,
                     position,
                     points: -5,
+                    isLastWord: false,
                 },
-                0
+                0,
+                appState.game.gameFormat
             );
 
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
@@ -223,8 +225,10 @@ describe("SheetsTests", () => {
                     player,
                     position,
                     points: -5,
+                    isLastWord: false,
                 },
-                0
+                0,
+                appState.game.gameFormat
             );
 
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
@@ -256,9 +260,11 @@ describe("SheetsTests", () => {
                     player,
                     position,
                     points: 10,
+                    isLastWord: false,
                 },
                 0,
-                0
+                0,
+                appState.game.gameFormat
             );
             cycle.setBonusPartAnswer(0, true, 10);
             cycle.setBonusPartAnswer(1, true, 10);
@@ -306,9 +312,11 @@ describe("SheetsTests", () => {
                     player,
                     position,
                     points: 10,
+                    isLastWord: false,
                 },
                 0,
-                0
+                0,
+                appState.game.gameFormat
             );
             cycle.setBonusPartAnswer(0, false, 0);
             cycle.setBonusPartAnswer(1, false, 0);
@@ -357,9 +365,11 @@ describe("SheetsTests", () => {
                     player,
                     position,
                     points: 15,
+                    isLastWord: false,
                 },
                 0,
-                0
+                0,
+                appState.game.gameFormat
             );
             cycle.setBonusPartAnswer(0, true, 10);
             cycle.setBonusPartAnswer(1, true, 10);
@@ -410,17 +420,21 @@ describe("SheetsTests", () => {
                     player: secondTeamPlayer,
                     position: negPosition,
                     points: -5,
+                    isLastWord: false,
                 },
-                0
+                0,
+                appState.game.gameFormat
             );
             cycle.addCorrectBuzz(
                 {
                     player: firstTeamPlayer,
                     position: correctPosition,
                     points: 10,
+                    isLastWord: true,
                 },
                 0,
-                0
+                0,
+                appState.game.gameFormat
             );
             cycle.setBonusPartAnswer(0, true, 10);
             cycle.setBonusPartAnswer(1, true, 10);
@@ -469,8 +483,10 @@ describe("SheetsTests", () => {
                     player,
                     position,
                     points: -5,
+                    isLastWord: false,
                 },
-                0
+                0,
+                appState.game.gameFormat
             );
 
             const reason = "I was right";
@@ -491,8 +507,10 @@ describe("SheetsTests", () => {
                     player,
                     position,
                     points: -5,
+                    isLastWord: false,
                 },
-                0
+                0,
+                appState.game.gameFormat
             );
 
             const reason = "I was surely right";
@@ -514,9 +532,11 @@ describe("SheetsTests", () => {
                     player,
                     position,
                     points: 10,
+                    isLastWord: false,
                 },
                 0,
-                0
+                0,
+                appState.game.gameFormat
             );
 
             cycle.setBonusPartAnswer(0, false, 10);
@@ -543,9 +563,11 @@ describe("SheetsTests", () => {
                     player,
                     position,
                     points: 10,
+                    isLastWord: false,
                 },
                 0,
-                0
+                0,
+                appState.game.gameFormat
             );
 
             cycle.setBonusPartAnswer(0, true, 10);
@@ -572,9 +594,11 @@ describe("SheetsTests", () => {
                     player,
                     position,
                     points: 10,
+                    isLastWord: false,
                 },
                 0,
-                0
+                0,
+                appState.game.gameFormat
             );
 
             cycle.setBonusPartAnswer(0, false, 10);
@@ -848,9 +872,11 @@ describe("SheetsTests", () => {
                     player,
                     position,
                     points: 10,
+                    isLastWord: false,
                 },
                 20,
-                0
+                0,
+                appState.game.gameFormat
             );
 
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));

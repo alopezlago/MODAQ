@@ -107,16 +107,20 @@ describe("QBJTests", () => {
                             player: firstTeamPlayers[0],
                             points: -5,
                             position: 0,
+                            isLastWord: false,
                         },
-                        0
+                        0,
+                        game.gameFormat
                     );
                     game.cycles[0].addWrongBuzz(
                         {
                             player: secondTeamPlayer,
                             points: 0,
                             position: 1,
+                            isLastWord: true,
                         },
-                        0
+                        0,
+                        game.gameFormat
                     );
 
                     game.cycles[1].addCorrectBuzz(
@@ -124,9 +128,11 @@ describe("QBJTests", () => {
                             player: firstTeamPlayers[1],
                             points: 10,
                             position: 1,
+                            isLastWord: true,
                         },
                         1,
-                        0
+                        0,
+                        game.gameFormat
                     );
                     game.cycles[1].setBonusPartAnswer(1, true, 10);
 
@@ -135,9 +141,11 @@ describe("QBJTests", () => {
                             player: secondTeamPlayer,
                             points: 15,
                             position: 0,
+                            isLastWord: true,
                         },
                         2,
-                        1
+                        1,
+                        game.gameFormat
                     );
                 },
                 (match) => {
@@ -168,9 +176,11 @@ describe("QBJTests", () => {
                             player: firstTeamPlayers[0],
                             points: 10,
                             position: 1,
+                            isLastWord: true,
                         },
                         1,
-                        0
+                        0,
+                        game.gameFormat
                     );
 
                     // 10
@@ -179,9 +189,11 @@ describe("QBJTests", () => {
                             player: secondTeamPlayer,
                             points: 10,
                             position: 1,
+                            isLastWord: true,
                         },
                         2,
-                        1
+                        1,
+                        game.gameFormat
                     );
                     game.cycles[1].setBonusPartAnswer(1, true, 10);
 
@@ -191,9 +203,11 @@ describe("QBJTests", () => {
                             player: secondTeamPlayer,
                             points: 15,
                             position: 0,
+                            isLastWord: true,
                         },
                         3,
-                        2
+                        2,
+                        game.gameFormat
                     );
                     for (let i = 0; i < 3; i++) {
                         game.cycles[2].setBonusPartAnswer(i, true, 10);
@@ -247,8 +261,10 @@ describe("QBJTests", () => {
                             player: firstTeamPlayers[2],
                             points: -5,
                             position: 0,
+                            isLastWord: false,
                         },
-                        0
+                        0,
+                        game.gameFormat
                     );
                 },
                 (match) => {
@@ -371,16 +387,20 @@ describe("QBJTests", () => {
                             player: secondTeamPlayer,
                             points: -5,
                             position: 0,
+                            isLastWord: false,
                         },
-                        0
+                        0,
+                        game.gameFormat
                     );
                     game.cycles[1].addWrongBuzz(
                         {
                             player: secondTeamPlayer,
                             points: 0,
                             position: 1,
+                            isLastWord: true,
                         },
-                        1
+                        1,
+                        game.gameFormat
                     );
 
                     game.cycles[2].addCorrectBuzz(
@@ -388,9 +408,11 @@ describe("QBJTests", () => {
                             player: secondTeamPlayer,
                             points: 10,
                             position: 1,
+                            isLastWord: true,
                         },
                         2,
-                        0
+                        0,
+                        game.gameFormat
                     );
 
                     game.cycles[3].addCorrectBuzz(
@@ -398,9 +420,11 @@ describe("QBJTests", () => {
                             player: secondTeamPlayer,
                             points: 15,
                             position: 0,
+                            isLastWord: true,
                         },
                         3,
-                        1
+                        1,
+                        game.gameFormat
                     );
 
                     game.cycles[4].addCorrectBuzz(
@@ -408,9 +432,11 @@ describe("QBJTests", () => {
                             player: secondTeamPlayer,
                             points: 15,
                             position: 0,
+                            isLastWord: false,
                         },
                         4,
-                        1
+                        1,
+                        game.gameFormat
                     );
 
                     game.cycles[5].addCorrectBuzz(
@@ -418,9 +444,11 @@ describe("QBJTests", () => {
                             player: firstTeamPlayers[0],
                             points: 10,
                             position: 1,
+                            isLastWord: true,
                         },
                         5,
-                        1
+                        1,
+                        game.gameFormat
                     );
                 },
                 (match) => {
@@ -490,8 +518,10 @@ describe("QBJTests", () => {
                             player: firstTeamPlayers[0],
                             points: -5,
                             position: 0,
+                            isLastWord: false,
                         },
-                        0
+                        0,
+                        game.gameFormat
                     );
                     game.cycles[0].addTossupProtest(firstTeamPlayers[0].teamName, 0, 0, firstProtest);
 
@@ -500,8 +530,10 @@ describe("QBJTests", () => {
                             player: secondTeamPlayer,
                             points: 0,
                             position: 1,
+                            isLastWord: true,
                         },
-                        1
+                        1,
+                        game.gameFormat
                     );
                     game.cycles[1].addTossupProtest(secondTeamPlayer.teamName, 1, 1, secondProtest);
                 },
@@ -535,9 +567,11 @@ describe("QBJTests", () => {
                             player: firstTeamPlayers[0],
                             points: 10,
                             position: 0,
+                            isLastWord: false,
                         },
                         0,
-                        0
+                        0,
+                        game.gameFormat
                     );
                     game.cycles[0].addBonusProtest(0, 0, firstProtest, firstTeamPlayers[0].teamName);
 
@@ -546,9 +580,11 @@ describe("QBJTests", () => {
                             player: firstTeamPlayers[0],
                             points: 10,
                             position: 1,
+                            isLastWord: true,
                         },
                         1,
-                        1
+                        1,
+                        game.gameFormat
                     );
 
                     game.cycles[1].setBonusPartAnswer(2, /* isCorrect */ true, 10);
@@ -582,9 +618,11 @@ describe("QBJTests", () => {
                             player: firstTeamPlayers[0],
                             points: 10,
                             position: 1,
+                            isLastWord: true,
                         },
                         1,
-                        0
+                        0,
+                        game.gameFormat
                     );
                 },
                 (match) => {
@@ -618,9 +656,11 @@ describe("QBJTests", () => {
                             player: firstTeamPlayers[0],
                             points: 10,
                             position: 1,
+                            isLastWord: true,
                         },
                         1,
-                        0
+                        0,
+                        game.gameFormat
                     );
                     game.cycles[0].addThrownOutBonus(0);
                     game.cycles[0].setBonusPartAnswer(0, /* isCorrect */ true, 10);
@@ -652,8 +692,5 @@ describe("QBJTests", () => {
                 }
             );
         });
-
-        // TODO: Add more tests when QBJ requirements are more fleshed out. Some tests that we need are
-        // - Thrown out bonuses
     });
 });

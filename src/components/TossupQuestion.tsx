@@ -29,7 +29,8 @@ export const TossupQuestion = observer(
         const questionWords: JSX.Element[] = [];
         let wordIndex = 0;
         let nonwordIndex = 0;
-        for (const word of questionFormattedTexts) {
+        for (let i = 0; i < questionFormattedTexts.length; i++) {
+            const word: IFormattedText[] = questionFormattedTexts[i];
             const fullText = word.reduce((result, text) => result + text.text, "");
 
             // We need to skip over power markers and not count them when we calculate buzz points
@@ -48,6 +49,7 @@ export const TossupQuestion = observer(
                     key={index == undefined ? `qnw_${nonwordIndex}` : `qw_${index}`}
                     correctBuzzIndex={correctBuzzIndex}
                     index={index}
+                    isLastWord={i === questionFormattedTexts.length - 1}
                     selectedWordRef={selectedWordRef}
                     word={word}
                     wrongBuzzIndexes={wrongBuzzIndexes}
@@ -124,6 +126,7 @@ const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
                 appState={props.appState}
                 bonusIndex={props.bonusIndex}
                 cycle={props.cycle}
+                isLastWord={props.isLastWord}
                 wordIndex={props.index}
                 target={props.selectedWordRef}
                 tossup={props.tossup}
@@ -161,6 +164,7 @@ interface IQuestionWordWrapperProps {
     correctBuzzIndex: number;
     cycle: Cycle;
     index?: number;
+    isLastWord: boolean;
     selectedWordRef: React.MutableRefObject<null>;
     tossup: Tossup;
     tossupNumber: number;

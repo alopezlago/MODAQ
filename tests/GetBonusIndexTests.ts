@@ -41,7 +41,8 @@ describe("GameStateTests", () => {
                     position: 1,
                     points: -5,
                 },
-                0
+                0,
+                game.gameFormat
             );
 
             for (let i = 0; i < game.cycles.length; i++) {
@@ -59,7 +60,8 @@ describe("GameStateTests", () => {
                     points: 10,
                 },
                 0,
-                0
+                0,
+                game.gameFormat
             );
 
             expect(game.getBonusIndex(0)).to.equal(0);
@@ -77,7 +79,8 @@ describe("GameStateTests", () => {
                     points: 10,
                 },
                 0,
-                0
+                0,
+                game.gameFormat
             );
             game.cycles[buzzCycleIndex].addThrownOutBonus(0);
 
@@ -97,7 +100,8 @@ describe("GameStateTests", () => {
                     points: 10,
                 },
                 0,
-                0
+                0,
+                game.gameFormat
             );
             cycle.addThrownOutBonus(0);
             cycle.addThrownOutBonus(1);
@@ -118,7 +122,8 @@ describe("GameStateTests", () => {
                     points: 10,
                 },
                 0,
-                0
+                0,
+                game.gameFormat
             );
 
             game.cycles[secondBuzzCycleIndex].addCorrectBuzz(
@@ -128,7 +133,8 @@ describe("GameStateTests", () => {
                     points: 10,
                 },
                 1,
-                1
+                1,
+                game.gameFormat
             );
 
             expect(game.getBonusIndex(buzzCycleIndex)).to.equal(0);
@@ -147,7 +153,8 @@ describe("GameStateTests", () => {
                     points: 10,
                 },
                 0,
-                0
+                0,
+                game.gameFormat
             );
 
             // Throw out all but the last two bonuses. The next cycle will use the last bonus, then we can verify that
@@ -165,7 +172,8 @@ describe("GameStateTests", () => {
                     points: 10,
                 },
                 1,
-                game.packet.bonuses.length - 1
+                game.packet.bonuses.length - 1,
+                game.gameFormat
             );
 
             expect(game.getBonusIndex(buzzCycleIndex)).to.equal(game.packet.bonuses.length - 2);

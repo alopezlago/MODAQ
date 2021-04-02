@@ -4,6 +4,7 @@ import { format } from "mobx-sync";
 import * as CompareUtils from "./CompareUtils";
 import * as Events from "./Events";
 import { IBuzzMarker } from "./IBuzzMarker";
+import { IGameFormat } from "./IGameFormat";
 import { IPlayer } from "./TeamState";
 
 // TODO: Build a stack of cycle changes, so we can support undo. This might mean that mobx isn't the best store for it
@@ -135,7 +136,7 @@ export class Cycle implements ICycle {
         return buzzes;
     }
 
-    public addCorrectBuzz(marker: IBuzzMarker, tossupIndex: number, bonusIndex: number): void {
+    public addCorrectBuzz(marker: IBuzzMarker, tossupIndex: number, bonusIndex: number, gameFormat: IGameFormat): void {
         this.removeTeamsBuzzes(marker.player.teamName, tossupIndex);
 
         this.correctBuzz = {
@@ -156,10 +157,11 @@ export class Cycle implements ICycle {
         // We should also remove all buzzes after this one, since a correct buzz should be the last one.
         if (this.wrongBuzzes) {
             this.wrongBuzzes = this.wrongBuzzes.filter((buzz) => buzz.marker.position <= marker.position);
+            this.updateNeg(gameFormat);
         }
     }
 
-    public addWrongBuzz(marker: IBuzzMarker, tossupIndex: number, buzzIndex?: number): void {
+    public addWrongBuzz(marker: IBuzzMarker, tossupIndex: number, gameFormat: IGameFormat): void {
         if (this.wrongBuzzes == undefined) {
             this.wrongBuzzes = [];
         }
@@ -170,12 +172,16 @@ export class Cycle implements ICycle {
             marker,
             tossupIndex,
         };
-        if (buzzIndex == undefined) {
+
+        const buzzIndex: number = this.wrongBuzzes.findIndex((buzz) => buzz.marker.position > marker.position);
+        if (buzzIndex === -1) {
             this.wrongBuzzes.push(event);
         } else {
             const laterBuzzes: Events.ITossupAnswerEvent[] = this.wrongBuzzes.splice(buzzIndex);
             this.wrongBuzzes.push(event);
             this.wrongBuzzes = this.wrongBuzzes.concat(laterBuzzes);
+
+            this.updateNeg(gameFormat);
         }
 
         // Clear the correct buzz if it's before this one, since the correct buzz should be the last one
@@ -384,12 +390,19 @@ export class Cycle implements ICycle {
         }
     }
 
-    public removeWrongBuzz(player: IPlayer): void {
-        // TODO: If there's a no penalty buzz and it's not at the end, it must be converted to a neg
-        // https://github.com/alopezlago/MODAQ/issues/58
-        // We won't know that it's not at the end unless we add another field to BuzzMarker (celerity?)
-        this.wrongBuzzes = this.wrongBuzzes?.filter((buzz) => !CompareUtils.playersEqual(buzz.marker.player, player));
+    public removeWrongBuzz(player: IPlayer, gameFormat: IGameFormat): void {
+        if (this.wrongBuzzes == undefined) {
+            return;
+        }
 
+        const oldLength: number = this.wrongBuzzes.length;
+        this.wrongBuzzes = this.wrongBuzzes.filter((buzz) => !CompareUtils.playersEqual(buzz.marker.player, player));
+        if (this.wrongBuzzes.length === oldLength) {
+            // Nothing left, don't make any changes
+            return;
+        }
+
+        this.updateNeg(gameFormat);
         this.removeTossupProtest(player.teamName);
     }
 
@@ -445,6 +458,21 @@ export class Cycle implements ICycle {
             this.removeCorrectBuzz();
         } else if (this.wrongBuzzes && this.wrongBuzzes.findIndex((buzz) => filter(buzz)) >= 0) {
             this.wrongBuzzes = this.wrongBuzzes.filter((buzz) => !filter(buzz));
+        }
+    }
+
+    // If we changed the order of wrongBuzzes, it may be that the first wrong buzz is different, so we need to
+    // reset the point values for the wrong ubzzes
+    private updateNeg(gameFormat: IGameFormat): void {
+        if (
+            this.wrongBuzzes != undefined &&
+            this.wrongBuzzes.length > 0 &&
+            this.wrongBuzzes[0].marker.isLastWord === false
+        ) {
+            this.wrongBuzzes[0].marker.points = gameFormat.negValue;
+            for (let i = 1; i < this.wrongBuzzes.length; i++) {
+                this.wrongBuzzes[i].marker.points = 0;
+            }
         }
     }
 }

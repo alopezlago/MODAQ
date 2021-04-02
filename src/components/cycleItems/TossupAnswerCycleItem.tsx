@@ -12,7 +12,7 @@ export const TossupAnswerCycleItem = observer(
             if (props.buzz.marker.points > 0) {
                 props.cycle.removeCorrectBuzz();
             } else {
-                props.cycle.removeWrongBuzz(props.buzz.marker.player);
+                props.cycle.removeWrongBuzz(props.buzz.marker.player, props.gameFormat);
             }
         };
 

@@ -4,6 +4,7 @@ declare const __BUILD_VERSION__: string;
 
 export const ACFGameFormat: IGameFormat = {
     bonusesBounceBack: false,
+    displayName: "ACF",
     minimumOvertimeQuestionCount: 1,
     overtimeIncludesBonuses: false,
     negValue: -5,
@@ -14,19 +15,27 @@ export const ACFGameFormat: IGameFormat = {
     version: __BUILD_VERSION__,
 };
 
-export const StandardPowersMACFGameFormat: IGameFormat = createMACFGameFormat([15], ["(*)"]);
+export const StandardPowersMACFGameFormat: IGameFormat = {
+    ...createMACFGameFormat([15], ["(*)"]),
+    displayName: "mACF with powers",
+};
 
 export const UndefinedGameFormat: IGameFormat = {
     bonusesBounceBack: false,
+    displayName: "Sample format",
     minimumOvertimeQuestionCount: 1,
     overtimeIncludesBonuses: false,
     negValue: -5,
     pointsForPowers: [15],
     powerMarkers: ["(*)"],
-    regulationTossupCount: 99,
-    timeoutsAllowed: 99,
+    regulationTossupCount: 999,
+    timeoutsAllowed: 999,
     version: __BUILD_VERSION__,
 };
+
+export function getKnownFormats(): IGameFormat[] {
+    return [ACFGameFormat, StandardPowersMACFGameFormat, UndefinedGameFormat];
+}
 
 export function createMACFGameFormat(pointsForPowers: number[], powerMarkers: string[]): IGameFormat {
     return {
@@ -49,6 +58,10 @@ export function getUpgradedFormatVersion(format: IGameFormat): IGameFormat {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const formatObject: any = format as any;
     for (const key of Object.keys(defaultFormat)) {
+        if (key === "displayName") {
+            continue;
+        }
+
         if (formatObject[key] == undefined) {
             throw new Error(
                 `Game format uses an incompatible version (${format.version}). Unknown setting "${key}". Export your game and see if you can update your format manually, or reset your game`
