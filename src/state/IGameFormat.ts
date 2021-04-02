@@ -15,6 +15,7 @@ export interface IGameFormat {
     powerMarkers: string[];
 
     timeoutsAllowed: number;
+    displayName: string;
 
     // Tells us which version this format was generated from, so we can support backwards compatibility if possible
     version: string;

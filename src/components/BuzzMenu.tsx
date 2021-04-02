@@ -151,7 +151,8 @@ function onCorrectClicked(
                 points: props.tossup.getPointsAtPosition(props.appState.game.gameFormat, item.data.props.wordIndex),
             },
             props.tossupNumber - 1,
-            props.bonusIndex
+            props.bonusIndex,
+            props.appState.game.gameFormat
         );
     }
 }
@@ -168,9 +169,10 @@ function onWrongClicked(
     const { props, player } = { ...item.data };
 
     if (item.checked) {
-        props.cycle.removeWrongBuzz(player);
+        props.cycle.removeWrongBuzz(player, props.appState.game.gameFormat);
     } else if (item.checked === false) {
         const marker: IBuzzMarker = {
+            isLastWord: props.isLastWord,
             player,
             position: props.wordIndex,
             points: 0,
@@ -192,7 +194,7 @@ function onWrongClicked(
             }
         }
 
-        props.cycle.addWrongBuzz(marker, props.tossupNumber - 1);
+        props.cycle.addWrongBuzz(marker, props.tossupNumber - 1, props.appState.game.gameFormat);
     }
 }
 
@@ -222,6 +224,7 @@ export interface IBuzzMenuProps {
     appState: AppState;
     bonusIndex: number;
     cycle: Cycle;
+    isLastWord: boolean;
     wordIndex: number;
     target: React.MutableRefObject<null>;
     tossup: Tossup;

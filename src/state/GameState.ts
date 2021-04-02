@@ -36,7 +36,6 @@ export class GameState {
             scores: computed({ requiresReaction: true }),
             addPlayer: action,
             addPlayers: action,
-            addPlayersForDemo: action,
             clear: action,
             loadPacket: action,
             setCycles: action,
@@ -74,6 +73,8 @@ export class GameState {
         let firstTeamPreviousScore = 0;
         let secondTeamPreviousScore = 0;
 
+        // We should keep calculating until we're at the end of regulation or there are more tiebreaker questions
+        // needed
         for (const cycle of this.cycles) {
             const scoreChange: [number, number] = this.getScoreChangeFromCycle(cycle);
             firstTeamPreviousScore += scoreChange[0];
@@ -90,10 +91,6 @@ export class GameState {
 
     public addPlayers(players: Player[]): void {
         this.players.push(...players);
-    }
-
-    public addPlayersForDemo(teamName: string, ...names: string[]): void {
-        this.players.push(...names.map((name) => new Player(name, teamName, /* isStarter */ true)));
     }
 
     public clear(): void {

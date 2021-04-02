@@ -86,7 +86,7 @@ const modalProps: IModalProps = {
     },
 };
 
-const rostersInputStyles: Partial<ITextFieldStyles> = { root: { marginRight: 10 } };
+const rostersInputStyles: Partial<ITextFieldStyles> = { root: { marginRight: 10, width: "75%" } };
 
 export const NewGameDialog = observer(
     (props: INewGameDialogProps): JSX.Element => {
@@ -155,6 +155,7 @@ const NewGameDialogBody = observer(
             [uiState]
         );
 
+        // TODO: Have a selector for the format. Will need a way to specify a custom format
         return (
             <>
                 <Pivot aria-label="Game type" onLinkClick={pivotClickHandler}>
@@ -173,6 +174,7 @@ const NewGameDialogBody = observer(
                 </Pivot>
                 <Separator />
                 <PacketLoader appState={props.appState} onLoad={packetLoadHandler} />
+                <Separator />
             </>
         );
     }
