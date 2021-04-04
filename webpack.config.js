@@ -1,5 +1,6 @@
 const path = require("path");
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
 const BundleAnalyzerPlugin = require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 const webpack = require("webpack");
 
@@ -14,9 +15,6 @@ const prodEntries = ["./src/index"];
 const dateString = new Date().toISOString();
 const version = dateString.substring(0, dateString.indexOf("T"));
 
-// TODO: Use the Define plugin to setup variables like the Google Sheets app client ID, etc. from the file system or
-// from env variables. See https://webpack.js.org/plugins/define-plugin/
-
 module.exports = (env, argv) => {
     const isProduction = argv.mode === "production";
 
@@ -24,11 +22,6 @@ module.exports = (env, argv) => {
         // TODO: Make a full decision on source-map vs nosources-source-map
         devtool: isProduction ? "nosources-source-map" : "eval-cheap-module-source-map",
         entry: isProduction ? prodEntries : devEntries,
-        output: {
-            path: path.join(__dirname, "out"),
-            filename: "bundle.js",
-            publicPath: "/out/",
-        },
         resolve: {
             extensions: [".ts", ".tsx", ".js"],
             alias: {
@@ -58,6 +51,17 @@ module.exports = (env, argv) => {
                 },
             ],
         },
+        optimization: {
+            splitChunks: {
+                chunks: "all",
+            },
+        },
+        output: {
+            path: path.join(__dirname, "out"),
+            filename: "[name].bundle.js",
+            publicPath: "/out/",
+            clean: true,
+        },
         plugins: [
             new ForkTsCheckerWebpackPlugin({
                 eslint: {
@@ -76,6 +80,10 @@ module.exports = (env, argv) => {
                     "https://yetanotherpacketparserazurefunction.azurewebsites.net/api/ParseDocx"
                 ),
             }),
+            new HtmlWebpackPlugin({
+                title: "Moderator Assistant for Quizbowl",
+                template: "./indexTemplate.html",
+            }),
         ],
     };
 
@@ -92,6 +100,7 @@ module.exports = (env, argv) => {
             // TODO: Add script and option to
             // You only need https: true if testing the Google Sheets work
             https: true,
+            publicPath: "/out/",
             watchContentBase: true,
             watchOptions: {
                 aggregateTimeout: 1000,
