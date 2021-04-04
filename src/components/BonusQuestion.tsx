@@ -2,18 +2,22 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { mergeStyleSets } from "@fluentui/react";
 
+import * as FormattedTextParser from "src/parser/FormattedTextParser";
 import { BonusQuestionPart } from "./BonusQuestionPart";
 import { Bonus } from "src/state/PacketState";
 import { Cycle } from "src/state/Cycle";
 import { CancelButton } from "./CancelButton";
 import { BonusProtestDialog } from "./dialogs/BonusProtestDialog";
 import { AppState } from "src/state/AppState";
+import { FormattedText } from "./FormattedText";
+import { IFormattedText } from "src/parser/IFormattedText";
 
 export const BonusQuestion = observer((props: IBonusQuestionProps) => {
     const classes: IBonusQuestionClassNames = getClassNames(!props.inPlay);
     const throwOutClickHandler: () => void = React.useCallback(() => {
         props.cycle.addThrownOutBonus(props.bonusIndex);
     }, [props]);
+    const formattedLeadin: IFormattedText[] = FormattedTextParser.parseFormattedText(props.bonus.leadin.trim());
 
     const parts: JSX.Element[] = props.bonus.parts.map((bonusPartProps, index) => {
         return (
@@ -31,7 +35,7 @@ export const BonusQuestion = observer((props: IBonusQuestionProps) => {
         <div className={classes.bonusContainer}>
             <BonusProtestDialog appState={props.appState} bonus={props.bonus} cycle={props.cycle} />
             <div className={classes.bonusText}>
-                <div className={classes.bonusLeadin}>{props.bonus.leadin}</div>
+                <FormattedText className={classes.bonusLeadin} segments={formattedLeadin} />
                 {parts}
             </div>
             <div>
@@ -62,7 +66,7 @@ const getClassNames = (disabled?: boolean): IBonusQuestionClassNames =>
             justifyContent: "space-between",
         },
         bonusLeadin: [
-            { paddingLeft: "24px" },
+            { paddingLeft: "24px", display: "inline-block" },
             disabled && {
                 color: "#888888",
             },
