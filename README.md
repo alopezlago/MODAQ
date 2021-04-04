@@ -38,7 +38,7 @@ If you want to use the Dev Server (required for testing Google Sheets), then do 
 
 -   Run `npm start`
 
--   Open https://localhost.quizbowlreader.com:8080/
+-   Open https://localhost.quizbowlreader.com:8080/out
 
     -   You can either accept the HTTPS certificate, or you can create your own self-signed cert and add it to a certificate store. This PowerShell script should work in Windows, although I haven't tried this approach yet.
 

@@ -330,6 +330,7 @@ function getActionSubMenuItems(
 function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
     const game: GameState = props.appState.game;
+    const disabled: boolean = props.appState.game.cycles.length === 0;
 
     items.push({
         key: "exportSheets",
@@ -337,8 +338,7 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
         onClick: () => {
             exportToSheets(props);
         },
-        // TODO: This won't update when gapi does; it needs another prop change
-        disabled: window.gapi == undefined,
+        disabled,
     });
 
     // We have to compute this outside of onClick because MobX will complain about reading orderedBuzzes outside of a
@@ -354,6 +354,7 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
     items.push({
         key: "copyBuzzPoints",
         text: "Copy buzz points",
+        disabled,
         onClick: () => {
             // Translate this to lines of tab delimited strings
             const buzzPointsText: string = buzzPoints.join("\n");
@@ -364,6 +365,7 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
     items.push({
         key: "downloadJson",
         text: "Export to JSON...",
+        disabled,
         onClick: () => {
             props.appState.uiState.dialogState.showExportToJsonDialog();
         },
