@@ -16,7 +16,7 @@ describe("CycleTests", () => {
                 position: 10,
                 points: 10,
             };
-            cycle.addCorrectBuzz(marker, 2, 1, GameFormats.UndefinedGameFormat);
+            cycle.addCorrectBuzz(marker, 2, GameFormats.UndefinedGameFormat, 1);
 
             expect(cycle.correctBuzz).to.exist;
             expect(cycle.correctBuzz?.tossupIndex).to.equal(2);
@@ -42,7 +42,7 @@ describe("CycleTests", () => {
                 position: 10,
                 points: 10,
             };
-            cycle.addCorrectBuzz(marker, 2, 1, GameFormats.UndefinedGameFormat);
+            cycle.addCorrectBuzz(marker, 2, GameFormats.UndefinedGameFormat, 1);
 
             expect(cycle.correctBuzz).to.exist;
             expect(cycle.correctBuzz?.tossupIndex).to.equal(2);
@@ -81,7 +81,7 @@ describe("CycleTests", () => {
                 points: 10,
                 isLastWord: false,
             };
-            cycle.addCorrectBuzz(marker, 1, 0, GameFormats.UndefinedGameFormat);
+            cycle.addCorrectBuzz(marker, 1, GameFormats.UndefinedGameFormat, 0);
 
             expect(cycle.correctBuzz).to.exist;
             expect(cycle.correctBuzz?.tossupIndex).to.equal(1);

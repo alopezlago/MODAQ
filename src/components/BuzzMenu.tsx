@@ -144,6 +144,13 @@ function onCorrectClicked(
     if (item.checked) {
         props.cycle.removeCorrectBuzz();
     } else if (item?.checked === false) {
+        // Don't include a bonus index if there should be no bonus for this correct buzz
+        // TODO: This is an example of logic that should be moved out of the view layer
+        const bonusIndex: number | undefined =
+            props.appState.game.gameFormat.overtimeIncludesBonuses ||
+            props.appState.uiState.cycleIndex < props.appState.game.gameFormat.regulationTossupCount
+                ? props.bonusIndex
+                : undefined;
         props.cycle.addCorrectBuzz(
             {
                 player,
@@ -151,8 +158,8 @@ function onCorrectClicked(
                 points: props.tossup.getPointsAtPosition(props.appState.game.gameFormat, item.data.props.wordIndex),
             },
             props.tossupNumber - 1,
-            props.bonusIndex,
-            props.appState.game.gameFormat
+            props.appState.game.gameFormat,
+            bonusIndex
         );
     }
 }

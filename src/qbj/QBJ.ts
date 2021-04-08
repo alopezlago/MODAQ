@@ -75,8 +75,8 @@ export function ToQBJ(game: GameState): string {
     const teamChangesInCycle: Set<string> = new Set<string>();
 
     // TODO: Loop until the end of the game, not the number of cycles
-    for (let i = 0; i < game.cycles.length; i++) {
-        const cycle: Cycle = game.cycles[i];
+    for (let i = 0; i < game.playableCycles.length; i++) {
+        const cycle: Cycle = game.playableCycles[i];
         // Seems like this will have a lot of overlap with CycleItemList
 
         // Ordering of events is
@@ -291,7 +291,7 @@ export function ToQBJ(game: GameState): string {
 
     const match: IMatch = {
         // TODO: This should take the format into account, based on how long regular matches should be, plus overtimes
-        tossups_read: game.cycles.length,
+        tossups_read: game.playableCycles.length,
         match_teams: [...matchTeams.values()],
         match_questions: matchQuestions,
         notes: noteworthyEvents.length > 0 ? noteworthyEvents.join("\n") : undefined,

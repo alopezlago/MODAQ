@@ -60,7 +60,7 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
             ExportState.Error
         );
         return;
-    } else if (game.cycles.length > sheetsGenerator.cyclesLimit) {
+    } else if (game.playableCycles.length > sheetsGenerator.cyclesLimit) {
         uiState.sheetsState.setExportStatus(
             {
                 isError: true,
@@ -196,7 +196,7 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
     );
 
     let row = sheetsGenerator.firstCycleRow;
-    for (const cycle of game.cycles) {
+    for (const cycle of game.playableCycles) {
         // We must do substitutions first, since we may have to clear an Out value if a player was subbed in on the
         // first tossup
         if (cycle.subs) {
@@ -287,7 +287,7 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
 
     // If we need to log the tossups we've heard, log them here
     valueRanges = valueRanges.concat(
-        sheetsGenerator.getValuesForTossupsHeard(game.cycles, game.players, playerToColumnMapping, sheetName)
+        sheetsGenerator.getValuesForTossupsHeard(game.playableCycles, game.players, playerToColumnMapping, sheetName)
     );
 
     if (uiState.sheetsState.exportState == undefined) {

@@ -63,7 +63,7 @@ export const CycleChooser = observer((props: ICycleChooserProps) => {
         <DefaultButton
             key="nextButton"
             onClick={onNextClickHandler}
-            disabled={!nextDisabled(props)}
+            disabled={nextDisabled(props)}
             styles={nextButtonStyle}
         >
             Next &rarr;
@@ -103,7 +103,11 @@ export const CycleChooser = observer((props: ICycleChooserProps) => {
 
 // We may want these to be computed properties in the UIState, but that requires it having access to the packet
 function nextDisabled(props: ICycleChooserProps): boolean {
-    return props.appState.uiState.cycleIndex + 1 < props.appState.game.packet.tossups.length;
+    const nextCycleIndex: number = props.appState.uiState.cycleIndex + 1;
+    return (
+        nextCycleIndex >= props.appState.game.packet.tossups.length ||
+        nextCycleIndex >= props.appState.game.playableCycles.length
+    );
 }
 
 function onProposedQuestionNumberBlur(event: React.FocusEvent<HTMLInputElement>, props: ICycleChooserProps): void {

@@ -6,6 +6,7 @@ import { IMatch } from "src/qbj/QBJ";
 import { GameState } from "src/state/GameState";
 import { Bonus, PacketState, Tossup } from "src/state/PacketState";
 import { Player } from "src/state/TeamState";
+import { IGameFormat } from "src/state/IGameFormat";
 
 const firstTeamPlayers: Player[] = [
     new Player("Alice", "A", /* isStarter */ true),
@@ -131,8 +132,8 @@ describe("QBJTests", () => {
                             isLastWord: true,
                         },
                         1,
-                        0,
-                        game.gameFormat
+                        game.gameFormat,
+                        0
                     );
                     game.cycles[1].setBonusPartAnswer(1, true, 10);
 
@@ -144,8 +145,8 @@ describe("QBJTests", () => {
                             isLastWord: true,
                         },
                         2,
-                        1,
-                        game.gameFormat
+                        game.gameFormat,
+                        1
                     );
                 },
                 (match) => {
@@ -179,8 +180,8 @@ describe("QBJTests", () => {
                             isLastWord: true,
                         },
                         1,
-                        0,
-                        game.gameFormat
+                        game.gameFormat,
+                        0
                     );
 
                     // 10
@@ -192,8 +193,8 @@ describe("QBJTests", () => {
                             isLastWord: true,
                         },
                         2,
-                        1,
-                        game.gameFormat
+                        game.gameFormat,
+                        1
                     );
                     game.cycles[1].setBonusPartAnswer(1, true, 10);
 
@@ -206,8 +207,8 @@ describe("QBJTests", () => {
                             isLastWord: true,
                         },
                         3,
-                        2,
-                        game.gameFormat
+                        game.gameFormat,
+                        2
                     );
                     for (let i = 0; i < 3; i++) {
                         game.cycles[2].setBonusPartAnswer(i, true, 10);
@@ -411,8 +412,8 @@ describe("QBJTests", () => {
                             isLastWord: true,
                         },
                         2,
-                        0,
-                        game.gameFormat
+                        game.gameFormat,
+                        0
                     );
 
                     game.cycles[3].addCorrectBuzz(
@@ -423,8 +424,8 @@ describe("QBJTests", () => {
                             isLastWord: true,
                         },
                         3,
-                        1,
-                        game.gameFormat
+                        game.gameFormat,
+                        1
                     );
 
                     game.cycles[4].addCorrectBuzz(
@@ -435,8 +436,8 @@ describe("QBJTests", () => {
                             isLastWord: false,
                         },
                         4,
-                        1,
-                        game.gameFormat
+                        game.gameFormat,
+                        1
                     );
 
                     game.cycles[5].addCorrectBuzz(
@@ -447,8 +448,8 @@ describe("QBJTests", () => {
                             isLastWord: true,
                         },
                         5,
-                        1,
-                        game.gameFormat
+                        game.gameFormat,
+                        1
                     );
                 },
                 (match) => {
@@ -570,8 +571,8 @@ describe("QBJTests", () => {
                             isLastWord: false,
                         },
                         0,
-                        0,
-                        game.gameFormat
+                        game.gameFormat,
+                        0
                     );
                     game.cycles[0].addBonusProtest(0, 0, firstProtest, firstTeamPlayers[0].teamName);
 
@@ -583,8 +584,8 @@ describe("QBJTests", () => {
                             isLastWord: true,
                         },
                         1,
-                        1,
-                        game.gameFormat
+                        game.gameFormat,
+                        1
                     );
 
                     game.cycles[1].setBonusPartAnswer(2, /* isCorrect */ true, 10);
@@ -621,8 +622,8 @@ describe("QBJTests", () => {
                             isLastWord: true,
                         },
                         1,
-                        0,
-                        game.gameFormat
+                        game.gameFormat,
+                        0
                     );
                 },
                 (match) => {
@@ -659,8 +660,8 @@ describe("QBJTests", () => {
                             isLastWord: true,
                         },
                         1,
-                        0,
-                        game.gameFormat
+                        game.gameFormat,
+                        0
                     );
                     game.cycles[0].addThrownOutBonus(0);
                     game.cycles[0].setBonusPartAnswer(0, /* isCorrect */ true, 10);
@@ -689,6 +690,35 @@ describe("QBJTests", () => {
                         0,
                         0,
                     ]);
+                }
+            );
+        });
+        it("Only exports up to the final question", () => {
+            verifyQBJ(
+                (game) => {
+                    const newGameFormat: IGameFormat = { ...GameFormats.UndefinedGameFormat, regulationTossupCount: 1 };
+                    game.setGameFormat(newGameFormat);
+
+                    game.cycles[0].addCorrectBuzz(
+                        {
+                            player: firstTeamPlayers[1],
+                            points: 10,
+                            position: 1,
+                            isLastWord: true,
+                        },
+                        1,
+                        game.gameFormat,
+                        0
+                    );
+                    game.cycles[0].setBonusPartAnswer(1, true, 10);
+                },
+                (match) => {
+                    expect(match.tossups_read).to.equal(1);
+                    expect(match.match_questions.map((q) => q.question_number)).to.deep.equal([1]);
+
+                    const cycleBuzzes: QBJ.IMatchQuestionBuzz[] = match.match_questions[0].buzzes;
+                    expect(cycleBuzzes.length).to.equal(1);
+                    verifyBuzz(cycleBuzzes[0], firstTeamPlayers[1], 1, 10);
                 }
             );
         });

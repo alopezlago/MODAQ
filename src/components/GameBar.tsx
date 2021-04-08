@@ -343,7 +343,7 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
 
     // We have to compute this outside of onClick because MobX will complain about reading orderedBuzzes outside of a
     // reaction otherwise
-    const buzzPoints: string[] = game.cycles.map((cycle) => {
+    const buzzPoints: string[] = game.playableCycles.map((cycle) => {
         const result: string[] = [];
         for (const buzz of cycle.orderedBuzzes) {
             result.push(buzz.marker.position.toString(10));

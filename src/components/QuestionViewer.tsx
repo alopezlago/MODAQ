@@ -21,13 +21,25 @@ export const QuestionViewer = observer((props: IQuestionViewerProps) => {
     const game: GameState = props.appState.game;
     const uiState: UIState = props.appState.uiState;
 
-    const cycle: Cycle = game.cycles[uiState.cycleIndex];
+    const cycle: Cycle = game.playableCycles[uiState.cycleIndex];
     const tossupIndex: number = game.getTossupIndex(uiState.cycleIndex);
     const bonusIndex: number = game.getBonusIndex(uiState.cycleIndex);
 
     let bonus: JSX.Element | null = null;
     const bonusInPlay: boolean = cycle.correctBuzz != undefined;
-    if (bonusIndex >= 0 && bonusIndex < game.packet.bonuses.length) {
+    if (bonusIndex < 0 || bonusIndex >= game.packet.bonuses.length) {
+        // TODO: Allow users to add more bonuses (maybe by appending to a packet)
+        bonus = (
+            <div>
+                No more bonuses available. You will need to get some bonuses elsewhere, and tally this score elsewhere.
+            </div>
+        );
+    } else if (
+        !game.gameFormat.overtimeIncludesBonuses &&
+        uiState.cycleIndex >= game.gameFormat.regulationTossupCount
+    ) {
+        bonus = <div>No bonuses during overtime.</div>;
+    } else {
         bonus = (
             <BonusQuestion
                 appState={props.appState}
@@ -36,13 +48,6 @@ export const QuestionViewer = observer((props: IQuestionViewerProps) => {
                 cycle={cycle}
                 inPlay={bonusInPlay}
             />
-        );
-    } else {
-        // TODO: Allow users to add more bonuses (maybe by appending to a packet)
-        bonus = (
-            <div>
-                No more bonuses available. You will need to get some bonuses elsewhere, and tally this score elsewhere.
-            </div>
         );
     }
 
