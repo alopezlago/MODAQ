@@ -58,7 +58,7 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
             // TODO: Consider adding autoruns for scores/finalScore so we don't have to consider what context it's run
             // in. Just swapping scores with a scores2 value set during autorun didn't work initially, so it needs more
             // investigation.
-            data: props.appState.game.scores,
+            data: props.appState.game.scores.slice(0, props.appState.game.playableCycles.length),
         },
     ];
 
@@ -68,7 +68,7 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
                 checkboxVisibility={CheckboxVisibility.hidden}
                 selectionMode={SelectionMode.single}
                 columns={columns}
-                items={props.appState.game.cycles}
+                items={props.appState.game.playableCycles}
                 onActiveItemChanged={activeItemChangedHandler}
                 onRenderItemColumn={renderColumnHandler}
             />

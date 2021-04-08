@@ -13,6 +13,8 @@ export class GameState {
 
     public players: Player[];
 
+    // In general we should prefer playableCycles, but if it's used for updating cycles directly, then
+    // using cycles can be safer since we're less likely to have an issue with the index being out of bounds
     // Anything with methods/computeds not at the top level needs to use @format to deserialize correctly
     @format((deserializedArray: ICycle[]) => {
         return deserializedArray.map((deserializedCycle) => {
@@ -32,8 +34,9 @@ export class GameState {
             packet: observable,
             players: observable,
             isLoaded: computed,
-            finalScore: computed({ requiresReaction: true }),
-            scores: computed({ requiresReaction: true }),
+            finalScore: computed,
+            playableCycles: computed,
+            scores: computed,
             addPlayer: action,
             addPlayers: action,
             clear: action,
@@ -65,7 +68,29 @@ export class GameState {
     }
 
     public get finalScore(): [number, number] {
-        return this.scores[this.cycles.length - 1];
+        return this.scores[this.playableCycles.length - 1];
+    }
+
+    public get playableCycles(): Cycle[] {
+        if (this.cycles.length <= this.gameFormat.regulationTossupCount) {
+            return this.cycles;
+        }
+
+        // Check if the game is tied at the end of regulation and at the end of each overtime period. If it isn't,
+        // return those cycles.
+        const score: [number, number][] = this.scores;
+        for (
+            let i = this.gameFormat.regulationTossupCount - 1;
+            i < this.cycles.length;
+            i += this.gameFormat.minimumOvertimeQuestionCount
+        ) {
+            const scoreAtInterval: [number, number] = score[i];
+            if (scoreAtInterval[0] !== scoreAtInterval[1]) {
+                return this.cycles.slice(0, i + 1);
+            }
+        }
+
+        return this.cycles;
     }
 
     public get scores(): [number, number][] {

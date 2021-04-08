@@ -58,7 +58,7 @@ export class Cycle implements ICycle {
             tossupProtests: observable,
             thrownOutTossups: observable,
             thrownOutBonuses: observable,
-            orderedBuzzes: computed({ requiresReaction: true }),
+            orderedBuzzes: computed,
             addCorrectBuzz: action,
             addWrongBuzz: action,
             addBonusProtest: action,
@@ -136,7 +136,12 @@ export class Cycle implements ICycle {
         return buzzes;
     }
 
-    public addCorrectBuzz(marker: IBuzzMarker, tossupIndex: number, bonusIndex: number, gameFormat: IGameFormat): void {
+    public addCorrectBuzz(
+        marker: IBuzzMarker,
+        tossupIndex: number,
+        gameFormat: IGameFormat,
+        bonusIndex?: number
+    ): void {
         this.removeTeamsBuzzes(marker.player.teamName, tossupIndex);
 
         this.correctBuzz = {
@@ -146,7 +151,10 @@ export class Cycle implements ICycle {
 
         // TODO: we need a method to set the bonus index (either passed in here or with a new method)
         // Alternatively, we can remove the tossupIndex/bonusIndex, and fill it in whenever we have to serialize this
-        if (this.bonusAnswer == undefined || marker.player.teamName !== this.bonusAnswer.receivingTeamName) {
+        if (
+            bonusIndex != undefined &&
+            (this.bonusAnswer == undefined || marker.player.teamName !== this.bonusAnswer.receivingTeamName)
+        ) {
             this.bonusAnswer = {
                 bonusIndex,
                 correctParts: [],

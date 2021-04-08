@@ -1,5 +1,7 @@
 import { assert, expect } from "chai";
+// import { flow, runInAction } from "mobx";
 
+import * as GameFormats from "src/state/GameFormats";
 import * as Sheets from "src/sheets/Sheets";
 import { ISheetsApi, ISheetsBatchGetResponse, ISheetsGetResponse } from "src/sheets/ISheetsApi";
 import { AppState } from "src/state/AppState";
@@ -11,6 +13,7 @@ import { IStatus } from "src/IStatus";
 import { Player } from "src/state/TeamState";
 import { PacketState, Tossup, Bonus } from "src/state/PacketState";
 import { Cycle } from "src/state/Cycle";
+import { IGameFormat } from "src/state/IGameFormat";
 
 const defaultMockSheetsApi: ISheetsApi = {
     batchClear: () => Promise.resolve({ isError: false, status: "" }),
@@ -36,6 +39,7 @@ function createMockApi(mocks: Partial<ISheetsApi>): ISheetsApi {
 }
 
 function createAppStateForExport(sheetType: SheetType = SheetType.Lifsheets): AppState {
+    //return runInAction(() => {
     const appState: AppState = {
         game: new GameState(),
         uiState: new UIState(),
@@ -59,12 +63,14 @@ function createAppStateForExport(sheetType: SheetType = SheetType.Lifsheets): Ap
     appState.uiState.sheetsState.setSheetType(sheetType);
 
     return appState;
+    //});
 }
 
 function createAppStateForRosters(
     sheetType: SheetType = SheetType.Lifsheets,
     pendingGameType: PendingGameType = PendingGameType.Lifsheets
 ): AppState {
+    //return runInAction(() => {
     const appState: AppState = {
         game: new GameState(),
         uiState: new UIState(),
@@ -76,6 +82,7 @@ function createAppStateForRosters(
     appState.uiState.sheetsState.setSheetType(sheetType);
 
     return appState;
+    //});
 }
 
 function findPlayerOnTeam(appState: AppState, teamName: string): Player {
@@ -93,6 +100,7 @@ async function verifyExportToSheetsError(
     sheetsApi: ISheetsApi,
     errorMessage: string
 ): Promise<void> {
+    //await flow(function* () {
     await Sheets.exportToSheet(appState, sheetsApi);
 
     expect(appState.uiState.sheetsState).to.exist;
@@ -100,6 +108,7 @@ async function verifyExportToSheetsError(
     expect(appState.uiState.sheetsState.exportStatus?.isError).to.be.true;
     expect(appState.uiState.sheetsState.exportStatus?.status).to.equal(errorMessage);
     expect(appState.uiState.sheetsState.exportState).to.equal(ExportState.Error);
+    //});
 }
 
 async function verifyExportToSheetSuccess(
@@ -118,6 +127,8 @@ async function verifyExportToSheetSuccess(
         },
     });
 
+    // We use a flow here since it greatly simplifies using a reactive context with asynchronous code.
+    // See https://www.mobxjs.com/best/actions.html and https://mobx.js.org/actions.html#using-flow-instead-of-async--await-
     await Sheets.exportToSheet(appState, mockSheetsApi);
 
     expect(appState.uiState.sheetsState).to.exist;
@@ -263,8 +274,8 @@ describe("SheetsTests", () => {
                     isLastWord: false,
                 },
                 0,
-                0,
-                appState.game.gameFormat
+                appState.game.gameFormat,
+                0
             );
             cycle.setBonusPartAnswer(0, true, 10);
             cycle.setBonusPartAnswer(1, true, 10);
@@ -315,8 +326,8 @@ describe("SheetsTests", () => {
                     isLastWord: false,
                 },
                 0,
-                0,
-                appState.game.gameFormat
+                appState.game.gameFormat,
+                0
             );
             cycle.setBonusPartAnswer(0, false, 0);
             cycle.setBonusPartAnswer(1, false, 0);
@@ -368,8 +379,8 @@ describe("SheetsTests", () => {
                     isLastWord: false,
                 },
                 0,
-                0,
-                appState.game.gameFormat
+                appState.game.gameFormat,
+                0
             );
             cycle.setBonusPartAnswer(0, true, 10);
             cycle.setBonusPartAnswer(1, true, 10);
@@ -433,8 +444,8 @@ describe("SheetsTests", () => {
                     isLastWord: true,
                 },
                 0,
-                0,
-                appState.game.gameFormat
+                appState.game.gameFormat,
+                0
             );
             cycle.setBonusPartAnswer(0, true, 10);
             cycle.setBonusPartAnswer(1, true, 10);
@@ -535,8 +546,8 @@ describe("SheetsTests", () => {
                     isLastWord: false,
                 },
                 0,
-                0,
-                appState.game.gameFormat
+                appState.game.gameFormat,
+                0
             );
 
             cycle.setBonusPartAnswer(0, false, 10);
@@ -566,8 +577,8 @@ describe("SheetsTests", () => {
                     isLastWord: false,
                 },
                 0,
-                0,
-                appState.game.gameFormat
+                appState.game.gameFormat,
+                0
             );
 
             cycle.setBonusPartAnswer(0, true, 10);
@@ -597,8 +608,8 @@ describe("SheetsTests", () => {
                     isLastWord: false,
                 },
                 0,
-                0,
-                appState.game.gameFormat
+                appState.game.gameFormat,
+                0
             );
 
             cycle.setBonusPartAnswer(0, false, 10);
@@ -875,8 +886,8 @@ describe("SheetsTests", () => {
                     isLastWord: false,
                 },
                 20,
-                0,
-                appState.game.gameFormat
+                appState.game.gameFormat,
+                0
             );
 
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
@@ -930,6 +941,79 @@ describe("SheetsTests", () => {
         });
         it("Twenty-nine cycles fails (UCSDSheets)", async () => {
             await pastTossupLimitCycleFailsTest(SheetType.UCSDSheets, 29);
+        });
+
+        const onlyPlayedCyclesWrittenTest = async (
+            sheetType: SheetType,
+            verifyCells: (ranges: gapi.client.sheets.ValueRange[], position: number) => void
+        ) => {
+            const appState: AppState = createAppStateForExport(sheetType);
+            const gameFormat: IGameFormat = { ...GameFormats.UndefinedGameFormat, regulationTossupCount: 1 };
+            appState.game.setGameFormat(gameFormat);
+
+            const packet: PacketState = new PacketState();
+            const tossups: Tossup[] = [];
+            for (let i = 0; i < 10; i++) {
+                tossups.push(new Tossup(`TU${i}`, `Answer ${i}`));
+            }
+
+            packet.setTossups(tossups);
+
+            appState.game.loadPacket(packet);
+
+            const player: Player = findPlayerOnTeam(appState, "Alpha");
+            const position = 3;
+            appState.game.cycles[0].addCorrectBuzz(
+                {
+                    player,
+                    position,
+                    points: 10,
+                    isLastWord: false,
+                },
+                0,
+                appState.game.gameFormat,
+                0
+            );
+
+            // Make sure the second buzz isn't recorded
+            appState.game.cycles[1].addWrongBuzz(
+                {
+                    player,
+                    position,
+                    points: -5,
+                    isLastWord: false,
+                },
+                1,
+                gameFormat
+            );
+
+            await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
+        };
+
+        it("Only played cycles written (Lifsheets)", async () => {
+            await onlyPlayedCyclesWrittenTest(SheetType.Lifsheets, (ranges, position) => {
+                verifyCell(ranges, "B8", 10);
+                verifyCell(ranges, "AJ8", position);
+
+                expect(ranges.find((range) => range.range != undefined && range.range.indexOf("B9") >= 0)).to.be
+                    .undefined;
+            });
+        });
+        it("Only played cycles written (TJSheets)", async () => {
+            await onlyPlayedCyclesWrittenTest(SheetType.TJSheets, (ranges) => {
+                verifyCell(ranges, "C4", 10);
+
+                expect(ranges.find((range) => range.range != undefined && range.range.indexOf("C5") >= 0)).to.be
+                    .undefined;
+            });
+        });
+        it("Only played cycles written (UCSDSheets)", async () => {
+            await onlyPlayedCyclesWrittenTest(SheetType.UCSDSheets, (ranges) => {
+                verifyCell(ranges, "C4", 10);
+
+                expect(ranges.find((range) => range.range != undefined && range.range.indexOf("C5") >= 0)).to.be
+                    .undefined;
+            });
         });
 
         it("Filled in sheet gets prompted", async () => {

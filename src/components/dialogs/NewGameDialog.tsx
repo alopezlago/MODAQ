@@ -31,6 +31,7 @@ import {
     assertNever,
 } from "@fluentui/react";
 
+import * as GameFormats from "src/state/GameFormats";
 import * as NewGameValidator from "src/state/NewGameValidator";
 import * as PendingNewGameUtils from "src/state/PendingNewGameUtils";
 import * as Sheets from "src/sheets/Sheets";
@@ -435,6 +436,9 @@ function onSubmit(props: INewGameDialogProps): void {
     game.addPlayers(firstTeamPlayers.filter((player) => player.name !== ""));
     game.addPlayers(secondTeamPlayers.filter((player) => player.name !== ""));
     game.loadPacket(pendingNewGame.packet);
+
+    // TODO: Set the format from the user interface
+    game.setGameFormat(GameFormats.UndefinedGameFormat);
 
     // If we've just started a new game, start at the beginning
     uiState.setCycleIndex(0);
