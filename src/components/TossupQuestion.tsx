@@ -187,6 +187,7 @@ const getClassNames = (): ITossupQuestionClassNames =>
         },
         tossupQuestionText: {
             display: "inline-block",
+            marginBottom: "0.25em",
         },
         tossupText: {
             maxHeight: "37.5vh",

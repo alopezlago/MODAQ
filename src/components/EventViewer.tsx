@@ -1,7 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { DetailsList, CheckboxVisibility, SelectionMode, IColumn } from "@fluentui/react/lib/DetailsList";
-import { Label } from "@fluentui/react/lib/Label";
+import { DetailsList, CheckboxVisibility, SelectionMode, IColumn, Label, Text } from "@fluentui/react";
 import { mergeStyleSets } from "@fluentui/react";
 
 import { CycleItemList } from "./cycleItems/CycleItemList";
@@ -91,7 +90,7 @@ function onRenderItemColumn(item: Cycle, gameFormat: IGameFormat, index: number,
             return (
                 <>
                     <CycleItemList cycle={item} gameFormat={gameFormat} />
-                    <Label>{`(${scoreInCurrentCycle[0]} - ${scoreInCurrentCycle[1]})`}</Label>
+                    <Text>{`(${scoreInCurrentCycle[0]} - ${scoreInCurrentCycle[1]})`}</Text>
                 </>
             );
         default:
@@ -116,7 +115,7 @@ const getClassNames = (): IEventViewerClassNames =>
     mergeStyleSets({
         eventViewerContainer: {
             border: "1px black solid",
-            maxHeight: "80vh",
+            maxHeight: "90vh",
             overflowY: "auto",
         },
     });

@@ -22,7 +22,7 @@ export const StandardPowersMACFGameFormat: IGameFormat = {
 
 export const UndefinedGameFormat: IGameFormat = {
     bonusesBounceBack: false,
-    displayName: "Sample format",
+    displayName: "Freeform format",
     minimumOvertimeQuestionCount: 1,
     overtimeIncludesBonuses: false,
     negValue: -5,

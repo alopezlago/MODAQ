@@ -31,7 +31,6 @@ import {
     assertNever,
 } from "@fluentui/react";
 
-import * as GameFormats from "src/state/GameFormats";
 import * as NewGameValidator from "src/state/NewGameValidator";
 import * as PendingNewGameUtils from "src/state/PendingNewGameUtils";
 import * as Sheets from "src/sheets/Sheets";
@@ -45,8 +44,9 @@ import { IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
 import { AppState } from "src/state/AppState";
 import { FromRostersTeamEntry } from "../FromRostersTeamEntry";
 import { SheetType } from "src/state/SheetState";
+import { GameFormatPicker } from "../GameFormatPicker";
 
-const playerListHeight = "25vh";
+const playerListHeight = "20vh";
 
 const enum PivotKey {
     Manual = "M",
@@ -176,6 +176,7 @@ const NewGameDialogBody = observer(
                 <Separator />
                 <PacketLoader appState={props.appState} onLoad={packetLoadHandler} />
                 <Separator />
+                <GameFormatPicker appState={props.appState} />
             </>
         );
     }
@@ -438,7 +439,7 @@ function onSubmit(props: INewGameDialogProps): void {
     game.loadPacket(pendingNewGame.packet);
 
     // TODO: Set the format from the user interface
-    game.setGameFormat(GameFormats.UndefinedGameFormat);
+    game.setGameFormat(pendingNewGame.gameFormat);
 
     // If we've just started a new game, start at the beginning
     uiState.setCycleIndex(0);
@@ -489,7 +490,7 @@ const getClassNames = (): INewGameDialogBodyClassNames =>
             display: "grid",
             gridTemplateColumns: "5fr 1fr 5fr",
             marginBottom: 20,
-            height: "40vh",
+            minHeight: "25vh",
             width: "50vw",
         },
         teamNameInput: {

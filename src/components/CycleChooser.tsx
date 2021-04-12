@@ -59,14 +59,11 @@ export const CycleChooser = observer((props: ICycleChooserProps) => {
             &larr; Previous
         </DefaultButton>
     );
+
+    const nextButtonText: string = shouldNextButtonExport(props) ? "Export..." : "Next →";
     const nextButton: JSX.Element = (
-        <DefaultButton
-            key="nextButton"
-            onClick={onNextClickHandler}
-            disabled={nextDisabled(props)}
-            styles={nextButtonStyle}
-        >
-            Next &rarr;
+        <DefaultButton key="nextButton" onClick={onNextClickHandler} styles={nextButtonStyle}>
+            {nextButtonText}
         </DefaultButton>
     );
 
@@ -101,13 +98,9 @@ export const CycleChooser = observer((props: ICycleChooserProps) => {
     );
 });
 
-// We may want these to be computed properties in the UIState, but that requires it having access to the packet
-function nextDisabled(props: ICycleChooserProps): boolean {
+function shouldNextButtonExport(props: ICycleChooserProps): boolean {
     const nextCycleIndex: number = props.appState.uiState.cycleIndex + 1;
-    return (
-        nextCycleIndex >= props.appState.game.packet.tossups.length ||
-        nextCycleIndex >= props.appState.game.playableCycles.length
-    );
+    return nextCycleIndex >= props.appState.game.playableCycles.length;
 }
 
 function onProposedQuestionNumberBlur(event: React.FocusEvent<HTMLInputElement>, props: ICycleChooserProps): void {
@@ -124,7 +117,16 @@ function onProposedQuestionNumberKeyDown(
 }
 
 function onNextClick(props: ICycleChooserProps): void {
-    props.appState.uiState.nextCycle();
+    if (shouldNextButtonExport(props)) {
+        // If they use Sheets, show the Export Sheets dialog. Otherwise, show the Export JSON dialog
+        if (props.appState.uiState.sheetsState.sheetId != undefined) {
+            props.appState.uiState.createPendingSheet();
+        } else {
+            props.appState.uiState.dialogState.showExportToJsonDialog();
+        }
+    } else {
+        props.appState.uiState.nextCycle();
+    }
 }
 
 function onPreviousClick(props: ICycleChooserProps): void {
