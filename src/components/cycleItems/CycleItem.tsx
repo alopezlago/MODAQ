@@ -1,6 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { Label } from "@fluentui/react/lib/Label";
+import { Text } from "@fluentui/react";
 import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
 
 import { CancelButton } from "../CancelButton";
@@ -14,7 +14,7 @@ export const CycleItem = observer(
 
         return (
             <div className={classes.eventContainer}>
-                <Label className={classes.eventText}>{props.text}</Label>
+                <Text variant="medium">{props.text}</Text>
                 {deleteButton}
             </div>
         );
@@ -30,7 +30,6 @@ export interface ICycleItemProps {
 
 interface ICycleItemClassNames {
     eventContainer: string;
-    eventText: string;
 }
 
 const getClassNames = memoizeFunction(
@@ -38,9 +37,6 @@ const getClassNames = memoizeFunction(
         mergeStyleSets({
             eventContainer: {
                 marginBottom: 5,
-            },
-            eventText: {
-                display: "inline",
             },
         })
 );

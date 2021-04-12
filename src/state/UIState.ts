@@ -2,6 +2,7 @@ import { assertNever } from "@fluentui/react";
 import { makeAutoObservable } from "mobx";
 import { ignore } from "mobx-sync";
 
+import * as GameFormats from "./GameFormats";
 import { ITossupProtestEvent, IBonusProtestEvent } from "./Events";
 import { IPendingNewGame, PendingGameType } from "./IPendingNewGame";
 import { PacketState } from "./PacketState";
@@ -11,6 +12,7 @@ import { IStatus } from "../IStatus";
 import { IPendingSheet } from "./IPendingSheet";
 import { Cycle } from "./Cycle";
 import { DialogState } from "./DialogState";
+import { IGameFormat } from "./IGameFormat";
 
 // TODO: Look into breaking this up into individual UI component states. Lots of pendingX fields, which could be in
 // their own
@@ -117,6 +119,7 @@ export class UIState {
             firstTeamPlayers,
             secondTeamPlayers,
             type: PendingGameType.Manual,
+            gameFormat: GameFormats.ACFGameFormat,
         };
     }
 
@@ -161,6 +164,14 @@ export class UIState {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
             this.pendingNewGame.cycles = cycles;
         }
+    }
+
+    public setPendingNewGameFormat(gameFormat: IGameFormat): void {
+        if (this.pendingNewGame == undefined) {
+            return;
+        }
+
+        this.pendingNewGame.gameFormat = gameFormat;
     }
 
     public setPendingNewGameRosters(players: Player[]): void {
@@ -324,6 +335,7 @@ export class UIState {
 
     public resetSheetsId(): void {
         this.sheetsState.sheetId = undefined;
+        this.sheetsState.sheetType = undefined;
     }
 
     public showBuzzMenu(): void {

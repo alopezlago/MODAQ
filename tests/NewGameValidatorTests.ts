@@ -1,5 +1,6 @@
 import { expect } from "chai";
 
+import * as GameFormats from "src/state/GameFormats";
 import * as NewGameValidator from "src/state/NewGameValidator";
 import { IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
 import { Player } from "src/state/TeamState";
@@ -74,6 +75,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("No players in second team", () => {
@@ -82,6 +84,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayers: [],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("No players in first team (Lifsheets)", () => {
@@ -93,6 +96,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayersFromRosters: playersFromRosters,
                 packet: defaultPacket,
                 type: PendingGameType.Lifsheets,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("No players in second team (Lifsheets)", () => {
@@ -104,6 +108,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayersFromRosters: [],
                 packet: defaultPacket,
                 type: PendingGameType.Lifsheets,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("Only empty names in first team", () => {
@@ -112,6 +117,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("Only empty names in second team", () => {
@@ -120,6 +126,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayers: [new Player("", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("Only empty names in first team (Lifsheets)", () => {
@@ -132,6 +139,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayersFromRosters,
                 packet: defaultPacket,
                 type: PendingGameType.Lifsheets,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("Only empty names in second team (Lifsheets)", () => {
@@ -144,6 +152,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayersFromRosters,
                 packet: defaultPacket,
                 type: PendingGameType.Lifsheets,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("Same player names in first team", () => {
@@ -152,6 +161,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("Same player names in second team", () => {
@@ -164,6 +174,7 @@ describe("NewGameValidatorTests", () => {
                 ],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("Same player names in first team (Lifsheets)", () => {
@@ -180,6 +191,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayersFromRosters,
                 packet: defaultPacket,
                 type: PendingGameType.Lifsheets,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("Same player names in second team (Lifsheets)", () => {
@@ -196,6 +208,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayersFromRosters,
                 packet: defaultPacket,
                 type: PendingGameType.Lifsheets,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("No starters in first team", () => {
@@ -204,6 +217,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("No starters in second team", () => {
@@ -212,6 +226,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayers: [new Player("b", "2", false)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("No starters in first team (Lifsheets)", () => {
@@ -224,6 +239,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayersFromRosters,
                 packet: defaultPacket,
                 type: PendingGameType.Lifsheets,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("No starters in second team (Lifsheets)", () => {
@@ -236,6 +252,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayersFromRosters,
                 packet: defaultPacket,
                 type: PendingGameType.Lifsheets,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("No tossups in packet", () => {
@@ -244,6 +261,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: new PacketState(),
                 type: PendingGameType.Manual,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("Empty cycles array", () => {
@@ -253,6 +271,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
+                gameFormat: GameFormats.UndefinedGameFormat,
             });
         });
         it("Valid game (Manual)", () => {
@@ -261,6 +280,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
+                gameFormat: GameFormats.UndefinedGameFormat,
             };
             const result: boolean = NewGameValidator.isValid(newGame);
             expect(result).to.be.true;
@@ -272,6 +292,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
+                gameFormat: GameFormats.UndefinedGameFormat,
             };
             const result: boolean = NewGameValidator.isValid(newGame);
             expect(result).to.be.true;
@@ -286,6 +307,7 @@ describe("NewGameValidatorTests", () => {
                 secondTeamPlayersFromRosters: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Lifsheets,
+                gameFormat: GameFormats.UndefinedGameFormat,
             };
             const result: boolean = NewGameValidator.isValid(newGame);
             expect(result).to.be.true;

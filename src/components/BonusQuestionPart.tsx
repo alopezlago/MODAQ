@@ -19,6 +19,7 @@ export const BonusQuestionPart = observer((props: IBonusQuestionPartProps) => {
 
     const bonusPartText: IFormattedText[] = FormattedTextParser.parseFormattedText(props.bonusPart.question);
 
+    // TODO: We should try to resize the checkbox's box to match the font size
     return (
         <div className="bonus-part">
             <div className={classes.bonusPartQuestionText}>
@@ -65,7 +66,7 @@ interface IBonusQuestionPartClassNames {
 const getClassNames = (disabled: boolean): IBonusQuestionPartClassNames =>
     mergeStyleSets({
         bonusPartQuestionText: [
-            { display: "flex", marginTop: 5 },
+            { display: "flex", marginTop: "1em" },
             disabled && {
                 color: "#888888",
             },
@@ -77,5 +78,6 @@ const getClassNames = (disabled: boolean): IBonusQuestionPartClassNames =>
         ],
         bonusPartAnswerSpacer: {
             padding: "0 24px",
+            margin: "0.25em 0 1em 0",
         },
     });
