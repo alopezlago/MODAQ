@@ -61,7 +61,8 @@ describe("GameStateTests", () => {
                 },
                 0,
                 game.gameFormat,
-                0
+                0,
+                defaultPacket.bonuses[0].parts.length
             );
 
             expect(game.getBonusIndex(0)).to.equal(0);
@@ -80,7 +81,8 @@ describe("GameStateTests", () => {
                 },
                 0,
                 game.gameFormat,
-                0
+                0,
+                defaultPacket.bonuses[0].parts.length
             );
             game.cycles[buzzCycleIndex].addThrownOutBonus(0);
 
@@ -101,7 +103,8 @@ describe("GameStateTests", () => {
                 },
                 0,
                 game.gameFormat,
-                0
+                0,
+                defaultPacket.bonuses[0].parts.length
             );
             cycle.addThrownOutBonus(0);
             cycle.addThrownOutBonus(1);
@@ -123,7 +126,8 @@ describe("GameStateTests", () => {
                 },
                 0,
                 game.gameFormat,
-                0
+                0,
+                defaultPacket.bonuses[0].parts.length
             );
 
             game.cycles[secondBuzzCycleIndex].addCorrectBuzz(
@@ -134,7 +138,8 @@ describe("GameStateTests", () => {
                 },
                 1,
                 game.gameFormat,
-                1
+                1,
+                defaultPacket.bonuses[1].parts.length
             );
 
             expect(game.getBonusIndex(buzzCycleIndex)).to.equal(0);
@@ -154,7 +159,8 @@ describe("GameStateTests", () => {
                 },
                 0,
                 game.gameFormat,
-                0
+                0,
+                defaultPacket.bonuses[0].parts.length
             );
 
             // Throw out all but the last two bonuses. The next cycle will use the last bonus, then we can verify that
@@ -173,7 +179,8 @@ describe("GameStateTests", () => {
                 },
                 1,
                 game.gameFormat,
-                game.packet.bonuses.length - 1
+                game.packet.bonuses.length - 1,
+                defaultPacket.bonuses[game.packet.bonuses.length - 1].parts.length
             );
 
             expect(game.getBonusIndex(buzzCycleIndex)).to.equal(game.packet.bonuses.length - 2);

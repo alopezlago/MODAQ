@@ -133,9 +133,10 @@ describe("QBJTests", () => {
                         },
                         1,
                         game.gameFormat,
-                        0
+                        0,
+                        3
                     );
-                    game.cycles[1].setBonusPartAnswer(1, true, 10);
+                    game.cycles[1].setBonusPartAnswer(1, firstTeamPlayers[1].teamName, 10);
 
                     game.cycles[2].addCorrectBuzz(
                         {
@@ -146,7 +147,8 @@ describe("QBJTests", () => {
                         },
                         2,
                         game.gameFormat,
-                        1
+                        1,
+                        3
                     );
                 },
                 (match) => {
@@ -181,7 +183,8 @@ describe("QBJTests", () => {
                         },
                         1,
                         game.gameFormat,
-                        0
+                        0,
+                        3
                     );
 
                     // 10
@@ -194,9 +197,10 @@ describe("QBJTests", () => {
                         },
                         2,
                         game.gameFormat,
-                        1
+                        1,
+                        3
                     );
-                    game.cycles[1].setBonusPartAnswer(1, true, 10);
+                    game.cycles[1].setBonusPartAnswer(1, secondTeamPlayer.teamName, 10);
 
                     // 30 on the bonus
                     game.cycles[2].addCorrectBuzz(
@@ -208,10 +212,11 @@ describe("QBJTests", () => {
                         },
                         3,
                         game.gameFormat,
-                        2
+                        2,
+                        3
                     );
                     for (let i = 0; i < 3; i++) {
-                        game.cycles[2].setBonusPartAnswer(i, true, 10);
+                        game.cycles[2].setBonusPartAnswer(i, secondTeamPlayer.teamName, 10);
                     }
                 },
                 (match) => {
@@ -249,6 +254,78 @@ describe("QBJTests", () => {
                     expect(match.match_teams.length).to.equal(2);
                     expect(match.match_teams[0].bonus_points).to.equal(0);
                     expect(match.match_teams[1].bonus_points).to.equal(40);
+                }
+            );
+        });
+        it("Bonus bouncebacks", () => {
+            verifyQBJ(
+                (game) => {
+                    game.setGameFormat({ ...game.gameFormat, bonusesBounceBack: true });
+
+                    // 0 on the bonus
+                    game.cycles[0].addCorrectBuzz(
+                        {
+                            player: firstTeamPlayers[0],
+                            points: 10,
+                            position: 1,
+                            isLastWord: true,
+                        },
+                        1,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+
+                    // Receiving team get 10, other team gets 10
+                    game.cycles[0].setBonusPartAnswer(0, firstTeamPlayers[0].teamName, 10);
+                    game.cycles[0].setBonusPartAnswer(2, secondTeamPlayer.teamName, 10);
+
+                    // Receiving team gets 0, other team gets 20
+                    game.cycles[1].addCorrectBuzz(
+                        {
+                            player: secondTeamPlayer,
+                            points: 10,
+                            position: 1,
+                            isLastWord: true,
+                        },
+                        2,
+                        game.gameFormat,
+                        1,
+                        3
+                    );
+                    game.cycles[1].setBonusPartAnswer(0, firstTeamPlayers[0].teamName, 10);
+                    game.cycles[1].setBonusPartAnswer(1, firstTeamPlayers[0].teamName, 10);
+                },
+                (match) => {
+                    expect(match.tossups_read).to.equal(4);
+                    expect(match.match_questions.map((q) => q.question_number)).to.deep.equal([1, 2, 3, 4]);
+
+                    const firstCycleBonus: QBJ.IMatchQuestionBonus | undefined = match.match_questions[0].bonus;
+                    if (firstCycleBonus == undefined) {
+                        assert.fail("First bonus wasn't found");
+                    }
+
+                    expect(firstCycleBonus.question?.parts).to.equal(3);
+                    expect(firstCycleBonus.question?.question_number).to.equal(1);
+                    expect(firstCycleBonus.question?.type).to.equal("bonus");
+                    expect(firstCycleBonus.parts.map((p) => p.controlled_points)).deep.equals([10, 0, 0]);
+                    expect(firstCycleBonus.parts.map((p) => p.bounceback_points)).deep.equals([0, 0, 10]);
+
+                    const secondCycleBonus: QBJ.IMatchQuestionBonus | undefined = match.match_questions[1].bonus;
+                    if (secondCycleBonus == undefined) {
+                        assert.fail("Second bonus wasn't found");
+                    }
+                    expect(secondCycleBonus.question?.parts).to.equal(3);
+                    expect(secondCycleBonus.question?.question_number).to.equal(2);
+                    expect(secondCycleBonus.question?.type).to.equal("bonus");
+                    expect(secondCycleBonus.parts.map((p) => p.controlled_points)).deep.equals([0, 0, 0]);
+                    expect(secondCycleBonus.parts.map((p) => p.bounceback_points)).deep.equals([10, 10, 0]);
+
+                    expect(match.match_teams.length).to.equal(2);
+                    expect(match.match_teams[0].bonus_points).to.equal(10);
+                    expect(match.match_teams[0].bonus_bounceback_points).to.equal(20);
+                    expect(match.match_teams[1].bonus_points).to.equal(0);
+                    expect(match.match_teams[1].bonus_bounceback_points).to.equal(10);
                 }
             );
         });
@@ -413,7 +490,8 @@ describe("QBJTests", () => {
                         },
                         2,
                         game.gameFormat,
-                        0
+                        0,
+                        3
                     );
 
                     game.cycles[3].addCorrectBuzz(
@@ -425,7 +503,8 @@ describe("QBJTests", () => {
                         },
                         3,
                         game.gameFormat,
-                        1
+                        1,
+                        3
                     );
 
                     game.cycles[4].addCorrectBuzz(
@@ -437,7 +516,8 @@ describe("QBJTests", () => {
                         },
                         4,
                         game.gameFormat,
-                        1
+                        1,
+                        3
                     );
 
                     game.cycles[5].addCorrectBuzz(
@@ -449,7 +529,8 @@ describe("QBJTests", () => {
                         },
                         5,
                         game.gameFormat,
-                        1
+                        1,
+                        3
                     );
                 },
                 (match) => {
@@ -572,7 +653,8 @@ describe("QBJTests", () => {
                         },
                         0,
                         game.gameFormat,
-                        0
+                        0,
+                        3
                     );
                     game.cycles[0].addBonusProtest(0, 0, firstProtest, firstTeamPlayers[0].teamName);
 
@@ -585,10 +667,11 @@ describe("QBJTests", () => {
                         },
                         1,
                         game.gameFormat,
-                        1
+                        1,
+                        3
                     );
 
-                    game.cycles[1].setBonusPartAnswer(2, /* isCorrect */ true, 10);
+                    game.cycles[1].setBonusPartAnswer(2, firstTeamPlayers[0].teamName, 10);
                     game.cycles[1].addBonusProtest(1, 2, secondProtest, secondTeamPlayer.teamName);
                 },
                 (match) => {
@@ -623,7 +706,8 @@ describe("QBJTests", () => {
                         },
                         1,
                         game.gameFormat,
-                        0
+                        0,
+                        3
                     );
                 },
                 (match) => {
@@ -661,10 +745,11 @@ describe("QBJTests", () => {
                         },
                         1,
                         game.gameFormat,
-                        0
+                        0,
+                        3
                     );
                     game.cycles[0].addThrownOutBonus(0);
-                    game.cycles[0].setBonusPartAnswer(0, /* isCorrect */ true, 10);
+                    game.cycles[0].setBonusPartAnswer(0, firstTeamPlayers[0].teamName, 10);
                 },
                 (match) => {
                     expect(match.tossups_read).to.equal(4);
@@ -708,9 +793,10 @@ describe("QBJTests", () => {
                         },
                         1,
                         game.gameFormat,
-                        0
+                        0,
+                        3
                     );
-                    game.cycles[0].setBonusPartAnswer(1, true, 10);
+                    game.cycles[0].setBonusPartAnswer(1, firstTeamPlayers[1].teamName, 10);
                 },
                 (match) => {
                     expect(match.tossups_read).to.equal(1);

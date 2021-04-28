@@ -1,6 +1,7 @@
 // This should closely mirror ScoringRules here https://github.com/quizbowl/schema/blob/master/schema/tournament.graphql,
 // since it covers much of the same ground
 // We may need to add additional rules, though, such as if powers are supported
+// TODO: We should have an enum for when substitutions are allowed
 
 export interface IGameFormat {
     regulationTossupCount: number;

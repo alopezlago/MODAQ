@@ -81,7 +81,10 @@ export class Cycle implements ICycle {
         });
 
         if (deserializedCycle) {
-            this.bonusAnswer = deserializedCycle.bonusAnswer;
+            this.bonusAnswer =
+                deserializedCycle.bonusAnswer == undefined
+                    ? undefined
+                    : Cycle.formatBonusAnswer(deserializedCycle.bonusAnswer);
             this.bonusProtests = deserializedCycle.bonusProtests;
             this.correctBuzz = deserializedCycle.correctBuzz;
             this.wrongBuzzes = deserializedCycle.wrongBuzzes;
@@ -136,11 +139,39 @@ export class Cycle implements ICycle {
         return buzzes;
     }
 
+    private static formatBonusAnswer(persistedBonusAnswer: Events.IBonusAnswerEvent) {
+        // Old games only have correctParts. Try to guess how many parts it has (either the standard 3 or something
+        // based on the highest index)
+
+        // default to 3 or the the length an array would need to be to support the index, whichever is higher
+        if (persistedBonusAnswer.parts == undefined) {
+            persistedBonusAnswer.parts = new Array(
+                Math.max(
+                    3,
+                    persistedBonusAnswer.correctParts.reduce((old, current) => Math.max(old, current.index), 0) + 1
+                )
+            );
+
+            for (let i = 0; i < persistedBonusAnswer.parts.length; i++) {
+                persistedBonusAnswer.parts[i] = { points: 0, teamName: "" };
+            }
+
+            for (const part of persistedBonusAnswer.correctParts) {
+                const currentPart: Events.IBonusAnswerPart = persistedBonusAnswer.parts[part.index];
+                currentPart.points = part.points;
+                currentPart.teamName = persistedBonusAnswer.receivingTeamName;
+            }
+        }
+
+        return persistedBonusAnswer;
+    }
+
     public addCorrectBuzz(
         marker: IBuzzMarker,
         tossupIndex: number,
         gameFormat: IGameFormat,
-        bonusIndex?: number
+        bonusIndex: number | undefined,
+        partsCount: number | undefined
     ): void {
         this.removeTeamsBuzzes(marker.player.teamName, tossupIndex);
 
@@ -155,10 +186,18 @@ export class Cycle implements ICycle {
             bonusIndex != undefined &&
             (this.bonusAnswer == undefined || marker.player.teamName !== this.bonusAnswer.receivingTeamName)
         ) {
+            const parts: Events.IBonusAnswerPart[] = [];
+            if (partsCount !== undefined) {
+                for (let i = 0; i < partsCount; i++) {
+                    parts.push({ teamName: "", points: 0 });
+                }
+            }
+
             this.bonusAnswer = {
                 bonusIndex,
                 correctParts: [],
                 receivingTeamName: marker.player.teamName,
+                parts,
             };
         }
 
@@ -414,36 +453,30 @@ export class Cycle implements ICycle {
         this.removeTossupProtest(player.teamName);
     }
 
-    public setBonusPartAnswer(index: number, isCorrect: boolean, points = 0): void {
-        // TODO: Remove this if statement when we start calling addCorrectBuzz.
+    public setBonusPartAnswer(index: number, teamName: string, points: number): void {
         if (this.bonusAnswer == undefined) {
-            if (this.correctBuzz != undefined) {
-                this.bonusAnswer = {
-                    bonusIndex: 0,
-                    correctParts: isCorrect ? [{ index, points }] : [],
-                    receivingTeamName: this.correctBuzz.marker.player.teamName,
-                };
-            }
-
+            // Nothing to set, since there's no part
             return;
+        } else if (this.bonusAnswer.parts == undefined) {
+            // default to 3 or the the length an array would need to be to support the index, whichever is higher
+            this.bonusAnswer.parts = new Array(Math.max(3, index + 1));
         }
 
-        // TODO: Consider adding a check to verify that isCorrect -> points > 0
-
-        const indexInCorrectParts: number = this.bonusAnswer.correctParts.findIndex((part) => part.index === index);
-        if (!isCorrect && indexInCorrectParts >= 0) {
-            this.bonusAnswer.correctParts.splice(indexInCorrectParts, 1);
-        } else if (isCorrect && indexInCorrectParts < 0) {
-            this.bonusAnswer.correctParts.push({ index, points });
-        }
+        this.bonusAnswer.parts[index] = { teamName, points };
     }
 
     private resetBonusAnswer(): void {
         if (this.bonusAnswer != undefined) {
+            const parts: Events.IBonusAnswerPart[] = this.bonusAnswer.parts ?? new Array(3);
+            for (let i = 0; i < parts.length; i++) {
+                parts[i] = { teamName: "", points: 0 };
+            }
+
             this.bonusAnswer = {
                 bonusIndex: this.bonusAnswer.bonusIndex,
                 correctParts: [],
                 receivingTeamName: this.bonusAnswer.receivingTeamName,
+                parts,
             };
         }
     }

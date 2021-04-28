@@ -15,6 +15,19 @@ export const ACFGameFormat: IGameFormat = {
     version: __BUILD_VERSION__,
 };
 
+export const PACEGameFormat: IGameFormat = {
+    bonusesBounceBack: true,
+    displayName: "PACE",
+    minimumOvertimeQuestionCount: 1,
+    overtimeIncludesBonuses: false,
+    negValue: 0,
+    pointsForPowers: [20],
+    powerMarkers: ["(*)"],
+    regulationTossupCount: 20,
+    timeoutsAllowed: 1,
+    version: __BUILD_VERSION__,
+};
+
 export const StandardPowersMACFGameFormat: IGameFormat = {
     ...createMACFGameFormat([15], ["(*)"]),
     displayName: "mACF with powers",
@@ -34,7 +47,7 @@ export const UndefinedGameFormat: IGameFormat = {
 };
 
 export function getKnownFormats(): IGameFormat[] {
-    return [ACFGameFormat, StandardPowersMACFGameFormat, UndefinedGameFormat];
+    return [ACFGameFormat, StandardPowersMACFGameFormat, PACEGameFormat, UndefinedGameFormat];
 }
 
 export function createMACFGameFormat(pointsForPowers: number[], powerMarkers: string[]): IGameFormat {

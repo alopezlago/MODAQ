@@ -69,17 +69,38 @@ export const TJSheetsGenerator: ISheetsGenerator = {
         bonusAnswer: IBonusAnswerEvent,
         teamNames: string[],
         sheetName: string,
-        row: number
+        row: number,
+        bonusesBounceBack: boolean
     ): gapi.client.sheets.ValueRange[] => {
-        const bonusColumn: string = bonusAnswer.receivingTeamName === teamNames[0] ? "I" : "S";
-        const bonusScore: number = bonusAnswer.correctParts.reduce((previous, current) => previous + current.points, 0);
+        const isFirstTeamBonus = bonusAnswer.receivingTeamName === teamNames[0];
+        const bonusColumn: string = isFirstTeamBonus ? "I" : "S";
+        const bouncebackColumn: string = isFirstTeamBonus ? "T" : "J";
 
-        return [
+        let bonusScore = 0;
+        let bouncebackScore = 0;
+        for (const part of bonusAnswer.parts) {
+            if (part.teamName === bonusAnswer.receivingTeamName) {
+                bonusScore += part.points;
+            } else if (bonusesBounceBack) {
+                bouncebackScore += part.points;
+            }
+        }
+
+        const ranges: gapi.client.sheets.ValueRange[] = [
             {
                 range: `'${sheetName}'!${bonusColumn}${row}`,
                 values: [[bonusScore]],
             },
         ];
+
+        if (bonusesBounceBack) {
+            ranges.push({
+                range: `'${sheetName}'!${bouncebackColumn}${row}`,
+                values: [[bouncebackScore]],
+            });
+        }
+
+        return ranges;
     },
     getValuesForBonusClear: (): gapi.client.sheets.ValueRange[] => {
         // TJ Sheets can clear the bonus column with no loss of formatting, so use that instead
