@@ -4,7 +4,7 @@ import { Dropdown, IDropdownOption } from "@fluentui/react/lib/Dropdown";
 
 import { ProtestDialogBase } from "./ProtestDialogBase";
 import { Cycle } from "src/state/Cycle";
-import { IBonusProtestEvent } from "src/state/Events";
+import { IBonusAnswerPart, IBonusProtestEvent } from "src/state/Events";
 import { Bonus } from "src/state/PacketState";
 import { AppState } from "src/state/AppState";
 
@@ -60,9 +60,15 @@ function onSubmit(props: IBonusProtestDialogProps): void {
     let teamName = "";
     if (props.cycle.correctBuzz != undefined && props.cycle.bonusAnswer != undefined) {
         const bonusTeamName: string = props.cycle.correctBuzz.marker.player.teamName;
+        const part: IBonusAnswerPart | undefined =
+            pendingProtestEvent != undefined ? props.cycle.bonusAnswer.parts[pendingProtestEvent.partIndex] : undefined;
+
+        // If a bonus part was wrong (points <= 0) and the part isn't assigned to anyone, or it's assigned to the team
+        // who got the question right, then the team protesting must be the team who got the question right
+        // Otherwise, some other team is protesting.
+        // TODO: If we ever support more than two teams, we'll have to get the protesting team from the UI
         teamName =
-            props.cycle.bonusAnswer.correctParts.findIndex((part) => part.index === pendingProtestEvent?.partIndex) ===
-            -1
+            part == undefined || (part.points <= 0 && (part.teamName === bonusTeamName || part.teamName === ""))
                 ? bonusTeamName
                 : props.appState.game.teamNames.find((name) => name !== bonusTeamName) ?? "";
     }

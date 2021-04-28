@@ -151,6 +151,13 @@ function onCorrectClicked(
             props.appState.uiState.cycleIndex < props.appState.game.gameFormat.regulationTossupCount
                 ? props.bonusIndex
                 : undefined;
+
+        // If we don't know the number of parts, assume it's 3, which is standard
+        const partsCount: number | undefined =
+            bonusIndex != undefined && props.appState.game.packet.bonuses[bonusIndex] != undefined
+                ? props.appState.game.packet.bonuses[bonusIndex].parts.length
+                : 3;
+
         props.cycle.addCorrectBuzz(
             {
                 player,
@@ -159,7 +166,8 @@ function onCorrectClicked(
             },
             props.tossupNumber - 1,
             props.appState.game.gameFormat,
-            bonusIndex
+            bonusIndex,
+            partsCount
         );
     }
 }

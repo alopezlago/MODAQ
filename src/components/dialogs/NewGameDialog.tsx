@@ -1,17 +1,3 @@
-// This dialog should have
-// - Reader's name (for use with syncing to the bot later, could be a dropdown then)
-// - Two boxes, side by side, for the team name and players
-// - Optional dropdown, containing the format rules, which includes
-//   - If timeouts are allowed
-//   - If subs are allowed
-//   - Point values for powers?
-//   - Number of tossups in regulation
-//     - This should drive the number of cycles we show? We could still create the cycles.
-//   - Tiebreaking procedures
-//   - Eventually this should use QBSchema's interface for this
-//   - For now, always assume ACF
-// - A button to pick the packet to choose. Specify that it should be JSON; support for docx may come soon.
-
 import * as React from "react";
 import { Dialog, DialogFooter, IDialogContentProps, DialogType } from "@fluentui/react/lib/Dialog";
 import { IModalProps } from "@fluentui/react/lib/Modal";
@@ -438,7 +424,6 @@ function onSubmit(props: INewGameDialogProps): void {
     game.addPlayers(secondTeamPlayers.filter((player) => player.name !== ""));
     game.loadPacket(pendingNewGame.packet);
 
-    // TODO: Set the format from the user interface
     game.setGameFormat(pendingNewGame.gameFormat);
 
     // If we've just started a new game, start at the beginning

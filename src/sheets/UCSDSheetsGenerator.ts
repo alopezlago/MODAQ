@@ -53,10 +53,9 @@ export const UCSDSheetsGenerator: ISheetsGenerator = {
         const startColumn: string = isFirstTeam ? "I" : "U";
         const endColumn: string = isFirstTeam ? "K" : "W";
 
-        const bonusValues: boolean[] = [];
-        for (let i = 0; i < 3; i++) {
-            // TODO: This isn't very efficient, though there are only 3 parts, so it's not too bad
-            bonusValues.push(bonusAnswer.correctParts.findIndex((part) => part.index === i) >= 0);
+        const bonusValues: boolean[] = new Array(3).fill(false);
+        for (let i = 0; i < 3 && i < bonusAnswer.parts.length; i++) {
+            bonusValues[i] = bonusAnswer.parts[i].points > 0;
         }
 
         return [

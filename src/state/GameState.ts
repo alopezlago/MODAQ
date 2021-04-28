@@ -5,7 +5,7 @@ import * as GameFormats from "./GameFormats";
 import { PacketState, Bonus, Tossup } from "./PacketState";
 import { Player } from "./TeamState";
 import { Cycle, ICycle } from "./Cycle";
-import { ISubstitutionEvent, IPlayerJoinsEvent, IPlayerLeavesEvent } from "./Events";
+import { ISubstitutionEvent, IPlayerJoinsEvent, IPlayerLeavesEvent, IBonusAnswerPart } from "./Events";
 import { IGameFormat } from "./IGameFormat";
 
 export class GameState {
@@ -268,10 +268,22 @@ export class GameState {
             // points
             change[indexToUpdate] += cycle.correctBuzz.marker.points;
             if (cycle.bonusAnswer) {
-                change[indexToUpdate] += cycle.bonusAnswer.correctParts.reduce(
-                    (previous, current) => previous + current.points,
-                    0
-                );
+                for (let i = 0; i < cycle.bonusAnswer.parts.length; i++) {
+                    let bonusAnswerTeamIndex: number = indexToUpdate;
+                    const part: IBonusAnswerPart = cycle.bonusAnswer.parts[i];
+                    if (part.teamName === "") {
+                        // No team scored this part, skip it
+                        continue;
+                    } else if (part.teamName !== cycle.correctBuzz.marker.player.teamName) {
+                        bonusAnswerTeamIndex = this.teamNames.indexOf(part.teamName);
+                        if (bonusAnswerTeamIndex === -1) {
+                            // Bad part, skip this
+                            continue;
+                        }
+                    }
+
+                    change[bonusAnswerTeamIndex] += part.points;
+                }
             }
         }
 
