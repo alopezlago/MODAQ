@@ -250,7 +250,13 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
 
             if (cycle.bonusAnswer) {
                 valueRanges = valueRanges.concat(
-                    sheetsGenerator.getValuesForBonusAnswer(cycle.bonusAnswer, game.teamNames, sheetName, row)
+                    sheetsGenerator.getValuesForBonusAnswer(
+                        cycle.bonusAnswer,
+                        game.teamNames,
+                        sheetName,
+                        row,
+                        game.gameFormat.bonusesBounceBack
+                    )
                 );
             }
         } else {

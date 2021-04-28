@@ -86,7 +86,8 @@ export interface ISheetsGenerator {
         bonusAnswer: IBonusAnswerEvent,
         teamNames: string[],
         sheetName: string,
-        row: number
+        row: number,
+        bouncesBounceBack: boolean
     ): gapi.client.sheets.ValueRange[];
 
     // Some sheets add formatting to the bonus cells, so we can't clear them. These get the values to "clear" the cell

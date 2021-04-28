@@ -275,11 +275,12 @@ describe("SheetsTests", () => {
                 },
                 0,
                 appState.game.gameFormat,
-                0
+                0,
+                3
             );
-            cycle.setBonusPartAnswer(0, true, 10);
-            cycle.setBonusPartAnswer(1, true, 10);
-            cycle.setBonusPartAnswer(2, false, 0);
+            cycle.setBonusPartAnswer(0, player.teamName, 10);
+            cycle.setBonusPartAnswer(1, player.teamName, 10);
+            cycle.setBonusPartAnswer(2, player.teamName, 0);
 
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
         };
@@ -327,11 +328,12 @@ describe("SheetsTests", () => {
                 },
                 0,
                 appState.game.gameFormat,
-                0
+                0,
+                3
             );
-            cycle.setBonusPartAnswer(0, false, 0);
-            cycle.setBonusPartAnswer(1, false, 0);
-            cycle.setBonusPartAnswer(2, true, 10);
+            cycle.setBonusPartAnswer(0, player.teamName, 0);
+            cycle.setBonusPartAnswer(1, player.teamName, 0);
+            cycle.setBonusPartAnswer(2, player.teamName, 10);
 
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
         };
@@ -380,11 +382,12 @@ describe("SheetsTests", () => {
                 },
                 0,
                 appState.game.gameFormat,
-                0
+                0,
+                3
             );
-            cycle.setBonusPartAnswer(0, true, 10);
-            cycle.setBonusPartAnswer(1, true, 10);
-            cycle.setBonusPartAnswer(2, false, 0);
+            cycle.setBonusPartAnswer(0, player.teamName, 10);
+            cycle.setBonusPartAnswer(1, player.teamName, 10);
+            cycle.setBonusPartAnswer(2, player.teamName, 0);
 
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
         };
@@ -445,11 +448,12 @@ describe("SheetsTests", () => {
                 },
                 0,
                 appState.game.gameFormat,
-                0
+                0,
+                3
             );
-            cycle.setBonusPartAnswer(0, true, 10);
-            cycle.setBonusPartAnswer(1, true, 10);
-            cycle.setBonusPartAnswer(2, false, 0);
+            cycle.setBonusPartAnswer(0, firstTeamPlayer.teamName, 10);
+            cycle.setBonusPartAnswer(1, firstTeamPlayer.teamName, 10);
+            cycle.setBonusPartAnswer(2, firstTeamPlayer.teamName, 0);
 
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, negPosition, correctPosition));
         };
@@ -547,12 +551,13 @@ describe("SheetsTests", () => {
                 },
                 0,
                 appState.game.gameFormat,
-                0
+                0,
+                3
             );
 
-            cycle.setBonusPartAnswer(0, false, 10);
-            cycle.setBonusPartAnswer(1, true, 10);
-            cycle.setBonusPartAnswer(2, true, 0);
+            cycle.setBonusPartAnswer(0, player.teamName, 0);
+            cycle.setBonusPartAnswer(1, player.teamName, 10);
+            cycle.setBonusPartAnswer(2, player.teamName, 10);
 
             const reason = "I was right";
             cycle.addBonusProtest(0, 0, reason, "Alpha");
@@ -578,12 +583,13 @@ describe("SheetsTests", () => {
                 },
                 0,
                 appState.game.gameFormat,
-                0
+                0,
+                3
             );
 
-            cycle.setBonusPartAnswer(0, true, 10);
-            cycle.setBonusPartAnswer(1, false, 10);
-            cycle.setBonusPartAnswer(2, true, 0);
+            cycle.setBonusPartAnswer(0, player.teamName, 10);
+            cycle.setBonusPartAnswer(1, player.teamName, 0);
+            cycle.setBonusPartAnswer(2, player.teamName, 10);
 
             const reason = "I was surely right";
             cycle.addBonusProtest(0, 1, reason, "Beta");
@@ -609,12 +615,13 @@ describe("SheetsTests", () => {
                 },
                 0,
                 appState.game.gameFormat,
-                0
+                0,
+                3
             );
 
-            cycle.setBonusPartAnswer(0, false, 10);
-            cycle.setBonusPartAnswer(1, true, 10);
-            cycle.setBonusPartAnswer(2, false, 0);
+            cycle.setBonusPartAnswer(0, player.teamName, 0);
+            cycle.setBonusPartAnswer(1, player.teamName, 10);
+            cycle.setBonusPartAnswer(2, player.teamName, 0);
 
             const firstReason = "I was right";
             const secondReason = "That was also right";
@@ -625,6 +632,67 @@ describe("SheetsTests", () => {
                 verifyCell(ranges, "B8", 10);
                 verifyCell(ranges, "H8", "010");
                 verifyCell(ranges, "AH8", [firstReason, secondReason].join("\n"));
+            });
+        });
+
+        it("First team bouncebacks written to sheet (TJ Sheets)", async () => {
+            const appState: AppState = createAppStateForExport(SheetType.TJSheets);
+            appState.game.gameFormat = { ...appState.game.gameFormat, bonusesBounceBack: true };
+
+            const player: Player = findPlayerOnTeam(appState, "Beta");
+            const position = 1;
+            const cycle: Cycle = appState.game.cycles[0];
+            cycle.addCorrectBuzz(
+                {
+                    player,
+                    position,
+                    points: 10,
+                    isLastWord: false,
+                },
+                0,
+                appState.game.gameFormat,
+                0,
+                3
+            );
+
+            cycle.setBonusPartAnswer(0, player.teamName, 10);
+            cycle.setBonusPartAnswer(1, "Alpha", 10);
+            cycle.setBonusPartAnswer(2, "Alpha", 10);
+
+            await verifyExportToSheetSuccess(appState, (ranges) => {
+                verifyCell(ranges, "M4", 10);
+                verifyCell(ranges, "S4", 10);
+                verifyCell(ranges, "J4", 20);
+            });
+        });
+        it("Second team bouncebacks written to sheet (TJ Sheets)", async () => {
+            const appState: AppState = createAppStateForExport(SheetType.TJSheets);
+            appState.game.gameFormat = { ...appState.game.gameFormat, bonusesBounceBack: true };
+
+            const player: Player = findPlayerOnTeam(appState, "Alpha");
+            const position = 1;
+            const cycle: Cycle = appState.game.cycles[0];
+            cycle.addCorrectBuzz(
+                {
+                    player,
+                    position,
+                    points: 10,
+                    isLastWord: false,
+                },
+                0,
+                appState.game.gameFormat,
+                0,
+                3
+            );
+
+            cycle.setBonusPartAnswer(0, player.teamName, 10);
+            cycle.setBonusPartAnswer(1, player.teamName, 10);
+            cycle.setBonusPartAnswer(2, "Beta", 10);
+
+            await verifyExportToSheetSuccess(appState, (ranges) => {
+                verifyCell(ranges, "C4", 10);
+                verifyCell(ranges, "I4", 20);
+                verifyCell(ranges, "T4", 10);
             });
         });
 
@@ -887,7 +955,8 @@ describe("SheetsTests", () => {
                 },
                 20,
                 appState.game.gameFormat,
-                0
+                0,
+                3
             );
 
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
@@ -972,7 +1041,8 @@ describe("SheetsTests", () => {
                 },
                 0,
                 appState.game.gameFormat,
-                0
+                0,
+                3
             );
 
             // Make sure the second buzz isn't recorded

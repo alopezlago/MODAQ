@@ -1,5 +1,5 @@
 import { Cycle } from "src/state/Cycle";
-import { ICorrectBonusAnswerPart, ITossupAnswerEvent } from "src/state/Events";
+import { IBonusAnswerPart, ITossupAnswerEvent } from "src/state/Events";
 import { GameState } from "src/state/GameState";
 
 // Converts games into a QBJ file that conforms to the Match interface in the QB Schema
@@ -33,6 +33,7 @@ export function ToQBJ(game: GameState): string {
         if (team) {
             matchTeams.set(teamName, {
                 bonus_points: 0,
+                bonus_bounceback_points: game.gameFormat.bonusesBounceBack ? 0 : undefined,
                 lineups: [firstLineup],
                 match_players: [],
                 team,
@@ -229,31 +230,40 @@ export function ToQBJ(game: GameState): string {
 
                 if (cycle.bonusAnswer) {
                     const matchTeam: IMatchTeam | undefined = matchTeams.get(cycle.bonusAnswer.receivingTeamName);
+                    const otherTeam: IMatchTeam | undefined = [...matchTeams.values()].find(
+                        (team) => team !== matchTeam
+                    );
 
-                    // TODO: This should come from the packet, or bonusAnswer should contain it
-                    const partsCount = 3;
                     const parts: IMatchQuestionBonusPart[] = [];
-                    let bonusPoints = 0;
-                    for (let j = 0; j < partsCount; j++) {
-                        const bonusAnswerPart:
-                            | ICorrectBonusAnswerPart
-                            | undefined = cycle.bonusAnswer.correctParts.find((part) => part.index === j);
+                    for (let j = 0; j < cycle.bonusAnswer.parts.length; j++) {
+                        const bonusAnswerPart: IBonusAnswerPart | undefined =
+                            cycle.bonusAnswer.parts && cycle.bonusAnswer.parts[j];
                         const points: number = bonusAnswerPart ? bonusAnswerPart.points : 0;
+                        const matchPart: IMatchQuestionBonusPart = {
+                            controlled_points: 0,
+                        };
 
-                        parts.push({
-                            controlled_points: points,
-                        });
+                        if (
+                            matchTeam != undefined &&
+                            (bonusAnswerPart == undefined ||
+                                bonusAnswerPart.teamName === cycle.correctBuzz.marker.player.teamName)
+                        ) {
+                            matchPart.controlled_points = points;
+                            matchPart.bounceback_points = game.gameFormat.bonusesBounceBack ? 0 : undefined;
+                            matchTeam.bonus_points += points;
+                        } else if (otherTeam != undefined) {
+                            matchPart.bounceback_points = points;
+                            if (otherTeam.bonus_bounceback_points != undefined) {
+                                otherTeam.bonus_bounceback_points += points;
+                            }
+                        }
 
-                        bonusPoints += points;
-                    }
-
-                    if (matchTeam) {
-                        matchTeam.bonus_points += bonusPoints;
+                        parts.push(matchPart);
                     }
 
                     const matchBonus: IMatchQuestionBonus = {
                         question: {
-                            parts: partsCount,
+                            parts: cycle.bonusAnswer.parts.length,
                             type: "bonus",
                             question_number: cycle.bonusAnswer.bonusIndex + 1,
                         },
@@ -365,6 +375,7 @@ export interface IPlayer {
 export interface IMatchTeam {
     team: ITeam;
     bonus_points: number;
+    bonus_bounceback_points?: number;
     match_players: IMatchPlayer[];
     lineups: ILineup[]; // Lineups seen. New entries happen when there are changes in the lineup
 }

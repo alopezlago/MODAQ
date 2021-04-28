@@ -11,15 +11,7 @@ export const BonusProtestCycleItem = observer(
             props.cycle.removeBonusProtest(props.protest.partIndex);
         };
 
-        // If the bonus part was correct, the team isn't protesting themselves. To futureproof us from dealing with the
-        // 3+ team case, call it "the other team"
-        const teamName: string =
-            props.cycle.bonusAnswer != undefined &&
-            props.cycle.bonusAnswer?.correctParts.findIndex((part) => part.index === props.protest.partIndex) >= 0
-                ? "The other team"
-                : props.protest.teamName;
-
-        const text = `${teamName} protests bonus #${props.protest.questionIndex + 1}, part ${
+        const text = `${props.protest.teamName} protests bonus #${props.protest.questionIndex + 1}, part ${
             props.protest.partIndex + 1
         }`;
 

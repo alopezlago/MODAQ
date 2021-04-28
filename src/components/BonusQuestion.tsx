@@ -25,7 +25,9 @@ export const BonusQuestion = observer((props: IBonusQuestionProps) => {
                 key={index}
                 bonusPart={bonusPartProps}
                 cycle={props.cycle}
+                gameFormat={props.appState.game.gameFormat}
                 partNumber={index + 1}
+                teamNames={props.appState.game.teamNames}
                 disabled={!props.inPlay}
             />
         );

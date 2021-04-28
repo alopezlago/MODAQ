@@ -72,8 +72,7 @@ export const LifsheetsGenerator: ISheetsGenerator = {
 
         let bonusScore = "";
         for (let i = 0; i < 3; i++) {
-            // TODO: This isn't very efficient, though there are only 3 parts, so it's not too bad
-            bonusScore += bonusAnswer.correctParts.findIndex((part) => part.index === i) >= 0 ? "1" : "0";
+            bonusScore += bonusAnswer.parts[i].points > 0 ? "1" : "0";
         }
 
         return [

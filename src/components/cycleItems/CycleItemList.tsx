@@ -139,8 +139,8 @@ function createCycleList(cycle: Cycle, gameFormat: IGameFormat): JSX.Element[] {
         }
     }
 
-    if (cycle.bonusAnswer) {
-        elements.push(createBonusAnswerDetails(cycle.bonusAnswer));
+    if (cycle.bonusAnswer && cycle.correctBuzz) {
+        elements.push(createBonusAnswerDetails(cycle.bonusAnswer, cycle.correctBuzz));
     }
 
     if (cycle.tossupProtests) {
@@ -211,8 +211,8 @@ function createThrowOutQuestionDetails(
     );
 }
 
-function createBonusAnswerDetails(bonusAnswer: IBonusAnswerEvent): JSX.Element {
-    return <BonusAnswerCycleItem key="bonus_answer" bonusAnswer={bonusAnswer} />;
+function createBonusAnswerDetails(bonusAnswer: IBonusAnswerEvent, correctBuzz: ITossupAnswerEvent): JSX.Element {
+    return <BonusAnswerCycleItem key="bonus_answer" bonusAnswer={bonusAnswer} correctBuzz={correctBuzz} />;
 }
 
 function createTossupProtestDetails(cycle: Cycle, protest: ITossupProtestEvent, protestIndex: number): JSX.Element {

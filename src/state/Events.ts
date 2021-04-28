@@ -11,11 +11,23 @@ export interface ITossupAnswerEvent {
 
 export interface IBonusAnswerEvent {
     bonusIndex: number;
-    correctParts: ICorrectBonusAnswerPart[];
     receivingTeamName: string;
+
+    // Deprecated
+    correctParts: IOldCorrectBonusAnswerPart[];
+
+    // This should have all of the parts
+    parts: IBonusAnswerPart[];
 }
 
+export type IBonusAnswerPart = ICorrectBonusAnswerPart | { teamName: ""; points: 0 };
+
 export interface ICorrectBonusAnswerPart {
+    teamName: string;
+    points: number;
+}
+
+export interface IOldCorrectBonusAnswerPart {
     index: number;
     points: number;
 }
