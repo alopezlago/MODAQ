@@ -1,9 +1,13 @@
 import { makeAutoObservable } from "mobx";
 import { ignore } from "mobx-sync";
+import { AddQuestionDialogState } from "./AddQuestionsDialogState";
 import { CustomizeGameFormatDialogState } from "./CustomizeGameFormatDialogState";
 import { IGameFormat } from "./IGameFormat";
 
 export class DialogState {
+    @ignore
+    public addQuestions: AddQuestionDialogState | undefined;
+
     @ignore
     public customizeGameFormat: CustomizeGameFormatDialogState | undefined;
 
@@ -22,11 +26,16 @@ export class DialogState {
     constructor() {
         makeAutoObservable(this);
 
+        this.addQuestions = undefined;
         this.customizeGameFormat = undefined;
         this.exportToJsonDialogVisible = false;
         this.helpDialogVisible = false;
         this.importGameDialogVisible = false;
         this.newGameDialogVisible = false;
+    }
+
+    public hideAddQuestionsDialog(): void {
+        this.addQuestions = undefined;
     }
 
     public hideCustomizeGameFormatDialog(): void {
@@ -47,6 +56,10 @@ export class DialogState {
 
     public hideNewGameDialog(): void {
         this.newGameDialogVisible = false;
+    }
+
+    public showAddQuestionsDialog(): void {
+        this.addQuestions = new AddQuestionDialogState();
     }
 
     public showCustomizeGameFormatDialog(gameFormat: IGameFormat): void {

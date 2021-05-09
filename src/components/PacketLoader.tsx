@@ -182,9 +182,7 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
 }
 
 export interface IPacketLoaderProps {
-    loadPacketIntoGame?: boolean;
     appState: AppState;
-
     onLoad(packet: PacketState): void;
 }
 

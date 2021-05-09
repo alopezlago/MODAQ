@@ -55,6 +55,10 @@ export const GameBar = observer(
             uiState.createPendingNewPlayer(game.teamNames[0]);
         }, [uiState, game]);
 
+        const addQuestionsHandler = React.useCallback(() => {
+            uiState.dialogState.showAddQuestionsDialog();
+        }, [uiState]);
+
         const openHelpHandler = React.useCallback(() => props.appState.uiState.dialogState.showHelpDialog(), [props]);
 
         const items: ICommandBarItemProps[] = [
@@ -96,7 +100,8 @@ export const GameBar = observer(
         const actionSubMenuItems: ICommandBarItemProps[] = getActionSubMenuItems(
             props,
             addPlayerHandler,
-            protestBonusHandler
+            protestBonusHandler,
+            addQuestionsHandler
         );
         items.push({
             key: "actions",
@@ -134,13 +139,121 @@ async function exportToSheets(props: IGameBarProps): Promise<void> {
 function getActionSubMenuItems(
     props: IGameBarProps,
     addPlayerHandler: () => void,
-    protestBonusHandler: () => void
+    protestBonusHandler: () => void,
+    addQuestionsHandler: () => void
 ): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
     const uiState: UIState = props.appState.uiState;
     const game: GameState = props.appState.game;
 
-    const teamNames: string[] = props.appState.game.teamNames;
+    const playerManagementSection: ICommandBarItemProps = getPlayerManagementSubMenuItems(
+        props,
+        game,
+        uiState,
+        addPlayerHandler
+    );
+    items.push(playerManagementSection);
+
+    const protestsSection: ICommandBarItemProps = getProtestSubMenuItems(props, game, uiState, protestBonusHandler);
+    items.push(protestsSection);
+
+    const packetSection: ICommandBarItemProps = {
+        key: "packetSection",
+        itemType: ContextualMenuItemType.Section,
+        sectionProps: {
+            bottomDivider: true,
+            title: "Packet",
+            items: [
+                {
+                    key: "addMoreQuestions",
+                    text: "Add questions...",
+                    onClick: addQuestionsHandler,
+                },
+            ],
+        },
+    };
+    items.push(packetSection);
+
+    return items;
+}
+
+function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
+    const items: ICommandBarItemProps[] = [];
+    const game: GameState = props.appState.game;
+    const disabled: boolean = props.appState.game.cycles.length === 0;
+
+    items.push({
+        key: "exportSheets",
+        text: "Export to Sheets...",
+        onClick: () => {
+            exportToSheets(props);
+        },
+        disabled,
+    });
+
+    // We have to compute this outside of onClick because MobX will complain about reading orderedBuzzes outside of a
+    // reaction otherwise
+    const buzzPoints: string[] = game.playableCycles.map((cycle) => {
+        const result: string[] = [];
+        for (const buzz of cycle.orderedBuzzes) {
+            result.push(buzz.marker.position.toString(10));
+        }
+
+        return result.join("\t");
+    });
+    items.push({
+        key: "copyBuzzPoints",
+        text: "Copy buzz points",
+        disabled,
+        onClick: () => {
+            // Translate this to lines of tab delimited strings
+            const buzzPointsText: string = buzzPoints.join("\n");
+            copyText(buzzPointsText);
+        },
+    });
+
+    items.push({
+        key: "downloadJson",
+        text: "Export to JSON...",
+        disabled,
+        onClick: () => {
+            props.appState.uiState.dialogState.showExportToJsonDialog();
+        },
+    });
+
+    return items;
+}
+
+function getOptionsSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
+    const items: ICommandBarItemProps[] = [];
+
+    items.push(
+        {
+            key: "changeFormat",
+            text: "Change Format...",
+            onClick: () => {
+                props.appState.uiState.dialogState.showCustomizeGameFormatDialog(props.appState.game.gameFormat);
+            },
+        },
+        {
+            key: "font",
+            text: "Font...",
+            onClick: () => {
+                props.appState.uiState.setPendingQuestionFontSize(props.appState.uiState.questionFontSize);
+            },
+        }
+    );
+
+    return items;
+}
+
+function getPlayerManagementSubMenuItems(
+    props: IGameBarProps,
+    game: GameState,
+    uiState: UIState,
+    addPlayerHandler: () => void
+): ICommandBarItemProps {
+    const teamNames: string[] = game.teamNames;
     const swapActivePlayerMenus: ICommandBarItemProps[] = [];
     for (const teamName of teamNames) {
         const players: Player[] = game.getPlayers(teamName);
@@ -225,7 +338,7 @@ function getActionSubMenuItems(
         onClick: addPlayerHandler,
     };
 
-    const playerManagementSection: ICommandBarItemProps = {
+    return {
         key: "playerManagement",
         itemType: ContextualMenuItemType.Section,
         sectionProps: {
@@ -234,9 +347,14 @@ function getActionSubMenuItems(
             items: [swapPlayerItem, addPlayerItem],
         },
     };
+}
 
-    items.push(playerManagementSection);
-
+function getProtestSubMenuItems(
+    props: IGameBarProps,
+    game: GameState,
+    uiState: UIState,
+    protestBonusHandler: () => void
+): ICommandBarItemProps {
     const cycle: Cycle | undefined =
         uiState.cycleIndex < game.cycles.length ? game.cycles[uiState.cycleIndex] : undefined;
 
@@ -321,80 +439,15 @@ function getActionSubMenuItems(
         };
     }
 
-    items.push(protestTossupItems);
-    items.push(protestBonusItem);
-
-    return items;
-}
-
-function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
-    const items: ICommandBarItemProps[] = [];
-    const game: GameState = props.appState.game;
-    const disabled: boolean = props.appState.game.cycles.length === 0;
-
-    items.push({
-        key: "exportSheets",
-        text: "Export to Sheets...",
-        onClick: () => {
-            exportToSheets(props);
+    return {
+        key: "protestSection",
+        itemType: ContextualMenuItemType.Section,
+        sectionProps: {
+            bottomDivider: true,
+            title: "Protests",
+            items: [protestTossupItems, protestBonusItem],
         },
-        disabled,
-    });
-
-    // We have to compute this outside of onClick because MobX will complain about reading orderedBuzzes outside of a
-    // reaction otherwise
-    const buzzPoints: string[] = game.playableCycles.map((cycle) => {
-        const result: string[] = [];
-        for (const buzz of cycle.orderedBuzzes) {
-            result.push(buzz.marker.position.toString(10));
-        }
-
-        return result.join("\t");
-    });
-    items.push({
-        key: "copyBuzzPoints",
-        text: "Copy buzz points",
-        disabled,
-        onClick: () => {
-            // Translate this to lines of tab delimited strings
-            const buzzPointsText: string = buzzPoints.join("\n");
-            copyText(buzzPointsText);
-        },
-    });
-
-    items.push({
-        key: "downloadJson",
-        text: "Export to JSON...",
-        disabled,
-        onClick: () => {
-            props.appState.uiState.dialogState.showExportToJsonDialog();
-        },
-    });
-
-    return items;
-}
-
-function getOptionsSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
-    const items: ICommandBarItemProps[] = [];
-
-    items.push(
-        {
-            key: "changeFormat",
-            text: "Change Format...",
-            onClick: () => {
-                props.appState.uiState.dialogState.showCustomizeGameFormatDialog(props.appState.game.gameFormat);
-            },
-        },
-        {
-            key: "font",
-            text: "Font...",
-            onClick: () => {
-                props.appState.uiState.setPendingQuestionFontSize(props.appState.uiState.questionFontSize);
-            },
-        }
-    );
-
-    return items;
+    };
 }
 
 function onProtestTossupClick(
