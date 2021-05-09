@@ -69,7 +69,7 @@ export class Tossup implements IQuestion {
 
     public getPointsAtPosition(format: IGameFormat, wordIndex: number, isCorrect = true): number {
         // If there's no powers, default to 10 points
-        if (format.powerMarkers.length === 0 && isCorrect) {
+        if (format.powers.length === 0 && isCorrect) {
             return 10;
         }
 
@@ -87,8 +87,8 @@ export class Tossup implements IQuestion {
         // One potential optimization would be to remove all the words up to that index if we find it, so we have to
         // look through less words
         let powerMarkersFound = 0;
-        for (let i = 0; i < format.powerMarkers.length; i++) {
-            const powerMarker: string = format.powerMarkers[i];
+        for (let i = 0; i < format.powers.length; i++) {
+            const powerMarker: string = format.powers[i].marker;
             const powerMarkerIndex: number = words.indexOf(powerMarker);
 
             // TODO: When we skip over pronunication guides, we'll need to calculate how many words they take up, so
@@ -106,7 +106,7 @@ export class Tossup implements IQuestion {
                     powerMarkerIndex !== lastWordIndex &&
                     wordIndex <= powerMarkerIndex - (powerMarkersFound + 1)
                 ) {
-                    return format.pointsForPowers[i];
+                    return format.powers[i].points;
                 }
 
                 powerMarkersFound++;

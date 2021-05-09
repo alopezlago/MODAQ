@@ -1,4 +1,4 @@
-import { IGameFormat } from "./IGameFormat";
+import { IGameFormat, IPowerMarker } from "./IGameFormat";
 
 declare const __BUILD_VERSION__: string;
 
@@ -8,8 +8,7 @@ export const ACFGameFormat: IGameFormat = {
     minimumOvertimeQuestionCount: 1,
     overtimeIncludesBonuses: false,
     negValue: -5,
-    pointsForPowers: [],
-    powerMarkers: [],
+    powers: [],
     regulationTossupCount: 20,
     timeoutsAllowed: 1,
     version: __BUILD_VERSION__,
@@ -21,15 +20,14 @@ export const PACEGameFormat: IGameFormat = {
     minimumOvertimeQuestionCount: 1,
     overtimeIncludesBonuses: false,
     negValue: 0,
-    pointsForPowers: [20],
-    powerMarkers: ["(*)"],
+    powers: [{ marker: "(*)", points: 20 }],
     regulationTossupCount: 20,
     timeoutsAllowed: 1,
     version: __BUILD_VERSION__,
 };
 
 export const StandardPowersMACFGameFormat: IGameFormat = {
-    ...createMACFGameFormat([15], ["(*)"]),
+    ...createMACFGameFormat([{ marker: "(*)", points: 15 }]),
     displayName: "mACF with powers",
 };
 
@@ -39,8 +37,7 @@ export const UndefinedGameFormat: IGameFormat = {
     minimumOvertimeQuestionCount: 1,
     overtimeIncludesBonuses: false,
     negValue: -5,
-    pointsForPowers: [15],
-    powerMarkers: ["(*)"],
+    powers: [{ marker: "(*)", points: 15 }],
     regulationTossupCount: 999,
     timeoutsAllowed: 999,
     version: __BUILD_VERSION__,
@@ -50,11 +47,10 @@ export function getKnownFormats(): IGameFormat[] {
     return [ACFGameFormat, StandardPowersMACFGameFormat, PACEGameFormat, UndefinedGameFormat];
 }
 
-export function createMACFGameFormat(pointsForPowers: number[], powerMarkers: string[]): IGameFormat {
+export function createMACFGameFormat(powers: IPowerMarker[]): IGameFormat {
     return {
         ...ACFGameFormat,
-        pointsForPowers,
-        powerMarkers,
+        powers,
     };
 }
 
@@ -62,6 +58,8 @@ export function getUpgradedFormatVersion(format: IGameFormat): IGameFormat {
     if (format.version === __BUILD_VERSION__) {
         return format;
     }
+
+    updatePowerMarkers(format);
 
     // We need to compare the fields between the given format and the current format, so we need to iterate over them.
     // This requires using the array/dictionary syntax for accessing fields, which requires using any.
@@ -76,15 +74,41 @@ export function getUpgradedFormatVersion(format: IGameFormat): IGameFormat {
         }
 
         if (formatObject[key] == undefined) {
-            throw new Error(
-                `Game format uses an incompatible version (${format.version}). Unknown setting "${key}". Export your game and see if you can update your format manually, or reset your game`
+            throwInvalidGameFormatError(
+                `Game format uses an incompatible version (${format.version}). Unknown setting "${key}".`
             );
         } else if (typeof formatObject[key] !== typeof defaultFormat[key]) {
-            throw new Error(
-                `Game format uses an incompatible version (${format.version}). "${key}" is an incompatible type. Export your game and see if you can update your format manually, or reset your game`
+            throwInvalidGameFormatError(
+                `Game format uses an incompatible version (${format.version}). "${key}" is an incompatible type.`
             );
         }
     }
 
     return format;
+}
+
+function updatePowerMarkers(gameFormat: IGameFormat): void {
+    if (
+        gameFormat.powers != undefined ||
+        gameFormat.pointsForPowers == undefined ||
+        gameFormat.powerMarkers == undefined
+    ) {
+        return;
+    }
+
+    if (gameFormat.powerMarkers.length < gameFormat.pointsForPowers.length) {
+        throwInvalidGameFormatError("Game format is invalid. Some power markers don't have point values.");
+    }
+
+    gameFormat.powers = [];
+    for (let i = 0; i < gameFormat.powerMarkers.length; i++) {
+        gameFormat.powers.push({
+            marker: gameFormat.powerMarkers[i],
+            points: gameFormat.pointsForPowers[i],
+        });
+    }
+}
+
+function throwInvalidGameFormatError(message: string): void {
+    throw new Error(`${message}. Export your game and see if you can update your format manually, or reset your game`);
 }

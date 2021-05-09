@@ -15,6 +15,7 @@ export const UCSDSheetsGenerator: ISheetsGenerator = {
     playerPerTeamLimit: 6,
     playerRow: 3,
     rostersRange: "Rosters!A1:G",
+    writeNoPenaltyBuzzes: false,
 
     getClearRanges: (sheetName: string): string[] => {
         return [
@@ -110,6 +111,7 @@ export const UCSDSheetsGenerator: ISheetsGenerator = {
     },
     getValuesForCorrectBuzz: (
         buzz: ITossupAnswerEvent,
+        points: number,
         playerToColumnMapping: IPlayerToColumnMap,
         sheetName: string,
         row: number
@@ -122,12 +124,13 @@ export const UCSDSheetsGenerator: ISheetsGenerator = {
         return [
             {
                 range: `'${sheetName}'!${column}${row}`,
-                values: [[buzz.marker.points ?? 10]],
+                values: [[points]],
             },
         ];
     },
     getValuesForNeg: (
         buzz: ITossupAnswerEvent,
+        points: number,
         playerToColumnMapping: IPlayerToColumnMap,
         sheetName: string,
         row: number
@@ -140,8 +143,7 @@ export const UCSDSheetsGenerator: ISheetsGenerator = {
         return [
             {
                 range: `'${sheetName}'!${column}${row}`,
-                // TODO: Calculate if this is a power or not
-                values: [[-5]],
+                values: [[points]],
             },
         ];
     },

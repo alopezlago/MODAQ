@@ -22,6 +22,7 @@ export const TJSheetsGenerator: ISheetsGenerator = {
     playerPerTeamLimit: 6,
     playerRow,
     rostersRange: "INSTRUCTIONS!A34:CV40",
+    writeNoPenaltyBuzzes: false,
 
     getClearRanges: (sheetName: string): string[] => {
         return [
@@ -217,6 +218,7 @@ export const TJSheetsGenerator: ISheetsGenerator = {
     },
     getValuesForCorrectBuzz: (
         buzz: ITossupAnswerEvent,
+        points: number,
         playerToColumnMapping: IPlayerToColumnMap,
         sheetName: string,
         row: number
@@ -229,12 +231,13 @@ export const TJSheetsGenerator: ISheetsGenerator = {
         return [
             {
                 range: `'${sheetName}'!${column}${row}`,
-                values: [[buzz.marker.points ?? 10]],
+                values: [[points]],
             },
         ];
     },
     getValuesForNeg: (
         buzz: ITossupAnswerEvent,
+        points: number,
         playerToColumnMapping: IPlayerToColumnMap,
         sheetName: string,
         row: number
@@ -247,8 +250,7 @@ export const TJSheetsGenerator: ISheetsGenerator = {
         return [
             {
                 range: `'${sheetName}'!${column}${row}`,
-                // TODO: When formats are supported, figure out what value goes here (and return nothing if it's 0)
-                values: [[-5]],
+                values: [[points]],
             },
         ];
     },

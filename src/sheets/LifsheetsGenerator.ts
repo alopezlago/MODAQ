@@ -21,6 +21,7 @@ export const LifsheetsGenerator: ISheetsGenerator = {
     playerPerTeamLimit: 6,
     playerRow: 7,
     rostersRange: "Rosters!A2:L",
+    writeNoPenaltyBuzzes: false,
 
     getClearRanges: (sheetName: string): string[] => {
         return [
@@ -118,8 +119,13 @@ export const LifsheetsGenerator: ISheetsGenerator = {
 
         return valueRanges;
     },
-    getValuesForDeadQuestion: (): gapi.client.sheets.ValueRange[] => {
-        return [];
+    getValuesForDeadQuestion: (sheetName: string, row: number): gapi.client.sheets.ValueRange[] => {
+        return [
+            {
+                range: `'${sheetName}'!Q${row}`,
+                values: [[1]],
+            },
+        ];
     },
     getValuesForPlayerJoins: (
         join: IPlayerJoinsEvent,
@@ -211,6 +217,7 @@ export const LifsheetsGenerator: ISheetsGenerator = {
     },
     getValuesForCorrectBuzz: (
         buzz: ITossupAnswerEvent,
+        points: number,
         playerToColumnMapping: IPlayerToColumnMap,
         sheetName: string,
         row: number
@@ -223,12 +230,13 @@ export const LifsheetsGenerator: ISheetsGenerator = {
         return [
             {
                 range: `'${sheetName}'!${column}${row}`,
-                values: [[buzz.marker.points ?? 10]],
+                values: [[points]],
             },
         ];
     },
     getValuesForNeg: (
         buzz: ITossupAnswerEvent,
+        points: number,
         playerToColumnMapping: IPlayerToColumnMap,
         sheetName: string,
         row: number
@@ -241,8 +249,7 @@ export const LifsheetsGenerator: ISheetsGenerator = {
         return [
             {
                 range: `'${sheetName}'!${column}${row}`,
-                // TODO: Calculate if this is a power or not
-                values: [[-5]],
+                values: [[points]],
             },
         ];
     },

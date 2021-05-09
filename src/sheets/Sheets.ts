@@ -12,6 +12,7 @@ import { IRoster, ISheetsGenerator } from "./ISheetsGenerator";
 import { LifsheetsGenerator } from "./LifsheetsGenerator";
 import { TJSheetsGenerator } from "./TJSheetsGenerator";
 import { UCSDSheetsGenerator } from "./UCSDSheetsGenerator";
+import { ITossupAnswerEvent } from "src/state/Events";
 
 // TODO:
 // - Socket integration! Can be very tricky because of how the cycle/phases are backed differently
@@ -226,38 +227,64 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
         const buzzPoints: number[] = [];
 
         if (cycle.wrongBuzzes) {
-            for (const buzz of cycle.wrongBuzzes.filter((b) => b.marker.points < 0)) {
+            const orderedWrongBuzzes: ITossupAnswerEvent[] = cycle.orderedBuzzes.slice(0, cycle.wrongBuzzes.length);
+
+            let isFirstBuzz = true;
+            for (const buzz of orderedWrongBuzzes) {
+                let points: number = game.getBuzzValue(buzz);
+
+                // Until the game format can handle multiple negs, only treat the first incorrect buzz as a neg
+                if (!isFirstBuzz && points == game.gameFormat.negValue) {
+                    points = 0;
+                }
+
+                if (points === 0 && !sheetsGenerator.writeNoPenaltyBuzzes) {
+                    continue;
+                }
+
                 valueRanges = valueRanges.concat(
-                    sheetsGenerator.getValuesForNeg(buzz, playerToColumnMapping, sheetName, row)
+                    sheetsGenerator.getValuesForNeg(buzz, points, playerToColumnMapping, sheetName, row)
                 );
 
                 const negColumn: string | undefined = playerToColumnMapping.get(buzz.marker.player);
                 if (negColumn != undefined) {
                     buzzPoints.push(buzz.marker.position);
                 }
+
+                isFirstBuzz = false;
             }
         }
 
         if (cycle.correctBuzz) {
-            valueRanges = valueRanges.concat(
-                sheetsGenerator.getValuesForCorrectBuzz(cycle.correctBuzz, playerToColumnMapping, sheetName, row)
-            );
+            const points: number = game.getBuzzValue(cycle.correctBuzz);
 
-            const correctColumn: string | undefined = playerToColumnMapping.get(cycle.correctBuzz.marker.player);
-            if (correctColumn != undefined) {
-                buzzPoints.push(cycle.correctBuzz.marker.position);
-            }
-
-            if (cycle.bonusAnswer) {
+            if (points > 0) {
                 valueRanges = valueRanges.concat(
-                    sheetsGenerator.getValuesForBonusAnswer(
-                        cycle.bonusAnswer,
-                        game.teamNames,
+                    sheetsGenerator.getValuesForCorrectBuzz(
+                        cycle.correctBuzz,
+                        points,
+                        playerToColumnMapping,
                         sheetName,
-                        row,
-                        game.gameFormat.bonusesBounceBack
+                        row
                     )
                 );
+
+                const correctColumn: string | undefined = playerToColumnMapping.get(cycle.correctBuzz.marker.player);
+                if (correctColumn != undefined) {
+                    buzzPoints.push(cycle.correctBuzz.marker.position);
+                }
+
+                if (cycle.bonusAnswer) {
+                    valueRanges = valueRanges.concat(
+                        sheetsGenerator.getValuesForBonusAnswer(
+                            cycle.bonusAnswer,
+                            game.teamNames,
+                            sheetName,
+                            row,
+                            game.gameFormat.bonusesBounceBack
+                        )
+                    );
+                }
             }
         } else {
             valueRanges = valueRanges.concat(sheetsGenerator.getValuesForDeadQuestion(sheetName, row));

@@ -15,7 +15,7 @@ import { DialogState } from "./DialogState";
 import { IGameFormat } from "./IGameFormat";
 
 // TODO: Look into breaking this up into individual UI component states. Lots of pendingX fields, which could be in
-// their own
+// their own (see CustomizeGameFormatDialogState)
 // Alternatively, keep certain component-local states in the component state, and only store values that could be used
 // outside of that component here.
 

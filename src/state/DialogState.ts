@@ -1,9 +1,11 @@
 import { makeAutoObservable } from "mobx";
 import { ignore } from "mobx-sync";
+import { CustomizeGameFormatDialogState } from "./CustomizeGameFormatDialogState";
+import { IGameFormat } from "./IGameFormat";
 
 export class DialogState {
     @ignore
-    public editFormatDialogVisible: boolean;
+    public customizeGameFormat: CustomizeGameFormatDialogState | undefined;
 
     @ignore
     public exportToJsonDialogVisible: boolean;
@@ -20,15 +22,15 @@ export class DialogState {
     constructor() {
         makeAutoObservable(this);
 
-        this.editFormatDialogVisible = false;
+        this.customizeGameFormat = undefined;
         this.exportToJsonDialogVisible = false;
         this.helpDialogVisible = false;
         this.importGameDialogVisible = false;
         this.newGameDialogVisible = false;
     }
 
-    public hideEditFormatDialog(): void {
-        this.editFormatDialogVisible = false;
+    public hideCustomizeGameFormatDialog(): void {
+        this.customizeGameFormat = undefined;
     }
 
     public hideExportToJsonDialog(): void {
@@ -47,8 +49,8 @@ export class DialogState {
         this.newGameDialogVisible = false;
     }
 
-    public showEditFormatDialog(): void {
-        this.editFormatDialogVisible = true;
+    public showCustomizeGameFormatDialog(gameFormat: IGameFormat): void {
+        this.customizeGameFormat = new CustomizeGameFormatDialogState(gameFormat);
     }
 
     public showExportToJsonDialog(): void {

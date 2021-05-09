@@ -5,7 +5,13 @@ import * as GameFormats from "./GameFormats";
 import { PacketState, Bonus, Tossup } from "./PacketState";
 import { Player } from "./TeamState";
 import { Cycle, ICycle } from "./Cycle";
-import { ISubstitutionEvent, IPlayerJoinsEvent, IPlayerLeavesEvent, IBonusAnswerPart } from "./Events";
+import {
+    ISubstitutionEvent,
+    IPlayerJoinsEvent,
+    IPlayerLeavesEvent,
+    IBonusAnswerPart,
+    ITossupAnswerEvent,
+} from "./Events";
 import { IGameFormat } from "./IGameFormat";
 
 export class GameState {
@@ -217,6 +223,19 @@ export class GameState {
         return usedBonusesCount >= this.packet.bonuses.length ? -1 : usedBonusesCount;
     }
 
+    public getBuzzValue(buzz: ITossupAnswerEvent): number {
+        const tossup: Tossup | undefined = this.packet.tossups[buzz.tossupIndex];
+        if (tossup == undefined) {
+            return 0;
+        }
+
+        return tossup.getPointsAtPosition(
+            this.gameFormat,
+            buzz.marker.position,
+            /* isCorrect */ buzz.marker.points > 0
+        );
+    }
+
     public getTossup(cycleIndex: number): Tossup | undefined {
         return this.packet.tossups[this.getTossupIndex(cycleIndex)];
     }
@@ -262,11 +281,7 @@ export class GameState {
                 );
             }
 
-            // More complex with powers. Need to convert buzzes to points, then add bonuses.
-            // Would want getScore(team) method to simplify it
-            // If points isn't specified, this is an old game that relied on the correct flag. It only supported 10
-            // points
-            change[indexToUpdate] += cycle.correctBuzz.marker.points;
+            change[indexToUpdate] += this.getBuzzValue(cycle.correctBuzz);
             if (cycle.bonusAnswer) {
                 for (let i = 0; i < cycle.bonusAnswer.parts.length; i++) {
                     let bonusAnswerTeamIndex: number = indexToUpdate;
@@ -288,17 +303,16 @@ export class GameState {
         }
 
         if (cycle.wrongBuzzes != undefined && this.gameFormat.negValue !== 0) {
-            for (const buzz of cycle.wrongBuzzes) {
-                if (buzz.marker.points >= 0) {
-                    continue;
-                }
-
+            const sortedWrongBuzzes: ITossupAnswerEvent[] = [...cycle.wrongBuzzes].sort(
+                (left, right) => left.marker.position - right.marker.position
+            );
+            for (const buzz of sortedWrongBuzzes) {
                 const indexToUpdate: number = this.teamNames.indexOf(buzz.marker.player.teamName);
                 if (indexToUpdate < 0) {
-                    throw new Error(`Correct buzz belongs to a non-existent team ${buzz.marker.player.teamName}`);
+                    throw new Error(`Wrong buzz belongs to a non-existent team ${buzz.marker.player.teamName}`);
                 }
 
-                change[indexToUpdate] += buzz.marker.points ?? this.gameFormat.negValue;
+                change[indexToUpdate] += this.getBuzzValue(buzz);
             }
         }
 

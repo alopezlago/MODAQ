@@ -212,66 +212,57 @@ export function ToQBJ(game: GameState): string {
             bonus: undefined,
         };
 
-        if (cycle.wrongBuzzes) {
-            for (const wrongBuzz of cycle.wrongBuzzes) {
-                const buzz: IMatchQuestionBuzz | undefined = getBuzz(teams, wrongBuzz);
-                if (buzz != undefined) {
-                    matchQuestion.buzzes.push(buzz);
-                    updateAnswerCount(matchTeams, wrongBuzz);
-                }
+        let isFirstBuzz = true;
+        for (const buzz of cycle.orderedBuzzes) {
+            const matchBuzz: IMatchQuestionBuzz | undefined = getBuzz(game, teams, buzz, isFirstBuzz);
+            if (matchBuzz != undefined) {
+                matchQuestion.buzzes.push(matchBuzz);
+                updateAnswerCount(matchTeams, buzz);
             }
+
+            isFirstBuzz = false;
         }
 
-        if (cycle.correctBuzz) {
-            const buzz: IMatchQuestionBuzz | undefined = getBuzz(teams, cycle.correctBuzz);
-            if (buzz != undefined) {
-                matchQuestion.buzzes.push(buzz);
-                updateAnswerCount(matchTeams, cycle.correctBuzz);
+        if (cycle.correctBuzz && cycle.bonusAnswer) {
+            const matchTeam: IMatchTeam | undefined = matchTeams.get(cycle.bonusAnswer.receivingTeamName);
+            const otherTeam: IMatchTeam | undefined = [...matchTeams.values()].find((team) => team !== matchTeam);
 
-                if (cycle.bonusAnswer) {
-                    const matchTeam: IMatchTeam | undefined = matchTeams.get(cycle.bonusAnswer.receivingTeamName);
-                    const otherTeam: IMatchTeam | undefined = [...matchTeams.values()].find(
-                        (team) => team !== matchTeam
-                    );
+            const parts: IMatchQuestionBonusPart[] = [];
+            for (let j = 0; j < cycle.bonusAnswer.parts.length; j++) {
+                const bonusAnswerPart: IBonusAnswerPart | undefined =
+                    cycle.bonusAnswer.parts && cycle.bonusAnswer.parts[j];
+                const points: number = bonusAnswerPart ? bonusAnswerPart.points : 0;
+                const matchPart: IMatchQuestionBonusPart = {
+                    controlled_points: 0,
+                };
 
-                    const parts: IMatchQuestionBonusPart[] = [];
-                    for (let j = 0; j < cycle.bonusAnswer.parts.length; j++) {
-                        const bonusAnswerPart: IBonusAnswerPart | undefined =
-                            cycle.bonusAnswer.parts && cycle.bonusAnswer.parts[j];
-                        const points: number = bonusAnswerPart ? bonusAnswerPart.points : 0;
-                        const matchPart: IMatchQuestionBonusPart = {
-                            controlled_points: 0,
-                        };
-
-                        if (
-                            matchTeam != undefined &&
-                            (bonusAnswerPart == undefined ||
-                                bonusAnswerPart.teamName === cycle.correctBuzz.marker.player.teamName)
-                        ) {
-                            matchPart.controlled_points = points;
-                            matchPart.bounceback_points = game.gameFormat.bonusesBounceBack ? 0 : undefined;
-                            matchTeam.bonus_points += points;
-                        } else if (otherTeam != undefined) {
-                            matchPart.bounceback_points = points;
-                            if (otherTeam.bonus_bounceback_points != undefined) {
-                                otherTeam.bonus_bounceback_points += points;
-                            }
-                        }
-
-                        parts.push(matchPart);
+                if (
+                    matchTeam != undefined &&
+                    (bonusAnswerPart == undefined ||
+                        bonusAnswerPart.teamName === cycle.correctBuzz.marker.player.teamName)
+                ) {
+                    matchPart.controlled_points = points;
+                    matchPart.bounceback_points = game.gameFormat.bonusesBounceBack ? 0 : undefined;
+                    matchTeam.bonus_points += points;
+                } else if (otherTeam != undefined) {
+                    matchPart.bounceback_points = points;
+                    if (otherTeam.bonus_bounceback_points != undefined) {
+                        otherTeam.bonus_bounceback_points += points;
                     }
-
-                    const matchBonus: IMatchQuestionBonus = {
-                        question: {
-                            parts: cycle.bonusAnswer.parts.length,
-                            type: "bonus",
-                            question_number: cycle.bonusAnswer.bonusIndex + 1,
-                        },
-                        parts,
-                    };
-                    matchQuestion.bonus = matchBonus;
                 }
+
+                parts.push(matchPart);
             }
+
+            const matchBonus: IMatchQuestionBonus = {
+                question: {
+                    parts: cycle.bonusAnswer.parts.length,
+                    type: "bonus",
+                    question_number: cycle.bonusAnswer.bonusIndex + 1,
+                },
+                parts,
+            };
+            matchQuestion.bonus = matchBonus;
         }
 
         if (cycle.tossupProtests) {
@@ -310,8 +301,22 @@ export function ToQBJ(game: GameState): string {
     return JSON.stringify(match);
 }
 
-function getBuzz(teams: ITeam[], buzz: ITossupAnswerEvent): IMatchQuestionBuzz | undefined {
+function getBuzz(
+    game: GameState,
+    teams: ITeam[],
+    buzz: ITossupAnswerEvent,
+    isFirstBuzz: boolean
+): IMatchQuestionBuzz | undefined {
     const team: ITeam | undefined = teams.find((team) => team.name === buzz.marker.player.teamName);
+
+    // Negs only happen on the first incorrect buzz (for now), so reset the value to 0 if they were wrong
+    let buzzPoints: number = game.getBuzzValue(buzz);
+    if (buzzPoints === game.gameFormat.negValue && !isFirstBuzz) {
+        // TODO: This should probably come from a game format setting. For now, if it's not the first wrong answer, it's
+        //  not a neg. Reset its value to 0.
+        buzzPoints = 0;
+    }
+
     return (
         team && {
             buzz_position: {
@@ -319,7 +324,7 @@ function getBuzz(teams: ITeam[], buzz: ITossupAnswerEvent): IMatchQuestionBuzz |
             },
             player: { name: buzz.marker.player.name },
             team,
-            result: { value: buzz.marker.points },
+            result: { value: buzzPoints },
         }
     );
 }
