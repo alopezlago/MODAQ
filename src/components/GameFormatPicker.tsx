@@ -64,7 +64,7 @@ export const GameFormatPicker = observer((props: IGameFormatPickerProps) => {
                         <Text>{`Neg value: ${pendingNewGame.gameFormat.negValue}`}</Text>
                     </li>
                     <li>
-                        <Text>{`Has powers: ${formatBoolean(pendingNewGame.gameFormat.powerMarkers.length > 0)}`}</Text>
+                        <Text>{`Has powers: ${formatBoolean(pendingNewGame.gameFormat.powers.length > 0)}`}</Text>
                     </li>
                     <li>
                         <Text>{`Bonuses bounce back: ${formatBoolean(

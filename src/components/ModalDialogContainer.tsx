@@ -9,12 +9,14 @@ import { ExportToJsonDialog } from "./dialogs/ExportToJsonDialog";
 import { ImportGameDialog } from "./dialogs/ImportGameDialog";
 import { FontDialog } from "./dialogs/FontDialog";
 import { HelpDialog } from "./dialogs/HelpDialog";
+import { CustomizeGameFormatDialog } from "./dialogs/CustomizeGameFormatDialog";
 
 export const ModalDialogContainer = observer((props: IModalDialogContainerProps) => {
     // The Protest dialogs aren't here because they require extra information
     return (
         <>
             <AddPlayerDialog appState={props.appState} />
+            <CustomizeGameFormatDialog appState={props.appState} />
             <ExportToJsonDialog appState={props.appState} />
             <ExportToSheetsDialog appState={props.appState} />
             <FontDialog appState={props.appState} />

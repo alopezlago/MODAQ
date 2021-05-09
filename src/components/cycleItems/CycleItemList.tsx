@@ -20,11 +20,11 @@ import { ThrowOutQuestionCycleItem } from "./ThrowOutQuestionCycleItem";
 import { BonusAnswerCycleItem } from "./BonusAnswerCycleItem";
 import { TossupProtestCycleItem } from "./TossupProtestCycleItem";
 import { BonusProtestCycleItem } from "./BonusProtestCycleItem";
-import { IGameFormat } from "src/state/IGameFormat";
+import { GameState } from "src/state/GameState";
 
 export const CycleItemList = observer(
     (props: ICycleItemListProps): JSX.Element => {
-        return <div>{createCycleList(props.cycle, props.gameFormat)}</div>;
+        return <div>{createCycleList(props.cycle, props.game)}</div>;
     }
 );
 
@@ -32,7 +32,7 @@ export const CycleItemList = observer(
 // TODO: Investigate using List/DetailedList for this, instead of returning a bunch of individual elements
 // Consider making CycleItem take in a "data" field, that can be passed into the click handler. This will solve the
 // issue of making a new event handler each time
-function createCycleList(cycle: Cycle, gameFormat: IGameFormat): JSX.Element[] {
+function createCycleList(cycle: Cycle, game: GameState): JSX.Element[] {
     // Ordering should be
     // Substitutions
     // Buzzes and thrown out tossups, based on the tossup index. If a thrown out tossup and buzz have the same index,
@@ -105,7 +105,7 @@ function createCycleList(cycle: Cycle, gameFormat: IGameFormat): JSX.Element[] {
                 }
             }
 
-            elements.push(createTossupAnswerDetails(cycle, buzz, gameFormat, i));
+            elements.push(createTossupAnswerDetails(cycle, buzz, game, i));
         }
 
         // Ordering is still a little off, and the buzzes remain in view. Tweak this.
@@ -179,7 +179,7 @@ function createSubstitutionDetails(cycle: Cycle, sub: ISubstitutionEvent, index:
 function createTossupAnswerDetails(
     cycle: Cycle,
     buzz: ITossupAnswerEvent,
-    gameFormat: IGameFormat,
+    game: GameState,
     buzzIndex: number
 ): JSX.Element {
     // TODO: Look into using something like shortid for the key
@@ -188,7 +188,7 @@ function createTossupAnswerDetails(
             key={`buzz_${buzzIndex}_tu_${buzz.tossupIndex}_${buzz.marker.player.name}_${buzz.marker.player.teamName}`}
             cycle={cycle}
             buzz={buzz}
-            gameFormat={gameFormat}
+            game={game}
         />
     );
 }
@@ -237,5 +237,5 @@ function createBonusProtestDetails(cycle: Cycle, protest: IBonusProtestEvent, pr
 
 interface ICycleItemListProps {
     cycle: Cycle;
-    gameFormat: IGameFormat;
+    game: GameState;
 }

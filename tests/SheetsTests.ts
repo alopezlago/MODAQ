@@ -164,6 +164,13 @@ function verifyCell(ranges: gapi.client.sheets.ValueRange[], cellRange: string, 
     expect(cell.values[0][0]).to.equal(value);
 }
 
+function verifyNoCell(ranges: gapi.client.sheets.ValueRange[], cellRange: string): void {
+    const cell: gapi.client.sheets.ValueRange | undefined = ranges.find(
+        (range) => range.range === `'Round 1'!${cellRange}`
+    );
+    expect(cell).to.be.undefined;
+}
+
 function verifyUCSDBonusCells(
     ranges: gapi.client.sheets.ValueRange[],
     cellRange: string,
@@ -255,6 +262,60 @@ describe("SheetsTests", () => {
         });
         it("Second team neg written to sheet (Lifsheets)", async () => {
             await secondTeamNegTest(SheetType.UCSDSheets, (ranges) => verifyCell(ranges, "O4", -5));
+        });
+
+        const nonNegNotWrittenTest = async (
+            sheetType: SheetType,
+            verifyCells: (ranges: gapi.client.sheets.ValueRange[], position: number) => void
+        ): Promise<void> => {
+            const appState: AppState = createAppStateForExport(sheetType);
+
+            const player: Player = findPlayerOnTeam(appState, "Alpha");
+            const position = 1;
+            appState.game.cycles[0].addWrongBuzz(
+                {
+                    player,
+                    position,
+                    points: -5,
+                    isLastWord: false,
+                },
+                0,
+                appState.game.gameFormat
+            );
+
+            const secondPlayer: Player = findPlayerOnTeam(appState, "Beta");
+            appState.game.cycles[0].addWrongBuzz(
+                {
+                    player: secondPlayer,
+                    position,
+                    points: 0,
+                    isLastWord: false,
+                },
+                0,
+                appState.game.gameFormat
+            );
+
+            await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
+        };
+        it("First team neg written, second team no penalty not written (Lifsheets)", async () => {
+            await nonNegNotWrittenTest(SheetType.Lifsheets, (ranges, position) => {
+                verifyCell(ranges, "B8", -5);
+                verifyCell(ranges, "AJ8", position);
+                verifyNoCell(ranges, "R8");
+                verifyNoCell(ranges, "AK8");
+            });
+        });
+        it("First team neg written, second team no penalty not written (TJSheets)", async () => {
+            await nonNegNotWrittenTest(SheetType.TJSheets, (ranges) => {
+                verifyCell(ranges, "C4", -5);
+                verifyNoCell(ranges, "M4");
+            });
+        });
+        it("First team neg written, second team no penalty not written (Lifsheets)", async () => {
+            await nonNegNotWrittenTest(SheetType.UCSDSheets, (ranges) => {
+                verifyCell(ranges, "C4", -5);
+                verifyNoCell(ranges, "O4");
+            });
         });
 
         const firstCorrectBuzzTest = async (
@@ -369,6 +430,19 @@ describe("SheetsTests", () => {
             verifyCells: (ranges: gapi.client.sheets.ValueRange[], position: number) => void
         ): Promise<void> => {
             const appState: AppState = createAppStateForExport(sheetType);
+
+            const packet: PacketState = new PacketState();
+            packet.setTossups([new Tossup("This tossup has (*) five words.", "A")]);
+            packet.setBonuses([
+                new Bonus("Leadin", [
+                    { question: "Part 1", answer: "A1", value: 10 },
+                    { question: "Part 2", answer: "A2", value: 10 },
+                    { question: "Part 3", answer: "A3", value: 10 },
+                ]),
+            ]);
+
+            appState.game.loadPacket(packet);
+            appState.game.setGameFormat(GameFormats.StandardPowersMACFGameFormat);
 
             const player: Player = findPlayerOnTeam(appState, "Alpha");
             const position = 2;
@@ -803,6 +877,37 @@ describe("SheetsTests", () => {
                 verifyCell(ranges, "O32", 3);
                 verifyCell(ranges, "P32", 1);
                 verifyCell(ranges, "C32", 4);
+            });
+        });
+
+        const deadTossupTest = async (
+            sheetType: SheetType,
+            verifyCells: (ranges: gapi.client.sheets.ValueRange[]) => void
+        ) => {
+            const appState: AppState = createAppStateForExport(sheetType);
+
+            const player: Player = findPlayerOnTeam(appState, "Beta");
+            appState.game.cycles[0].addWrongBuzz(
+                {
+                    player,
+                    points: -5,
+                    position: 1,
+                    isLastWord: false,
+                },
+                0,
+                appState.game.gameFormat
+            );
+
+            await verifyExportToSheetSuccess(appState, verifyCells);
+        };
+        it("Dead tossup (Lifsheets)", async () => {
+            await deadTossupTest(SheetType.Lifsheets, (ranges) => {
+                verifyCell(ranges, "Q8", 1);
+            });
+        });
+        it("Dead tossup (TJSheets)", async () => {
+            await deadTossupTest(SheetType.TJSheets, (ranges) => {
+                verifyCell(ranges, "I4", "DT");
             });
         });
 

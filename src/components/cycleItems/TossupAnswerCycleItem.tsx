@@ -4,7 +4,7 @@ import { observer } from "mobx-react-lite";
 import { Cycle } from "src/state/Cycle";
 import { ITossupAnswerEvent } from "src/state/Events";
 import { CycleItem } from "./CycleItem";
-import { IGameFormat } from "src/state/IGameFormat";
+import { GameState } from "src/state/GameState";
 
 export const TossupAnswerCycleItem = observer(
     (props: ITossupAnswerCycleItemProps): JSX.Element => {
@@ -12,24 +12,24 @@ export const TossupAnswerCycleItem = observer(
             if (props.buzz.marker.points > 0) {
                 props.cycle.removeCorrectBuzz();
             } else {
-                props.cycle.removeWrongBuzz(props.buzz.marker.player, props.gameFormat);
+                props.cycle.removeWrongBuzz(props.buzz.marker.player, props.game.gameFormat);
             }
         };
 
         let buzzDescription = "answered";
-        const points: number = props.buzz.marker.points;
+        const points: number = props.game.getBuzzValue(props.buzz);
         if (points === 0) {
             buzzDescription = "answered WRONGLY";
-        } else if (points === props.gameFormat.negValue) {
+        } else if (points === props.game.gameFormat.negValue) {
             buzzDescription = "NEGGED";
         } else if (points === 10) {
             buzzDescription = "answered CORRECTLY";
         } else {
-            const powerIndex: number = props.gameFormat.pointsForPowers.indexOf(points);
+            const powerIndex: number = props.game.gameFormat.powers.findIndex((power) => power.points === points);
             // Add more "SUPER"s depending on the number of remaining power levels
             // Subtract 1 since the first element is for regular powers
-            const superpowerLevel: number = props.gameFormat.pointsForPowers.length - powerIndex - 1;
-            if (superpowerLevel === 0) {
+            const superpowerLevel: number = props.game.gameFormat.powers.length - powerIndex - 1;
+            if (superpowerLevel === 0 || powerIndex === -1) {
                 buzzDescription = "POWERED";
             } else {
                 // Treat the 0 case as special since we don't want to create empty arrays for no reason
@@ -47,5 +47,5 @@ export const TossupAnswerCycleItem = observer(
 export interface ITossupAnswerCycleItemProps {
     cycle: Cycle;
     buzz: ITossupAnswerEvent;
-    gameFormat: IGameFormat;
+    game: GameState;
 }

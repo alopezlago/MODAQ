@@ -20,7 +20,7 @@ const defaultPacket: PacketState = new PacketState();
 defaultPacket.setTossups([
     new Tossup("first q", "first a"),
     new Tossup("second q", "second a"),
-    new Tossup("third q", "third a"),
+    new Tossup("third q (*) has a power marker", "third a"),
     new Tossup("fourth q", "fourth a"),
 ]);
 defaultPacket.setBonuses([
@@ -143,7 +143,7 @@ describe("QBJTests", () => {
                             player: secondTeamPlayer,
                             points: 15,
                             position: 0,
-                            isLastWord: true,
+                            isLastWord: false,
                         },
                         2,
                         game.gameFormat,

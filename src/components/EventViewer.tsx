@@ -6,7 +6,7 @@ import { mergeStyleSets } from "@fluentui/react";
 import { CycleItemList } from "./cycleItems/CycleItemList";
 import { Cycle } from "src/state/Cycle";
 import { AppState } from "src/state/AppState";
-import { IGameFormat } from "src/state/IGameFormat";
+import { GameState } from "src/state/GameState";
 
 const numberKey = "number";
 const cycleKey = "cycle";
@@ -29,7 +29,7 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
                 return <></>;
             }
 
-            return onRenderItemColumn(item, props.appState.game.gameFormat, index, column);
+            return onRenderItemColumn(item, props.appState.game, index, column);
         },
         [props]
     );
@@ -75,7 +75,7 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
     );
 });
 
-function onRenderItemColumn(item: Cycle, gameFormat: IGameFormat, index: number, column: IColumn): JSX.Element {
+function onRenderItemColumn(item: Cycle, game: GameState, index: number, column: IColumn): JSX.Element {
     switch (column?.key) {
         case numberKey:
             if (index == undefined) {
@@ -89,7 +89,7 @@ function onRenderItemColumn(item: Cycle, gameFormat: IGameFormat, index: number,
 
             return (
                 <>
-                    <CycleItemList cycle={item} gameFormat={gameFormat} />
+                    <CycleItemList cycle={item} game={game} />
                     <Text>{`(${scoreInCurrentCycle[0]} - ${scoreInCurrentCycle[1]})`}</Text>
                 </>
             );

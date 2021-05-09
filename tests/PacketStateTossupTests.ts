@@ -8,13 +8,14 @@ import { IGameFormat } from "src/state/IGameFormat";
 const noPowersGameFormat: IGameFormat = { ...GameFormats.UndefinedGameFormat, powerMarkers: [], pointsForPowers: [] };
 const powersGameFormat: IGameFormat = {
     ...GameFormats.UndefinedGameFormat,
-    powerMarkers: ["(*)"],
-    pointsForPowers: [15],
+    powers: [{ marker: "(*)", points: 15 }],
 };
 const superpowersGameFormat: IGameFormat = {
     ...GameFormats.UndefinedGameFormat,
-    powerMarkers: ["(+)", "(*)"],
-    pointsForPowers: [20, 15],
+    powers: [
+        { marker: "(+)", points: 20 },
+        { marker: "(*)", points: 15 },
+    ],
 };
 
 describe("PacketStateTossupTests", () => {

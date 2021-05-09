@@ -31,6 +31,9 @@ export interface ISheetsGenerator {
     // Should be maximum number of cycles, inclusive, i.e. if the scoresheet only has 20 cells for scoring, then 20
     readonly cyclesLimit: number;
 
+    // If the Sheet needs to record buzzes that have no penalty (0 points)
+    readonly writeNoPenaltyBuzzes: boolean;
+
     // TODO: Method to generate player/column mapping... and maybe we pass that in? Could also just have starting
     // columns for each player
     // Means we can't support horizontal-based scoresheets
@@ -72,12 +75,14 @@ export interface ISheetsGenerator {
     ): gapi.client.sheets.ValueRange[];
     getValuesForCorrectBuzz(
         buzz: ITossupAnswerEvent,
+        points: number,
         playerToColumnMapping: IPlayerToColumnMap,
         sheetName: string,
         row: number
     ): gapi.client.sheets.ValueRange[];
     getValuesForNeg(
         buzz: ITossupAnswerEvent,
+        points: number,
         playerToColumnMapping: IPlayerToColumnMap,
         sheetName: string,
         row: number

@@ -36,7 +36,9 @@ export const TossupQuestion = observer(
             // We need to skip over power markers and not count them when we calculate buzz points
             let index: number | undefined = wordIndex;
             const trimmedText: string = fullText.trim();
-            const powerMarkerIndex: number = props.appState.game.gameFormat.powerMarkers.indexOf(trimmedText);
+            const powerMarkerIndex: number = props.appState.game.gameFormat.powers.findIndex(
+                (power) => power.marker === trimmedText
+            );
             if (powerMarkerIndex >= 0) {
                 index = undefined;
                 nonwordIndex++;

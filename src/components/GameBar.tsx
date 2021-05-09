@@ -377,13 +377,22 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
 function getOptionsSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
 
-    items.push({
-        key: "font",
-        text: "Font...",
-        onClick: () => {
-            props.appState.uiState.setPendingQuestionFontSize(props.appState.uiState.questionFontSize);
+    items.push(
+        {
+            key: "changeFormat",
+            text: "Change Format...",
+            onClick: () => {
+                props.appState.uiState.dialogState.showCustomizeGameFormatDialog(props.appState.game.gameFormat);
+            },
         },
-    });
+        {
+            key: "font",
+            text: "Font...",
+            onClick: () => {
+                props.appState.uiState.setPendingQuestionFontSize(props.appState.uiState.questionFontSize);
+            },
+        }
+    );
 
     return items;
 }
