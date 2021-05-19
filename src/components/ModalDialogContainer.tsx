@@ -1,7 +1,6 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 
-import { AppState } from "src/state/AppState";
 import { AddPlayerDialog } from "./dialogs/AddPlayerDialog";
 import { NewGameDialog } from "./dialogs/NewGameDialog";
 import { ExportToSheetsDialog } from "./dialogs/ExportToSheetsDialog";
@@ -12,25 +11,20 @@ import { HelpDialog } from "./dialogs/HelpDialog";
 import { CustomizeGameFormatDialog } from "./dialogs/CustomizeGameFormatDialog";
 import { AddQuestionsDialog } from "./dialogs/AddQuestionsDialog";
 
-export const ModalDialogContainer = observer((props: IModalDialogContainerProps) => {
+export const ModalDialogContainer = observer(() => {
     // The Protest dialogs aren't here because they require extra information
-    const appState: AppState = props.appState;
 
     return (
         <>
-            <AddPlayerDialog appState={appState} />
-            <AddQuestionsDialog appState={appState} />
-            <CustomizeGameFormatDialog appState={appState} />
-            <ExportToJsonDialog appState={appState} />
-            <ExportToSheetsDialog appState={appState} />
-            <FontDialog appState={appState} />
-            <HelpDialog appState={appState} />
-            <ImportGameDialog appState={appState} />
-            <NewGameDialog appState={appState} />
+            <AddPlayerDialog />
+            <AddQuestionsDialog />
+            <CustomizeGameFormatDialog />
+            <ExportToJsonDialog />
+            <ExportToSheetsDialog />
+            <FontDialog />
+            <HelpDialog />
+            <ImportGameDialog />
+            <NewGameDialog />
         </>
     );
 });
-
-export interface IModalDialogContainerProps {
-    appState: AppState;
-}

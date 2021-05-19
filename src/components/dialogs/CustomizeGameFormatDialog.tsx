@@ -23,6 +23,7 @@ import { GameState } from "src/state/GameState";
 import { AppState } from "src/state/AppState";
 import { IGameFormat, IPowerMarker } from "src/state/IGameFormat";
 import { CustomizeGameFormatDialogState } from "src/state/CustomizeGameFormatDialogState";
+import { StateContext } from "src/contexts/StateContext";
 
 const customFormatName = "Custom";
 
@@ -66,18 +67,19 @@ const sectionsStackTokens: Partial<IStackTokens> = { childrenGap: 20 };
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const CustomizeGameFormatDialog = observer(
-    (props: ICustomizeGameFormatDialogProps): JSX.Element => {
-        const submitHandler = React.useCallback(() => onSubmit(props), [props]);
-        const cancelHandler = React.useCallback(() => onCancel(props), [props]);
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
+        const submitHandler = React.useCallback(() => onSubmit(appState), [appState]);
+        const cancelHandler = React.useCallback(() => onCancel(appState), [appState]);
 
         return (
             <Dialog
-                hidden={props.appState.uiState.dialogState.customizeGameFormat === undefined}
+                hidden={appState.uiState.dialogState.customizeGameFormat === undefined}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
             >
-                <CustomizeGameFormatDialogBody {...props} />
+                <CustomizeGameFormatDialogBody />
                 <DialogFooter>
                     <PrimaryButton text="Save" onClick={submitHandler} />
                     <DefaultButton text="Cancel" onClick={cancelHandler} />
@@ -88,9 +90,10 @@ export const CustomizeGameFormatDialog = observer(
 );
 
 const CustomizeGameFormatDialogBody = observer(
-    (props: ICustomizeGameFormatDialogProps): JSX.Element => {
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
         const customizeGameFormatState: CustomizeGameFormatDialogState | undefined =
-            props.appState.uiState.dialogState.customizeGameFormat;
+            appState.uiState.dialogState.customizeGameFormat;
 
         const regulationTossupCountChangeHandler = React.useCallback(
             (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) => {
@@ -308,14 +311,14 @@ function getNumberOrUndefined(value: string | undefined): number | undefined {
     return isNaN(number) ? undefined : number;
 }
 
-function onSubmit(props: ICustomizeGameFormatDialogProps): void {
-    const game: GameState = props.appState.game;
-    const state: CustomizeGameFormatDialogState | undefined = props.appState.uiState.dialogState.customizeGameFormat;
+function onSubmit(appState: AppState): void {
+    const game: GameState = appState.game;
+    const state: CustomizeGameFormatDialogState | undefined = appState.uiState.dialogState.customizeGameFormat;
     if (state == undefined) {
         throw new Error("Tried customizing a game format with no game format");
     }
 
-    if (!isGameFormatValid(props)) {
+    if (!isGameFormatValid(appState)) {
         // We should already have the error repored, so just do nothing
         return;
     }
@@ -349,15 +352,15 @@ function onSubmit(props: ICustomizeGameFormatDialogProps): void {
 
     game.setGameFormat(updatedGameFormat);
 
-    hideDialog(props);
+    hideDialog(appState);
 }
 
 function sortPowersDescending(left: IPowerMarker, right: IPowerMarker): number {
     return right.points - left.points;
 }
 
-function isGameFormatValid(props: ICustomizeGameFormatDialogProps): boolean {
-    const state: CustomizeGameFormatDialogState | undefined = props.appState.uiState.dialogState.customizeGameFormat;
+function isGameFormatValid(appState: AppState): boolean {
+    const state: CustomizeGameFormatDialogState | undefined = appState.uiState.dialogState.customizeGameFormat;
     if (state == undefined) {
         throw new Error("Tried changing a format with no modified format");
     }
@@ -365,14 +368,10 @@ function isGameFormatValid(props: ICustomizeGameFormatDialogProps): boolean {
     return state.powerMarkerErrorMessage == undefined && state.powerValuesErrorMessage == undefined;
 }
 
-function onCancel(props: ICustomizeGameFormatDialogProps): void {
-    hideDialog(props);
+function onCancel(appState: AppState): void {
+    hideDialog(appState);
 }
 
-function hideDialog(props: ICustomizeGameFormatDialogProps): void {
-    props.appState.uiState.dialogState.hideCustomizeGameFormatDialog();
-}
-
-export interface ICustomizeGameFormatDialogProps {
-    appState: AppState;
+function hideDialog(appState: AppState): void {
+    appState.uiState.dialogState.hideCustomizeGameFormatDialog();
 }

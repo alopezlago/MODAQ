@@ -12,6 +12,7 @@ import {
     SpinButton,
 } from "@fluentui/react";
 import { AppState } from "src/state/AppState";
+import { StateContext } from "src/contexts/StateContext";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -45,19 +46,20 @@ const minimumFontSize = 12;
 const maximumFontSize = 40;
 
 export const FontDialog = observer(
-    (props: IFontDialogProps): JSX.Element => {
-        const closeHandler = React.useCallback(() => hideDialog(props), [props]);
-        const submitHandler = React.useCallback(() => updateFont(props), [props]);
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
+        const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
+        const submitHandler = React.useCallback(() => updateFont(appState), [appState]);
 
         return (
             <Dialog
-                hidden={props.appState.uiState.pendingQuestionFontSize == undefined}
+                hidden={appState.uiState.pendingQuestionFontSize == undefined}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 maxWidth="40vw"
                 onDismiss={closeHandler}
             >
-                <FontDialogBody {...props} />
+                <FontDialogBody />
                 <DialogFooter>
                     <PrimaryButton text="OK" onClick={submitHandler} />
                     <DefaultButton text="Cancel" onClick={closeHandler} />
@@ -68,7 +70,8 @@ export const FontDialog = observer(
 );
 
 const FontDialogBody = observer(
-    (props: IFontDialogProps): JSX.Element => {
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
         const changeHandler = React.useCallback(
             (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) => {
                 if (newValue == undefined) {
@@ -77,14 +80,14 @@ const FontDialogBody = observer(
 
                 const size = Number.parseInt(newValue, 10);
                 if (!isNaN(size)) {
-                    props.appState.uiState.setPendingQuestionFontSize(size);
+                    appState.uiState.setPendingQuestionFontSize(size);
                 }
             },
-            [props]
+            [appState]
         );
 
         const value: string = (
-            props.appState.uiState.pendingQuestionFontSize ?? props.appState.uiState.questionFontSize
+            appState.uiState.pendingQuestionFontSize ?? appState.uiState.questionFontSize
         ).toString();
 
         return (
@@ -102,15 +105,11 @@ const FontDialogBody = observer(
     }
 );
 
-function updateFont(props: IFontDialogProps): void {
-    props.appState.uiState.setQuestionFontSize(props.appState.uiState.pendingQuestionFontSize ?? minimumFontSize);
-    hideDialog(props);
+function updateFont(appState: AppState): void {
+    appState.uiState.setQuestionFontSize(appState.uiState.pendingQuestionFontSize ?? minimumFontSize);
+    hideDialog(appState);
 }
 
-function hideDialog(props: IFontDialogProps): void {
-    props.appState.uiState.resetPendingQuestionFontSize();
-}
-
-export interface IFontDialogProps {
-    appState: AppState;
+function hideDialog(appState: AppState): void {
+    appState.uiState.resetPendingQuestionFontSize();
 }

@@ -15,14 +15,16 @@ import { Bonus, Tossup } from "src/state/PacketState";
 import { Player } from "src/state/TeamState";
 import { AppState } from "src/state/AppState";
 import { ITossupAnswerEvent } from "src/state/Events";
+import { StateContext } from "src/contexts/StateContext";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
 export const GameBar = observer(
-    (props: IGameBarProps): JSX.Element => {
+    (): JSX.Element => {
         // This should pop up the new game handler
-        const uiState: UIState = props.appState.uiState;
-        const game: GameState = props.appState.game;
+        const appState: AppState = React.useContext(StateContext);
+        const uiState: UIState = appState.uiState;
+        const game: GameState = appState.game;
 
         const newGameHandler = React.useCallback(() => {
             uiState.createPendingNewGame();
@@ -59,7 +61,7 @@ export const GameBar = observer(
             uiState.dialogState.showAddQuestionsDialog();
         }, [uiState]);
 
-        const openHelpHandler = React.useCallback(() => props.appState.uiState.dialogState.showHelpDialog(), [props]);
+        const openHelpHandler = React.useCallback(() => appState.uiState.dialogState.showHelpDialog(), [appState]);
 
         const items: ICommandBarItemProps[] = [
             {
@@ -87,7 +89,7 @@ export const GameBar = observer(
             },
         ];
 
-        const optionsSubMenuItems: ICommandBarItemProps[] = getOptionsSubMenuItems(props);
+        const optionsSubMenuItems: ICommandBarItemProps[] = getOptionsSubMenuItems(appState);
         items.push({
             key: "options",
             text: "Options",
@@ -98,7 +100,7 @@ export const GameBar = observer(
 
         // TODO: Look into memoizing; React.useMemo with just props doesn't seem to recognize when the cycle changes.
         const actionSubMenuItems: ICommandBarItemProps[] = getActionSubMenuItems(
-            props,
+            appState,
             addPlayerHandler,
             protestBonusHandler,
             addQuestionsHandler
@@ -112,7 +114,7 @@ export const GameBar = observer(
         });
 
         // Google stuff
-        const exportSubMenuItems: ICommandBarItemProps[] = getExportSubMenuItems(props);
+        const exportSubMenuItems: ICommandBarItemProps[] = getExportSubMenuItems(appState);
         items.push({
             key: "export",
             text: "Export",
@@ -131,30 +133,30 @@ export const GameBar = observer(
     }
 );
 
-async function exportToSheets(props: IGameBarProps): Promise<void> {
-    props.appState.uiState.createPendingSheet();
+async function exportToSheets(appState: AppState): Promise<void> {
+    appState.uiState.createPendingSheet();
     return;
 }
 
 function getActionSubMenuItems(
-    props: IGameBarProps,
+    appState: AppState,
     addPlayerHandler: () => void,
     protestBonusHandler: () => void,
     addQuestionsHandler: () => void
 ): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
-    const uiState: UIState = props.appState.uiState;
-    const game: GameState = props.appState.game;
+    const uiState: UIState = appState.uiState;
+    const game: GameState = appState.game;
 
     const playerManagementSection: ICommandBarItemProps = getPlayerManagementSubMenuItems(
-        props,
+        appState,
         game,
         uiState,
         addPlayerHandler
     );
     items.push(playerManagementSection);
 
-    const protestsSection: ICommandBarItemProps = getProtestSubMenuItems(props, game, uiState, protestBonusHandler);
+    const protestsSection: ICommandBarItemProps = getProtestSubMenuItems(appState, game, uiState, protestBonusHandler);
     items.push(protestsSection);
 
     const packetSection: ICommandBarItemProps = {
@@ -177,16 +179,16 @@ function getActionSubMenuItems(
     return items;
 }
 
-function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
+function getExportSubMenuItems(appState: AppState): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
-    const game: GameState = props.appState.game;
-    const disabled: boolean = props.appState.game.cycles.length === 0;
+    const game: GameState = appState.game;
+    const disabled: boolean = appState.game.cycles.length === 0;
 
     items.push({
         key: "exportSheets",
         text: "Export to Sheets...",
         onClick: () => {
-            exportToSheets(props);
+            exportToSheets(appState);
         },
         disabled,
     });
@@ -217,14 +219,14 @@ function getExportSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
         text: "Export to JSON...",
         disabled,
         onClick: () => {
-            props.appState.uiState.dialogState.showExportToJsonDialog();
+            appState.uiState.dialogState.showExportToJsonDialog();
         },
     });
 
     return items;
 }
 
-function getOptionsSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
+function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
 
     items.push(
@@ -232,14 +234,14 @@ function getOptionsSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
             key: "changeFormat",
             text: "Change Format...",
             onClick: () => {
-                props.appState.uiState.dialogState.showCustomizeGameFormatDialog(props.appState.game.gameFormat);
+                appState.uiState.dialogState.showCustomizeGameFormatDialog(appState.game.gameFormat);
             },
         },
         {
             key: "font",
             text: "Font...",
             onClick: () => {
-                props.appState.uiState.setPendingQuestionFontSize(props.appState.uiState.questionFontSize);
+                appState.uiState.setPendingQuestionFontSize(appState.uiState.questionFontSize);
             },
         }
     );
@@ -248,7 +250,7 @@ function getOptionsSubMenuItems(props: IGameBarProps): ICommandBarItemProps[] {
 }
 
 function getPlayerManagementSubMenuItems(
-    props: IGameBarProps,
+    appState: AppState,
     game: GameState,
     uiState: UIState,
     addPlayerHandler: () => void
@@ -266,7 +268,7 @@ function getPlayerManagementSubMenuItems(
         for (const activePlayer of activePlayers) {
             const subMenuItems: ICommandBarItemProps[] = subs.map((player) => {
                 const subItemData: ISubMenuItemData = {
-                    props,
+                    appState,
                     activePlayer,
                     player,
                 };
@@ -289,7 +291,7 @@ function getPlayerManagementSubMenuItems(
             };
 
             const removeItemData: ISubMenuItemData = {
-                props,
+                appState,
                 activePlayer,
             };
             const removeItem: ICommandBarItemProps = {
@@ -350,7 +352,7 @@ function getPlayerManagementSubMenuItems(
 }
 
 function getProtestSubMenuItems(
-    props: IGameBarProps,
+    appState: AppState,
     game: GameState,
     uiState: UIState,
     protestBonusHandler: () => void
@@ -368,7 +370,7 @@ function getProtestSubMenuItems(
             for (const buzz of cycle.orderedBuzzes) {
                 const { name, teamName } = buzz.marker.player;
                 const tossupProtestItemData: ITossupProtestMenuItemData = {
-                    props,
+                    appState,
                     buzz,
                 };
 
@@ -460,7 +462,7 @@ function onProtestTossupClick(
         return;
     }
 
-    const { game, uiState } = item.data.props.appState;
+    const { game, uiState } = item.data.appState;
 
     const cycle: Cycle = game.cycles[uiState.cycleIndex];
     if (cycle?.orderedBuzzes == undefined) {
@@ -495,9 +497,7 @@ function onRemovePlayerClick(
         return;
     }
 
-    item.data.props.appState.game.cycles[item.data.props.appState.uiState.cycleIndex].addPlayerLeaves(
-        item.data.activePlayer
-    );
+    item.data.appState.game.cycles[item.data.appState.uiState.cycleIndex].addPlayerLeaves(item.data.activePlayer);
 }
 
 function onSwapPlayerClick(
@@ -510,18 +510,18 @@ function onSwapPlayerClick(
         return;
     }
 
-    item.data.props.appState.game.cycles[item.data.props.appState.uiState.cycleIndex].addSwapSubstitution(
+    item.data.appState.game.cycles[item.data.appState.uiState.cycleIndex].addSwapSubstitution(
         item.data.player,
         item.data.activePlayer
     );
 }
 
 function isSubMenuItemData(data: ISubMenuItemData | undefined): data is ISubMenuItemData {
-    return data?.props !== undefined && data.activePlayer !== undefined;
+    return data?.appState !== undefined && data.activePlayer !== undefined;
 }
 
 function isTossupProtestMenuItemData(data: ITossupProtestMenuItemData | undefined): data is ITossupProtestMenuItemData {
-    return data?.props !== undefined && data.buzz !== undefined;
+    return data?.appState !== undefined && data.buzz !== undefined;
 }
 
 // Adapted from this gist: https://gist.github.com/lgarron/d1dee380f4ed9d825ca7
@@ -549,17 +549,13 @@ function copyText(text: string) {
     });
 }
 
-export interface IGameBarProps {
-    appState: AppState;
-}
-
 interface ISubMenuItemData {
-    props: IGameBarProps;
+    appState: AppState;
     activePlayer: Player;
     player?: Player;
 }
 
 interface ITossupProtestMenuItemData {
-    props: IGameBarProps;
+    appState: AppState;
     buzz: ITossupAnswerEvent;
 }

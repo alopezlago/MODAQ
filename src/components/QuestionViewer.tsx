@@ -8,6 +8,7 @@ import { BonusQuestion } from "./BonusQuestion";
 import { Cycle } from "src/state/Cycle";
 import { ISeparatorStyles, mergeStyleSets, Separator } from "@fluentui/react";
 import { AppState } from "src/state/AppState";
+import { StateContext } from "src/contexts/StateContext";
 
 const separatorStyles: Partial<ISeparatorStyles> = {
     root: {
@@ -15,11 +16,12 @@ const separatorStyles: Partial<ISeparatorStyles> = {
     },
 };
 
-export const QuestionViewer = observer((props: IQuestionViewerProps) => {
-    const fontSize: number = props.appState.uiState.questionFontSize;
+export const QuestionViewer = observer(() => {
+    const appState: AppState = React.useContext(StateContext);
+    const fontSize: number = appState.uiState.questionFontSize;
     const classes: IQuestionViewerClassNames = getClassNames(fontSize);
-    const game: GameState = props.appState.game;
-    const uiState: UIState = props.appState.uiState;
+    const game: GameState = appState.game;
+    const uiState: UIState = appState.uiState;
 
     const cycle: Cycle = game.playableCycles[uiState.cycleIndex];
     const tossupIndex: number = game.getTossupIndex(uiState.cycleIndex);
@@ -42,7 +44,7 @@ export const QuestionViewer = observer((props: IQuestionViewerProps) => {
     } else {
         bonus = (
             <BonusQuestion
-                appState={props.appState}
+                appState={appState}
                 bonus={game.packet.bonuses[bonusIndex]}
                 bonusIndex={bonusIndex}
                 cycle={cycle}
@@ -55,7 +57,7 @@ export const QuestionViewer = observer((props: IQuestionViewerProps) => {
     if (tossupIndex >= 0 && tossupIndex < game.packet.tossups.length) {
         tossup = (
             <TossupQuestion
-                appState={props.appState}
+                appState={appState}
                 bonusIndex={bonusIndex}
                 tossupNumber={tossupIndex + 1}
                 cycle={cycle}
@@ -84,10 +86,6 @@ export const QuestionViewer = observer((props: IQuestionViewerProps) => {
         </div>
     );
 });
-
-export interface IQuestionViewerProps {
-    appState: AppState;
-}
 
 interface IQuestionViewerClassNames {
     questionViewer: string;

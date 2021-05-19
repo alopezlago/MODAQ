@@ -15,6 +15,7 @@ import {
 import * as QBJ from "src/qbj/QBJ";
 import { AppState } from "src/state/AppState";
 import { GameState } from "src/state/GameState";
+import { StateContext } from "src/contexts/StateContext";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -45,10 +46,11 @@ const modalProps: IModalProps = {
 };
 
 export const ExportToJsonDialog = observer(
-    (props: IExportToJsonDialogProps): JSX.Element => {
-        const game: GameState = props.appState.game;
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
+        const game: GameState = appState.game;
 
-        const closeHandler = React.useCallback(() => hideDialog(props), [props]);
+        const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
 
         const joinedTeamNames: string = game.teamNames.join("_");
 
@@ -66,7 +68,7 @@ export const ExportToJsonDialog = observer(
 
         return (
             <Dialog
-                hidden={!props.appState.uiState.dialogState.exportToJsonDialogVisible}
+                hidden={!appState.uiState.dialogState.exportToJsonDialogVisible}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 maxWidth="40vw"
@@ -90,10 +92,6 @@ export const ExportToJsonDialog = observer(
     }
 );
 
-function hideDialog(props: IExportToJsonDialogProps) {
-    props.appState.uiState.dialogState.hideExportToJsonDialog();
-}
-
-export interface IExportToJsonDialogProps {
-    appState: AppState;
+function hideDialog(appState: AppState) {
+    appState.uiState.dialogState.hideExportToJsonDialog();
 }

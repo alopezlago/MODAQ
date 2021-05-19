@@ -16,6 +16,7 @@ import { AppState } from "src/state/AppState";
 import { PacketLoader } from "../PacketLoader";
 import { PacketState } from "src/state/PacketState";
 import { AddQuestionDialogState } from "src/state/AddQuestionsDialogState";
+import { StateContext } from "src/contexts/StateContext";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -47,18 +48,19 @@ const modalProps: IModalProps = {
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const AddQuestionsDialog = observer(
-    (props: IAddQuestionsDialogPorps): JSX.Element => {
-        const submitHandler = React.useCallback(() => onSubmit(props), [props]);
-        const cancelHandler = React.useCallback(() => onCancel(props), [props]);
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
+        const submitHandler = React.useCallback(() => onSubmit(appState), [appState]);
+        const cancelHandler = React.useCallback(() => onCancel(appState), [appState]);
 
         return (
             <Dialog
-                hidden={props.appState.uiState.dialogState.addQuestions === undefined}
+                hidden={appState.uiState.dialogState.addQuestions === undefined}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
             >
-                <AddQuestionsDialogBody {...props} />
+                <AddQuestionsDialogBody />
                 <DialogFooter>
                     <PrimaryButton text="Load" onClick={submitHandler} />
                     <DefaultButton text="Cancel" onClick={cancelHandler} />
@@ -69,19 +71,20 @@ export const AddQuestionsDialog = observer(
 );
 
 const AddQuestionsDialogBody = observer(
-    (props: IAddQuestionsDialogPorps): JSX.Element => {
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
         const loadHandler = React.useCallback(
-            (packet: PacketState) => props.appState.uiState.dialogState.addQuestions?.setPacket(packet),
-            [props]
+            (packet: PacketState) => appState.uiState.dialogState.addQuestions?.setPacket(packet),
+            [appState]
         );
 
-        return <PacketLoader appState={props.appState} onLoad={loadHandler} />;
+        return <PacketLoader appState={appState} onLoad={loadHandler} />;
     }
 );
 
-function onSubmit(props: IAddQuestionsDialogPorps): void {
-    const game: GameState = props.appState.game;
-    const state: AddQuestionDialogState | undefined = props.appState.uiState.dialogState.addQuestions;
+function onSubmit(appState: AppState): void {
+    const game: GameState = appState.game;
+    const state: AddQuestionDialogState | undefined = appState.uiState.dialogState.addQuestions;
     if (state == undefined) {
         throw new Error("Tried adding more questions without any questions");
     }
@@ -91,18 +94,14 @@ function onSubmit(props: IAddQuestionsDialogPorps): void {
     combinedPacket.setBonuses(game.packet.bonuses.concat(state.newPacket.bonuses));
     game.loadPacket(combinedPacket);
 
-    hideDialog(props);
+    hideDialog(appState);
 }
 
-function onCancel(props: IAddQuestionsDialogPorps): void {
-    props.appState.uiState.clearPacketStatus();
-    hideDialog(props);
+function onCancel(appState: AppState): void {
+    appState.uiState.clearPacketStatus();
+    hideDialog(appState);
 }
 
-function hideDialog(props: IAddQuestionsDialogPorps): void {
-    props.appState.uiState.dialogState.hideAddQuestionsDialog();
-}
-
-export interface IAddQuestionsDialogPorps {
-    appState: AppState;
+function hideDialog(appState: AppState): void {
+    appState.uiState.dialogState.hideAddQuestionsDialog();
 }

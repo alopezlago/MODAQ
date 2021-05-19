@@ -5,27 +5,25 @@ import { mergeStyleSets } from "@fluentui/react";
 import { CycleChooser } from "./CycleChooser";
 import { QuestionViewer } from "./QuestionViewer";
 import { AppState } from "src/state/AppState";
+import { StateContext } from "src/contexts/StateContext";
 
-export const QuestionViewerContainer = observer((props: IQuestionViewerContainerProps) => {
+export const QuestionViewerContainer = observer(() => {
+    const appState: AppState = React.useContext(StateContext);
     const classes: IQuestionViewerContainerClassNames = getClassNames();
 
-    if (!props.appState.game.isLoaded) {
+    if (!appState.game.isLoaded) {
         return null;
     }
 
     return (
         <div className="question-viewer-container">
             <div className={classes.cycleChooserContainer}>
-                <CycleChooser {...props} />
+                <CycleChooser />
             </div>
-            <QuestionViewer {...props} />
+            <QuestionViewer />
         </div>
     );
 });
-
-export interface IQuestionViewerContainerProps {
-    appState: AppState;
-}
 
 interface IQuestionViewerContainerClassNames {
     cycleChooserContainer: string;

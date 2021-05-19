@@ -6,6 +6,7 @@ import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
 import { UIState } from "src/state/UIState";
 import { AppState } from "src/state/AppState";
 import { ILabelStyles, Label } from "@fluentui/react";
+import { StateContext } from "src/contexts/StateContext";
 
 const ReturnKeyCode = 13;
 const questionNumberTextStyle: Partial<ITextFieldStyles> = {
@@ -34,19 +35,20 @@ const nextButtonStyle: Partial<IButtonStyles> = {
     },
 };
 
-export const CycleChooser = observer((props: ICycleChooserProps) => {
-    const onPreviousClickHandler = React.useCallback(() => onPreviousClick(props), [props]);
-    const onNextClickHandler = React.useCallback(() => onNextClick(props), [props]);
-    const onProposedQuestionNumberBlurHandler = React.useCallback((ev) => onProposedQuestionNumberBlur(ev, props), [
-        props,
+export const CycleChooser = observer(() => {
+    const appState: AppState = React.useContext(StateContext);
+    const onPreviousClickHandler = React.useCallback(() => onPreviousClick(appState), [appState]);
+    const onNextClickHandler = React.useCallback(() => onNextClick(appState), [appState]);
+    const onProposedQuestionNumberBlurHandler = React.useCallback((ev) => onProposedQuestionNumberBlur(ev, appState), [
+        appState,
     ]);
     const onProposedQuestionNumberKeyDownHandler = React.useCallback(
-        (ev) => onProposedQuestionNumberKeyDown(ev, props),
-        [props]
+        (ev) => onProposedQuestionNumberKeyDown(ev, appState),
+        [appState]
     );
-    const onQuestionLabelDoubleClickHandler = React.useCallback(() => onQuestionLabelDoubleClick(props), [props]);
+    const onQuestionLabelDoubleClickHandler = React.useCallback(() => onQuestionLabelDoubleClick(appState), [appState]);
 
-    const uiState: UIState = props.appState.uiState;
+    const uiState: UIState = appState.uiState;
 
     // TODO: Move away from buttons to something like images
     const previousButton: JSX.Element = (
@@ -60,7 +62,7 @@ export const CycleChooser = observer((props: ICycleChooserProps) => {
         </DefaultButton>
     );
 
-    const nextButtonText: string = shouldNextButtonExport(props) ? "Export..." : "Next →";
+    const nextButtonText: string = shouldNextButtonExport(appState) ? "Export..." : "Next →";
     const nextButton: JSX.Element = (
         <DefaultButton key="nextButton" onClick={onNextClickHandler} styles={nextButtonStyle}>
             {nextButtonText}
@@ -98,59 +100,52 @@ export const CycleChooser = observer((props: ICycleChooserProps) => {
     );
 });
 
-function shouldNextButtonExport(props: ICycleChooserProps): boolean {
-    const nextCycleIndex: number = props.appState.uiState.cycleIndex + 1;
-    return nextCycleIndex >= props.appState.game.playableCycles.length;
+function shouldNextButtonExport(appState: AppState): boolean {
+    const nextCycleIndex: number = appState.uiState.cycleIndex + 1;
+    return nextCycleIndex >= appState.game.playableCycles.length;
 }
 
-function onProposedQuestionNumberBlur(event: React.FocusEvent<HTMLInputElement>, props: ICycleChooserProps): void {
-    commitCycleIndex(props, event.currentTarget.value);
+function onProposedQuestionNumberBlur(event: React.FocusEvent<HTMLInputElement>, appState: AppState): void {
+    commitCycleIndex(appState, event.currentTarget.value);
 }
 
-function onProposedQuestionNumberKeyDown(
-    event: React.KeyboardEvent<HTMLInputElement>,
-    props: ICycleChooserProps
-): void {
+function onProposedQuestionNumberKeyDown(event: React.KeyboardEvent<HTMLInputElement>, appState: AppState): void {
     if (event.which == ReturnKeyCode) {
-        commitCycleIndex(props, event.currentTarget.value);
+        commitCycleIndex(appState, event.currentTarget.value);
     }
 }
 
-function onNextClick(props: ICycleChooserProps): void {
-    if (shouldNextButtonExport(props)) {
+function onNextClick(appState: AppState): void {
+    if (shouldNextButtonExport(appState)) {
         // If they use Sheets, show the Export Sheets dialog. Otherwise, show the Export JSON dialog
-        if (props.appState.uiState.sheetsState.sheetId != undefined) {
-            props.appState.uiState.createPendingSheet();
+        if (appState.uiState.sheetsState.sheetId != undefined) {
+            appState.uiState.createPendingSheet();
         } else {
-            props.appState.uiState.dialogState.showExportToJsonDialog();
+            appState.uiState.dialogState.showExportToJsonDialog();
         }
     } else {
-        props.appState.uiState.nextCycle();
+        appState.uiState.nextCycle();
     }
 }
 
-function onPreviousClick(props: ICycleChooserProps): void {
-    props.appState.uiState.previousCycle();
+function onPreviousClick(appState: AppState): void {
+    appState.uiState.previousCycle();
 }
 
-function onQuestionLabelDoubleClick(props: ICycleChooserProps): void {
+function onQuestionLabelDoubleClick(appState: AppState): void {
     // The question number is one higher than the cycle index
-    props.appState.uiState.setIsEditingCycleIndex(true);
+    appState.uiState.setIsEditingCycleIndex(true);
 }
 
-function commitCycleIndex(props: ICycleChooserProps, value: string): void {
+function commitCycleIndex(appState: AppState, value: string): void {
     if (value == undefined) {
         return;
     }
 
     const propsedCycleIndex: number = parseInt(value, 10);
-    if (propsedCycleIndex >= 1 && propsedCycleIndex <= props.appState.game.packet.tossups.length) {
-        props.appState.uiState.setCycleIndex(propsedCycleIndex - 1);
+    if (propsedCycleIndex >= 1 && propsedCycleIndex <= appState.game.packet.tossups.length) {
+        appState.uiState.setCycleIndex(propsedCycleIndex - 1);
     }
 
-    props.appState.uiState.setIsEditingCycleIndex(false);
-}
-
-export interface ICycleChooserProps {
-    appState: AppState;
+    appState.uiState.setIsEditingCycleIndex(false);
 }
