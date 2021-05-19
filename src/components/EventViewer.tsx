@@ -7,20 +7,22 @@ import { CycleItemList } from "./cycleItems/CycleItemList";
 import { Cycle } from "src/state/Cycle";
 import { AppState } from "src/state/AppState";
 import { GameState } from "src/state/GameState";
+import { StateContext } from "src/contexts/StateContext";
 
 const numberKey = "number";
 const cycleKey = "cycle";
 
-export const EventViewer = observer((props: IEventViewerProps): JSX.Element | null => {
+export const EventViewer = observer((): JSX.Element | null => {
+    const appState: AppState = React.useContext(StateContext);
     const classes: IEventViewerClassNames = getClassNames();
 
     const activeItemChangedHandler = React.useCallback(
         (item: IEventViewerRow, index?: number) => {
             if (index != undefined) {
-                props.appState.uiState.setCycleIndex(index);
+                appState.uiState.setCycleIndex(index);
             }
         },
-        [props.appState.uiState]
+        [appState.uiState]
     );
 
     const renderColumnHandler = React.useCallback(
@@ -29,9 +31,9 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
                 return <></>;
             }
 
-            return onRenderItemColumn(item, props.appState.game, index, column);
+            return onRenderItemColumn(item, appState.game, index, column);
         },
-        [props]
+        [appState]
     );
 
     const columns: IColumn[] = [
@@ -57,7 +59,7 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
             // TODO: Consider adding autoruns for scores/finalScore so we don't have to consider what context it's run
             // in. Just swapping scores with a scores2 value set during autorun didn't work initially, so it needs more
             // investigation.
-            data: props.appState.game.scores.slice(0, props.appState.game.playableCycles.length),
+            data: appState.game.scores.slice(0, appState.game.playableCycles.length),
         },
     ];
 
@@ -67,7 +69,7 @@ export const EventViewer = observer((props: IEventViewerProps): JSX.Element | nu
                 checkboxVisibility={CheckboxVisibility.hidden}
                 selectionMode={SelectionMode.single}
                 columns={columns}
-                items={props.appState.game.playableCycles}
+                items={appState.game.playableCycles}
                 onActiveItemChanged={activeItemChangedHandler}
                 onRenderItemColumn={renderColumnHandler}
             />
@@ -96,10 +98,6 @@ function onRenderItemColumn(item: Cycle, game: GameState, index: number, column:
         default:
             return <></>;
     }
-}
-
-export interface IEventViewerProps {
-    appState: AppState;
 }
 
 interface IEventViewerClassNames {

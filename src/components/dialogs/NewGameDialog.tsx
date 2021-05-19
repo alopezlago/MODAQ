@@ -31,6 +31,7 @@ import { AppState } from "src/state/AppState";
 import { FromRostersTeamEntry } from "../FromRostersTeamEntry";
 import { SheetType } from "src/state/SheetState";
 import { GameFormatPicker } from "../GameFormatPicker";
+import { StateContext } from "src/contexts/StateContext";
 
 const playerListHeight = "20vh";
 
@@ -76,18 +77,19 @@ const modalProps: IModalProps = {
 const rostersInputStyles: Partial<ITextFieldStyles> = { root: { marginRight: 10, width: "75%" } };
 
 export const NewGameDialog = observer(
-    (props: INewGameDialogProps): JSX.Element => {
-        const submitHandler = React.useCallback(() => onSubmit(props), [props]);
-        const cancelHandler = React.useCallback(() => onCancel(props), [props]);
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
+        const submitHandler = React.useCallback(() => onSubmit(appState), [appState]);
+        const cancelHandler = React.useCallback(() => onCancel(appState), [appState]);
 
         return (
             <Dialog
-                hidden={!props.appState.uiState.dialogState.newGameDialogVisible}
+                hidden={!appState.uiState.dialogState.newGameDialogVisible}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
             >
-                <NewGameDialogBody {...props} />
+                <NewGameDialogBody />
                 <DialogFooter>
                     <PrimaryButton text="Start" onClick={submitHandler} />
                     <DefaultButton text="Cancel" onClick={cancelHandler} />
@@ -98,9 +100,10 @@ export const NewGameDialog = observer(
 );
 
 const NewGameDialogBody = observer(
-    (props: INewGameDialogProps): JSX.Element => {
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
         const classes: INewGameDialogBodyClassNames = getClassNames();
-        const uiState: UIState = props.appState.uiState;
+        const uiState: UIState = appState.uiState;
 
         const packetLoadHandler = React.useCallback(
             (packet: PacketState) => {
@@ -147,22 +150,22 @@ const NewGameDialogBody = observer(
             <>
                 <Pivot aria-label="Game type" onLinkClick={pivotClickHandler}>
                     <PivotItem headerText="Manual" itemKey={PivotKey.Manual}>
-                        <ManualNewGamePivotBody appState={props.appState} classes={classes} />
+                        <ManualNewGamePivotBody appState={appState} classes={classes} />
                     </PivotItem>
                     <PivotItem headerText="From Lifsheets" itemKey={PivotKey.Lifsheets}>
-                        <FromSheetsNewGameBody appState={props.appState} classes={classes} />
+                        <FromSheetsNewGameBody appState={appState} classes={classes} />
                     </PivotItem>
                     <PivotItem headerText="From TJ Sheets" itemKey={PivotKey.TJSheets}>
-                        <FromSheetsNewGameBody appState={props.appState} classes={classes} />
+                        <FromSheetsNewGameBody appState={appState} classes={classes} />
                     </PivotItem>
                     <PivotItem headerText="From UCSD Sheets" itemKey={PivotKey.UCSDSheets}>
-                        <FromSheetsNewGameBody appState={props.appState} classes={classes} />
+                        <FromSheetsNewGameBody appState={appState} classes={classes} />
                     </PivotItem>
                 </Pivot>
                 <Separator />
-                <PacketLoader appState={props.appState} onLoad={packetLoadHandler} />
+                <PacketLoader appState={appState} onLoad={packetLoadHandler} />
                 <Separator />
-                <GameFormatPicker appState={props.appState} />
+                <GameFormatPicker />
             </>
         );
     }
@@ -176,15 +179,15 @@ const ManualNewGamePivotBody = observer(
         // team to upadate (like an index)
         const addPlayerHandler = React.useCallback(
             (existingPlayers: Player[]) => {
-                onAddPlayer(props, existingPlayers);
+                onAddPlayer(props.appState, existingPlayers);
             },
-            [props]
+            [props.appState]
         );
         const removePlayerHandler = React.useCallback(
             (player: Player) => {
-                onRemovePlayer(props, player);
+                onRemovePlayer(props.appState, player);
             },
-            [props]
+            [props.appState]
         );
         const teamNameValidationHandler = React.useCallback((): string | undefined => {
             if (uiState.pendingNewGame == undefined || uiState.pendingNewGame.type !== PendingGameType.Manual) {
@@ -364,8 +367,8 @@ const FromSheetsNewGameBody = observer(
     }
 );
 
-function onAddPlayer(props: INewGameDialogProps, players: Player[]): void {
-    const uiState: UIState = props.appState.uiState;
+function onAddPlayer(appState: AppState, players: Player[]): void {
+    const uiState: UIState = appState.uiState;
 
     if (uiState.pendingNewGame?.type === PendingGameType.Manual) {
         // TODO: Use the format to determine if they are a starter
@@ -380,8 +383,8 @@ function onAddPlayer(props: INewGameDialogProps, players: Player[]): void {
     }
 }
 
-function onRemovePlayer(props: INewGameDialogProps, player: Player): void {
-    const uiState: UIState = props.appState.uiState;
+function onRemovePlayer(appState: AppState, player: Player): void {
+    const uiState: UIState = appState.uiState;
 
     if (uiState.pendingNewGame?.type === PendingGameType.Manual) {
         if (player.teamName === uiState.pendingNewGame.firstTeamPlayers[0].teamName) {
@@ -393,8 +396,8 @@ function onRemovePlayer(props: INewGameDialogProps, player: Player): void {
 }
 
 // We need this to recreate the game, so we may need to add more methods to it
-function onSubmit(props: INewGameDialogProps): void {
-    const uiState: UIState = props.appState.uiState;
+function onSubmit(appState: AppState): void {
+    const uiState: UIState = appState.uiState;
 
     if (uiState.pendingNewGame == undefined) {
         throw new Error("Tried creating a new game with no pending game");
@@ -418,7 +421,7 @@ function onSubmit(props: INewGameDialogProps): void {
     }
 
     // We need to set the game's packet, players, etc. to the values in the uiState
-    const game: GameState = props.appState.game;
+    const game: GameState = appState.game;
     game.clear();
     game.addPlayers(firstTeamPlayers.filter((player) => player.name !== ""));
     game.addPlayers(secondTeamPlayers.filter((player) => player.name !== ""));
@@ -437,23 +440,19 @@ function onSubmit(props: INewGameDialogProps): void {
     // We always want to reset the round number, since this could be for a different round
     uiState.sheetsState.clearRoundNumber();
 
-    hideDialog(props);
+    hideDialog(appState);
 }
 
-function onCancel(props: INewGameDialogProps): void {
-    hideDialog(props);
+function onCancel(appState: AppState): void {
+    hideDialog(appState);
 }
 
-function hideDialog(props: INewGameDialogProps): void {
-    props.appState.uiState.dialogState.hideNewGameDialog();
-    props.appState.uiState.resetPendingNewGame();
+function hideDialog(appState: AppState): void {
+    appState.uiState.dialogState.hideNewGameDialog();
+    appState.uiState.resetPendingNewGame();
 }
-
-export interface INewGameDialogProps {
+interface INewGamePivotItemProps {
     appState: AppState;
-}
-
-interface INewGamePivotItemProps extends INewGameDialogProps {
     classes: INewGameDialogBodyClassNames;
 }
 

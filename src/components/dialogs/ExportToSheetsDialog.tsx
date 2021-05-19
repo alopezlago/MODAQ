@@ -26,6 +26,7 @@ import { UIState } from "src/state/UIState";
 import { IPendingSheet } from "src/state/IPendingSheet";
 import { ExportState, SheetType } from "src/state/SheetState";
 import { AppState } from "src/state/AppState";
+import { StateContext } from "src/contexts/StateContext";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -83,9 +84,10 @@ const settingsStackTokens: Partial<IStackTokens> = { childrenGap: 10 };
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const ExportToSheetsDialog = observer(
-    (props: IExportToSheetsDialogProps): JSX.Element => {
-        const uiState: UIState = props.appState.uiState;
-        const cancelHandler = React.useCallback(() => onClose(props), [props]);
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
+        const uiState: UIState = appState.uiState;
+        const cancelHandler = React.useCallback(() => onClose(appState), [appState]);
 
         let footer: JSX.Element | undefined;
         if (
@@ -93,7 +95,7 @@ export const ExportToSheetsDialog = observer(
             uiState.sheetsState.exportState === ExportState.OverwritePrompt
         ) {
             // Can't use React.useCallback since it only appears in the first stage
-            const exportHandler = () => onExport(props);
+            const exportHandler = () => onExport(appState);
 
             const exportDisabled: boolean = (uiState.pendingSheet?.sheetId ?? "") === "";
             const exportText: string =
@@ -130,7 +132,7 @@ export const ExportToSheetsDialog = observer(
                 maxWidth="40vw"
                 onDismiss={cancelHandler}
             >
-                <ExportSettingsDialogBody {...props} />
+                <ExportSettingsDialogBody />
                 {footer}
             </Dialog>
         );
@@ -138,8 +140,9 @@ export const ExportToSheetsDialog = observer(
 );
 
 const ExportSettingsDialogBody = observer(
-    (props: IExportToSheetsDialogProps): JSX.Element => {
-        const uiState: UIState = props.appState.uiState;
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
+        const uiState: UIState = appState.uiState;
 
         const sheetsUrlChangeHandler = React.useCallback(
             (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
@@ -160,9 +163,9 @@ const ExportSettingsDialogBody = observer(
                 }
 
                 // The keys are always SheetType values
-                props.appState.uiState.sheetsState.setSheetType(option.key as SheetType);
+                appState.uiState.sheetsState.setSheetType(option.key as SheetType);
             },
-            [props]
+            [appState]
         );
 
         const roundNumberChangeHandler = React.useCallback(
@@ -311,11 +314,11 @@ function validateSheetsUrl(url: string): string | undefined {
     return undefined;
 }
 
-async function onExport(props: IExportToSheetsDialogProps): Promise<void> {
-    const uiState: UIState = props.appState.uiState;
+async function onExport(appState: AppState): Promise<void> {
+    const uiState: UIState = appState.uiState;
 
     if (uiState.pendingSheet == undefined) {
-        hideDialog(props);
+        hideDialog(appState);
         return;
     }
 
@@ -330,19 +333,15 @@ async function onExport(props: IExportToSheetsDialogProps): Promise<void> {
     uiState.sheetsState.setRoundNumber(uiState.pendingSheet.roundNumber);
     uiState.sheetsState.setSheetId(uiState.pendingSheet.sheetId);
 
-    await Sheets.exportToSheet(props.appState);
+    await Sheets.exportToSheet(appState);
 }
 
-function onClose(props: IExportToSheetsDialogProps): void {
-    hideDialog(props);
+function onClose(appState: AppState): void {
+    hideDialog(appState);
 }
 
-function hideDialog(props: IExportToSheetsDialogProps): void {
-    const uiState: UIState = props.appState.uiState;
+function hideDialog(appState: AppState): void {
+    const uiState: UIState = appState.uiState;
     uiState.resetPendingSheet();
     uiState.sheetsState.clearExportStatus();
-}
-
-export interface IExportToSheetsDialogProps {
-    appState: AppState;
 }

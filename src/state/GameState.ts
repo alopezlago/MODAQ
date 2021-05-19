@@ -256,7 +256,6 @@ export class GameState {
         this.packet = packet;
 
         if (this.cycles.length < this.packet.tossups.length) {
-            // TODO: Don't create cycles for tiebreaker rounds once we create packet formats to specify limits
             for (let i = this.cycles.length; i < this.packet.tossups.length; i++) {
                 this.cycles.push(new Cycle());
             }

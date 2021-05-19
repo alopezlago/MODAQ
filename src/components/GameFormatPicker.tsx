@@ -5,6 +5,7 @@ import { Dropdown, IDropdownOption, IDropdownStyles, ITextStyles, Stack, StackIt
 import * as GameFormats from "src/state/GameFormats";
 import { AppState } from "src/state/AppState";
 import { IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
+import { StateContext } from "src/contexts/StateContext";
 
 const dropdownStyles: Partial<IDropdownStyles> = {
     root: {
@@ -19,17 +20,18 @@ const bouncebackWarningStyles: Partial<ITextStyles> = {
     },
 };
 
-export const GameFormatPicker = observer((props: IGameFormatPickerProps) => {
+export const GameFormatPicker = observer(() => {
+    const appState: AppState = React.useContext(StateContext);
     const changeHandler = React.useCallback(
         (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
             if (option?.data != undefined) {
-                props.appState.uiState.setPendingNewGameFormat(option.data);
+                appState.uiState.setPendingNewGameFormat(option.data);
             }
         },
-        [props]
+        [appState]
     );
 
-    const pendingNewGame: IPendingNewGame | undefined = props.appState.uiState.pendingNewGame;
+    const pendingNewGame: IPendingNewGame | undefined = appState.uiState.pendingNewGame;
 
     if (pendingNewGame == undefined) {
         return null;
@@ -80,8 +82,4 @@ export const GameFormatPicker = observer((props: IGameFormatPickerProps) => {
 
 function formatBoolean(value: boolean): string {
     return value ? "Yes" : "No";
-}
-
-export interface IGameFormatPickerProps {
-    appState: AppState;
 }

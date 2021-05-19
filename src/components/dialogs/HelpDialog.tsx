@@ -14,6 +14,7 @@ import {
     StackItem,
 } from "@fluentui/react";
 import { AppState } from "src/state/AppState";
+import { StateContext } from "src/contexts/StateContext";
 
 declare const __BUILD_VERSION__: string;
 
@@ -46,12 +47,13 @@ const modalProps: IModalProps = {
 };
 
 export const HelpDialog = observer(
-    (props: IHelpDialogPorps): JSX.Element => {
-        const closeHandler = React.useCallback(() => hideDialog(props), [props]);
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
+        const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
 
         return (
             <Dialog
-                hidden={!props.appState.uiState.dialogState.helpDialogVisible}
+                hidden={!appState.uiState.dialogState.helpDialogVisible}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 maxWidth="30vw"
@@ -85,10 +87,6 @@ const HelpDialogBody = observer(
     }
 );
 
-function hideDialog(props: IHelpDialogPorps): void {
-    props.appState.uiState.dialogState.hideHelpDialog();
-}
-
-export interface IHelpDialogPorps {
-    appState: AppState;
+function hideDialog(appState: AppState): void {
+    appState.uiState.dialogState.hideHelpDialog();
 }

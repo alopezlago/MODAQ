@@ -26,6 +26,7 @@ import { IPlayer, Player } from "src/state/TeamState";
 import { Bonus, PacketState, Tossup } from "src/state/PacketState";
 import { Cycle, ICycle } from "src/state/Cycle";
 import { IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
+import { StateContext } from "src/contexts/StateContext";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -58,18 +59,19 @@ const modalProps: IModalProps = {
 const stackTokens: IStackTokens = { childrenGap: 10 };
 
 export const ImportGameDialog = observer(
-    (props: IImportGameDialogProps): JSX.Element => {
-        const cancelHandler = React.useCallback(() => hideDialog(props), [props]);
-        const submitHandler = React.useCallback(() => onSubmit(props), [props]);
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
+        const cancelHandler = React.useCallback(() => hideDialog(appState), [appState]);
+        const submitHandler = React.useCallback(() => onSubmit(appState), [appState]);
 
         return (
             <Dialog
-                hidden={!props.appState.uiState.dialogState.importGameDialogVisible}
+                hidden={!appState.uiState.dialogState.importGameDialogVisible}
                 dialogContentProps={content}
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
             >
-                <ImportGameDialogBody appState={props.appState} />
+                <ImportGameDialogBody />
                 <DialogFooter>
                     <PrimaryButton text="Import Game" onClick={submitHandler} />
                     <DefaultButton text="Cancel" onClick={cancelHandler} />
@@ -80,22 +82,23 @@ export const ImportGameDialog = observer(
 );
 
 const ImportGameDialogBody = observer(
-    (props: IImportGameDialogProps): JSX.Element => {
+    (): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
         const loadHandler = React.useCallback(
             (ev: ProgressEvent<FileReader>): void => {
-                onLoad(ev, props);
+                onLoad(ev, appState);
             },
-            [props]
+            [appState]
         );
         const changeHandler = React.useCallback(
             (event: React.ChangeEvent<HTMLInputElement>, fileList: FileList | null | undefined) =>
-                onFilePickerChange(props, fileList, loadHandler),
-            [props, loadHandler]
+                onFilePickerChange(appState, fileList, loadHandler),
+            [appState, loadHandler]
         );
 
         const statusStyles: ILabelStyles = {
             root: {
-                color: props.appState.uiState.importGameStatus?.isError ?? false ? "rgb(128, 0, 0)" : undefined,
+                color: appState.uiState.importGameStatus?.isError ?? false ? "rgb(128, 0, 0)" : undefined,
             },
         };
 
@@ -111,7 +114,7 @@ const ImportGameDialogBody = observer(
                     />
                 </StackItem>
                 <StackItem>
-                    <Label styles={statusStyles}>{props.appState.uiState.importGameStatus?.status}</Label>
+                    <Label styles={statusStyles}>{appState.uiState.importGameStatus?.status}</Label>
                 </StackItem>
             </Stack>
         );
@@ -119,7 +122,7 @@ const ImportGameDialogBody = observer(
 );
 
 function onFilePickerChange(
-    props: IImportGameDialogProps,
+    appState: AppState,
     fileList: FileList | null | undefined,
     onLoadHandler: (ev: ProgressEvent<FileReader>) => void
 ): void {
@@ -133,19 +136,19 @@ function onFilePickerChange(
     fileReader.onload = onLoadHandler;
 
     if (file.type !== "application/json" && file.type !== "text/plain") {
-        setInvalidGameStatus(props.appState.uiState, "Unexpected file format. The file format must be JSON.");
+        setInvalidGameStatus(appState.uiState, "Unexpected file format. The file format must be JSON.");
         return;
     }
 
     fileReader.readAsText(file);
 }
 
-function onLoad(event: ProgressEvent<FileReader>, props: IImportGameDialogProps): void {
+function onLoad(event: ProgressEvent<FileReader>, appState: AppState): void {
     if (event.target == undefined || event.target.result == undefined || typeof event.target.result !== "string") {
         return;
     }
 
-    const uiState: UIState = props.appState.uiState;
+    const uiState: UIState = appState.uiState;
 
     const parsedGame: IGame = JSON.parse(event.target.result);
     if (parsedGame.cycles == undefined) {
@@ -245,14 +248,14 @@ function onLoad(event: ProgressEvent<FileReader>, props: IImportGameDialogProps)
     });
 }
 
-function hideDialog(props: IImportGameDialogProps): void {
-    props.appState.uiState.dialogState.hideImportGameDialog();
-    props.appState.uiState.resetPendingNewGame();
+function hideDialog(appState: AppState): void {
+    appState.uiState.dialogState.hideImportGameDialog();
+    appState.uiState.resetPendingNewGame();
 }
 
-function onSubmit(props: IImportGameDialogProps): void {
-    const game: GameState = props.appState.game;
-    const uiState: UIState = props.appState.uiState;
+function onSubmit(appState: AppState): void {
+    const game: GameState = appState.game;
+    const uiState: UIState = appState.uiState;
 
     if (uiState.pendingNewGame == undefined) {
         return;
@@ -287,15 +290,11 @@ function onSubmit(props: IImportGameDialogProps): void {
     // If we've just started a new game, start at the beginning
     uiState.setCycleIndex(0);
 
-    hideDialog(props);
+    hideDialog(appState);
 }
 
 function setInvalidGameStatus(uiState: UIState, message: string): void {
     uiState.setImportGameStatus({ isError: true, status: `Invalid game. ${message}` });
-}
-
-export interface IImportGameDialogProps {
-    appState: AppState;
 }
 
 interface IGame {

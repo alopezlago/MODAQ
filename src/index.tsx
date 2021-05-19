@@ -16,25 +16,10 @@ import {
 } from "@fluentui/react";
 import { initializeIcons } from "@fluentui/react/lib/Icons";
 import { configure } from "mobx";
-import { observer } from "mobx-react-lite";
 import { AsyncTrunk } from "mobx-sync";
 
-import { GameViewer } from "./components/GameViewer";
 import { AppState } from "./state/AppState";
-import { ModalDialogContainer } from "./components/ModalDialogContainer";
-
-const Root = observer((props: IRootProps) => {
-    return (
-        <div>
-            <GameViewer appState={props.appState} />
-            <ModalDialogContainer appState={props.appState} />
-        </div>
-    );
-});
-
-interface IRootProps {
-    appState: AppState;
-}
+import { ModaqControl } from "./components/ModaqControl";
 
 // TODO: Move to a separate file in Component?
 class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryState> {
@@ -155,7 +140,7 @@ if (element) {
     trunk.init(appState).then(() => {
         ReactDOM.render(
             <ErrorBoundary appState={appState}>
-                <Root appState={appState} />
+                <ModaqControl appState={appState} />
             </ErrorBoundary>,
             document.getElementById("root")
         );
