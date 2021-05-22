@@ -5,9 +5,9 @@ import { Player } from "src/state/TeamState";
 import { UIState } from "src/state/UIState";
 
 // TODO: Consider making AppState something we can get from a single instance (AppState.instance? AppServices.getAppState)
-// This would be a type of dependency injection.
-// We already get appState in most contexts from React.useContext. We shouldn't use that here, to avoid an explicit
-// React dependency.
+// This would be a type of dependency injection. Most places get it from React.useContext, and now that ModaqControl
+// is the only entry point to the control, and only has a single instance of appState, it makes sense to use that
+// instance everywhere
 
 export function addPlayer(appState: AppState): void {
     const game: GameState = appState.game;
@@ -28,6 +28,14 @@ export function addPlayer(appState: AppState): void {
     game.cycles[uiState.cycleIndex].addPlayerJoins(newPlayer);
 
     hideDialog(appState);
+}
+
+export function changePlayerName(appState: AppState, newName: string): void {
+    appState.uiState.updatePendingNewPlayerName(newName);
+}
+
+export function changeTeamName(appState: AppState, teamName: string): void {
+    appState.uiState.updatePendingNewPlayerName(teamName);
 }
 
 export function validatePlayer(appState: AppState): string | undefined {
