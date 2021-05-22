@@ -15,7 +15,6 @@ import {
 } from "@fluentui/react";
 
 import * as AddPlayerDialogController from "src/controllers/AddPlayerDialogController";
-import { UIState } from "src/state/UIState";
 import { IPlayer } from "src/state/TeamState";
 import { AppState } from "src/state/AppState";
 import { StateContext } from "src/contexts/StateContext";
@@ -75,22 +74,20 @@ export const AddPlayerDialog = observer(
 const AddPlayerDialogBody = observer(
     (): JSX.Element => {
         const appState: AppState = React.useContext(StateContext);
-        const uiState: UIState = appState.uiState;
 
         const teamChangeHandler = React.useCallback(
             (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
                 if (option?.text != undefined) {
-                    uiState.updatePendingNewPlayerTeamName(option.text);
+                    AddPlayerDialogController.changeTeamName(appState, option.text);
                 }
             },
-            [uiState]
+            [appState]
         );
 
-        // TODO: these should go through the controller
         const nameChangeHandler = React.useCallback(
             (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) =>
-                uiState.updatePendingNewPlayerName(newValue ?? ""),
-            [uiState]
+                AddPlayerDialogController.changePlayerName(appState, newValue ?? ""),
+            [appState]
         );
 
         const onGetErrorMessageHandler = React.useCallback(
@@ -98,7 +95,7 @@ const AddPlayerDialogBody = observer(
             [appState]
         );
 
-        const newPlayer: IPlayer | undefined = uiState.pendingNewPlayer;
+        const newPlayer: IPlayer | undefined = appState.uiState.pendingNewPlayer;
         if (newPlayer === undefined) {
             return <></>;
         }
