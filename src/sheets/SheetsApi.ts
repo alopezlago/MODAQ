@@ -3,8 +3,6 @@ import { LoadingState } from "src/state/SheetState";
 import { UIState } from "src/state/UIState";
 import { ISheetsApi, ISheetsBatchGetResponse, ISheetsGetResponse } from "./ISheetsApi";
 
-declare const __GOOGLE_CLIENT_ID__: string;
-
 export const SheetsApi: ISheetsApi = {
     initializeIfNeeded: async (uiState: UIState): Promise<void> => {
         if (
@@ -20,7 +18,7 @@ export const SheetsApi: ISheetsApi = {
             gapi.load("client:auth2", async () => {
                 try {
                     await gapi.client.init({
-                        clientId: __GOOGLE_CLIENT_ID__,
+                        clientId: uiState.sheetsState.clientId,
                         discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
                         scope: "https://www.googleapis.com/auth/spreadsheets",
                     });

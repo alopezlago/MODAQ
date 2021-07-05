@@ -16,8 +16,6 @@ import {
 import { AppState } from "src/state/AppState";
 import { StateContext } from "src/contexts/StateContext";
 
-declare const __BUILD_VERSION__: string;
-
 const content: IDialogContentProps = {
     type: DialogType.normal,
     title: "Help",
@@ -70,7 +68,8 @@ export const HelpDialog = observer(
 
 const HelpDialogBody = observer(
     (): JSX.Element => {
-        const version = `Version: ${__BUILD_VERSION__}`;
+        const appState: AppState = React.useContext(StateContext);
+        const version: string | undefined = appState.uiState.buildVersion && `Version: ${appState.uiState.buildVersion}`;
 
         return (
             <Stack>

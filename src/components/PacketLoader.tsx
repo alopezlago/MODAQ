@@ -2,43 +2,45 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import { Label, ILabelStyles } from "@fluentui/react";
 
+import * as PacketLoaderController from "src/controllers/PacketLoaderController";
 import { UIState } from "src/state/UIState";
-import { Tossup, Bonus, IBonusPart, PacketState } from "src/state/PacketState";
+import { PacketState } from "src/state/PacketState";
 import { AppState } from "src/state/AppState";
 import { FilePicker } from "./FilePicker";
+import { IPacket } from "src/state/IPacket";
 
-declare const __YAPP_SERVICE__: string;
+export const PacketLoader = observer((props: IPacketLoaderProps): JSX.Element | null => {
+    const onLoadHandler = React.useCallback((ev: ProgressEvent<FileReader>) => onLoad(ev, props), [props]);
+    const uploadHandler = React.useCallback(
+        (event: React.ChangeEvent<HTMLInputElement>, files: FileList | undefined | null) => {
+            onChange(props, files, onLoadHandler, event);
+        },
+        [props, onLoadHandler]
+    );
 
-export const PacketLoader = observer(
-    (props: IPacketLoaderProps): JSX.Element => {
-        const onLoadHandler = React.useCallback((ev: ProgressEvent<FileReader>) => onLoad(ev, props), [props]);
-        const uploadHandler = React.useCallback(
-            (event: React.ChangeEvent<HTMLInputElement>, files: FileList | undefined | null) => {
-                onChange(props, files, onLoadHandler, event);
-            },
-            [props, onLoadHandler]
-        );
+    const statusStyles: ILabelStyles = {
+        root: {
+            color: props.appState.uiState.packetParseStatus?.isError ?? false ? "rgb(128, 0, 0)" : undefined,
+        },
+    };
 
-        const statusStyles: ILabelStyles = {
-            root: {
-                color: props.appState.uiState.packetParseStatus?.isError ?? false ? "rgb(128, 0, 0)" : undefined,
-            },
-        };
-
-        return (
-            <div>
-                <FilePicker
-                    accept="application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    buttonText="Load..."
-                    label="Packet"
-                    required={true}
-                    onChange={uploadHandler}
-                />
-                <Label styles={statusStyles}>{props.appState.uiState.packetParseStatus?.status}</Label>
-            </div>
-        );
+    if (props.appState.uiState.yappServiceUrl == undefined) {
+        return null;
     }
-);
+
+    return (
+        <div>
+            <FilePicker
+                accept="application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                buttonText="Load..."
+                label="Packet"
+                required={true}
+                onChange={uploadHandler}
+            />
+            <Label styles={statusStyles}>{props.appState.uiState.packetParseStatus?.status}</Label>
+        </div>
+    );
+});
 
 function onChange(
     props: IPacketLoaderProps,
@@ -84,6 +86,10 @@ function onLoad(ev: ProgressEvent<FileReader>, props: IPacketLoaderProps): void 
 }
 
 async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer): Promise<void> {
+    if (props.appState.uiState.yappServiceUrl == undefined) {
+        return;
+    }
+
     const requestInfo: RequestInit = {
         method: "POST",
         body: docxBinary,
@@ -93,7 +99,7 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
     props.appState.uiState.setPacketStatus({ isError: false, status: "Contacting parsing service..." });
 
     try {
-        const response: Response = await fetch(__YAPP_SERVICE__, requestInfo);
+        const response: Response = await fetch(props.appState.uiState.yappServiceUrl, requestInfo);
 
         if (!response.ok) {
             let errorMessage = "";
@@ -133,50 +139,10 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
     });
 
     const parsedPacket: IPacket = JSON.parse(json) as IPacket;
-    if (parsedPacket.tossups == undefined) {
-        uiState.setPacketStatus({
-            isError: true,
-            status: "Error loading packet: Packet doesn't have a tossups field.",
-        });
+    const packet: PacketState | undefined = PacketLoaderController.loadPacket(props.appState, parsedPacket);
+    if (packet == undefined) {
         return;
     }
-
-    const tossups: Tossup[] = parsedPacket.tossups.map((tossup) => new Tossup(tossup.question, tossup.answer));
-    let bonuses: Bonus[] = [];
-
-    if (parsedPacket.bonuses) {
-        bonuses = parsedPacket.bonuses.map((bonus, index) => {
-            if (bonus.answers.length !== bonus.parts.length || bonus.answers.length !== bonus.values.length) {
-                const errorMessage = `Error loading packet: Unequal number of parts, answers, and values for bonus ${index}. Answers #: ${bonus.answers.length}, Parts #: ${bonus.parts.length}, Values #: ${bonus.values.length}`;
-                uiState.setPacketStatus({
-                    isError: true,
-                    status: errorMessage,
-                });
-                throw errorMessage;
-            }
-
-            const parts: IBonusPart[] = [];
-            for (let i = 0; i < bonus.answers.length; i++) {
-                parts.push({
-                    answer: bonus.answers[i],
-                    question: bonus.parts[i],
-                    value: bonus.values[i],
-                });
-            }
-
-            return new Bonus(bonus.leadin, parts);
-        });
-    }
-
-    const packet = new PacketState();
-    packet.setTossups(tossups);
-    packet.setBonuses(bonuses);
-
-    const packetName: string = uiState.packetFilename != undefined ? `"${uiState.packetFilename}"` : "";
-    uiState.setPacketStatus({
-        isError: false,
-        status: `Packet ${packetName} loaded. ${tossups.length} tossup(s), ${bonuses.length} bonus(es).`,
-    });
 
     props.onLoad(packet);
 }
@@ -188,24 +154,4 @@ export interface IPacketLoaderProps {
 
 interface IParsingServiceErrorMessage {
     errorMessage: [string];
-}
-
-// TODO: Should this be moved outside of the component? So we can test it
-interface IPacket {
-    tossups: ITossup[];
-    bonuses?: IBonus[];
-}
-
-interface ITossup {
-    question: string;
-    answer: string;
-    number: number;
-}
-
-interface IBonus {
-    leadin: string;
-    parts: string[];
-    answers: string[];
-    number: number;
-    values: number[];
 }

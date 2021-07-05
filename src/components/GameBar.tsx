@@ -170,6 +170,7 @@ function getActionSubMenuItems(
                     key: "addMoreQuestions",
                     text: "Add questions...",
                     onClick: addQuestionsHandler,
+                    disabled: appState.game.cycles.length === 0,
                 },
             ],
         },
@@ -190,7 +191,7 @@ function getExportSubMenuItems(appState: AppState): ICommandBarItemProps[] {
         onClick: () => {
             exportToSheets(appState);
         },
-        disabled,
+        disabled: disabled || appState.uiState.sheetsState.clientId == undefined,
     });
 
     // We have to compute this outside of onClick because MobX will complain about reading orderedBuzzes outside of a
@@ -338,6 +339,7 @@ function getPlayerManagementSubMenuItems(
         key: "addNewPlayer",
         text: "Add player...",
         onClick: addPlayerHandler,
+        disabled: appState.game.cycles.length === 0,
     };
 
     return {
