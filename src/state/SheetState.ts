@@ -7,6 +7,8 @@ export class SheetState {
     @ignore
     apiInitialized: LoadingState;
 
+    public clientId: string | undefined;
+
     @ignore
     public exportStatus: IStatus | undefined;
 
@@ -32,6 +34,7 @@ export class SheetState {
         makeAutoObservable(this);
 
         this.apiInitialized = LoadingState.Unloaded;
+        this.clientId = undefined;
         this.exportStatus = undefined;
         this.exportState = undefined;
         this.rosterLoadStatus = undefined;
@@ -52,6 +55,10 @@ export class SheetState {
 
     public clearSheetType(): void {
         this.sheetType = undefined;
+    }
+
+    public setClientId(clientId: string | undefined): void {
+        this.clientId = clientId;
     }
 
     public setExportStatus(status: IStatus, state: ExportState | undefined = undefined): void {

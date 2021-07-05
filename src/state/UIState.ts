@@ -20,6 +20,8 @@ import { IGameFormat } from "./IGameFormat";
 // outside of that component here.
 
 export class UIState {
+    public buildVersion: string | undefined;
+
     // TODO: Should we also include the Cycle? This would simplify anything that needs access to the cycle
     public cycleIndex: number;
 
@@ -66,9 +68,12 @@ export class UIState {
 
     public sheetsState: SheetState;
 
+    public yappServiceUrl: string | undefined;
+
     constructor() {
         makeAutoObservable(this);
 
+        this.buildVersion = undefined;
         this.cycleIndex = 0;
         this.dialogState = new DialogState();
         this.isEditingCycleIndex = false;
@@ -83,6 +88,7 @@ export class UIState {
         this.pendingQuestionFontSize = undefined;
         this.pendingSheet = undefined;
         this.pendingTossupProtestEvent = undefined;
+        this.yappServiceUrl = undefined;
 
         // The default font size is 16px
         this.questionFontSize = 16;
@@ -253,6 +259,10 @@ export class UIState {
         }
     }
 
+    public setBuildVersion(version: string | undefined): void {
+        this.buildVersion = version;
+    }
+
     public setImportGameStatus(status: IStatus): void {
         this.importGameStatus = status;
     }
@@ -297,6 +307,10 @@ export class UIState {
 
     public setSelectedWordIndex(newIndex: number): void {
         this.selectedWordIndex = newIndex;
+    }
+
+    public setYappServiceUrl(url: string | undefined): void {
+        this.yappServiceUrl = url;
     }
 
     public hideBuzzMenu(): void {

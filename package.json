@@ -1,6 +1,6 @@
 {
-    "name": "quizbowlreader_ts_react_mobx",
-    "version": "0.1.0",
+    "name": "modaq",
+    "version": "0.1.4",
     "description": "Quiz Bowl Reader using TypeScript, React, and MobX",
     "repository": {
         "type": "git",
@@ -8,6 +8,16 @@
     },
     "author": "Alejandro Lopez-Lago",
     "license": "MIT",
+    "keywords": [
+        "modaq",
+        "quizbowl",
+        "quiz bowl"
+    ],
+    "files": [
+        "README.md",
+        "LICENSE",
+        "*"
+    ],
     "devDependencies": {
         "@types/chai": "^4.2.15",
         "@types/gapi.auth2": "^0.0.47",
@@ -30,6 +40,7 @@
         "tsconfig-paths": "^3.9.0",
         "ts-node": "^9.1.1",
         "ts-loader": "^8.0.18",
+        "tsc-alias": "^1.3.4",
         "typescript": "^4.2.3",
         "webpack": "^5.22.0",
         "webpack-bundle-analyzer": "^4.4.0",
@@ -44,11 +55,17 @@
         "react": "^17.0.1",
         "react-dom": "^17.0.1"
     },
+    "resolutions": {
+        "@types/react": "17.0.3"
+    },
+    "//": "Note: to publish, run npm run prepublish, then npm publish out",
     "scripts": {
         "init": "yarn install",
-        "build": "webpack --mode development --watch",
-        "buildRelease": "webpack --mode production",
+        "buildApp": "webpack --mode development --watch",
+        "buildAppRelease": "webpack --mode production",
+        "build": " tsc && tsc-alias",
         "lint": "eslint . --ext .ts,.tsx",
+        "prepublish": "copy package.json out && copy README.md out && copy LICENSE out",
         "start": "webpack serve --color --config webpack.config.js --mode development",
         "test": "mocha --recursive tests/**/*.ts --exit --check-leaks -r tests/TestInit.js -r ts-node/register -r tsconfig-paths/register"
     }

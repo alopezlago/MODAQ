@@ -4,14 +4,12 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const BundleAnalyzerPlugin = require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 const webpack = require("webpack");
 
-// TODO: Look into using webpack-merge and splitting these configs instead. See https://webpack.js.org/guides/production/
-// and https://webpack.js.org/guides/code-splitting/. It might make sense to split out the main code and code for Sheets
 const devEntries = [
     "webpack-dev-server/client?http://localhost:8080",
     "webpack-dev-server/client?http://localhost.quizbowlreader.com:8080",
-    "./src/index",
+    "./src/app",
 ];
-const prodEntries = ["./src/index"];
+const prodEntries = ["./src/app"];
 const dateString = new Date().toISOString();
 const version = dateString.substring(0, dateString.indexOf("T"));
 
@@ -51,15 +49,11 @@ module.exports = (env, argv) => {
                 },
             ],
         },
-        optimization: {
-            splitChunks: {
-                chunks: "all",
-            },
-        },
         output: {
             path: path.join(__dirname, "out"),
             filename: "[name].bundle.js",
             publicPath: "/out/",
+            umdNamedDefine: true,
             clean: true,
         },
         plugins: [
@@ -82,11 +76,20 @@ module.exports = (env, argv) => {
                     "https://yetanotherpacketparserazurefunction.azurewebsites.net/api/ParseDocx"
                 ),
             }),
-            new HtmlWebpackPlugin({
-                title: "Moderator Assistant for Quizbowl",
-                template: "./indexTemplate.html",
-            }),
         ],
+    };
+
+    exports.plugins.push(
+        new HtmlWebpackPlugin({
+            title: "Moderator Assistant for Quizbowl",
+            template: "./indexTemplate.html",
+        })
+    );
+
+    exports.optimization = {
+        splitChunks: {
+            chunks: "all",
+        },
     };
 
     if (isProduction) {

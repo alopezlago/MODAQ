@@ -1,6 +1,7 @@
 {
     "compilerOptions": {
         "target": "es6",
+        "declaration": true,
         "removeComments": false,
         "sourceMap": true,
         "experimentalDecorators": true,
@@ -13,12 +14,12 @@
         "importsNotUsedAsValues": "preserve",
         "useDefineForClassFields": true,
         "rootDir": ".",
-        "baseUrl": ".",
+        "baseUrl": "./",
         "module": "CommonJS",
         "paths": {
             "src": ["src"],
             "tests": ["tests"]
         }
     },
-    "exclude": ["node_modules", "static"]
+    "exclude": ["node_modules", "static", "out/**/*.d.ts"]
 }

@@ -270,6 +270,10 @@ export class GameState {
         this.gameFormat = gameFormat;
     }
 
+    public setPlayers(players: Player[]): void {
+        this.players = players;
+    }
+
     private getScoreChangeFromCycle(cycle: Cycle): [number, number] {
         const change: [number, number] = [0, 0];
         if (cycle.correctBuzz) {
