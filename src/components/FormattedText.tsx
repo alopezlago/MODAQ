@@ -29,6 +29,11 @@ const FormattedSegment = observer((props: IFormattedSegmentProps) => {
         element = <i>{element}</i>;
     }
 
+    if (props.segment.underlined) {
+        element = <u>{element}</u>;
+    }
+
+    // Obsolete, but here for back-compat with YAPP versions before 0.2.4
     if (props.segment.required) {
         element = (
             <u>

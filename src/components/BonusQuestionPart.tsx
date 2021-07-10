@@ -3,7 +3,7 @@ import { Checkbox, Dropdown, IDropdownOption, IDropdownStyles, mergeStyleSets } 
 import { observer } from "mobx-react-lite";
 
 import * as FormattedTextParser from "src/parser/FormattedTextParser";
-import { IBonusPart } from "src/state/PacketState";
+import { BonusPart } from "src/state/PacketState";
 import { Cycle } from "src/state/Cycle";
 import { Answer } from "./Answer";
 import { FormattedText } from "./FormattedText";
@@ -74,7 +74,8 @@ export const BonusQuestionPart = observer((props: IBonusQuestionPartProps) => {
             <div className={classes.bonusPartQuestionText}>
                 {correctnessMarker}
                 <span>
-                    [{props.bonusPart.value}] <FormattedText segments={bonusPartText} />
+                    [{props.bonusPart.value}
+                    {props.bonusPart.difficultyModifier}] <FormattedText segments={bonusPartText} />
                 </span>
             </div>
             <div className={classes.bonusPartAnswerSpacer}>
@@ -119,7 +120,7 @@ function onTeamAnswerChange(
 
 // TODO: See if it makes sense to move disabled to UIState
 export interface IBonusQuestionPartProps {
-    bonusPart: IBonusPart;
+    bonusPart: BonusPart;
     cycle: Cycle;
     disabled: boolean;
     gameFormat: IGameFormat;

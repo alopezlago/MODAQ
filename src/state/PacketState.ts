@@ -37,16 +37,11 @@ export interface IQuestion {
     answer: string;
 }
 
-export class IBonusPart implements IQuestion {
-    public question: string;
-    public answer: string;
-    public value: number;
-
-    constructor(question: string, answer: string, value = 10) {
-        this.question = question;
-        this.answer = answer;
-        this.value = value;
-    }
+export interface BonusPart {
+    question: string;
+    answer: string;
+    value: number;
+    difficultyModifier?: string;
 }
 
 export class Tossup implements IQuestion {
@@ -128,9 +123,9 @@ export class Tossup implements IQuestion {
 export class Bonus {
     public leadin: string;
 
-    public parts: IBonusPart[];
+    public parts: BonusPart[];
 
-    constructor(leadin: string, parts: IBonusPart[]) {
+    constructor(leadin: string, parts: BonusPart[]) {
         // We don't use makeAutoObservable because leadin doesn't need to be observable (never changes)
         makeObservable(this, {
             parts: observable,

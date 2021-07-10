@@ -15,4 +15,5 @@ export interface IBonus {
     answers: string[];
     number: number;
     values: number[];
+    difficultyModifiers?: string[];
 }
