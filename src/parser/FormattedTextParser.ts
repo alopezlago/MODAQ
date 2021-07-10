@@ -9,12 +9,12 @@ export function parseFormattedText(text: string): IFormattedText[] {
 
     let bolded = false;
     let emphasized = false;
-    let required = false;
+    let underlined = false;
     let startIndex = 0;
 
     // If we need to support older browswers, use RegExp, exec, and a while loop. See
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/matchAll
-    const matchIterator: IterableIterator<RegExpMatchArray> = text.matchAll(/<\/?em>|<\/?req>|<\/?b>/gi);
+    const matchIterator: IterableIterator<RegExpMatchArray> = text.matchAll(/<\/?em>|<\/?req>|<\/?b>|<\/?u>/gi);
 
     for (const match of matchIterator) {
         const slice: string = text.substring(startIndex, match.index);
@@ -23,7 +23,7 @@ export function parseFormattedText(text: string): IFormattedText[] {
                 text: text.substring(startIndex, match.index),
                 bolded,
                 emphasized,
-                required,
+                underlined,
             };
             result.push(formattedSlice);
         }
@@ -38,16 +38,24 @@ export function parseFormattedText(text: string): IFormattedText[] {
                 emphasized = false;
                 break;
             case "<req>":
-                required = true;
+                bolded = true;
+                underlined = true;
                 break;
             case "</req>":
-                required = false;
+                bolded = false;
+                underlined = false;
                 break;
             case "<b>":
                 bolded = true;
                 break;
             case "</b>":
                 bolded = false;
+                break;
+            case "<u>":
+                underlined = true;
+                break;
+            case "</u>":
+                underlined = false;
                 break;
             default:
                 throw `Unknown match: ${tag}`;
@@ -62,7 +70,7 @@ export function parseFormattedText(text: string): IFormattedText[] {
             text: text.substring(startIndex),
             bolded,
             emphasized,
-            required,
+            underlined,
         });
     }
 
@@ -102,7 +110,7 @@ export function splitFormattedTextIntoWords(text: string): IFormattedText[][] {
                 text: firstWord,
                 bolded: value.bolded,
                 emphasized: value.emphasized,
-                required: value.required,
+                underlined: value.underlined,
             });
             splitFormattedText.push(previousWord);
         }
@@ -118,7 +126,7 @@ export function splitFormattedTextIntoWords(text: string): IFormattedText[][] {
                     text: word,
                     bolded: value.bolded,
                     emphasized: value.emphasized,
-                    required: value.required,
+                    underlined: value.underlined,
                 };
                 splitFormattedText.push([formattedWord]);
             }
@@ -130,7 +138,7 @@ export function splitFormattedTextIntoWords(text: string): IFormattedText[][] {
                 text: lastSegment,
                 bolded: value.bolded,
                 emphasized: value.emphasized,
-                required: value.required,
+                underlined: value.underlined,
             });
         }
     }

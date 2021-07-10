@@ -1,12 +1,11 @@
 import { AppState } from "src/state/AppState";
 import { IPacket } from "src/state/IPacket";
-import { Bonus, IBonusPart, PacketState, Tossup } from "src/state/PacketState";
+import { Bonus, BonusPart, PacketState, Tossup } from "src/state/PacketState";
 import { UIState } from "src/state/UIState";
 
-export function loadPacket(appState: AppState, parsedPacket: IPacket): PacketState | undefined
-{
+export function loadPacket(appState: AppState, parsedPacket: IPacket): PacketState | undefined {
     const uiState: UIState = appState.uiState;
-    
+
     if (parsedPacket.tossups == undefined) {
         uiState.setPacketStatus({
             isError: true,
@@ -29,12 +28,13 @@ export function loadPacket(appState: AppState, parsedPacket: IPacket): PacketSta
                 throw errorMessage;
             }
 
-            const parts: IBonusPart[] = [];
+            const parts: BonusPart[] = [];
             for (let i = 0; i < bonus.answers.length; i++) {
                 parts.push({
                     answer: bonus.answers[i],
                     question: bonus.parts[i],
                     value: bonus.values[i],
+                    difficultyModifier: bonus.difficultyModifiers ? bonus.difficultyModifiers[i] : undefined,
                 });
             }
 

@@ -13,7 +13,7 @@ describe("FormattedTextParserTests", () => {
                     text,
                     bolded: false,
                     emphasized: false,
-                    required: false,
+                    underlined: false,
                 },
             ]);
         });
@@ -26,7 +26,7 @@ describe("FormattedTextParserTests", () => {
                     text: expectedText,
                     bolded: false,
                     emphasized: true,
-                    required: false,
+                    underlined: false,
                 },
             ]);
         });
@@ -37,9 +37,35 @@ describe("FormattedTextParserTests", () => {
             expect(result).to.deep.equal([
                 {
                     text: expectedText,
+                    bolded: true,
+                    emphasized: false,
+                    underlined: true,
+                },
+            ]);
+        });
+        it("All bolded", () => {
+            const expectedText = "This text is all bolded.";
+            const textToFormat = `<b>${expectedText}</b>`;
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat);
+            expect(result).to.deep.equal([
+                {
+                    text: expectedText,
+                    bolded: true,
+                    emphasized: false,
+                    underlined: false,
+                },
+            ]);
+        });
+        it("All underlined", () => {
+            const expectedText = "This text is all underlined.";
+            const textToFormat = `<u>${expectedText}</u>`;
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat);
+            expect(result).to.deep.equal([
+                {
+                    text: expectedText,
                     bolded: false,
                     emphasized: false,
-                    required: true,
+                    underlined: true,
                 },
             ]);
         });
@@ -51,31 +77,31 @@ describe("FormattedTextParserTests", () => {
                     text: "Before ",
                     bolded: false,
                     emphasized: false,
-                    required: false,
+                    underlined: false,
                 },
                 {
                     text: "emphasized then",
                     bolded: false,
                     emphasized: true,
-                    required: false,
+                    underlined: false,
                 },
                 {
                     text: " in between ",
                     bolded: false,
                     emphasized: false,
-                    required: false,
+                    underlined: false,
                 },
                 {
                     text: "required then",
-                    bolded: false,
+                    bolded: true,
                     emphasized: false,
-                    required: true,
+                    underlined: true,
                 },
                 {
                     text: " done.",
                     bolded: false,
                     emphasized: false,
-                    required: false,
+                    underlined: false,
                 },
             ]);
         });
@@ -87,25 +113,25 @@ describe("FormattedTextParserTests", () => {
                     text: "The epic ",
                     bolded: false,
                     emphasized: false,
-                    required: false,
+                    underlined: false,
                 },
                 {
                     text: "The ",
                     bolded: false,
                     emphasized: true,
-                    required: false,
+                    underlined: false,
                 },
                 {
                     text: "Iliad",
-                    bolded: false,
+                    bolded: true,
                     emphasized: true,
-                    required: true,
+                    underlined: true,
                 },
                 {
                     text: " is by Homer",
                     bolded: false,
                     emphasized: false,
-                    required: false,
+                    underlined: false,
                 },
             ]);
         });
@@ -120,7 +146,7 @@ describe("FormattedTextParserTests", () => {
                         text: word,
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ];
             });
@@ -137,7 +163,7 @@ describe("FormattedTextParserTests", () => {
                         text: word,
                         bolded: true,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ];
             });
@@ -154,7 +180,24 @@ describe("FormattedTextParserTests", () => {
                         text: word,
                         bolded: false,
                         emphasized: true,
-                        required: false,
+                        underlined: false,
+                    },
+                ];
+            });
+
+            expect(result).to.deep.equal(expected);
+        });
+        it("All underlined", () => {
+            const expectedText = "This text is all bolded.";
+            const textToFormat = `<u>${expectedText}</u>`;
+            const result: IFormattedText[][] = FormattedTextParser.splitFormattedTextIntoWords(textToFormat);
+            const expected: IFormattedText[][] = expectedText.split(/\s+/g).map((word) => {
+                return [
+                    {
+                        text: word,
+                        bolded: false,
+                        emphasized: false,
+                        underlined: true,
                     },
                 ];
             });
@@ -169,9 +212,9 @@ describe("FormattedTextParserTests", () => {
                 return [
                     {
                         text: word,
-                        bolded: false,
+                        bolded: true,
                         emphasized: false,
-                        required: true,
+                        underlined: true,
                     },
                 ];
             });
@@ -187,7 +230,7 @@ describe("FormattedTextParserTests", () => {
                         text: "Before",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
@@ -195,7 +238,7 @@ describe("FormattedTextParserTests", () => {
                         text: "emphasized",
                         bolded: false,
                         emphasized: true,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
@@ -203,7 +246,7 @@ describe("FormattedTextParserTests", () => {
                         text: "then",
                         bolded: false,
                         emphasized: true,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
@@ -211,7 +254,7 @@ describe("FormattedTextParserTests", () => {
                         text: "in",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
@@ -219,23 +262,23 @@ describe("FormattedTextParserTests", () => {
                         text: "between",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
                     {
                         text: "required",
-                        bolded: false,
+                        bolded: true,
                         emphasized: false,
-                        required: true,
+                        underlined: true,
                     },
                 ],
                 [
                     {
                         text: "then",
-                        bolded: false,
+                        bolded: true,
                         emphasized: false,
-                        required: true,
+                        underlined: true,
                     },
                 ],
                 [
@@ -243,12 +286,12 @@ describe("FormattedTextParserTests", () => {
                         text: "done.",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ],
             ]);
         });
-        it("Overlap", () => {
+        it("Overlap (req)", () => {
             const text = "The epic <em>The <req>Iliad</req></em> is by Homer";
             const result: IFormattedText[][] = FormattedTextParser.splitFormattedTextIntoWords(text);
             expect(result).to.deep.equal([
@@ -257,7 +300,7 @@ describe("FormattedTextParserTests", () => {
                         text: "The",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
@@ -265,7 +308,7 @@ describe("FormattedTextParserTests", () => {
                         text: "epic",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
@@ -273,15 +316,15 @@ describe("FormattedTextParserTests", () => {
                         text: "The",
                         bolded: false,
                         emphasized: true,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
                     {
                         text: "Iliad",
-                        bolded: false,
+                        bolded: true,
                         emphasized: true,
-                        required: true,
+                        underlined: true,
                     },
                 ],
                 [
@@ -289,7 +332,7 @@ describe("FormattedTextParserTests", () => {
                         text: "is",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
@@ -297,7 +340,7 @@ describe("FormattedTextParserTests", () => {
                         text: "by",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
@@ -305,7 +348,69 @@ describe("FormattedTextParserTests", () => {
                         text: "Homer",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
+                    },
+                ],
+            ]);
+        });
+        it("Overlap (bold + underline)", () => {
+            const text = "The epic <em>The <u><b>Iliad</b></u></em> is by Homer";
+            const result: IFormattedText[][] = FormattedTextParser.splitFormattedTextIntoWords(text);
+            expect(result).to.deep.equal([
+                [
+                    {
+                        text: "The",
+                        bolded: false,
+                        emphasized: false,
+                        underlined: false,
+                    },
+                ],
+                [
+                    {
+                        text: "epic",
+                        bolded: false,
+                        emphasized: false,
+                        underlined: false,
+                    },
+                ],
+                [
+                    {
+                        text: "The",
+                        bolded: false,
+                        emphasized: true,
+                        underlined: false,
+                    },
+                ],
+                [
+                    {
+                        text: "Iliad",
+                        bolded: true,
+                        emphasized: true,
+                        underlined: true,
+                    },
+                ],
+                [
+                    {
+                        text: "is",
+                        bolded: false,
+                        emphasized: false,
+                        underlined: false,
+                    },
+                ],
+                [
+                    {
+                        text: "by",
+                        bolded: false,
+                        emphasized: false,
+                        underlined: false,
+                    },
+                ],
+                [
+                    {
+                        text: "Homer",
+                        bolded: false,
+                        emphasized: false,
+                        underlined: false,
                     },
                 ],
             ]);
@@ -319,7 +424,7 @@ describe("FormattedTextParserTests", () => {
                         text: "My",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
@@ -327,7 +432,7 @@ describe("FormattedTextParserTests", () => {
                         text: "book",
                         bolded: false,
                         emphasized: true,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
@@ -335,13 +440,13 @@ describe("FormattedTextParserTests", () => {
                         text: "title",
                         bolded: false,
                         emphasized: true,
-                        required: false,
+                        underlined: false,
                     },
                     {
                         text: ",",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
@@ -349,7 +454,7 @@ describe("FormattedTextParserTests", () => {
                         text: "written",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
@@ -357,7 +462,7 @@ describe("FormattedTextParserTests", () => {
                         text: "by",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ],
                 [
@@ -365,13 +470,13 @@ describe("FormattedTextParserTests", () => {
                         text: "me.",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                 ],
             ]);
         });
         it("One word with formatting", () => {
-            const text = "Plain<req>required</req>dull<em>emphasized</em><b>bolded</b>boring";
+            const text = "Plain<req>required</req>dull<em>emphasized</em><b>bolded</b>boring<u>underlined</u>word";
             const result: IFormattedText[][] = FormattedTextParser.splitFormattedTextIntoWords(text);
             expect(result).to.deep.equal([
                 [
@@ -379,37 +484,49 @@ describe("FormattedTextParserTests", () => {
                         text: "Plain",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                     {
                         text: "required",
-                        bolded: false,
+                        bolded: true,
                         emphasized: false,
-                        required: true,
+                        underlined: true,
                     },
                     {
                         text: "dull",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                     {
                         text: "emphasized",
                         bolded: false,
                         emphasized: true,
-                        required: false,
+                        underlined: false,
                     },
                     {
                         text: "bolded",
                         bolded: true,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
                     },
                     {
                         text: "boring",
                         bolded: false,
                         emphasized: false,
-                        required: false,
+                        underlined: false,
+                    },
+                    {
+                        text: "underlined",
+                        bolded: false,
+                        emphasized: false,
+                        underlined: true,
+                    },
+                    {
+                        text: "word",
+                        bolded: false,
+                        emphasized: false,
+                        underlined: false,
                     },
                 ],
             ]);

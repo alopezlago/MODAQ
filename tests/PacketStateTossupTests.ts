@@ -41,7 +41,7 @@ describe("PacketStateTossupTests", () => {
             expect(formattedWord.text).to.equal("This");
             expect(formattedWord.bolded).to.be.true;
             expect(formattedWord.emphasized).to.be.false;
-            expect(formattedWord.required).to.be.false;
+            expect(formattedWord.underlined).to.be.false;
         });
     });
 
