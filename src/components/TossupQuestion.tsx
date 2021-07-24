@@ -2,8 +2,9 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { mergeStyleSets } from "@fluentui/react";
 
+import * as TossupQuestionController from "./TossupQuestionController";
 import { UIState } from "src/state/UIState";
-import { Tossup } from "src/state/PacketState";
+import { ITossupWord, Tossup } from "src/state/PacketState";
 import { QuestionWord } from "./QuestionWord";
 import { Cycle } from "src/state/Cycle";
 import { BuzzMenu } from "./BuzzMenu";
@@ -24,51 +25,30 @@ export const TossupQuestion = observer(
             .filter((buzz) => buzz.tossupIndex === props.tossupNumber - 1)
             .map((buzz) => buzz.marker.position);
 
-        const questionFormattedTexts: IFormattedText[][] = props.tossup.formattedQuestionText;
+        const words: ITossupWord[] = props.tossup.getWords(props.appState.game.gameFormat);
 
-        const questionWords: JSX.Element[] = [];
-        let wordIndex = 0;
-        let nonwordIndex = 0;
-        for (let i = 0; i < questionFormattedTexts.length; i++) {
-            const word: IFormattedText[] = questionFormattedTexts[i];
-            const fullText = word.reduce((result, text) => result + text.text, "");
-
-            // We need to skip over power markers and not count them when we calculate buzz points
-            let index: number | undefined = wordIndex;
-            const trimmedText: string = fullText.trim();
-            const powerMarkerIndex: number = props.appState.game.gameFormat.powers.findIndex(
-                (power) => power.marker === trimmedText
-            );
-            if (powerMarkerIndex >= 0) {
-                index = undefined;
-                nonwordIndex++;
-            } else {
-                wordIndex++;
-            }
-
-            questionWords.push(
-                <QuestionWordWrapper
-                    key={index == undefined ? `qnw_${nonwordIndex}` : `qw_${index}`}
-                    correctBuzzIndex={correctBuzzIndex}
-                    index={index}
-                    isLastWord={i === questionFormattedTexts.length - 1}
-                    selectedWordRef={selectedWordRef}
-                    word={word}
-                    wrongBuzzIndexes={wrongBuzzIndexes}
-                    {...props}
-                />
-            );
-        }
+        const questionWords: JSX.Element[] = words.map((word) => (
+            <QuestionWordWrapper
+                key={word.canBuzzOn ? `qw_${word.wordIndex}` : `nqw_${word.nonWordIndex}`}
+                correctBuzzIndex={correctBuzzIndex}
+                index={word.canBuzzOn ? word.wordIndex : undefined}
+                isLastWord={word.canBuzzOn && word.isLastWord}
+                inPronunciationGuide={!word.canBuzzOn && word.inPronunciationGuide}
+                selectedWordRef={selectedWordRef}
+                word={word.word}
+                wrongBuzzIndexes={wrongBuzzIndexes}
+                {...props}
+            />
+        ));
 
         const wordClickHandler: React.MouseEventHandler = React.useCallback(
             (event: React.MouseEvent<HTMLDivElement>): void => {
-                onTossupTextClicked(props, event);
+                TossupQuestionController.selectWord(props.appState, event);
             },
             [props]
         );
         const throwOutClickHandler: () => void = React.useCallback(() => {
-            props.cycle.addThrownOutTossup(props.tossupNumber - 1);
-            props.appState.uiState.setSelectedWordIndex(-1);
+            TossupQuestionController.throwOutTossup(props.appState, props.cycle, props.tossupNumber);
         }, [props]);
 
         // Need tossuptext/answer in one container, X in the other
@@ -92,30 +72,6 @@ export const TossupQuestion = observer(
         );
     }
 );
-
-function onTossupTextClicked(props: IQuestionProps, event: React.MouseEvent<HTMLDivElement>): void {
-    const target = event.target as HTMLDivElement;
-
-    // I'd like to avoid looking for a specific HTML element instead of a class. This would mean giving QuestionWord a
-    // fixed class.
-    const questionWord: HTMLSpanElement | null = target.closest("span");
-    if (questionWord == undefined || questionWord.getAttribute == undefined) {
-        return;
-    }
-
-    const index = parseInt(questionWord.getAttribute("data-index") ?? "", 10);
-    if (index < 0 || isNaN(index)) {
-        return;
-    }
-
-    const uiState: UIState = props.appState.uiState;
-    const selectedIndex = uiState.selectedWordIndex === index ? -1 : index;
-    uiState.setSelectedWordIndex(selectedIndex);
-    uiState.showBuzzMenu();
-
-    event.preventDefault();
-    event.stopPropagation();
-}
 
 // We need to use a wrapper component so we can give it a key. Otherwise, React will complain
 const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
@@ -142,6 +98,7 @@ const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
                 index={props.index}
                 word={props.word}
                 selected={props.index === uiState.selectedWordIndex}
+                inPronunciationGuide={props.inPronunciationGuide}
                 correct={props.index === props.correctBuzzIndex}
                 wrong={props.wrongBuzzIndexes.findIndex((position) => position === props.index) >= 0}
                 componentRef={selected ? props.selectedWordRef : undefined}
@@ -167,6 +124,7 @@ interface IQuestionWordWrapperProps {
     cycle: Cycle;
     index?: number;
     isLastWord: boolean;
+    inPronunciationGuide: boolean;
     selectedWordRef: React.MutableRefObject<null>;
     tossup: Tossup;
     tossupNumber: number;

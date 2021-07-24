@@ -24,7 +24,7 @@ describe("PacketStateTossupTests", () => {
         // we include the end character
         it("formattedQuestionText has end marker", () => {
             const tossup: Tossup = new Tossup("This is my question", "Answer");
-            const formattedText: IFormattedText[][] = tossup.formattedQuestionText;
+            const formattedText: IFormattedText[][] = tossup.getWords(noPowersGameFormat).map((word) => word.word);
             expect(formattedText.length).to.equal(5);
             expect(formattedText[0].length).to.equal(1);
             expect(formattedText[0][0].text).to.equal("This");
@@ -33,7 +33,7 @@ describe("PacketStateTossupTests", () => {
         });
         it("formattedQuestionText has formatting", () => {
             const tossup: Tossup = new Tossup("<b>This is</b> my question", "Answer");
-            const formattedText: IFormattedText[][] = tossup.formattedQuestionText;
+            const formattedText: IFormattedText[][] = tossup.getWords(noPowersGameFormat).map((word) => word.word);
             expect(formattedText.length).to.be.greaterThan(1);
             expect(formattedText[0].length).to.equal(1);
 
@@ -93,6 +93,36 @@ describe("PacketStateTossupTests", () => {
             const points: number = tossup.getPointsAtPosition(superpowersGameFormat, 3);
             expect(points).to.equal(10);
         });
+        it("In power with pronunciation guide", () => {
+            const gameFormat: IGameFormat = { ...powersGameFormat, pronunciationGuideMarkers: ["(", ")"] };
+            const tossup: Tossup = new Tossup("This question (quest-shun) is my (*) question", "Answer");
+            const points: number = tossup.getPointsAtPosition(gameFormat, 3);
+            expect(points).to.equal(15);
+        });
+        it("In power with multiple pronunciation guides", () => {
+            const gameFormat: IGameFormat = { ...powersGameFormat, pronunciationGuideMarkers: ["(", ")"] };
+            const tossup: Tossup = new Tossup("This question (quest-shun) is my (mai) (*) question", "Answer");
+            const points: number = tossup.getPointsAtPosition(gameFormat, 3);
+            expect(points).to.equal(15);
+        });
+        it("In power with pronunciation guide followed by a period", () => {
+            const gameFormat: IGameFormat = { ...powersGameFormat, pronunciationGuideMarkers: ["(", ")"] };
+            const tossup: Tossup = new Tossup("This is a question (quest-shun). It is my (*) question", "Answer");
+            const points: number = tossup.getPointsAtPosition(gameFormat, 4);
+            expect(points).to.equal(15);
+        });
+        it("Out of power with pronunciation guide", () => {
+            const gameFormat: IGameFormat = { ...powersGameFormat, pronunciationGuideMarkers: ["(", ")"] };
+            const tossup: Tossup = new Tossup("This question (quest-shun) is my (*) question", "Answer");
+            const points: number = tossup.getPointsAtPosition(gameFormat, 4);
+            expect(points).to.equal(10);
+        });
+        it("Out of power with multiple pronunciation guides", () => {
+            const gameFormat: IGameFormat = { ...powersGameFormat, pronunciationGuideMarkers: ["(", ")"] };
+            const tossup: Tossup = new Tossup("This question (quest-shun) is my (mai) (*) question", "Answer");
+            const points: number = tossup.getPointsAtPosition(gameFormat, 4);
+            expect(points).to.equal(10);
+        });
         it("In power with power at last word", () => {
             const tossup: Tossup = new Tossup("This is my question (*)", "Answer");
             const points: number = tossup.getPointsAtPosition(powersGameFormat, 3);
@@ -118,6 +148,16 @@ describe("PacketStateTossupTests", () => {
         });
         it("Wrong at the last word (no powers)", () => {
             const tossup: Tossup = new Tossup("This is my question", "Answer");
+            const points: number = tossup.getPointsAtPosition(noPowersGameFormat, 4, false);
+            expect(points).to.equal(0);
+        });
+        it("Wrong before the last word (pronunciation guide)", () => {
+            const tossup: Tossup = new Tossup("This is my question (qwest-shun)", "Answer");
+            const points: number = tossup.getPointsAtPosition(noPowersGameFormat, 3, false);
+            expect(points).to.equal(-5);
+        });
+        it("Wrong at the last word (pronunciation guide)", () => {
+            const tossup: Tossup = new Tossup("This is my question (qwest-shun)", "Answer");
             const points: number = tossup.getPointsAtPosition(noPowersGameFormat, 4, false);
             expect(points).to.equal(0);
         });

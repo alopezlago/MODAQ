@@ -14,7 +14,7 @@ import {
     DefaultButton,
 } from "@fluentui/react";
 
-import * as AddPlayerDialogController from "src/controllers/AddPlayerDialogController";
+import * as AddPlayerDialogController from "src/components/dialogs/AddPlayerDialogController";
 import { IPlayer } from "src/state/TeamState";
 import { AppState } from "src/state/AppState";
 import { StateContext } from "src/contexts/StateContext";

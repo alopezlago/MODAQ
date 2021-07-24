@@ -10,9 +10,13 @@ export class CustomizeGameFormatDialogState {
 
     public powerValues: number[];
 
+    public pronunicationGuideMarkers: string[] | undefined;
+
     public powerMarkerErrorMessage: string | undefined;
 
     public powerValuesErrorMessage: string | undefined;
+
+    public pronunciationGuideMarkersErrorMessage: string | undefined;
 
     constructor(existingGameFormat: IGameFormat) {
         makeAutoObservable(this);
@@ -23,11 +27,18 @@ export class CustomizeGameFormatDialogState {
 
         this.powerValues = this.gameFormat.powers.map((power) => power.points);
         this.powerValuesErrorMessage = undefined;
+
+        this.pronunicationGuideMarkers = this.gameFormat.pronunciationGuideMarkers;
+        this.pronunciationGuideMarkersErrorMessage = undefined;
     }
 
     public clearPowerErrorMessages(): void {
         this.powerMarkerErrorMessage = undefined;
         this.powerValuesErrorMessage = undefined;
+    }
+
+    public clearPronunciationGuideMarkersErrorMessage(): void {
+        this.pronunciationGuideMarkersErrorMessage = undefined;
     }
 
     public setPowerMarkers(powerMarkers: string[]): void {
@@ -44,6 +55,14 @@ export class CustomizeGameFormatDialogState {
 
     public setPowerValuesErrorMessage(message: string): void {
         this.powerValuesErrorMessage = message;
+    }
+
+    public setPronunciationGuideMarkers(pronunciationGuideMarkers: string[]): void {
+        this.pronunicationGuideMarkers = pronunciationGuideMarkers;
+    }
+
+    public setPronunciationGuideMarkersErrorMessage(message: string): void {
+        this.pronunciationGuideMarkersErrorMessage = message;
     }
 
     public updateGameFormat(gameFormatUpdate: Partial<IGameFormat>): void {

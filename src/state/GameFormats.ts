@@ -2,7 +2,7 @@ import { IGameFormat, IPowerMarker } from "./IGameFormat";
 
 // We can't rely on a currentVersion we fill in, so these have to be manually tracked if there are breaking changes
 
-const currentVersion = "2021-05-22";
+const currentVersion = "2021-07-11";
 
 export const ACFGameFormat: IGameFormat = {
     bonusesBounceBack: false,
@@ -13,6 +13,7 @@ export const ACFGameFormat: IGameFormat = {
     powers: [],
     regulationTossupCount: 20,
     timeoutsAllowed: 1,
+    pronunciationGuideMarkers: ["(", ")"],
     version: currentVersion,
 };
 
@@ -25,6 +26,7 @@ export const PACEGameFormat: IGameFormat = {
     powers: [{ marker: "(*)", points: 20 }],
     regulationTossupCount: 20,
     timeoutsAllowed: 1,
+    pronunciationGuideMarkers: ["(", ")"],
     version: currentVersion,
 };
 
@@ -42,6 +44,7 @@ export const UndefinedGameFormat: IGameFormat = {
     powers: [{ marker: "(*)", points: 15 }],
     regulationTossupCount: 999,
     timeoutsAllowed: 999,
+    pronunciationGuideMarkers: ["(", ")"],
     version: currentVersion,
 };
 
@@ -71,7 +74,7 @@ export function getUpgradedFormatVersion(format: IGameFormat): IGameFormat {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const formatObject: any = format as any;
     for (const key of Object.keys(defaultFormat)) {
-        if (key === "displayName") {
+        if (key === "displayName" || key === "pronunciationGuideMarkers") {
             continue;
         }
 
