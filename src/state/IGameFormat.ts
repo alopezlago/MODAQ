@@ -22,6 +22,11 @@ export interface IGameFormat {
     timeoutsAllowed: number;
     displayName: string;
 
+    // Available after 2021-07-11
+    // An array representing the start and ending markers for a pronunciation guide, e.g. ["(", ")"] if guides look
+    // like ("LIE-kuh")
+    pronunciationGuideMarkers?: [string, string];
+
     // Tells us which version this format was generated from, so we can support backwards compatibility if possible
     version: string;
 }

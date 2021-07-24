@@ -49,7 +49,7 @@ const modalProps: IModalProps = {
     },
     styles: {
         main: {
-            top: "15vh",
+            top: "10vh",
         },
     },
     topOffsetFixed: true,
@@ -150,6 +150,19 @@ const CustomizeGameFormatDialogBody = observer(
             [customizeGameFormatState]
         );
 
+        const pronunciationGuideMarkersHandler = React.useCallback(
+            (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+                if (newValue == undefined || newValue.trim() === "") {
+                    customizeGameFormatState?.setPronunciationGuideMarkers([]);
+                    return;
+                }
+
+                const guides: string[] = newValue.split(",");
+                customizeGameFormatState?.setPronunciationGuideMarkers(guides);
+            },
+            [customizeGameFormatState]
+        );
+
         const minimumQuestionsInOvertimeChangeHandler = React.useCallback(
             (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) => {
                 const minimumOvertimeQuestionCount: number | undefined = getNumberOrUndefined(newValue);
@@ -197,6 +210,29 @@ const CustomizeGameFormatDialogBody = observer(
                 );
             } else {
                 customizeGameFormatState.clearPowerErrorMessages();
+            }
+        }, [customizeGameFormatState]);
+
+        const pronunicationGuideMarkersValidationHandler = React.useCallback(() => {
+            if (
+                customizeGameFormatState == undefined ||
+                customizeGameFormatState.pronunicationGuideMarkers == undefined
+            ) {
+                return;
+            }
+
+            const pronunciationGuideMarkers: string[] = customizeGameFormatState.pronunicationGuideMarkers;
+
+            if (pronunciationGuideMarkers.length !== 0 && pronunciationGuideMarkers.length !== 2) {
+                customizeGameFormatState.setPronunciationGuideMarkersErrorMessage(
+                    "Either no pronunciation guide is used, or there only needs to be a start and end marker specifeid"
+                );
+            } else if (pronunciationGuideMarkers.some((value) => value.length === 0)) {
+                customizeGameFormatState.setPronunciationGuideMarkersErrorMessage(
+                    "Pronunciation guide markers cannot be empty; put a character before or after the comma"
+                );
+            } else {
+                customizeGameFormatState.clearPronunciationGuideMarkersErrorMessage();
             }
         }, [customizeGameFormatState]);
 
@@ -271,6 +307,15 @@ const CustomizeGameFormatDialogBody = observer(
                                 label="Power values (comma separated, descending order)"
                                 onBlur={powerValidationHandler}
                                 onChange={powerValuesHandler}
+                            />
+                        </StackItem>
+                        <StackItem>
+                            <TextField
+                                defaultValue={customizeGameFormatState.pronunicationGuideMarkers?.join(",")}
+                                errorMessage={customizeGameFormatState.pronunciationGuideMarkersErrorMessage}
+                                label="Pronunciation marker start and end (comma separated)"
+                                onBlur={pronunicationGuideMarkersValidationHandler}
+                                onChange={pronunciationGuideMarkersHandler}
                             />
                         </StackItem>
                     </Stack>
@@ -350,6 +395,18 @@ function onSubmit(appState: AppState): void {
     powers.sort(sortPowersDescending);
     updatedGameFormat.powers = powers;
 
+    if (state.pronunicationGuideMarkers == undefined || state.pronunicationGuideMarkers.length === 0) {
+        updatedGameFormat.pronunciationGuideMarkers = undefined;
+    } else if (
+        state.pronunicationGuideMarkers.length === 2 &&
+        state.pronunicationGuideMarkers.every((value) => value.length > 0)
+    ) {
+        updatedGameFormat.pronunciationGuideMarkers = [
+            state.pronunicationGuideMarkers[0],
+            state.pronunicationGuideMarkers[1],
+        ];
+    }
+
     game.setGameFormat(updatedGameFormat);
 
     hideDialog(appState);
@@ -365,7 +422,11 @@ function isGameFormatValid(appState: AppState): boolean {
         throw new Error("Tried changing a format with no modified format");
     }
 
-    return state.powerMarkerErrorMessage == undefined && state.powerValuesErrorMessage == undefined;
+    return (
+        state.powerMarkerErrorMessage == undefined &&
+        state.powerValuesErrorMessage == undefined &&
+        state.pronunciationGuideMarkersErrorMessage == undefined
+    );
 }
 
 function onCancel(appState: AppState): void {

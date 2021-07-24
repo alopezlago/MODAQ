@@ -45,6 +45,8 @@ export interface BonusPart {
 }
 
 export class Tossup implements IQuestion {
+    private static readonly noPronunciationGuides: [string | undefined, string | undefined] = [undefined, undefined];
+
     public question: string;
     public answer: string;
 
@@ -55,7 +57,7 @@ export class Tossup implements IQuestion {
         this.answer = answer;
     }
 
-    public get formattedQuestionText(): IFormattedText[][] {
+    private get formattedQuestionText(): IFormattedText[][] {
         // Include the ■ to give an end of question marker
         return FormattedTextParser.splitFormattedTextIntoWords(this.question).concat([
             [{ text: "■", bolded: false, emphasized: false, required: false }],
@@ -68,43 +70,34 @@ export class Tossup implements IQuestion {
             return 10;
         }
 
-        const formattedQuestionText: IFormattedText[][] = this.formattedQuestionText;
-
-        const words: string[] = formattedQuestionText.map((questionText) =>
-            questionText.reduce((result, text) => result + text.text, "").trim()
+        const tossupWords: ITossupWord[] = this.getWords(format);
+        const words: string[] = tossupWords.map((questionText) =>
+            questionText.word.reduce((result, text) => result + text.text, "").trim()
         );
-
         // Ignore the last word, which is an end of question marker
-        const lastWordIndex: number = words.length - 1;
+        const lastIndex: number = words.length - 1;
 
-        // Go through each power value, and see if it appears in the question text. If it does, and the buzz is before
-        // that point, give them that power.
-        // One potential optimization would be to remove all the words up to that index if we find it, so we have to
-        // look through less words
-        let powerMarkersFound = 0;
+        let powerMarkerIndex = 0;
         for (let i = 0; i < format.powers.length; i++) {
-            const powerMarker: string = format.powers[i].marker;
-            const powerMarkerIndex: number = words.indexOf(powerMarker);
+            const powerMarker: string = format.powers[i].marker.trim();
+            const currentPowerMarkerIndex = words.indexOf(powerMarker, powerMarkerIndex);
+            if (currentPowerMarkerIndex === -1) {
+                continue;
+            }
 
-            // TODO: When we skip over pronunication guides, we'll need to calculate how many words they take up, so
-            // we can correctly see if the buzz is in power
-            // For a tossup a b (+) c (*) d
-            // If the buzz is at position 1 (b), 1 < 2 - 0, so we'll get the superpower
-            // If the buzz is at position 2 (c), 2 < 2 will fail. The next marker is at index 4, and 2 < 4 - 1 => 2 < 3,
-            // so they will get the power.
-            // If the buzz is at position 3, though (d), 3 < 4 - 1= > 3 < 3 is false, so they will get the default value
-            if (powerMarkerIndex >= 0) {
-                // We only want to correct the index for the power markers found. Some questions may not have
-                // superpowers, so don't count them if we didn't find them.
-                if (
-                    isCorrect &&
-                    powerMarkerIndex !== lastWordIndex &&
-                    wordIndex <= powerMarkerIndex - (powerMarkersFound + 1)
-                ) {
-                    return format.powers[i].points;
-                }
+            powerMarkerIndex = currentPowerMarkerIndex;
+            const powerMarkerWord: ITossupWord = tossupWords[powerMarkerIndex];
 
-                powerMarkersFound++;
+            // To get the word index, we need to subtract the count of non-words from the text index. We only have the
+            // non-word index, so we have to add 1 to that to get the count (TI - (NWI + 1)). If we use < rather than
+            // <=, we can remove the -1.
+            if (
+                isCorrect &&
+                powerMarkerIndex !== lastIndex &&
+                !powerMarkerWord.canBuzzOn &&
+                wordIndex < powerMarkerWord.textIndex - powerMarkerWord.nonWordIndex
+            ) {
+                return format.powers[i].points;
             }
         }
 
@@ -112,11 +105,89 @@ export class Tossup implements IQuestion {
             // If we're at the end of the question, don't count it as a neg
             // We add an extra word for the end of question marker, so remove that from the list of words, as well as all of
             // the power markers we skipped
-            return wordIndex >= words.length - powerMarkersFound - 1 ? 0 : format.negValue;
+            const lastWord: ITossupWord = tossupWords[tossupWords.length - 1];
+            if (!lastWord.canBuzzOn) {
+                // Something weird is happening, since the last word should always be buzzable (as the end marker).
+                throw new Error("Last word not buzzable, but must be buzzable by design");
+            }
+
+            return wordIndex >= lastWord.wordIndex ? 0 : format.negValue;
         }
 
         // Not in power, so return the default value
         return 10;
+    }
+
+    public getWords(format: IGameFormat): ITossupWord[] {
+        const pronunciationGuideMarkers: [string | undefined, string | undefined] =
+            format.pronunciationGuideMarkers != undefined && format.pronunciationGuideMarkers.length === 2
+                ? format.pronunciationGuideMarkers
+                : Tossup.noPronunciationGuides;
+
+        const formattedTexts: IFormattedText[][] = this.formattedQuestionText;
+        const words: ITossupWord[] = [];
+        let wordIndex = 0;
+        let nonwordIndex = 0;
+        let inPronunciationGuide = false;
+        for (let i = 0; i < formattedTexts.length; i++) {
+            const word: IFormattedText[] = formattedTexts[i];
+            const fullText = word.reduce((result, text) => result + text.text, "");
+            const isLastWord: boolean = i === formattedTexts.length - 1;
+
+            // We need to skip over power markers and not count them when we calculate buzz points
+            let canBuzzOn = true;
+            let index: number = wordIndex;
+            const trimmedText: string = fullText.trim();
+            const powerMarkerIndex: number = format.powers.findIndex((power) => power.marker === trimmedText);
+            if (isLastWord) {
+                // Last word should always be the terminal character, which can't be a power or in a pronunciation guide
+                wordIndex++;
+            } else if (powerMarkerIndex >= 0) {
+                // Power markers have priority over pronunciation guides
+                canBuzzOn = false;
+                index = nonwordIndex;
+                nonwordIndex++;
+            } else if (
+                inPronunciationGuide ||
+                (pronunciationGuideMarkers[0] != undefined && trimmedText.startsWith(pronunciationGuideMarkers[0]))
+            ) {
+                // If we're in a pronunciation guide or at the start of one, then count it as a non-word
+                inPronunciationGuide = true;
+                canBuzzOn = false;
+                index = nonwordIndex;
+                nonwordIndex++;
+            } else {
+                wordIndex++;
+            }
+
+            if (canBuzzOn) {
+                words.push({
+                    wordIndex: index,
+                    textIndex: i,
+                    word,
+                    isLastWord,
+                    canBuzzOn,
+                });
+            } else {
+                words.push({
+                    nonWordIndex: index,
+                    textIndex: i,
+                    word,
+                    inPronunciationGuide,
+                    canBuzzOn,
+                });
+            }
+
+            if (
+                inPronunciationGuide &&
+                pronunciationGuideMarkers[1] != undefined &&
+                trimmedText.indexOf(pronunciationGuideMarkers[1]) >= 0
+            ) {
+                inPronunciationGuide = false;
+            }
+        }
+
+        return words;
     }
 }
 
@@ -134,4 +205,23 @@ export class Bonus {
         this.leadin = leadin;
         this.parts = parts;
     }
+}
+
+export type ITossupWord = IBuzzableTossupWord | INonbuzzableTossupWord;
+
+export interface IBuzzableTossupWord extends IBaseTossupWord {
+    wordIndex: number;
+    isLastWord: boolean;
+    canBuzzOn: true;
+}
+
+export interface INonbuzzableTossupWord extends IBaseTossupWord {
+    nonWordIndex: number;
+    inPronunciationGuide: boolean;
+    canBuzzOn: false;
+}
+
+interface IBaseTossupWord {
+    word: IFormattedText[];
+    textIndex: number;
 }

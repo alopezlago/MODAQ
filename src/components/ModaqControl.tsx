@@ -15,7 +15,7 @@ import {
 import { AsyncTrunk } from "mobx-sync";
 import { configure } from "mobx";
 
-import * as PacketLoaderController from "src/controllers/PacketLoaderController";
+import * as PacketLoaderController from "src/components/PacketLoaderController";
 import { StateProvider } from "src/contexts/StateContext";
 import { AppState } from "src/state/AppState";
 import { GameViewer } from "./GameViewer";

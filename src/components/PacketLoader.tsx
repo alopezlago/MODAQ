@@ -2,7 +2,7 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import { Label, ILabelStyles } from "@fluentui/react";
 
-import * as PacketLoaderController from "src/controllers/PacketLoaderController";
+import * as PacketLoaderController from "src/components/PacketLoaderController";
 import { UIState } from "src/state/UIState";
 import { PacketState } from "src/state/PacketState";
 import { AppState } from "src/state/AppState";
