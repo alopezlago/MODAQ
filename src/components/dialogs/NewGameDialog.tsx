@@ -69,7 +69,7 @@ const modalProps: IModalProps = {
             // requires you to pass in an entire theme to modify the max width. We could also use a modal, but that
             // requires building much of what Dialogs offer easily (close buttons, footer for buttons)
             maxWidth: "80% !important",
-            top: "10vh",
+            top: "5vh",
         },
     },
 };
@@ -89,7 +89,7 @@ export const NewGameDialog = observer(
                 modalProps={modalProps}
                 onDismiss={cancelHandler}
             >
-                <NewGameDialogBody />
+                {appState.uiState.dialogState.newGameDialogVisible && <NewGameDialogBody />}
                 <DialogFooter>
                     <PrimaryButton text="Start" onClick={submitHandler} />
                     <DefaultButton text="Cancel" onClick={cancelHandler} />
@@ -148,7 +148,11 @@ const NewGameDialogBody = observer(
         // TODO: Have a selector for the format. Will need a way to specify a custom format
         return (
             <>
-                <Pivot aria-label="Game type" onLinkClick={pivotClickHandler}>
+                <Pivot
+                    aria-label="Game type"
+                    onLinkClick={pivotClickHandler}
+                    defaultSelectedKey={getDefaultPivotKey(uiState.pendingNewGame?.type)}
+                >
                     <PivotItem headerText="Manual" itemKey={PivotKey.Manual}>
                         <ManualNewGamePivotBody appState={appState} classes={classes} />
                     </PivotItem>
@@ -366,6 +370,22 @@ const FromSheetsNewGameBody = observer(
         );
     }
 );
+
+function getDefaultPivotKey(pendingGameType: PendingGameType | undefined): PivotKey {
+    switch (pendingGameType) {
+        case PendingGameType.Manual:
+        case undefined:
+            return PivotKey.Manual;
+        case PendingGameType.Lifsheets:
+            return PivotKey.Lifsheets;
+        case PendingGameType.TJSheets:
+            return PivotKey.TJSheets;
+        case PendingGameType.UCSDSheets:
+            return PivotKey.UCSDSheets;
+        default:
+            assertNever(pendingGameType);
+    }
+}
 
 function onAddPlayer(appState: AppState, players: Player[]): void {
     const uiState: UIState = appState.uiState;

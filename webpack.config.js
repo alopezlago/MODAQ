@@ -7,9 +7,9 @@ const webpack = require("webpack");
 const devEntries = [
     "webpack-dev-server/client?http://localhost:8080",
     "webpack-dev-server/client?http://localhost.quizbowlreader.com:8080",
-    "./src/app",
+    "./src/demo/app",
 ];
-const prodEntries = ["./src/app"];
+const prodEntries = ["./src/demo/app"];
 const dateString = new Date().toISOString();
 const version = dateString.substring(0, dateString.indexOf("T"));
 

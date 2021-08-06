@@ -120,13 +120,37 @@ export class UIState {
             secondTeamPlayers.push(new Player("", "Team 2", /* isStarter */ true));
         }
 
-        this.pendingNewGame = {
-            packet: new PacketState(),
-            firstTeamPlayers,
-            secondTeamPlayers,
-            type: PendingGameType.Manual,
-            gameFormat: GameFormats.ACFGameFormat,
-        };
+        if (this.pendingNewGame == undefined) {
+            this.pendingNewGame = {
+                packet: new PacketState(),
+                firstTeamPlayers,
+                secondTeamPlayers,
+                type: PendingGameType.Manual,
+                gameFormat: GameFormats.ACFGameFormat,
+            };
+        } else {
+            this.pendingNewGame = {
+                ...this.pendingNewGame,
+                packet: new PacketState(),
+            };
+
+            switch (this.pendingNewGame.type) {
+                case PendingGameType.Manual:
+                    this.pendingNewGame = {
+                        ...this.pendingNewGame,
+                        cycles: undefined,
+                        firstTeamPlayers,
+                        secondTeamPlayers,
+                    };
+                    break;
+                case PendingGameType.Lifsheets:
+                case PendingGameType.TJSheets:
+                case PendingGameType.UCSDSheets:
+                    break;
+                default:
+                    assertNever(this.pendingNewGame);
+            }
+        }
     }
 
     public createPendingNewPlayer(teamName: string): void {
@@ -326,9 +350,28 @@ export class UIState {
     }
 
     public resetPendingNewGame(): void {
-        this.pendingNewGame = undefined;
         this.packetParseStatus = undefined;
         this.importGameStatus = undefined;
+        if (this.pendingNewGame != undefined) {
+            // Clear everything but the game format and info derived from the roster URL
+            this.pendingNewGame.packet = new PacketState();
+
+            switch (this.pendingNewGame.type) {
+                case PendingGameType.Manual:
+                    this.pendingNewGame.cycles = undefined;
+                    this.pendingNewGame.firstTeamPlayers = [];
+                    this.pendingNewGame.secondTeamPlayers = [];
+                    break;
+                case undefined:
+                case PendingGameType.Lifsheets:
+                case PendingGameType.TJSheets:
+                case PendingGameType.UCSDSheets:
+                    // Don't clear the sheets URL or the players
+                    break;
+                default:
+                    assertNever(this.pendingNewGame);
+            }
+        }
     }
 
     public resetPendingNewPlayer(): void {

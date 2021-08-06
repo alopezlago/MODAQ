@@ -3,7 +3,7 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
-import { ModaqControl } from "./components/ModaqControl";
+import { ModaqControl } from "../components/ModaqControl";
 
 declare const __BUILD_VERSION__: string;
 declare const __GOOGLE_CLIENT_ID__: string;

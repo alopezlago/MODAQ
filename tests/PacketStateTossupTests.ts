@@ -29,7 +29,7 @@ describe("PacketStateTossupTests", () => {
             expect(formattedText[0].length).to.equal(1);
             expect(formattedText[0][0].text).to.equal("This");
             expect(formattedText[4].length).to.equal(1);
-            expect(formattedText[4][0].text).to.equal("■");
+            expect(formattedText[4][0].text).to.equal("■END■");
         });
         it("formattedQuestionText has formatting", () => {
             const tossup: Tossup = new Tossup("<b>This is</b> my question", "Answer");

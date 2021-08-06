@@ -68,7 +68,7 @@ const getClassNames = memoizeFunction(
                         textDecoration: "underline double",
                     },
                 isPronunciation && {
-                    color: "rgb(96, 96, 96)",
+                    color: "rgb(128, 128, 128)",
                 },
                 // Only highlight a word on hover if it's not in an existing state from selected/correct/wrong
                 isIndexDefined &&
