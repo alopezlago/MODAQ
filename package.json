@@ -1,6 +1,6 @@
 {
     "name": "modaq",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "description": "Quiz Bowl Reader using TypeScript, React, and MobX",
     "repository": {
         "type": "git",
@@ -61,8 +61,8 @@
     "//": "Note: to publish, run npm run prepublish, then npm publish out",
     "scripts": {
         "init": "yarn install",
-        "buildApp": "webpack --mode development --watch",
-        "buildAppRelease": "webpack --mode production",
+        "buildDemo": "webpack --mode development --watch",
+        "buildDemoRelease": "webpack --mode production",
         "build": " tsc && tsc-alias",
         "lint": "eslint . --ext .ts,.tsx",
         "prepublish": "copy package.json out && copy README.md out && copy LICENSE out",

@@ -60,7 +60,7 @@ export class Tossup implements IQuestion {
     private get formattedQuestionText(): IFormattedText[][] {
         // Include the ■ to give an end of question marker
         return FormattedTextParser.splitFormattedTextIntoWords(this.question).concat([
-            [{ text: "■", bolded: false, emphasized: false, required: false }],
+            [{ text: "■END■", bolded: true, emphasized: false, required: false }],
         ]);
     }
 
