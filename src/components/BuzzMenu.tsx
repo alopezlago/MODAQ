@@ -39,12 +39,11 @@ export const BuzzMenu = observer((props: IBuzzMenuProps) => {
 
     return (
         <ContextualMenu
-            hidden={!props.appState.uiState.buzzMenuVisible}
+            hidden={!props.appState.uiState.buzzMenuState.visible}
             target={props.target}
             items={menuItems}
             onDismiss={onHideBuzzMenu}
             shouldFocusOnMount={true}
-            shouldFocusOnContainer={true}
             shouldUpdateWhenHidden={true}
         />
     );
@@ -127,7 +126,10 @@ function getPlayerMenuItems(props: IBuzzMenuProps, teamName: string): IContextua
 
 function onBuzzMenuDismissed(props: IBuzzMenuProps): void {
     props.appState.uiState.hideBuzzMenu();
-    props.appState.uiState.setSelectedWordIndex(-1);
+
+    if (props.appState.uiState.buzzMenuState.clearSelectedWordOnClose) {
+        props.appState.uiState.setSelectedWordIndex(-1);
+    }
 }
 
 function onCorrectClicked(

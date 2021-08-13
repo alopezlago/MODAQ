@@ -13,6 +13,7 @@ import { IPendingSheet } from "./IPendingSheet";
 import { Cycle } from "./Cycle";
 import { DialogState } from "./DialogState";
 import { IGameFormat } from "./IGameFormat";
+import { BuzzMenuState } from "./BuzzMenuState";
 
 // TODO: Look into breaking this up into individual UI component states. Lots of pendingX fields, which could be in
 // their own (see CustomizeGameFormatDialogState)
@@ -35,7 +36,7 @@ export class UIState {
     public selectedWordIndex: number;
 
     @ignore
-    public buzzMenuVisible: boolean;
+    public buzzMenuState: BuzzMenuState;
 
     @ignore
     public importGameStatus: IStatus | undefined;
@@ -78,7 +79,10 @@ export class UIState {
         this.dialogState = new DialogState();
         this.isEditingCycleIndex = false;
         this.selectedWordIndex = -1;
-        this.buzzMenuVisible = false;
+        this.buzzMenuState = {
+            clearSelectedWordOnClose: true,
+            visible: false,
+        };
         this.importGameStatus = undefined;
         this.packetFilename = undefined;
         this.packetParseStatus = undefined;
@@ -338,7 +342,7 @@ export class UIState {
     }
 
     public hideBuzzMenu(): void {
-        this.buzzMenuVisible = false;
+        this.buzzMenuState.visible = false;
     }
 
     public resetPacketFilename(): void {
@@ -395,8 +399,9 @@ export class UIState {
         this.sheetsState.sheetType = undefined;
     }
 
-    public showBuzzMenu(): void {
-        this.buzzMenuVisible = true;
+    public showBuzzMenu(clearSelectedWordOnClose: boolean): void {
+        this.buzzMenuState.visible = true;
+        this.buzzMenuState.clearSelectedWordOnClose = clearSelectedWordOnClose;
     }
 
     public updatePendingProtestReason(reason: string): void {

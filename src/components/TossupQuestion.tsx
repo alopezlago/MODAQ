@@ -43,7 +43,7 @@ export const TossupQuestion = observer(
 
         const wordClickHandler: React.MouseEventHandler = React.useCallback(
             (event: React.MouseEvent<HTMLDivElement>): void => {
-                TossupQuestionController.selectWord(props.appState, event);
+                TossupQuestionController.selectWordFromClick(props.appState, event);
             },
             [props]
         );
@@ -51,11 +51,16 @@ export const TossupQuestion = observer(
             TossupQuestionController.throwOutTossup(props.appState, props.cycle, props.tossupNumber);
         }, [props]);
 
+        const containerKeyDownHandler: React.KeyboardEventHandler<HTMLDivElement> = React.useCallback(
+            (event: React.KeyboardEvent<HTMLDivElement>) => onKeyDown(event, props.appState),
+            [props]
+        );
+
         // Need tossuptext/answer in one container, X in the other
         return (
             <div className={classes.tossupContainer}>
                 <TossupProtestDialog appState={props.appState} cycle={props.cycle} />
-                <div className={classes.tossupText}>
+                <div className={classes.tossupText} tabIndex={0} onKeyDown={containerKeyDownHandler}>
                     <div
                         className={classes.tossupQuestionText}
                         onClick={wordClickHandler}
@@ -79,7 +84,7 @@ const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
     const selected: boolean = props.index === uiState.selectedWordIndex;
 
     const buzzMenu: JSX.Element | undefined =
-        selected && props.index != undefined && uiState.buzzMenuVisible ? (
+        selected && props.index != undefined && uiState.buzzMenuState.visible ? (
             <BuzzMenu
                 appState={props.appState}
                 bonusIndex={props.bonusIndex}
@@ -108,6 +113,38 @@ const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
         </>
     );
 });
+
+function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>, appState: AppState): void {
+    switch (event.key) {
+        case "ArrowLeft":
+            const previousWordIndex: number = Math.max(0, appState.uiState.selectedWordIndex - 1);
+            appState.uiState.setSelectedWordIndex(previousWordIndex);
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        case "ArrowRight":
+            const tossup: Tossup | undefined = appState.game.getTossup(appState.uiState.cycleIndex);
+            const nextWordIndex: number = Math.min(
+                appState.uiState.selectedWordIndex + 1,
+                tossup == undefined ? 0 : tossup.getWords(appState.game.gameFormat).length - 1
+            );
+            appState.uiState.setSelectedWordIndex(nextWordIndex);
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        case " ":
+            if (appState.uiState.selectedWordIndex < 0) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+
+            TossupQuestionController.selectWordFromKeyboardEvent(appState, event);
+            return;
+        default:
+            break;
+    }
+}
 
 export interface IQuestionProps {
     appState: AppState;

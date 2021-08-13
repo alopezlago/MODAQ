@@ -91,7 +91,7 @@ export interface IModaqControlProps {
     storeName?: string | undefined;
 }
 
-function initializeControl(appState: AppState, props: IModaqControlProps): void {
+function initializeControl(appState: AppState, props: IModaqControlProps): () => void {
     // Initialize Fluent UI icons on the first render
     initializeIcons();
 
@@ -99,6 +99,37 @@ function initializeControl(appState: AppState, props: IModaqControlProps): void 
         configure({ enforceActions: "observed", computedRequiresReaction: true });
         const trunk = new AsyncTrunk(appState, { storage: localStorage, storageKey: props.storeName, delay: 200 });
         trunk.init(appState);
+    }
+
+    // We have to add the listener at the document layer, otherwise the event isn't picked up if the user clicks on
+    // the empty space
+    const keydownListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) => shortcutHandler(event, appState);
+    document.addEventListener("keyup", keydownListener);
+
+    return () => {
+        document.removeEventListener("keyup", keydownListener);
+    };
+}
+
+function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
+    if (event.shiftKey) {
+        switch (event.key) {
+            case "N":
+                if (appState.uiState.cycleIndex + 1 < appState.game.playableCycles.length) {
+                    appState.uiState.nextCycle();
+                }
+                event.preventDefault();
+                event.stopPropagation();
+
+                break;
+            case "P":
+                appState.uiState.previousCycle();
+                event.preventDefault();
+                event.stopPropagation();
+                break;
+            default:
+                break;
+        }
     }
 }
 
