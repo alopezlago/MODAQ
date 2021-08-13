@@ -48,7 +48,7 @@
         "webpack-dev-server": "^3.11.2"
     },
     "dependencies": {
-        "@fluentui/react": "^8.2.1",
+        "@fluentui/react": "^8.28.0",
         "mobx": "^6.1.7",
         "mobx-react-lite": "^3.2.0",
         "mobx-sync": "^3.0.0",
