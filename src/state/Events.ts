@@ -69,4 +69,7 @@ interface IProtestEvent {
     questionIndex: number;
     reason: string;
     teamName: string;
+
+    // Undefined in old versions, but should be required now
+    givenAnswer: string | undefined;
 }

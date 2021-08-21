@@ -315,6 +315,7 @@ export class UIState {
         this.pendingBonusProtestEvent = {
             partIndex: part,
             questionIndex,
+            givenAnswer: "",
             reason: "",
             teamName,
         };
@@ -324,6 +325,7 @@ export class UIState {
         this.pendingTossupProtestEvent = {
             position,
             questionIndex,
+            givenAnswer: "",
             reason: "",
             teamName,
         };
@@ -402,6 +404,14 @@ export class UIState {
     public showBuzzMenu(clearSelectedWordOnClose: boolean): void {
         this.buzzMenuState.visible = true;
         this.buzzMenuState.clearSelectedWordOnClose = clearSelectedWordOnClose;
+    }
+
+    public updatePendingProtestGivenAnswer(givenAnswer: string): void {
+        if (this.pendingBonusProtestEvent != undefined) {
+            this.pendingBonusProtestEvent.givenAnswer = givenAnswer;
+        } else if (this.pendingTossupProtestEvent != undefined) {
+            this.pendingTossupProtestEvent.givenAnswer = givenAnswer;
+        }
     }
 
     public updatePendingProtestReason(reason: string): void {

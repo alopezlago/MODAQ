@@ -579,7 +579,8 @@ describe("SheetsTests", () => {
             );
 
             const reason = "I was right";
-            appState.game.cycles[0].addTossupProtest("Alpha", 0, position, reason);
+            const answer = "That answer";
+            appState.game.cycles[0].addTossupProtest("Alpha", 0, position, answer, reason);
 
             await verifyExportToSheetSuccess(appState, (ranges) => {
                 verifyCell(ranges, "B8", -5);
@@ -603,7 +604,8 @@ describe("SheetsTests", () => {
             );
 
             const reason = "I was surely right";
-            appState.game.cycles[0].addTossupProtest("Beta", 0, position, reason);
+            const answer = "The answer";
+            appState.game.cycles[0].addTossupProtest("Beta", 0, position, answer, reason);
 
             await verifyExportToSheetSuccess(appState, (ranges) => {
                 verifyCell(ranges, "R8", -5);
@@ -634,7 +636,8 @@ describe("SheetsTests", () => {
             cycle.setBonusPartAnswer(2, player.teamName, 10);
 
             const reason = "I was right";
-            cycle.addBonusProtest(0, 0, reason, "Alpha");
+            const answer = "My answer";
+            cycle.addBonusProtest(0, 0, answer, reason, "Alpha");
 
             await verifyExportToSheetSuccess(appState, (ranges) => {
                 verifyCell(ranges, "B8", 10);
@@ -666,7 +669,8 @@ describe("SheetsTests", () => {
             cycle.setBonusPartAnswer(2, player.teamName, 10);
 
             const reason = "I was surely right";
-            cycle.addBonusProtest(0, 1, reason, "Beta");
+            const answer = "My certain answer";
+            cycle.addBonusProtest(0, 1, answer, reason, "Beta");
 
             await verifyExportToSheetSuccess(appState, (ranges) => {
                 verifyCell(ranges, "R8", 10);
@@ -698,9 +702,11 @@ describe("SheetsTests", () => {
             cycle.setBonusPartAnswer(2, player.teamName, 0);
 
             const firstReason = "I was right";
+            const firstAnswer = "Some answer";
             const secondReason = "That was also right";
-            cycle.addBonusProtest(0, 0, firstReason, "Alpha");
-            cycle.addBonusProtest(0, 2, secondReason, "Alpha");
+            const secondAnswer = "Another answer";
+            cycle.addBonusProtest(0, 0, firstAnswer, firstReason, "Alpha");
+            cycle.addBonusProtest(0, 2, secondAnswer, secondReason, "Alpha");
 
             await verifyExportToSheetSuccess(appState, (ranges) => {
                 verifyCell(ranges, "B8", 10);
