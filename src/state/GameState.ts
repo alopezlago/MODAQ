@@ -116,6 +116,81 @@ export class GameState {
         return score;
     }
 
+    public get protestsMatter(): boolean {
+        if (this.finalScore == undefined || this.finalScore.length < 2) {
+            return false;
+        }
+
+        if (this.finalScore[0] === this.finalScore[1]) {
+            // If there are any protests, they matter.
+            return this.cycles.some(
+                (cycle) =>
+                    (cycle.tossupProtests != undefined && cycle.tossupProtests.length > 0) ||
+                    (cycle.bonusProtests != undefined && cycle.bonusProtests.length > 0)
+            );
+        }
+
+        const leadingTeamIndex: number = this.finalScore[0] > this.finalScore[1] ? 0 : 1;
+        const losingTeamIndex: number = leadingTeamIndex === -1 ? -1 : 1 - leadingTeamIndex;
+
+        // Protests only matter if the losing team's protests would be enough to get them to tie
+        return (
+            this.protestSwings[losingTeamIndex][losingTeamIndex] >=
+            this.protestSwings[losingTeamIndex][leadingTeamIndex]
+        );
+    }
+
+    // Returns the best possible outcome for team 1, and the best possible outcome for team 2
+    private get protestSwings(): [[number, number], [number, number]] {
+        const swings: [IProtestSwing, IProtestSwing] = [
+            { against: 0, for: 0 },
+            { against: 0, for: 0 },
+        ];
+
+        for (let i = 0; i < this.cycles.length; i++) {
+            const cycle: Cycle = this.cycles[i];
+
+            if (cycle.tossupProtests) {
+                for (const tossupProtest of cycle.tossupProtests) {
+                    // Don't use getTossup because the protest could've been in a thrown-out tossup
+                    const tossup: Tossup | undefined = this.packet.tossups[tossupProtest.questionIndex];
+
+                    if (tossup != undefined) {
+                        const tossupTeamIndex: number = tossupProtest.teamName === this.teamNames[0] ? 0 : 1;
+                        // Need to remove the neg (subtract) and add what the correct value would be
+                        swings[tossupTeamIndex].for +=
+                            tossup.getPointsAtPosition(this.gameFormat, tossupProtest.position, /* isCorrect */ true) -
+                            tossup.getPointsAtPosition(this.gameFormat, tossupProtest.position, /* isCorrect */ false);
+                    }
+                }
+            }
+
+            if (cycle.bonusProtests && cycle.correctBuzz) {
+                const correctBuzzTeamName: string = cycle.correctBuzz.marker.player.teamName;
+
+                for (const bonusProtest of cycle.bonusProtests) {
+                    // Don't use getBonus because the protest could've been in a bonus that was then replaced
+                    const bonus: Bonus | undefined = this.packet.bonuses[bonusProtest.questionIndex];
+                    if (bonus != undefined) {
+                        const bonusTeamIndex: number = correctBuzzTeamName === this.teamNames[0] ? 0 : 1;
+                        const value: number = bonus.parts[bonusProtest.partIndex].value;
+                        if (bonusProtest.teamName === correctBuzzTeamName) {
+                            swings[bonusTeamIndex].for += value;
+                        } else {
+                            swings[bonusTeamIndex].against += value;
+                        }
+                    }
+                    bonusProtest.partIndex;
+                }
+            }
+        }
+
+        return [
+            [this.finalScore[0] + swings[0].for, this.finalScore[1] - swings[1].against],
+            [this.finalScore[0] - swings[0].against, this.finalScore[1] + swings[1].for],
+        ];
+    }
+
     public addPlayer(player: Player): void {
         this.players.push(player);
     }
@@ -321,4 +396,9 @@ export class GameState {
 
         return change;
     }
+}
+
+interface IProtestSwing {
+    against: number;
+    for: number;
 }

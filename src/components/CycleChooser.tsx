@@ -50,7 +50,6 @@ export const CycleChooser = observer(() => {
 
     const uiState: UIState = appState.uiState;
 
-    // TODO: Move away from buttons to something like images
     const previousButton: JSX.Element = (
         <DefaultButton
             key="previousButton"

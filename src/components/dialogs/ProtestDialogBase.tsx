@@ -30,7 +30,12 @@ const modalProps: IModalProps = {
 };
 
 export const ProtestDialogBase = (props: React.PropsWithChildren<IProtestDialogBaseProps>): JSX.Element => {
-    const changeHandler = React.useCallback(
+    const givenAnswerChangeHandler = React.useCallback(
+        (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) =>
+            props.appState.uiState.updatePendingProtestGivenAnswer(newValue ?? ""),
+        [props]
+    );
+    const reasonChangeHandler = React.useCallback(
         (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) =>
             props.appState.uiState.updatePendingProtestReason(newValue ?? ""),
         [props]
@@ -42,11 +47,17 @@ export const ProtestDialogBase = (props: React.PropsWithChildren<IProtestDialogB
         <Dialog hidden={props.hidden} dialogContentProps={content} modalProps={modalProps} onDismiss={cancelHandler}>
             {props.children}
             <TextField
+                label="Given answer"
+                value={props.givenAnswer}
+                multiline={true}
+                onChange={givenAnswerChangeHandler}
+                autoFocus={props.autoFocusOnGivenAnswer}
+            />
+            <TextField
                 label="Reason for the protest"
                 value={props.reason}
                 multiline={true}
-                onChange={changeHandler}
-                autoFocus={props.autoFocusOnReason}
+                onChange={reasonChangeHandler}
             />
             <DialogFooter>
                 <PrimaryButton text="OK" onClick={submitHandler} />
@@ -67,7 +78,8 @@ function onCancel(props: IProtestDialogBaseProps): void {
 
 export interface IProtestDialogBaseProps {
     appState: AppState;
-    autoFocusOnReason?: boolean;
+    autoFocusOnGivenAnswer?: boolean;
+    givenAnswer: string | undefined;
     hidden: boolean;
     reason: string;
 

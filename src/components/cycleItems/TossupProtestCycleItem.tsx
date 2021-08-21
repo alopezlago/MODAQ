@@ -20,7 +20,7 @@ export const TossupProtestCycleItem = observer(
 
         const text = `${teamName} protests tossup #${props.protest.questionIndex + 1} at word ${
             props.protest.position + 1
-        }`;
+        } (answer given: "${props.protest.givenAnswer}")`;
         return <CycleItem text={text} onDelete={deleteHandler} />;
     }
 );

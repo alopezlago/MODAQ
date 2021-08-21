@@ -21,11 +21,12 @@ export const TossupProtestDialog = observer(
         return (
             <ProtestDialogBase
                 appState={props.appState}
-                autoFocusOnReason={true}
+                autoFocusOnGivenAnswer={true}
+                givenAnswer={uiState.pendingTossupProtestEvent.givenAnswer}
                 hidden={uiState.pendingTossupProtestEvent == undefined}
                 hideDialog={hideHandler}
                 onSubmit={submitHandler}
-                reason={uiState.pendingTossupProtestEvent?.reason}
+                reason={uiState.pendingTossupProtestEvent.reason}
             />
         );
     }
@@ -38,6 +39,7 @@ function onSubmit(props: ITossupProtestDialogProps): void {
             pendingProtestEvent.teamName,
             pendingProtestEvent.questionIndex,
             pendingProtestEvent.position,
+            pendingProtestEvent.givenAnswer,
             pendingProtestEvent.reason
         );
         props.appState.uiState.resetPendingTossupProtest();

@@ -51,7 +51,7 @@ module.exports = (env, argv) => {
         },
         output: {
             path: path.join(__dirname, "out"),
-            filename: "[name].bundle.js",
+            filename: "[name].[chunkhash].bundle.js",
             publicPath: "/out/",
             umdNamedDefine: true,
             clean: true,

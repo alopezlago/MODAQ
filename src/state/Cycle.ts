@@ -237,7 +237,13 @@ export class Cycle implements ICycle {
         }
     }
 
-    public addBonusProtest(questionIndex: number, partIndex: number, reason: string, teamName: string): void {
+    public addBonusProtest(
+        questionIndex: number,
+        partIndex: number,
+        givenAnswer: string | undefined,
+        reason: string,
+        teamName: string
+    ): void {
         if (this.correctBuzz == undefined) {
             // There's no correct buzz, so there's no one to protest the bonus
             return;
@@ -249,7 +255,8 @@ export class Cycle implements ICycle {
 
         // TODO: Investigate if we can get the questionIndex from the bonusAnswer event
         this.bonusProtests.push({
-            reason: reason,
+            givenAnswer,
+            reason,
             partIndex,
             questionIndex,
             teamName,
@@ -321,13 +328,20 @@ export class Cycle implements ICycle {
         this.removeCorrectBuzz();
     }
 
-    public addTossupProtest(teamName: string, questionIndex: number, position: number, reason: string): void {
+    public addTossupProtest(
+        teamName: string,
+        questionIndex: number,
+        position: number,
+        givenAnswer: string | undefined,
+        reason: string
+    ): void {
         if (this.tossupProtests == undefined) {
             this.tossupProtests = [];
         }
 
         this.tossupProtests.push({
-            reason: reason,
+            givenAnswer,
+            reason,
             position,
             questionIndex,
             teamName,

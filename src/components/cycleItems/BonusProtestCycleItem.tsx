@@ -13,7 +13,7 @@ export const BonusProtestCycleItem = observer(
 
         const text = `${props.protest.teamName} protests bonus #${props.protest.questionIndex + 1}, part ${
             props.protest.partIndex + 1
-        }`;
+        }  (answer given: "${props.protest.givenAnswer}")`;
 
         return <CycleItem text={text} onDelete={deleteHandler} />;
     }

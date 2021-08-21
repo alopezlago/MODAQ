@@ -94,7 +94,7 @@ export const LifsheetsGenerator: ISheetsGenerator = {
         row: number
     ): gapi.client.sheets.ValueRange[] => {
         const protestReasons: string = protests.reduce((state: string, current: IBonusProtestEvent) => {
-            return state + "\n" + current.reason;
+            return `${state}\n${current.reason}`;
         }, "");
 
         return [

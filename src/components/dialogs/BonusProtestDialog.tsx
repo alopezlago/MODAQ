@@ -44,6 +44,7 @@ export const BonusProtestDialog = observer(
         return (
             <ProtestDialogBase
                 appState={props.appState}
+                givenAnswer={protestEvent.givenAnswer}
                 hidden={props.appState.uiState.pendingBonusProtestEvent == undefined}
                 hideDialog={hideHandler}
                 onSubmit={submitHandler}
@@ -77,6 +78,7 @@ function onSubmit(props: IBonusProtestDialogProps): void {
         props.cycle.addBonusProtest(
             pendingProtestEvent.questionIndex,
             pendingProtestEvent.partIndex,
+            pendingProtestEvent.givenAnswer,
             pendingProtestEvent.reason,
             teamName
         );

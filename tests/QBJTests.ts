@@ -590,8 +590,10 @@ describe("QBJTests", () => {
             );
         });
         it("Tossup protest", () => {
-            const firstProtest = "First protest";
-            const secondProtest = "Second protest";
+            const firstProtestReason = "First protest";
+            const firstProtestAnswer = "First answer";
+            const secondProtestReason = "Second protest";
+            const secondProtestAnswer = "Second answer";
 
             verifyQBJ(
                 (game) => {
@@ -605,7 +607,13 @@ describe("QBJTests", () => {
                         0,
                         game.gameFormat
                     );
-                    game.cycles[0].addTossupProtest(firstTeamPlayers[0].teamName, 0, 0, firstProtest);
+                    game.cycles[0].addTossupProtest(
+                        firstTeamPlayers[0].teamName,
+                        0,
+                        0,
+                        firstProtestAnswer,
+                        firstProtestReason
+                    );
 
                     game.cycles[1].addWrongBuzz(
                         {
@@ -617,7 +625,13 @@ describe("QBJTests", () => {
                         1,
                         game.gameFormat
                     );
-                    game.cycles[1].addTossupProtest(secondTeamPlayer.teamName, 1, 1, secondProtest);
+                    game.cycles[1].addTossupProtest(
+                        secondTeamPlayer.teamName,
+                        1,
+                        1,
+                        secondProtestAnswer,
+                        secondProtestReason
+                    );
                 },
                 (match) => {
                     expect(match.tossups_read).to.equal(4);
@@ -630,17 +644,19 @@ describe("QBJTests", () => {
                     const lines: string[] = match.notes.split("\n");
                     expect(lines.length).to.equal(2);
                     expect(lines[0]).to.equal(
-                        `Tossup protest on question 1. Team "${firstTeamPlayers[0].teamName}" protested because of this reason: "${firstProtest}".`
+                        `Tossup protest on question 1. Team "${firstTeamPlayers[0].teamName}" protested because of this reason: "${firstProtestReason}".`
                     );
                     expect(lines[1]).to.equal(
-                        `Tossup protest on question 2. Team "${secondTeamPlayer.teamName}" protested because of this reason: "${secondProtest}".`
+                        `Tossup protest on question 2. Team "${secondTeamPlayer.teamName}" protested because of this reason: "${secondProtestReason}".`
                     );
                 }
             );
         });
         it("Bonus protest", () => {
-            const firstProtest = "First protest";
-            const secondProtest = "Second protest";
+            const firstProtestReason = "First protest";
+            const firstProtestAnswer = "First answer";
+            const secondProtestReason = "Second protest";
+            const secondProtestAnswer = "Second answer";
 
             verifyQBJ(
                 (game) => {
@@ -656,7 +672,13 @@ describe("QBJTests", () => {
                         0,
                         3
                     );
-                    game.cycles[0].addBonusProtest(0, 0, firstProtest, firstTeamPlayers[0].teamName);
+                    game.cycles[0].addBonusProtest(
+                        0,
+                        0,
+                        firstProtestAnswer,
+                        firstProtestReason,
+                        firstTeamPlayers[0].teamName
+                    );
 
                     game.cycles[1].addCorrectBuzz(
                         {
@@ -672,7 +694,13 @@ describe("QBJTests", () => {
                     );
 
                     game.cycles[1].setBonusPartAnswer(2, firstTeamPlayers[0].teamName, 10);
-                    game.cycles[1].addBonusProtest(1, 2, secondProtest, secondTeamPlayer.teamName);
+                    game.cycles[1].addBonusProtest(
+                        1,
+                        2,
+                        secondProtestAnswer,
+                        secondProtestReason,
+                        secondTeamPlayer.teamName
+                    );
                 },
                 (match) => {
                     expect(match.tossups_read).to.equal(4);
@@ -685,10 +713,10 @@ describe("QBJTests", () => {
                     const lines: string[] = match.notes.split("\n");
                     expect(lines.length).to.equal(2);
                     expect(lines[0]).to.equal(
-                        `Bonus protest on question 1. Team "${firstTeamPlayers[0].teamName}" protested part 1 because of this reason: "${firstProtest}".`
+                        `Bonus protest on question 1. Team "${firstTeamPlayers[0].teamName}" protested part 1 because of this reason: "${firstProtestReason}".`
                     );
                     expect(lines[1]).to.equal(
-                        `Bonus protest on question 2. Team "${secondTeamPlayer.teamName}" protested part 3 because of this reason: "${secondProtest}".`
+                        `Bonus protest on question 2. Team "${secondTeamPlayer.teamName}" protested part 3 because of this reason: "${secondProtestReason}".`
                     );
                 }
             );
