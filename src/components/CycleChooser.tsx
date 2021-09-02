@@ -2,10 +2,11 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import { DefaultButton, IButtonStyles } from "@fluentui/react/lib/Button";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
+import { useId } from "@fluentui/react-hooks";
 
 import { UIState } from "src/state/UIState";
 import { AppState } from "src/state/AppState";
-import { ILabelStyles, Label } from "@fluentui/react";
+import { ILabelStyles, Label, TooltipHost } from "@fluentui/react";
 import { StateContext } from "src/contexts/StateContext";
 
 const ReturnKeyCode = 13;
@@ -50,22 +51,39 @@ export const CycleChooser = observer(() => {
 
     const uiState: UIState = appState.uiState;
 
+    const previousButtonTooltipId: string = useId();
     const previousButton: JSX.Element = (
-        <DefaultButton
-            key="previousButton"
-            onClick={onPreviousClickHandler}
-            disabled={uiState.cycleIndex === 0}
-            styles={previousButtonStyle}
+        <TooltipHost
+            aria-describedby={previousButtonTooltipId}
+            content="Previous (Shift+P)"
+            id={previousButtonTooltipId}
         >
-            &larr; Previous
-        </DefaultButton>
+            <DefaultButton
+                key="previousButton"
+                onClick={onPreviousClickHandler}
+                disabled={uiState.cycleIndex === 0}
+                styles={previousButtonStyle}
+            >
+                &larr; Previous
+            </DefaultButton>
+        </TooltipHost>
     );
 
-    const nextButtonText: string = shouldNextButtonExport(appState) ? "Export..." : "Next →";
+    const doesNextButtonExport: boolean = shouldNextButtonExport(appState);
+    const nextButtonText: string = doesNextButtonExport ? "Export..." : "Next →";
+    const nextButtonTooltip: string = doesNextButtonExport ? "Export" : "Next (Shift+N)";
+    const nextButtonTooltipId: string = useId();
     const nextButton: JSX.Element = (
-        <DefaultButton key="nextButton" onClick={onNextClickHandler} styles={nextButtonStyle}>
-            {nextButtonText}
-        </DefaultButton>
+        <TooltipHost content={nextButtonTooltip} id={nextButtonTooltipId}>
+            <DefaultButton
+                aria-describedby={nextButtonTooltipId}
+                key="nextButton"
+                onClick={onNextClickHandler}
+                styles={nextButtonStyle}
+            >
+                {nextButtonText}
+            </DefaultButton>
+        </TooltipHost>
     );
 
     const questionNumber: number = uiState.cycleIndex + 1;
