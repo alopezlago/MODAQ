@@ -14,18 +14,19 @@ import {
     StackItem,
     SpinButton,
     IStackTokens,
-    Label,
-    ILabelStyles,
     TextField,
+    PivotItem,
+    Pivot,
+    IPivotStyles,
 } from "@fluentui/react";
 
-import { GameState } from "src/state/GameState";
+import * as CustomizeGameFormatDialogController from "./CustomGameFormatDialogController";
 import { AppState } from "src/state/AppState";
-import { IGameFormat, IPowerMarker } from "src/state/IGameFormat";
+import { IGameFormat } from "src/state/IGameFormat";
 import { CustomizeGameFormatDialogState } from "src/state/CustomizeGameFormatDialogState";
 import { StateContext } from "src/contexts/StateContext";
-
-const customFormatName = "Custom";
+import { GameFormatPicker } from "../GameFormatPicker";
+import { SheetType } from "src/state/SheetState";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -36,6 +37,7 @@ const content: IDialogContentProps = {
         innerContent: {
             display: "flex",
             flexDirection: "column",
+            marginBottom: 30,
         },
     },
 };
@@ -50,27 +52,29 @@ const modalProps: IModalProps = {
     styles: {
         main: {
             top: "10vh",
+            // To have max width respected normally, we'd need to pass in an IDialogStyleProps, but it ridiculously
+            // requires you to pass in an entire theme to modify the max width. We could also use a modal, but that
+            // requires building much of what Dialogs offer easily (close buttons, footer for buttons)
+            minWidth: "30vw !important",
         },
     },
     topOffsetFixed: true,
 };
 
-const headerStyles: Partial<ILabelStyles> = {
+const pivotStyles: Partial<IPivotStyles> = {
     root: {
-        fontSize: 16,
+        marginBottom: 10,
     },
 };
 
 const settingsStackTokens: Partial<IStackTokens> = { childrenGap: 10 };
 
-const sectionsStackTokens: Partial<IStackTokens> = { childrenGap: 20 };
-
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const CustomizeGameFormatDialog = observer(
     (): JSX.Element => {
         const appState: AppState = React.useContext(StateContext);
-        const submitHandler = React.useCallback(() => onSubmit(appState), [appState]);
-        const cancelHandler = React.useCallback(() => onCancel(appState), [appState]);
+        const submitHandler = React.useCallback(() => CustomizeGameFormatDialogController.submit(appState), [appState]);
+        const cancelHandler = React.useCallback(() => CustomizeGameFormatDialogController.cancel(appState), [appState]);
 
         return (
             <Dialog
@@ -95,344 +99,222 @@ const CustomizeGameFormatDialogBody = observer(
         const customizeGameFormatState: CustomizeGameFormatDialogState | undefined =
             appState.uiState.dialogState.customizeGameFormat;
 
-        const regulationTossupCountChangeHandler = React.useCallback(
-            (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) => {
-                const count: number | undefined = getNumberOrUndefined(newValue);
-                if (count != undefined) {
-                    customizeGameFormatState?.updateGameFormat({ regulationTossupCount: count });
-                }
-            },
-            [customizeGameFormatState]
+        const resetGameFormat = React.useCallback(
+            (gameFormat: IGameFormat) => CustomizeGameFormatDialogController.resetGameFormat(appState, gameFormat),
+            [appState]
         );
-
-        const negValueChangeHandler = React.useCallback(
-            (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) => {
-                const negValue: number | undefined = getNumberOrUndefined(newValue);
-                if (negValue != undefined) {
-                    customizeGameFormatState?.updateGameFormat({ negValue });
-                }
-            },
-            [customizeGameFormatState]
-        );
-
-        const powerMarkersHandler = React.useCallback(
-            (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-                if (newValue == undefined) {
-                    return;
-                } else if (newValue.trim() === "") {
-                    customizeGameFormatState?.setPowerMarkers([]);
-                    return;
-                }
-
-                // TODO: Handle power markers with commas, which would require handling escapes
-                const powerMarkers: string[] = newValue.split(",").map((value) => value.trim());
-                customizeGameFormatState?.setPowerMarkers(powerMarkers);
-            },
-            [customizeGameFormatState]
-        );
-
-        const powerValuesHandler = React.useCallback(
-            (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-                if (newValue == undefined) {
-                    return;
-                } else if (newValue.trim() === "") {
-                    customizeGameFormatState?.setPowerValues([]);
-                    return;
-                }
-
-                const pointsForPowers: number[] = newValue.split(",").map((value) => parseInt(value, 10));
-                if (pointsForPowers.some((value) => isNaN(value))) {
-                    return;
-                }
-
-                customizeGameFormatState?.setPowerValues(pointsForPowers);
-            },
-            [customizeGameFormatState]
-        );
-
-        const pronunciationGuideMarkersHandler = React.useCallback(
-            (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-                if (newValue == undefined || newValue.trim() === "") {
-                    customizeGameFormatState?.setPronunciationGuideMarkers([]);
-                    return;
-                }
-
-                const guides: string[] = newValue.split(",");
-                customizeGameFormatState?.setPronunciationGuideMarkers(guides);
-            },
-            [customizeGameFormatState]
-        );
-
-        const minimumQuestionsInOvertimeChangeHandler = React.useCallback(
-            (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) => {
-                const minimumOvertimeQuestionCount: number | undefined = getNumberOrUndefined(newValue);
-                if (minimumOvertimeQuestionCount != undefined) {
-                    customizeGameFormatState?.updateGameFormat({ minimumOvertimeQuestionCount });
-                }
-            },
-            [customizeGameFormatState]
-        );
-
-        const bouncebackChangeHandler = React.useCallback(
-            (ev?: React.FormEvent<HTMLInputElement | HTMLElement>, checked?: boolean) => {
-                if (checked == undefined) {
-                    return;
-                }
-
-                customizeGameFormatState?.updateGameFormat({ bonusesBounceBack: checked });
-            },
-            [customizeGameFormatState]
-        );
-
-        const overtimeBonusesChangeHandler = React.useCallback(
-            (ev?: React.FormEvent<HTMLInputElement | HTMLElement>, checked?: boolean) => {
-                if (checked == undefined) {
-                    return;
-                }
-
-                customizeGameFormatState?.updateGameFormat({ overtimeIncludesBonuses: checked });
-            },
-            [customizeGameFormatState]
-        );
-
-        const powerValidationHandler = React.useCallback(() => {
-            if (customizeGameFormatState == undefined) {
-                return;
-            }
-
-            if (customizeGameFormatState.powerMarkers.length < customizeGameFormatState.powerValues.length) {
-                customizeGameFormatState.setPowerMarkerErrorMessage(
-                    "More power markers needed. The number of power markers and values must be the same."
-                );
-            } else if (customizeGameFormatState.powerValues.length < customizeGameFormatState.powerMarkers.length) {
-                customizeGameFormatState.setPowerValuesErrorMessage(
-                    "More values needed. The number of power markers and values must be the same."
-                );
-            } else {
-                customizeGameFormatState.clearPowerErrorMessages();
-            }
-        }, [customizeGameFormatState]);
-
-        const pronunicationGuideMarkersValidationHandler = React.useCallback(() => {
-            if (
-                customizeGameFormatState == undefined ||
-                customizeGameFormatState.pronunicationGuideMarkers == undefined
-            ) {
-                return;
-            }
-
-            const pronunciationGuideMarkers: string[] = customizeGameFormatState.pronunicationGuideMarkers;
-
-            if (pronunciationGuideMarkers.length !== 0 && pronunciationGuideMarkers.length !== 2) {
-                customizeGameFormatState.setPronunciationGuideMarkersErrorMessage(
-                    "Either no pronunciation guide is used, or there only needs to be a start and end marker specifeid"
-                );
-            } else if (pronunciationGuideMarkers.some((value) => value.length === 0)) {
-                customizeGameFormatState.setPronunciationGuideMarkersErrorMessage(
-                    "Pronunciation guide markers cannot be empty; put a character before or after the comma"
-                );
-            } else {
-                customizeGameFormatState.clearPronunciationGuideMarkersErrorMessage();
-            }
-        }, [customizeGameFormatState]);
 
         if (customizeGameFormatState == undefined) {
             return <></>;
         }
 
         const gameFormat: IGameFormat | undefined = customizeGameFormatState.gameFormat;
+        const settingsProps: ISettingProps = { appState, gameFormat };
 
         return (
-            <Stack tokens={sectionsStackTokens}>
+            <Stack>
                 <StackItem>
-                    <Stack tokens={settingsStackTokens}>
-                        <StackItem>
-                            <Label styles={headerStyles}>Game length</Label>
-                        </StackItem>
-                        <StackItem>
-                            <SpinButton
-                                label="Tossups in regulation"
-                                onChange={regulationTossupCountChangeHandler}
-                                value={gameFormat.regulationTossupCount.toString()}
-                                min={1}
-                                max={999}
-                                incrementButtonAriaLabel={"Increase number of tossups in regulation by 1"}
-                                decrementButtonAriaLabel={"Decrease number of tossups in regulation by 1"}
-                            />
-                        </StackItem>
-                        <StackItem>
-                            <SpinButton
-                                label="Minimum number of questions in overtime"
-                                onChange={minimumQuestionsInOvertimeChangeHandler}
-                                value={gameFormat.minimumOvertimeQuestionCount.toString()}
-                                min={1}
-                                max={99}
-                                incrementButtonAriaLabel={"Increase minimum number of questions in overtime by 1"}
-                                decrementButtonAriaLabel={"Decrease minimum number of questions in overtime by 1"}
-                            />
-                        </StackItem>
-                    </Stack>
+                    <GameFormatPicker
+                        gameFormat={gameFormat}
+                        exportFormatSupportsBouncebacks={
+                            appState.uiState.sheetsState.sheetType !== SheetType.UCSDSheets &&
+                            appState.uiState.sheetsState.sheetType !== SheetType.Lifsheets
+                        }
+                        updateGameFormat={resetGameFormat}
+                    />
                 </StackItem>
-
                 <StackItem>
-                    <Stack tokens={settingsStackTokens}>
-                        <StackItem>
-                            <Label styles={headerStyles}>Scoring</Label>
-                        </StackItem>
-                        <StackItem>
-                            <SpinButton
-                                label="Neg value"
-                                onChange={negValueChangeHandler}
-                                value={gameFormat.negValue.toString()}
-                                min={-100}
-                                max={0}
-                                step={5}
-                                incrementButtonAriaLabel={"Increase neg value by 5"}
-                                decrementButtonAriaLabel={"Decrease neg value by 5"}
-                            />
-                        </StackItem>
-                        <StackItem>
-                            <TextField
-                                errorMessage={customizeGameFormatState.powerMarkerErrorMessage}
-                                label="Power markers (comma separated)"
-                                onBlur={powerValidationHandler}
-                                onChange={powerMarkersHandler}
-                                value={customizeGameFormatState.powerMarkers.join(",")}
-                            />
-                        </StackItem>
-                        <StackItem>
-                            <TextField
-                                defaultValue={customizeGameFormatState.powerValues.join(",")}
-                                errorMessage={customizeGameFormatState.powerValuesErrorMessage}
-                                label="Power values (comma separated, descending order)"
-                                onBlur={powerValidationHandler}
-                                onChange={powerValuesHandler}
-                            />
-                        </StackItem>
-                        <StackItem>
-                            <TextField
-                                defaultValue={customizeGameFormatState.pronunicationGuideMarkers?.join(",")}
-                                errorMessage={customizeGameFormatState.pronunciationGuideMarkersErrorMessage}
-                                label="Pronunciation marker start and end (comma separated)"
-                                onBlur={pronunicationGuideMarkersValidationHandler}
-                                onChange={pronunciationGuideMarkersHandler}
-                            />
-                        </StackItem>
-                    </Stack>
-                </StackItem>
-
-                <StackItem>
-                    <Stack tokens={settingsStackTokens}>
-                        <StackItem>
-                            <Label styles={headerStyles}>Bonus settings</Label>
-                        </StackItem>
-                        <StackItem>
-                            <Checkbox
-                                label="Bonuses bounce back"
-                                checked={gameFormat.bonusesBounceBack}
-                                onChange={bouncebackChangeHandler}
-                            />
-                        </StackItem>
-                        <StackItem>
-                            <Checkbox
-                                label="Overtime includes bonuses"
-                                checked={gameFormat.overtimeIncludesBonuses}
-                                onChange={overtimeBonusesChangeHandler}
-                            />
-                        </StackItem>
-                    </Stack>
+                    <Pivot styles={pivotStyles}>
+                        <PivotItem headerText="Game Length" itemKey="GL">
+                            <GameLengthSettings {...settingsProps} />
+                        </PivotItem>
+                        <PivotItem headerText="Scoring" itemKey="S">
+                            <ScoringSettings {...settingsProps} />
+                        </PivotItem>
+                        <PivotItem headerText="Bonuses" itemKey="B">
+                            <BonusSettings {...settingsProps} />
+                        </PivotItem>
+                    </Pivot>
                 </StackItem>
             </Stack>
         );
     }
 );
 
-function getNumberOrUndefined(value: string | undefined): number | undefined {
-    if (value == undefined) {
-        return undefined;
+const GameLengthSettings = observer(
+    (props: ISettingProps): JSX.Element => {
+        const { appState, gameFormat } = props;
+
+        const regulationTossupCountChangeHandler = React.useCallback(
+            (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) =>
+                CustomizeGameFormatDialogController.changeRegulationTossupCount(appState, newValue),
+            [appState]
+        );
+
+        const minimumQuestionsInOvertimeChangeHandler = React.useCallback(
+            (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) =>
+                CustomizeGameFormatDialogController.changeMinimumQuestionsInOvertime(appState, newValue),
+            [appState]
+        );
+
+        return (
+            <Stack tokens={settingsStackTokens}>
+                <StackItem>
+                    <SpinButton
+                        label="Tossups in regulation"
+                        onChange={regulationTossupCountChangeHandler}
+                        value={gameFormat.regulationTossupCount.toString()}
+                        min={1}
+                        max={999}
+                        incrementButtonAriaLabel={"Increase number of tossups in regulation by 1"}
+                        decrementButtonAriaLabel={"Decrease number of tossups in regulation by 1"}
+                    />
+                </StackItem>
+                <StackItem>
+                    <SpinButton
+                        label="Minimum number of questions in overtime"
+                        onChange={minimumQuestionsInOvertimeChangeHandler}
+                        value={gameFormat.minimumOvertimeQuestionCount.toString()}
+                        min={1}
+                        max={99}
+                        incrementButtonAriaLabel={"Increase minimum number of questions in overtime by 1"}
+                        decrementButtonAriaLabel={"Decrease minimum number of questions in overtime by 1"}
+                    />
+                </StackItem>
+            </Stack>
+        );
     }
+);
 
-    const number = Number.parseInt(value, 10);
-    return isNaN(number) ? undefined : number;
-}
+const ScoringSettings = observer(
+    (props: ISettingProps): JSX.Element => {
+        const { appState, gameFormat } = props;
 
-function onSubmit(appState: AppState): void {
-    const game: GameState = appState.game;
-    const state: CustomizeGameFormatDialogState | undefined = appState.uiState.dialogState.customizeGameFormat;
-    if (state == undefined) {
-        throw new Error("Tried customizing a game format with no game format");
-    }
+        const negValueChangeHandler = React.useCallback(
+            (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) =>
+                CustomizeGameFormatDialogController.changeNegValue(appState, newValue),
+            [appState]
+        );
 
-    if (!isGameFormatValid(appState)) {
-        // We should already have the error repored, so just do nothing
-        return;
-    }
+        const powerMarkersHandler = React.useCallback(
+            (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) =>
+                CustomizeGameFormatDialogController.changePowerMarkers(appState, newValue),
+            [appState]
+        );
 
-    const updatedGameFormat: IGameFormat = state.gameFormat;
-    if (updatedGameFormat.displayName !== customFormatName) {
-        // TS will complain about implicit any if we use Object.keys to do a deep comparison, so cast the objects as any,
-        // and then do a deep comparison
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const anyUpdatedGameFormat: any = updatedGameFormat as any;
+        const powerValuesHandler = React.useCallback(
+            (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) =>
+                CustomizeGameFormatDialogController.changePowerValues(appState, newValue),
+            [appState]
+        );
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const anyExistingGameFormat: any = game.gameFormat as any;
+        const pronunciationGuideMarkersHandler = React.useCallback(
+            (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) =>
+                CustomizeGameFormatDialogController.changePronunciationGuideMarkers(appState, newValue),
+            [appState]
+        );
 
-        for (const key of Object.keys(updatedGameFormat)) {
-            if (anyUpdatedGameFormat[key] !== anyExistingGameFormat[key]) {
-                updatedGameFormat.displayName = customFormatName;
-                break;
-            }
+        const powerValidationHandler = React.useCallback(
+            () => CustomizeGameFormatDialogController.validatePowerSettings(appState),
+            [appState]
+        );
+
+        const pronunicationGuideMarkersValidationHandler = React.useCallback(
+            () => CustomizeGameFormatDialogController.validatePronunicationGuideMarker(appState),
+            [appState]
+        );
+
+        const customizeGameFormatState: CustomizeGameFormatDialogState | undefined =
+            appState.uiState.dialogState.customizeGameFormat;
+
+        if (customizeGameFormatState === undefined) {
+            return <></>;
         }
+
+        return (
+            <Stack tokens={settingsStackTokens}>
+                <StackItem>
+                    <SpinButton
+                        label="Neg value"
+                        onChange={negValueChangeHandler}
+                        value={gameFormat.negValue.toString()}
+                        min={-100}
+                        max={0}
+                        step={5}
+                        incrementButtonAriaLabel={"Increase neg value by 5"}
+                        decrementButtonAriaLabel={"Decrease neg value by 5"}
+                    />
+                </StackItem>
+                <StackItem>
+                    <TextField
+                        errorMessage={customizeGameFormatState.powerMarkerErrorMessage}
+                        label="Power markers (comma separated)"
+                        onBlur={powerValidationHandler}
+                        onChange={powerMarkersHandler}
+                        value={customizeGameFormatState.powerMarkers.join(",")}
+                    />
+                </StackItem>
+                <StackItem>
+                    <TextField
+                        value={customizeGameFormatState.powerValues}
+                        errorMessage={customizeGameFormatState.powerValuesErrorMessage}
+                        label="Power values (comma separated, descending order)"
+                        onBlur={powerValidationHandler}
+                        onChange={powerValuesHandler}
+                    />
+                </StackItem>
+                <StackItem>
+                    <TextField
+                        value={customizeGameFormatState.pronunicationGuideMarkers?.join(",") ?? ""}
+                        errorMessage={customizeGameFormatState.pronunciationGuideMarkersErrorMessage}
+                        label="Pronunciation marker start and end (comma separated)"
+                        onBlur={pronunicationGuideMarkersValidationHandler}
+                        onChange={pronunciationGuideMarkersHandler}
+                    />
+                </StackItem>
+            </Stack>
+        );
     }
+);
 
-    // Power values should be in descending order, so sort them before saving the game format
-    const powers: IPowerMarker[] = [];
-    for (let i = 0; i < state.powerMarkers.length; i++) {
-        powers.push({ marker: state.powerMarkers[i], points: state.powerValues[i] });
+const BonusSettings = observer(
+    (props: ISettingProps): JSX.Element => {
+        const appState: AppState = React.useContext(StateContext);
+
+        const bouncebackChangeHandler = React.useCallback(
+            (ev?: React.FormEvent<HTMLInputElement | HTMLElement>, checked?: boolean) =>
+                CustomizeGameFormatDialogController.changeBounceback(appState, checked),
+            [appState]
+        );
+
+        const overtimeBonusesChangeHandler = React.useCallback(
+            (ev?: React.FormEvent<HTMLInputElement | HTMLElement>, checked?: boolean) =>
+                CustomizeGameFormatDialogController.changeOvertimeBonuses(appState, checked),
+            [appState]
+        );
+
+        return (
+            <Stack tokens={settingsStackTokens}>
+                <StackItem>
+                    <Checkbox
+                        label="Bonuses bounce back"
+                        checked={props.gameFormat.bonusesBounceBack}
+                        onChange={bouncebackChangeHandler}
+                    />
+                </StackItem>
+                <StackItem>
+                    <Checkbox
+                        label="Overtime includes bonuses"
+                        checked={props.gameFormat.overtimeIncludesBonuses}
+                        onChange={overtimeBonusesChangeHandler}
+                    />
+                </StackItem>
+            </Stack>
+        );
     }
+);
 
-    powers.sort(sortPowersDescending);
-    updatedGameFormat.powers = powers;
-
-    if (state.pronunicationGuideMarkers == undefined || state.pronunicationGuideMarkers.length === 0) {
-        updatedGameFormat.pronunciationGuideMarkers = undefined;
-    } else if (
-        state.pronunicationGuideMarkers.length === 2 &&
-        state.pronunicationGuideMarkers.every((value) => value.length > 0)
-    ) {
-        updatedGameFormat.pronunciationGuideMarkers = [
-            state.pronunicationGuideMarkers[0],
-            state.pronunicationGuideMarkers[1],
-        ];
-    }
-
-    game.setGameFormat(updatedGameFormat);
-
-    hideDialog(appState);
-}
-
-function sortPowersDescending(left: IPowerMarker, right: IPowerMarker): number {
-    return right.points - left.points;
-}
-
-function isGameFormatValid(appState: AppState): boolean {
-    const state: CustomizeGameFormatDialogState | undefined = appState.uiState.dialogState.customizeGameFormat;
-    if (state == undefined) {
-        throw new Error("Tried changing a format with no modified format");
-    }
-
-    return (
-        state.powerMarkerErrorMessage == undefined &&
-        state.powerValuesErrorMessage == undefined &&
-        state.pronunciationGuideMarkersErrorMessage == undefined
-    );
-}
-
-function onCancel(appState: AppState): void {
-    hideDialog(appState);
-}
-
-function hideDialog(appState: AppState): void {
-    appState.uiState.dialogState.hideCustomizeGameFormatDialog();
+interface ISettingProps {
+    appState: AppState;
+    gameFormat: IGameFormat;
 }

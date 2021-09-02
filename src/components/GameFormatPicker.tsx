@@ -3,13 +3,11 @@ import { observer } from "mobx-react-lite";
 import { Dropdown, IDropdownOption, IDropdownStyles, ITextStyles, Stack, StackItem, Text } from "@fluentui/react";
 
 import * as GameFormats from "src/state/GameFormats";
-import { AppState } from "src/state/AppState";
-import { IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
-import { StateContext } from "src/contexts/StateContext";
+import { IGameFormat } from "src/state/IGameFormat";
 
 const dropdownStyles: Partial<IDropdownStyles> = {
     root: {
-        width: "20vw",
+        width: "100%",
     },
 };
 
@@ -20,58 +18,53 @@ const bouncebackWarningStyles: Partial<ITextStyles> = {
     },
 };
 
-export const GameFormatPicker = observer(() => {
-    const appState: AppState = React.useContext(StateContext);
+export const GameFormatPicker = observer((props: IGameFormatPickerProps) => {
     const changeHandler = React.useCallback(
         (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
             if (option?.data != undefined) {
-                appState.uiState.setPendingNewGameFormat(option.data);
+                props.updateGameFormat(option.data);
             }
         },
-        [appState]
+        [props]
     );
-
-    const pendingNewGame: IPendingNewGame | undefined = appState.uiState.pendingNewGame;
-
-    if (pendingNewGame == undefined) {
-        return null;
-    }
 
     const options: IDropdownOption[] = GameFormats.getKnownFormats().map((format) => {
         return {
             key: format.displayName,
             text: format.displayName,
             data: format,
-            selected: pendingNewGame.gameFormat.displayName === format.displayName,
+            selected: props.gameFormat.displayName === format.displayName,
         };
     });
 
+    if (options.every((option) => !option.selected)) {
+        // Select freeform, which should be last
+        options[options.length - 1].selected = true;
+    }
+
     const bouncebackWarning: React.ReactElement | undefined =
-        pendingNewGame.gameFormat.bonusesBounceBack &&
-        (pendingNewGame.type === PendingGameType.Lifsheets || pendingNewGame.type === PendingGameType.UCSDSheets) ? (
+        props.gameFormat.bonusesBounceBack && props.exportFormatSupportsBouncebacks === false ? (
             <Text styles={bouncebackWarningStyles}>{"Note: This sheet type doesn't support bouncebacks"}</Text>
         ) : undefined;
 
     return (
         <Stack horizontal={true}>
-            <StackItem>
+            <StackItem grow={2}>
                 <Dropdown label="Format" options={options} onChange={changeHandler} styles={dropdownStyles} />
             </StackItem>
-            <StackItem>
+            <StackItem grow={1}>
                 <ul>
                     <li>
-                        <Text>{`Tossups in regulation: ${pendingNewGame.gameFormat.regulationTossupCount}`}</Text>
+                        <Text>{`Tossups in regulation: ${props.gameFormat.regulationTossupCount}`}</Text>
                     </li>
                     <li>
-                        <Text>{`Neg value: ${pendingNewGame.gameFormat.negValue}`}</Text>
+                        <Text>{`Neg value: ${props.gameFormat.negValue}`}</Text>
                     </li>
                     <li>
-                        <Text>{`Has powers: ${formatBoolean(pendingNewGame.gameFormat.powers.length > 0)}`}</Text>
+                        <Text>{`Has powers: ${formatBoolean(props.gameFormat.powers.length > 0)}`}</Text>
                     </li>
                     <li>
-                        <Text>{`Bonuses bounce back: ${formatBoolean(
-                            pendingNewGame.gameFormat.bonusesBounceBack
-                        )}`}</Text>
+                        <Text>{`Bonuses bounce back: ${formatBoolean(props.gameFormat.bonusesBounceBack)}`}</Text>
                         {bouncebackWarning}
                     </li>
                 </ul>
@@ -82,4 +75,10 @@ export const GameFormatPicker = observer(() => {
 
 function formatBoolean(value: boolean): string {
     return value ? "Yes" : "No";
+}
+
+export interface IGameFormatPickerProps {
+    gameFormat: IGameFormat;
+    exportFormatSupportsBouncebacks?: boolean;
+    updateGameFormat(gameFormat: IGameFormat): void;
 }

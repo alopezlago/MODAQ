@@ -32,6 +32,7 @@ import { FromRostersTeamEntry } from "../FromRostersTeamEntry";
 import { SheetType } from "src/state/SheetState";
 import { GameFormatPicker } from "../GameFormatPicker";
 import { StateContext } from "src/contexts/StateContext";
+import { IGameFormat } from "src/state/IGameFormat";
 
 const playerListHeight = "20vh";
 
@@ -145,6 +146,15 @@ const NewGameDialogBody = observer(
             [uiState]
         );
 
+        const updateGameFormat = React.useCallback(
+            (gameFormat: IGameFormat) => appState.uiState.setPendingNewGameFormat(gameFormat),
+            [appState]
+        );
+
+        if (uiState.pendingNewGame == undefined) {
+            return <></>;
+        }
+
         // TODO: Have a selector for the format. Will need a way to specify a custom format
         return (
             <>
@@ -169,7 +179,14 @@ const NewGameDialogBody = observer(
                 <Separator />
                 <PacketLoader appState={appState} onLoad={packetLoadHandler} />
                 <Separator />
-                <GameFormatPicker />
+                <GameFormatPicker
+                    gameFormat={uiState.pendingNewGame.gameFormat}
+                    exportFormatSupportsBouncebacks={
+                        uiState.pendingNewGame.type !== PendingGameType.Lifsheets &&
+                        uiState.pendingNewGame.type !== PendingGameType.UCSDSheets
+                    }
+                    updateGameFormat={updateGameFormat}
+                />
             </>
         );
     }

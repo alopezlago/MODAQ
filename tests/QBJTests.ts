@@ -457,8 +457,14 @@ describe("QBJTests", () => {
                     game.setGameFormat(GameFormats.StandardPowersMACFGameFormat);
 
                     const packet: PacketState = new PacketState();
-                    packet.setTossups(new Array(6).map((value, index) => new Tossup(`Question ${index}`, `A${index}`)));
+                    const tossups: Tossup[] = [];
+                    for (let i = 0; i < 6; i++) {
+                        tossups.push(new Tossup(`Power (*) question ${i}`, `A${i}`));
+                    }
+
+                    packet.setTossups(tossups);
                     game.loadPacket(packet);
+                    console.log("Packet length: " + game.packet.tossups.length);
 
                     game.cycles[0].addWrongBuzz(
                         {
@@ -474,7 +480,7 @@ describe("QBJTests", () => {
                         {
                             player: secondTeamPlayer,
                             points: 0,
-                            position: 1,
+                            position: 3,
                             isLastWord: true,
                         },
                         1,
@@ -485,7 +491,7 @@ describe("QBJTests", () => {
                         {
                             player: secondTeamPlayer,
                             points: 10,
-                            position: 1,
+                            position: 2,
                             isLastWord: true,
                         },
                         2,
@@ -524,7 +530,7 @@ describe("QBJTests", () => {
                         {
                             player: firstTeamPlayers[0],
                             points: 10,
-                            position: 1,
+                            position: 2,
                             isLastWord: true,
                         },
                         5,
@@ -559,7 +565,7 @@ describe("QBJTests", () => {
                     const secondPlayer: QBJ.IMatchPlayer = match.match_teams[1].match_players[0];
                     expect(secondPlayer.player.name).to.equal(secondTeamPlayer.name);
                     expect(secondPlayer.tossups_heard).to.equal(6);
-                    expect(secondPlayer.answer_counts.length).to.equal(4);
+                    // expect(secondPlayer.answer_counts.length).to.equal(4);
                     expect(secondPlayer.answer_counts).to.deep.equal([
                         {
                             number: 1,
@@ -833,6 +839,60 @@ describe("QBJTests", () => {
                     const cycleBuzzes: QBJ.IMatchQuestionBuzz[] = match.match_questions[0].buzzes;
                     expect(cycleBuzzes.length).to.equal(1);
                     verifyBuzz(cycleBuzzes[0], firstTeamPlayers[1], 1, 10);
+                }
+            );
+        });
+        it("Buzz value changes when game format does", () => {
+            verifyQBJ(
+                (game) => {
+                    game.clear();
+                    game.addPlayers(players);
+
+                    const packet: PacketState = new PacketState();
+                    packet.setTossups([
+                        new Tossup("This is (*) a power", "Answer"),
+                        new Tossup("Yet another (*) tossup", "Answer"),
+                    ]);
+                    game.loadPacket(packet);
+                    game.setGameFormat({ ...GameFormats.ACFGameFormat, negValue: 0 });
+
+                    game.cycles[0].addWrongBuzz(
+                        {
+                            player: firstTeamPlayers[0],
+                            points: 0,
+                            position: 2,
+                            isLastWord: false,
+                        },
+                        1,
+                        game.gameFormat
+                    );
+
+                    game.cycles[1].addCorrectBuzz(
+                        {
+                            player: secondTeamPlayer,
+                            points: 10,
+                            position: 1,
+                            isLastWord: false,
+                        },
+                        1,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+
+                    game.setGameFormat(GameFormats.StandardPowersMACFGameFormat);
+                },
+                (match) => {
+                    expect(match.tossups_read).to.equal(2);
+                    expect(match.match_questions.map((q) => q.question_number)).to.deep.equal([1, 2]);
+
+                    const firstCycleBuzzes: QBJ.IMatchQuestionBuzz[] = match.match_questions[0].buzzes;
+                    expect(firstCycleBuzzes.length).to.equal(1);
+                    verifyBuzz(firstCycleBuzzes[0], firstTeamPlayers[0], 2, -5);
+
+                    const secondCycleBuzzes: QBJ.IMatchQuestionBuzz[] = match.match_questions[1].buzzes;
+                    expect(secondCycleBuzzes.length).to.equal(1);
+                    verifyBuzz(secondCycleBuzzes[0], secondTeamPlayer, 1, 15);
                 }
             );
         });

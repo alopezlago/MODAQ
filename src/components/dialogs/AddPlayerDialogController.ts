@@ -35,7 +35,7 @@ export function changePlayerName(appState: AppState, newName: string): void {
 }
 
 export function changeTeamName(appState: AppState, teamName: string): void {
-    appState.uiState.updatePendingNewPlayerName(teamName);
+    appState.uiState.updatePendingNewPlayerTeamName(teamName);
 }
 
 export function validatePlayer(appState: AppState): string | undefined {
@@ -48,6 +48,10 @@ export function validatePlayer(appState: AppState): string | undefined {
     const trimmedPlayerName: string = newPlayer.name.trim();
     if (trimmedPlayerName.length === 0) {
         return "Player name cannot be blank";
+    }
+
+    if (appState.game.teamNames.indexOf(newPlayer.teamName) === -1) {
+        return "Team doesn't exist";
     }
 
     const playersOnTeam: Player[] = [...appState.game.getPlayers(newPlayer.teamName), newPlayer];

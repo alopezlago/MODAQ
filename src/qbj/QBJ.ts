@@ -217,7 +217,7 @@ export function ToQBJ(game: GameState): string {
             const matchBuzz: IMatchQuestionBuzz | undefined = getBuzz(game, teams, buzz, isFirstBuzz);
             if (matchBuzz != undefined) {
                 matchQuestion.buzzes.push(matchBuzz);
-                updateAnswerCount(matchTeams, buzz);
+                updateAnswerCount(matchTeams, matchBuzz);
             }
 
             isFirstBuzz = false;
@@ -329,20 +329,22 @@ function getBuzz(
     );
 }
 
-function updateAnswerCount(matchTeams: Map<string, IMatchTeam>, buzz: ITossupAnswerEvent): void {
-    const matchTeam: IMatchTeam | undefined = matchTeams.get(buzz.marker.player.teamName);
+function updateAnswerCount(matchTeams: Map<string, IMatchTeam>, buzz: IMatchQuestionBuzz): void {
+    const matchTeam: IMatchTeam | undefined = matchTeams.get(buzz.team.name);
+
     if (matchTeam == undefined) {
         return;
     }
 
     const player: IMatchPlayer | undefined = matchTeam.match_players.find(
-        (matchPlayer) => matchPlayer.player.name === buzz.marker.player.name
+        (matchPlayer) => matchPlayer.player.name === buzz.player.name
     );
+
     if (player == undefined) {
         return;
     }
 
-    const points: number = buzz.marker.points;
+    const points: number = buzz.result.value;
     let answerCount: IPlayerAnswerCount | undefined = player.answer_counts.find(
         (answer) => answer.answer.value === points
     );
