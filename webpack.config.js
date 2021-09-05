@@ -105,11 +105,9 @@ module.exports = (env, argv) => {
             // TODO: Add script and option to
             // You only need https: true if testing the Google Sheets work
             https: true,
-            publicPath: "/out/",
-            watchContentBase: true,
-            watchOptions: {
-                aggregateTimeout: 1000,
-                ignored: /node_modules/,
+            static: {
+                publicPath: "/out/",
+                watch: { ignored: /node_modules/ },
             },
         };
     }

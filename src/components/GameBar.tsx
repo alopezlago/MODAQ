@@ -98,6 +98,15 @@ export const GameBar = observer(
             },
         });
 
+        const viewSubMenuItems: ICommandBarItemProps[] = getViewSubMenuItems(appState);
+        items.push({
+            key: "view",
+            text: "View",
+            subMenuProps: {
+                items: viewSubMenuItems,
+            },
+        });
+
         // TODO: Look into memoizing; React.useMemo with just props doesn't seem to recognize when the cycle changes.
         const actionSubMenuItems: ICommandBarItemProps[] = getActionSubMenuItems(
             appState,
@@ -248,6 +257,18 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
     );
 
     return items;
+}
+
+function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
+    return [
+        {
+            key: "showEventLog",
+            text: "Event Log",
+            canCheck: true,
+            checked: !appState.uiState.isEventLogHidden,
+            onClick: () => appState.uiState.toggleEventLogVisibility(),
+        },
+    ];
 }
 
 function getPlayerManagementSubMenuItems(
@@ -499,7 +520,13 @@ function onRemovePlayerClick(
         return;
     }
 
-    item.data.appState.game.cycles[item.data.appState.uiState.cycleIndex].addPlayerLeaves(item.data.activePlayer);
+    const appState: AppState = item.data.appState;
+
+    appState.uiState.dialogState.showOKCancelMessageDialog(
+        "Remove Player",
+        `Are you sure you want to remove the player "${item.data.activePlayer.name}" from team "${item.data.activePlayer.teamName}"?`,
+        () => appState.game.cycles[appState.uiState.cycleIndex].addPlayerLeaves(item.data.activePlayer)
+    );
 }
 
 function onSwapPlayerClick(

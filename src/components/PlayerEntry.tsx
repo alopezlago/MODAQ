@@ -61,7 +61,7 @@ export const PlayerEntry = observer((props: IPlayerEntryProps) => {
             />
         );
         cancelButtonOrSpacer = props.canRemove ? (
-            <CancelButton title="Remove" onClick={removeHandler} />
+            <CancelButton tooltip="Remove" onClick={removeHandler} />
         ) : (
             <span className={classes.spacer} />
         );

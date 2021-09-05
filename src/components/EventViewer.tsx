@@ -14,7 +14,7 @@ const cycleKey = "cycle";
 
 export const EventViewer = observer((): JSX.Element | null => {
     const appState: AppState = React.useContext(StateContext);
-    const classes: IEventViewerClassNames = getClassNames();
+    const classes: IEventViewerClassNames = getClassNames(appState.uiState.isEventLogHidden);
 
     const activeItemChangedHandler = React.useCallback(
         (item: IEventViewerRow, index?: number) => {
@@ -109,11 +109,12 @@ interface IEventViewerRow {
     cycle: JSX.Element;
 }
 
-const getClassNames = (): IEventViewerClassNames =>
+const getClassNames = (isHidden: boolean): IEventViewerClassNames =>
     mergeStyleSets({
         eventViewerContainer: {
             border: "1px black solid",
             maxHeight: "90vh",
             overflowY: "auto",
+            display: isHidden ? "none" : undefined,
         },
     });

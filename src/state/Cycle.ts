@@ -274,6 +274,19 @@ export class Cycle implements ICycle {
     }
 
     public addPlayerLeaves(outPlayer: IPlayer): void {
+        // If the player just joined this cycle, remove them from the list of added players and remove their buzzes.
+        // There's no need to keep them in both lists.
+        if (this.playerJoins != undefined) {
+            const joinEvent: Events.IPlayerJoinsEvent | undefined = this.playerJoins.find((event) =>
+                CompareUtils.playersEqual(event.inPlayer, outPlayer)
+            );
+            if (joinEvent) {
+                this.playerJoins = this.playerJoins.filter((event) => event !== joinEvent);
+                this.removePlayerBuzzes(outPlayer);
+                return;
+            }
+        }
+
         if (this.playerLeaves == undefined) {
             this.playerLeaves = [];
         }

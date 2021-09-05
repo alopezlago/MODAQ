@@ -11,8 +11,13 @@ import { BuzzMenu } from "./BuzzMenu";
 import { Answer } from "./Answer";
 import { IFormattedText } from "src/parser/IFormattedText";
 import { TossupProtestDialog } from "./dialogs/TossupProtestDialog";
-import { CancelButton } from "./CancelButton";
+import { CancelButton, ICancelButtonPrompt } from "./CancelButton";
 import { AppState } from "src/state/AppState";
+
+const throwOutQuestionPrompt: ICancelButtonPrompt = {
+    title: "Throw out Tossup",
+    message: "Click OK to throw out the tossup. To undo this, click on the X next to its event in the Event Log.",
+};
 
 export const TossupQuestion = observer(
     (props: IQuestionProps): JSX.Element => {
@@ -71,7 +76,11 @@ export const TossupQuestion = observer(
                     <Answer text={props.tossup.answer} />
                 </div>
                 <div>
-                    <CancelButton title="Throw out tossup" onClick={throwOutClickHandler} />
+                    <CancelButton
+                        prompt={throwOutQuestionPrompt}
+                        tooltip="Throw out tossup"
+                        onClick={throwOutClickHandler}
+                    />
                 </div>
             </div>
         );

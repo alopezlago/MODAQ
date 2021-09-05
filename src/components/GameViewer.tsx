@@ -14,7 +14,8 @@ const scoreboardAndQuestionViewerTokens: IStackTokens = { childrenGap: 20 };
 export const GameViewer = observer(() => {
     const appState: AppState = React.useContext(StateContext);
     const gameExists: boolean = appState.game.isLoaded;
-    const classes: IGameViewerClassNames = getClassNames(gameExists);
+
+    const classes: IGameViewerClassNames = getClassNames(gameExists, appState.uiState.isEventLogHidden);
 
     // TODO: See if we should convert the game viewer section into a StackItem. It's using a grid now, so it might
     // not make sense to have it be a stack item. Alternatively, we could make another Stack that's horizontally aligned
@@ -49,12 +50,12 @@ interface IGameViewerClassNames {
 }
 
 // TODO: play around with flex-grow/flex-shrink to see what will work. Alternatively, have a minimum width for scoreboard
-const getClassNames = (gameLoaded: boolean): IGameViewerClassNames =>
+const getClassNames = (gameLoaded: boolean, isEventLogHidden: boolean): IGameViewerClassNames =>
     mergeStyleSets({
         gameViewer: {
             // Grid should be more resize friendly than flex if we ever do responsive design
             display: "grid",
-            gridTemplateColumns: "3fr 1fr",
+            gridTemplateColumns: isEventLogHidden ? "1fr" : "3fr 1fr",
         },
         eventViewerContainer: {
             margin: "0 10px",

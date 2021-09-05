@@ -65,6 +65,9 @@ export class UIState {
     @ignore
     public pendingTossupProtestEvent?: ITossupProtestEvent;
 
+    // Default should be to show the event log, and this setting didn't exist before, so use hide instead of show
+    public isEventLogHidden: boolean;
+
     public questionFontSize: number;
 
     public sheetsState: SheetState;
@@ -83,6 +86,8 @@ export class UIState {
             clearSelectedWordOnClose: true,
             visible: false,
         };
+
+        this.isEventLogHidden = false;
         this.importGameStatus = undefined;
         this.packetFilename = undefined;
         this.packetParseStatus = undefined;
@@ -341,6 +346,10 @@ export class UIState {
 
     public setYappServiceUrl(url: string | undefined): void {
         this.yappServiceUrl = url;
+    }
+
+    public toggleEventLogVisibility(): void {
+        this.isEventLogHidden = !this.isEventLogHidden;
     }
 
     public hideBuzzMenu(): void {

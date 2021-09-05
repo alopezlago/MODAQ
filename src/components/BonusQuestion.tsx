@@ -6,11 +6,16 @@ import * as FormattedTextParser from "src/parser/FormattedTextParser";
 import { BonusQuestionPart } from "./BonusQuestionPart";
 import { Bonus } from "src/state/PacketState";
 import { Cycle } from "src/state/Cycle";
-import { CancelButton } from "./CancelButton";
+import { CancelButton, ICancelButtonPrompt } from "./CancelButton";
 import { BonusProtestDialog } from "./dialogs/BonusProtestDialog";
 import { AppState } from "src/state/AppState";
 import { FormattedText } from "./FormattedText";
 import { IFormattedText } from "src/parser/IFormattedText";
+
+const throwOutQuestionPrompt: ICancelButtonPrompt = {
+    title: "Throw out Bonus",
+    message: "Click OK to throw out the bonus. To undo this, click on the X next to its event in the Event Log.",
+};
 
 export const BonusQuestion = observer((props: IBonusQuestionProps) => {
     const classes: IBonusQuestionClassNames = getClassNames(!props.inPlay);
@@ -41,7 +46,12 @@ export const BonusQuestion = observer((props: IBonusQuestionProps) => {
                 {parts}
             </div>
             <div>
-                <CancelButton disabled={!props.inPlay} title="Throw out bonus" onClick={throwOutClickHandler} />
+                <CancelButton
+                    disabled={!props.inPlay}
+                    prompt={throwOutQuestionPrompt}
+                    tooltip="Throw out bonus"
+                    onClick={throwOutClickHandler}
+                />
             </div>
         </div>
     );

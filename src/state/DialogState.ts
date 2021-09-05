@@ -3,6 +3,7 @@ import { ignore } from "mobx-sync";
 import { AddQuestionDialogState } from "./AddQuestionsDialogState";
 import { CustomizeGameFormatDialogState } from "./CustomizeGameFormatDialogState";
 import { IGameFormat } from "./IGameFormat";
+import { IMessageDialogState } from "./IMessageDialogState";
 
 export class DialogState {
     @ignore
@@ -21,6 +22,9 @@ export class DialogState {
     public importGameDialogVisible: boolean;
 
     @ignore
+    public messageDialog: IMessageDialogState | undefined;
+
+    @ignore
     public newGameDialogVisible: boolean;
 
     constructor() {
@@ -31,6 +35,7 @@ export class DialogState {
         this.exportToJsonDialogVisible = false;
         this.helpDialogVisible = false;
         this.importGameDialogVisible = false;
+        this.messageDialog = undefined;
         this.newGameDialogVisible = false;
     }
 
@@ -52,6 +57,10 @@ export class DialogState {
 
     public hideImportGameDialog(): void {
         this.importGameDialogVisible = false;
+    }
+
+    public hideMessageDialog(): void {
+        this.messageDialog = undefined;
     }
 
     public hideNewGameDialog(): void {
@@ -76,6 +85,14 @@ export class DialogState {
 
     public showImportGameDialog(): void {
         this.importGameDialogVisible = true;
+    }
+
+    public showOKCancelMessageDialog(title: string, message: string, onOK: () => void): void {
+        this.messageDialog = {
+            title,
+            message,
+            onOK,
+        };
     }
 
     public showNewGameDialog(): void {

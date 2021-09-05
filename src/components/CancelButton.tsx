@@ -1,27 +1,46 @@
 import * as React from "react";
 import { IIconProps, mergeStyleSets } from "@fluentui/react";
 import { IconButton } from "@fluentui/react/lib/Button";
+import { StateContext } from "src/contexts/StateContext";
+import { AppState } from "src/state/AppState";
 
 const deleteIconProps: IIconProps = { iconName: "Cancel" };
 
 export const CancelButton = (props: ICancelButtonProps): JSX.Element => {
     const classes = getClassNames();
+    const appState: AppState = React.useContext(StateContext);
+
+    const onClick: () => void = () => {
+        if (props.prompt == undefined) {
+            props.onClick();
+            return;
+        }
+
+        appState.uiState.dialogState.showOKCancelMessageDialog(props.prompt.title, props.prompt.message, props.onClick);
+    };
+
     return (
         <IconButton
-            ariaLabel={props.title}
+            ariaLabel={props.tooltip}
             className={classes.cancelButton}
             disabled={props.disabled}
             iconProps={deleteIconProps}
-            title={props.title}
-            onClick={props.onClick}
+            title={props.tooltip}
+            onClick={onClick}
         />
     );
 };
 
 export interface ICancelButtonProps {
     disabled?: boolean;
-    title: string;
+    prompt?: ICancelButtonPrompt;
+    tooltip: string;
     onClick: () => void;
+}
+
+export interface ICancelButtonPrompt {
+    title: string;
+    message: string;
 }
 
 interface ICancelButtonClassNames {
