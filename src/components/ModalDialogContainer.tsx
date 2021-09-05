@@ -10,6 +10,7 @@ import { FontDialog } from "./dialogs/FontDialog";
 import { HelpDialog } from "./dialogs/HelpDialog";
 import { CustomizeGameFormatDialog } from "./dialogs/CustomizeGameFormatDialog";
 import { AddQuestionsDialog } from "./dialogs/AddQuestionsDialog";
+import { MessageDialog } from "./dialogs/MessageDialog";
 
 export const ModalDialogContainer = observer(() => {
     // The Protest dialogs aren't here because they require extra information
@@ -24,6 +25,7 @@ export const ModalDialogContainer = observer(() => {
             <FontDialog />
             <HelpDialog />
             <ImportGameDialog />
+            <MessageDialog />
             <NewGameDialog />
         </>
     );

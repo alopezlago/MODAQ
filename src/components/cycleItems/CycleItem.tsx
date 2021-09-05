@@ -5,12 +5,20 @@ import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
 
 import { CancelButton } from "../CancelButton";
 
-// TODO: Think on how to make this keyboard friendly
 export const CycleItem = observer(
     (props: ICycleItemProps): JSX.Element => {
         const classes: ICycleItemClassNames = getClassNames();
         const deleteButton: JSX.Element | undefined =
-            props.onDelete != undefined ? <CancelButton title="Delete" onClick={props.onDelete} /> : undefined;
+            props.onDelete != undefined ? (
+                <CancelButton
+                    prompt={{
+                        title: "Delete Event",
+                        message: `Are you sure you want to delete the event "${props.text}"?"`,
+                    }}
+                    tooltip="Delete"
+                    onClick={props.onDelete}
+                />
+            ) : undefined;
 
         return (
             <div className={classes.eventContainer}>
