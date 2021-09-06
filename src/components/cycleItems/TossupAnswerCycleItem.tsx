@@ -18,10 +18,10 @@ export const TossupAnswerCycleItem = observer(
 
         let buzzDescription = "answered";
         const points: number = props.game.getBuzzValue(props.buzz);
-        if (points === 0) {
-            buzzDescription = "answered WRONGLY";
-        } else if (points === props.game.gameFormat.negValue) {
+        if (points < 0 && props.buzz === props.cycle.firstWrongBuzz) {
             buzzDescription = "NEGGED";
+        } else if (points <= 0) {
+            buzzDescription = "answered WRONGLY";
         } else if (points === 10) {
             buzzDescription = "answered CORRECTLY";
         } else {

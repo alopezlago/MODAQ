@@ -380,18 +380,18 @@ export class GameState {
             }
         }
 
-        if (cycle.wrongBuzzes != undefined && this.gameFormat.negValue !== 0) {
-            const sortedWrongBuzzes: ITossupAnswerEvent[] = [...cycle.wrongBuzzes].sort(
-                (left, right) => left.marker.position - right.marker.position
-            );
-            for (const buzz of sortedWrongBuzzes) {
-                const indexToUpdate: number = this.teamNames.indexOf(buzz.marker.player.teamName);
-                if (indexToUpdate < 0) {
-                    throw new Error(`Wrong buzz belongs to a non-existent team ${buzz.marker.player.teamName}`);
-                }
-
-                change[indexToUpdate] += this.getBuzzValue(buzz);
+        if (cycle.wrongBuzzes != undefined && cycle.wrongBuzzes.length > 0 && this.gameFormat.negValue !== 0) {
+            const negBuzz: ITossupAnswerEvent | undefined = cycle.firstWrongBuzz;
+            if (negBuzz == undefined) {
+                throw new Error("Neg couldn't be found in list of non-empty incorrect buzzes");
             }
+
+            const indexToUpdate: number = this.teamNames.indexOf(negBuzz.marker.player.teamName);
+            if (indexToUpdate < 0) {
+                throw new Error(`Wrong buzz belongs to a non-existent team ${negBuzz.marker.player.teamName}`);
+            }
+
+            change[indexToUpdate] += this.getBuzzValue(negBuzz);
         }
 
         return change;
