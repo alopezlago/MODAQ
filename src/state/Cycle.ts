@@ -107,6 +107,34 @@ export class Cycle implements ICycle {
         }
     }
 
+    public get firstWrongBuzz(): Events.ITossupAnswerEvent | undefined {
+        if (this.wrongBuzzes == undefined || this.wrongBuzzes.length === 0) {
+            return undefined;
+        }
+
+        const sortedWrongBuzzes: Events.ITossupAnswerEvent[] = [...this.wrongBuzzes].sort(
+            (left, right) => left.marker.position - right.marker.position
+        );
+
+        let negBuzz: Events.ITossupAnswerEvent = sortedWrongBuzzes[0];
+        if (
+            sortedWrongBuzzes.length > 1 &&
+            sortedWrongBuzzes[0].marker.position === sortedWrongBuzzes[1].marker.position
+        ) {
+            // The neg buzz should be the fist buzz, so find the first buzz in the list of wrong buzzes
+            const firstNegBuzz: Events.ITossupAnswerEvent | undefined = this.wrongBuzzes.find(
+                (event) => event.marker.position === negBuzz.marker.position
+            );
+            if (firstNegBuzz == undefined) {
+                throw new Error("Neg couldn't be found in list of incorrect buzzes");
+            }
+
+            negBuzz = firstNegBuzz;
+        }
+
+        return negBuzz;
+    }
+
     public get orderedBuzzes(): Events.ITossupAnswerEvent[] {
         // Sort by tossupIndex, then by position. Tie breaker: negs before no penalties, negs/no penalties before correct
         const buzzes: Events.ITossupAnswerEvent[] = this.wrongBuzzes ? [...this.wrongBuzzes] : [];

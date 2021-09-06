@@ -896,5 +896,41 @@ describe("QBJTests", () => {
                 }
             );
         });
+        it("Neg and no penalty on same word", () => {
+            verifyQBJ(
+                (game) => {
+                    game.cycles[0].addWrongBuzz(
+                        {
+                            player: firstTeamPlayers[0],
+                            points: 0,
+                            position: 0,
+                            isLastWord: false,
+                        },
+                        1,
+                        game.gameFormat
+                    );
+
+                    game.cycles[0].addWrongBuzz(
+                        {
+                            player: secondTeamPlayer,
+                            points: 0,
+                            position: 0,
+                            isLastWord: false,
+                        },
+                        1,
+                        game.gameFormat
+                    );
+                },
+                (match) => {
+                    expect(match.tossups_read).to.equal(4);
+                    expect(match.match_questions.map((q) => q.question_number)).to.deep.equal([1, 2, 3, 4]);
+
+                    const firstCycleBuzzes: QBJ.IMatchQuestionBuzz[] = match.match_questions[0].buzzes;
+                    expect(firstCycleBuzzes.length).to.equal(2);
+                    verifyBuzz(firstCycleBuzzes[0], firstTeamPlayers[0], 0, -5);
+                    verifyBuzz(firstCycleBuzzes[1], secondTeamPlayer, 0, 0);
+                }
+            );
+        });
     });
 });
