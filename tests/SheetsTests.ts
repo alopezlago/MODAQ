@@ -1,12 +1,9 @@
 import { assert, expect } from "chai";
-// import { flow, runInAction } from "mobx";
 
 import * as GameFormats from "src/state/GameFormats";
 import * as Sheets from "src/sheets/Sheets";
 import { ISheetsApi, ISheetsBatchGetResponse, ISheetsGetResponse } from "src/sheets/ISheetsApi";
 import { AppState } from "src/state/AppState";
-import { UIState } from "src/state/UIState";
-import { GameState } from "src/state/GameState";
 import { IPendingFromSheetsNewGame, IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
 import { ExportState, LoadingState, SheetType } from "src/state/SheetState";
 import { IStatus } from "src/IStatus";
@@ -40,10 +37,7 @@ function createMockApi(mocks: Partial<ISheetsApi>): ISheetsApi {
 
 function createAppStateForExport(sheetType: SheetType = SheetType.Lifsheets): AppState {
     //return runInAction(() => {
-    const appState: AppState = {
-        game: new GameState(),
-        uiState: new UIState(),
-    };
+    const appState: AppState = new AppState();
 
     appState.game.addPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
 
@@ -71,10 +65,7 @@ function createAppStateForRosters(
     pendingGameType: PendingGameType = PendingGameType.Lifsheets
 ): AppState {
     //return runInAction(() => {
-    const appState: AppState = {
-        game: new GameState(),
-        uiState: new UIState(),
-    };
+    const appState: AppState = new AppState();
 
     appState.uiState.createPendingNewGame();
     appState.uiState.setPendingNewGameType(pendingGameType);

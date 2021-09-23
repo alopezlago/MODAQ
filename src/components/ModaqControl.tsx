@@ -24,6 +24,7 @@ import { IGameFormat } from "src/state/IGameFormat";
 import { IPacket } from "src/state/IPacket";
 import { IPlayer, Player } from "src/state/TeamState";
 import { PacketState } from "src/state/PacketState";
+import { ICustomExport } from "src/state/CustomExport";
 
 export const ModaqControl = (props: IModaqControlProps): JSX.Element => {
     const [appState]: [AppState, React.Dispatch<React.SetStateAction<AppState>>] = React.useState(new AppState());
@@ -77,6 +78,7 @@ export interface IModaqControlProps {
     yappServiceUrl?: string;
 
     gameFormat?: IGameFormat;
+    customExport?: ICustomExport;
 
     // This should only be set once
     packet?: IPacket;
@@ -148,6 +150,14 @@ function update(appState: AppState, props: IModaqControlProps): void {
 
     if (props.gameFormat != undefined && props.gameFormat !== appState.game.gameFormat) {
         appState.game.setGameFormat(props.gameFormat);
+    }
+
+    if (props.customExport != appState.uiState.customExport) {
+        if (props.customExport == undefined) {
+            appState.uiState.resetCustomExport();
+        } else {
+            appState.uiState.setCustomExport(props.customExport);
+        }
     }
 }
 

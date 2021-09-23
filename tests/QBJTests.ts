@@ -59,7 +59,7 @@ function verifyQBJ(updateGame: (game: GameState) => void, verifyMatch: (match: I
     game.addPlayers(players);
     updateGame(game);
 
-    const qbj: string = QBJ.ToQBJ(game);
+    const qbj: string = QBJ.toQBJString(game);
     expect(qbj).to.not.be.undefined;
     const match: IMatch = JSON.parse(qbj);
     verifyMatch(match, game);

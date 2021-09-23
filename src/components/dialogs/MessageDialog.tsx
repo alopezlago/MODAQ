@@ -14,7 +14,7 @@ import {
 
 import { AppState } from "src/state/AppState";
 import { StateContext } from "src/contexts/StateContext";
-import { IMessageDialogState } from "src/state/IMessageDialogState";
+import { IMessageDialogState, MessageDialogType } from "src/state/IMessageDialogState";
 
 const modalProps: IModalProps = {
     isBlocking: false,
@@ -53,6 +53,11 @@ export const MessageDialog = observer(
             showCloseButton: true,
         };
 
+        const cancelButton: JSX.Element | undefined =
+            messageDialog?.type === MessageDialogType.OK ? undefined : (
+                <DefaultButton text="Cancel" onClick={closeHandler} />
+            );
+
         return (
             <Dialog
                 hidden={messageDialog == undefined}
@@ -64,7 +69,7 @@ export const MessageDialog = observer(
                 <Label>{messageDialog?.message}</Label>
                 <DialogFooter>
                     <PrimaryButton text="OK" onClick={okHandler} />
-                    <DefaultButton text="Cancel" onClick={closeHandler} />
+                    {cancelButton}
                 </DialogFooter>
             </Dialog>
         );

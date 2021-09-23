@@ -135,7 +135,9 @@ function onProposedQuestionNumberKeyDown(event: React.KeyboardEvent<HTMLInputEle
 function onNextClick(appState: AppState): void {
     if (shouldNextButtonExport(appState)) {
         // If they use Sheets, show the Export Sheets dialog. Otherwise, show the Export JSON dialog
-        if (appState.uiState.sheetsState.sheetId != undefined) {
+        if (appState.uiState.customExport != undefined) {
+            appState.handleCustomExport();
+        } else if (appState.uiState.sheetsState.sheetId != undefined) {
             appState.uiState.createPendingSheet();
         } else {
             appState.uiState.dialogState.showExportToJsonDialog();

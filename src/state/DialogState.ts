@@ -3,7 +3,7 @@ import { ignore } from "mobx-sync";
 import { AddQuestionDialogState } from "./AddQuestionsDialogState";
 import { CustomizeGameFormatDialogState } from "./CustomizeGameFormatDialogState";
 import { IGameFormat } from "./IGameFormat";
-import { IMessageDialogState } from "./IMessageDialogState";
+import { IMessageDialogState, MessageDialogType } from "./IMessageDialogState";
 
 export class DialogState {
     @ignore
@@ -87,10 +87,20 @@ export class DialogState {
         this.importGameDialogVisible = true;
     }
 
+    public showOKMessageDialog(title: string, message: string, onOK?: () => void): void {
+        this.messageDialog = {
+            title,
+            message,
+            type: MessageDialogType.OK,
+            onOK,
+        };
+    }
+
     public showOKCancelMessageDialog(title: string, message: string, onOK: () => void): void {
         this.messageDialog = {
             title,
             message,
+            type: MessageDialogType.OKCancel,
             onOK,
         };
     }

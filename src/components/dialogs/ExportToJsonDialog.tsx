@@ -66,7 +66,7 @@ export const ExportToJsonDialog = observer(
         const gameHref: string = URL.createObjectURL(gameJson);
         const gameFilename = `${joinedTeamNames}_Game.json`;
 
-        const qbjJson: Blob = new Blob([QBJ.ToQBJ(game)], { type: "application/json" });
+        const qbjJson: Blob = new Blob([QBJ.toQBJString(game)], { type: "application/json" });
         const qbjHref: string = URL.createObjectURL(qbjJson);
         const qbjFilename = `${joinedTeamNames}.qbj`;
 
