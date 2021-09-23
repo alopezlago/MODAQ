@@ -28,10 +28,10 @@ export class AppState {
         const customExport: ICustomExport = this.uiState.customExport;
         let exportPromise: Promise<IStatus> | undefined;
         switch (customExport.type) {
-            case ExportType.Raw:
+            case "Raw":
                 exportPromise = customExport.onExport(CustomExport.convertGameToExportFields(this.game));
                 break;
-            case ExportType.QBJ:
+            case "QBJ":
                 exportPromise = customExport.onExport(QBJ.toQBJ(this.game));
                 break;
             default:

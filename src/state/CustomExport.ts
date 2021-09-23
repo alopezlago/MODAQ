@@ -45,19 +45,16 @@ export interface IExportFields {
 
 interface ICustomRawExport extends IBaseCustomExport {
     onExport: (fields: IExportFields) => Promise<IStatus>;
-    type: ExportType.Raw;
+    type: "Raw";
 }
 
 interface ICustomQBJExport extends IBaseCustomExport {
     onExport: (qbj: IMatch) => Promise<IStatus>;
-    type: ExportType.QBJ;
+    type: "QBJ";
 }
 
 interface IBaseCustomExport {
     label: string;
 }
 
-export const enum ExportType {
-    Raw = "Raw",
-    QBJ = "QBJ",
-}
+export type ExportType = "Raw" | "QBJ";
