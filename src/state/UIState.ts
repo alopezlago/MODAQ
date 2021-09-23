@@ -14,6 +14,7 @@ import { Cycle } from "./Cycle";
 import { DialogState } from "./DialogState";
 import { IGameFormat } from "./IGameFormat";
 import { BuzzMenuState } from "./BuzzMenuState";
+import { ICustomExport } from "./CustomExport";
 
 // TODO: Look into breaking this up into individual UI component states. Lots of pendingX fields, which could be in
 // their own (see CustomizeGameFormatDialogState)
@@ -37,6 +38,9 @@ export class UIState {
 
     @ignore
     public buzzMenuState: BuzzMenuState;
+
+    @ignore
+    public customExport: ICustomExport | undefined;
 
     @ignore
     public importGameStatus: IStatus | undefined;
@@ -86,6 +90,7 @@ export class UIState {
             clearSelectedWordOnClose: true,
             visible: false,
         };
+        this.customExport = undefined;
 
         this.isEventLogHidden = false;
         this.importGameStatus = undefined;
@@ -296,6 +301,10 @@ export class UIState {
         this.buildVersion = version;
     }
 
+    public setCustomExport(customExport: ICustomExport): void {
+        this.customExport = customExport;
+    }
+
     public setImportGameStatus(status: IStatus): void {
         this.importGameStatus = status;
     }
@@ -354,6 +363,10 @@ export class UIState {
 
     public hideBuzzMenu(): void {
         this.buzzMenuState.visible = false;
+    }
+
+    public resetCustomExport(): void {
+        this.customExport = undefined;
     }
 
     public resetPacketFilename(): void {

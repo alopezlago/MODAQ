@@ -3,7 +3,11 @@ import { IBonusAnswerPart, ITossupAnswerEvent } from "src/state/Events";
 import { GameState } from "src/state/GameState";
 
 // Converts games into a QBJ file that conforms to the Match interface in the QB Schema
-export function ToQBJ(game: GameState): string {
+export function toQBJString(game: GameState): string {
+    return JSON.stringify(toQBJ(game));
+}
+
+export function toQBJ(game: GameState): IMatch {
     // Convert it to a Match, then use JSON.stringify
 
     const players: IPlayer[] = [];
@@ -298,7 +302,7 @@ export function ToQBJ(game: GameState): string {
         notes: noteworthyEvents.length > 0 ? noteworthyEvents.join("\n") : undefined,
     };
 
-    return JSON.stringify(match);
+    return match;
 }
 
 function getBuzz(

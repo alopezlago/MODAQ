@@ -122,15 +122,25 @@ export const GameBar = observer(
             },
         });
 
-        // Google stuff
-        const exportSubMenuItems: ICommandBarItemProps[] = getExportSubMenuItems(appState);
-        items.push({
-            key: "export",
-            text: "Export",
-            subMenuProps: {
-                items: exportSubMenuItems,
-            },
-        });
+        // If a custom export option is given, only show a button for that export
+        if (appState.uiState.customExport == undefined) {
+            const exportSubMenuItems: ICommandBarItemProps[] = getExportSubMenuItems(appState);
+            items.push({
+                key: "export",
+                text: "Export",
+                subMenuProps: {
+                    items: exportSubMenuItems,
+                },
+            });
+        } else {
+            items.push({
+                key: "export",
+                text: appState.uiState.customExport.label,
+                onClick: () => {
+                    appState.handleCustomExport();
+                },
+            });
+        }
 
         items.push({
             key: "help",
