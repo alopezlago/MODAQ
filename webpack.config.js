@@ -69,11 +69,11 @@ module.exports = (env, argv) => {
                 __GOOGLE_CLIENT_ID__: JSON.stringify(
                     "1038902414768-nj056sbrbe0oshavft2uq9et6tvbu2d5.apps.googleusercontent.com"
                 ),
-                // If you're testing the YAPP Azure Function locally, use http://localhost:7071/api/ParseDocx, and
-                // make sure local.settings.json includes this after the Values field:
+                // If you're testing the YAPP Azure Function locally, use http://localhost:7071/api/ParseDocx?modaq=true
+                // and make sure local.settings.json includes this after the Values field:
                 // "Host": { "LocalHttpPort": 7071, "CORS": "*" }
                 __YAPP_SERVICE__: JSON.stringify(
-                    "https://yetanotherpacketparserazurefunction.azurewebsites.net/api/ParseDocx"
+                    "https://yetanotherpacketparserazurefunction.azurewebsites.net/api/ParseDocx?modaq=true"
                 ),
             }),
         ],

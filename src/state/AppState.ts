@@ -1,7 +1,7 @@
 import { assertNever } from "@fluentui/utilities";
 import { makeAutoObservable } from "mobx";
 import { IStatus } from "src/IStatus";
-import { ExportType, ICustomExport } from "./CustomExport";
+import { ICustomExport } from "./CustomExport";
 
 import * as CustomExport from "./CustomExport";
 import * as QBJ from "../qbj/QBJ";
