@@ -2,7 +2,7 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { mergeStyleSets } from "@fluentui/react";
 
-import * as FormattedTextParser from "src/parser/FormattedTextParser";
+import * as PacketState from "../state/PacketState";
 import { BonusQuestionPart } from "./BonusQuestionPart";
 import { Bonus } from "src/state/PacketState";
 import { Cycle } from "src/state/Cycle";
@@ -22,7 +22,10 @@ export const BonusQuestion = observer((props: IBonusQuestionProps) => {
     const throwOutClickHandler: () => void = React.useCallback(() => {
         props.cycle.addThrownOutBonus(props.bonusIndex);
     }, [props]);
-    const formattedLeadin: IFormattedText[] = FormattedTextParser.parseFormattedText(props.bonus.leadin.trim());
+    const formattedLeadin: IFormattedText[] = React.useMemo(
+        () => PacketState.getBonusWords(props.bonus.leadin, props.appState.game.gameFormat),
+        [props.bonus.leadin, props.appState.game.gameFormat]
+    );
 
     const parts: JSX.Element[] = props.bonus.parts.map((bonusPartProps, index) => {
         return (

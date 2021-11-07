@@ -38,7 +38,6 @@ export const TossupQuestion = observer(
                 correctBuzzIndex={correctBuzzIndex}
                 index={word.canBuzzOn ? word.wordIndex : undefined}
                 isLastWord={word.canBuzzOn && word.isLastWord}
-                inPronunciationGuide={!word.canBuzzOn && word.inPronunciationGuide}
                 selectedWordRef={selectedWordRef}
                 word={word.word}
                 wrongBuzzIndexes={wrongBuzzIndexes}
@@ -112,7 +111,6 @@ const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
                 index={props.index}
                 word={props.word}
                 selected={props.index === uiState.selectedWordIndex}
-                inPronunciationGuide={props.inPronunciationGuide}
                 correct={props.index === props.correctBuzzIndex}
                 wrong={props.wrongBuzzIndexes.findIndex((position) => position === props.index) >= 0}
                 componentRef={selected ? props.selectedWordRef : undefined}
@@ -170,7 +168,6 @@ interface IQuestionWordWrapperProps {
     cycle: Cycle;
     index?: number;
     isLastWord: boolean;
-    inPronunciationGuide: boolean;
     selectedWordRef: React.MutableRefObject<null>;
     tossup: Tossup;
     tossupNumber: number;

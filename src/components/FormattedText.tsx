@@ -9,7 +9,7 @@ export const FormattedText = observer(
         const classes: IFormattedTextClassNames = useStyles();
         const elements: JSX.Element[] = [];
         for (let i = 0; i < props.segments.length; i++) {
-            elements.push(<FormattedSegment key={`segment_${i}`} segment={props.segments[i]} />);
+            elements.push(<FormattedSegment key={`segment_${i}`} classNames={classes} segment={props.segments[i]} />);
         }
 
         const className: string = props.className ? `${classes.text} ${props.className}` : classes.text;
@@ -42,6 +42,10 @@ const FormattedSegment = observer((props: IFormattedSegmentProps) => {
         );
     }
 
+    if (props.segment.pronunciation) {
+        element = <span className={props.classNames.pronunciationGuide}>{element}</span>;
+    }
+
     return element;
 });
 
@@ -52,10 +56,12 @@ export interface IFormattedTextProps {
 
 interface IFormattedSegmentProps {
     segment: IFormattedText;
+    classNames: IFormattedTextClassNames;
 }
 
 interface IFormattedTextClassNames {
     text: string;
+    pronunciationGuide: string;
 }
 
 const useStyles = memoizeFunction(
@@ -63,6 +69,9 @@ const useStyles = memoizeFunction(
         mergeStyleSets({
             text: {
                 display: "inline",
+            },
+            pronunciationGuide: {
+                color: "rgb(128, 128, 128)",
             },
         })
 );

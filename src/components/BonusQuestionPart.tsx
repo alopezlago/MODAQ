@@ -2,7 +2,7 @@ import React from "react";
 import { Checkbox, Dropdown, IDropdownOption, IDropdownStyles, mergeStyleSets } from "@fluentui/react";
 import { observer } from "mobx-react-lite";
 
-import * as FormattedTextParser from "src/parser/FormattedTextParser";
+import * as PacketState from "src/state/PacketState";
 import { BonusPart } from "src/state/PacketState";
 import { Cycle } from "src/state/Cycle";
 import { Answer } from "./Answer";
@@ -66,7 +66,10 @@ export const BonusQuestionPart = observer((props: IBonusQuestionPartProps) => {
         );
     }
 
-    const bonusPartText: IFormattedText[] = FormattedTextParser.parseFormattedText(props.bonusPart.question);
+    const bonusPartText: IFormattedText[] = React.useMemo(
+        () => PacketState.getBonusWords(props.bonusPart.question, props.gameFormat),
+        [props.bonusPart.question, props.gameFormat]
+    );
 
     // TODO: We should try to resize the checkbox's box to match the font size
     return (

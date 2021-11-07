@@ -16,6 +16,8 @@ To use MODAQ in your product as an npm package, do the following
 
 4. If you want to use the packet parser (instead of passing in a packet parameter), you need to include a URL to YAPP
 
+To see what each prop does, visit [this page](https://github.com/alopezlago/QuizBowlDiscordScoreTracker/wiki/ModaqControl-props).
+
 # Getting Started
 
 You will need to have [npm](https://www.npmjs.com/get-npm) and [yarn](https://yarnpkg.com/getting-started/install) installed on your system.

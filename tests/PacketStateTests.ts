@@ -1,6 +1,7 @@
 import { expect } from "chai";
 
 import * as GameFormats from "src/state/GameFormats";
+import * as PacketState from "src/state/PacketState";
 import { Tossup } from "src/state/PacketState";
 import { IFormattedText } from "src/parser/IFormattedText";
 import { IGameFormat } from "src/state/IGameFormat";
@@ -18,7 +19,7 @@ const superpowersGameFormat: IGameFormat = {
     ],
 };
 
-describe("PacketStateTossupTests", () => {
+describe("PacketStateTests", () => {
     describe("formattedQuestionText", () => {
         // Most of these tests are handled by FormattedTextParserTests, so just test that it's hooked up to it and that
         // we include the end character
@@ -42,6 +43,113 @@ describe("PacketStateTossupTests", () => {
             expect(formattedWord.bolded).to.be.true;
             expect(formattedWord.emphasized).to.be.false;
             expect(formattedWord.underlined).to.be.false;
+        });
+    });
+
+    // Need tests for getBonusWords?
+    describe("getBonusWords", () => {
+        it("No pronunciation guide in format", () => {
+            const formattedText: IFormattedText[] = PacketState.getBonusWords("<b>This is</b> my bonus part", {
+                ...GameFormats.ACFGameFormat,
+                pronunciationGuideMarkers: undefined,
+            });
+
+            expect(formattedText.length).to.equal(2);
+
+            const firstSegment: IFormattedText = formattedText[0];
+            expect(firstSegment.text).to.equal("This is");
+            expect(firstSegment.pronunciation).to.be.undefined;
+            expect(firstSegment.bolded).to.be.true;
+
+            const secondSegment: IFormattedText = formattedText[1];
+            expect(secondSegment.text).to.equal(" my bonus part");
+            expect(secondSegment.pronunciation).to.be.undefined;
+            expect(secondSegment.bolded).to.be.false;
+        });
+
+        it("With pronunciation guide", () => {
+            const formattedText: IFormattedText[] = PacketState.getBonusWords(
+                "<b>This is</b> my bonus (BONE-us) part",
+                GameFormats.ACFGameFormat
+            );
+
+            expect(formattedText.length).to.equal(6);
+
+            expect(formattedText[0].text).to.equal("This ");
+            expect(formattedText[0].pronunciation).to.be.false;
+            expect(formattedText[0].bolded).to.be.true;
+
+            expect(formattedText[1].text).to.equal("is ");
+            expect(formattedText[1].pronunciation).to.be.false;
+            expect(formattedText[1].bolded).to.be.true;
+
+            expect(formattedText[2].text).to.equal("my ");
+            expect(formattedText[2].pronunciation).to.be.false;
+            expect(formattedText[2].bolded).to.be.false;
+
+            expect(formattedText[3].text).to.equal("bonus ");
+            expect(formattedText[3].pronunciation).to.be.false;
+            expect(formattedText[3].bolded).to.be.false;
+
+            expect(formattedText[4].text).to.equal("(BONE-us) ");
+            expect(formattedText[4].pronunciation).to.be.true;
+            expect(formattedText[4].bolded).to.be.false;
+
+            expect(formattedText[5].text).to.equal("part");
+            expect(formattedText[5].pronunciation).to.be.false;
+            expect(formattedText[5].bolded).to.be.false;
+        });
+
+        it("With multiple pronunciation guide", () => {
+            const formattedText: IFormattedText[] = PacketState.getBonusWords(
+                "<u>Another</u> (an-OTH-er) bonus (BONE-us) part",
+                GameFormats.ACFGameFormat
+            );
+
+            expect(formattedText.length).to.equal(5);
+
+            expect(formattedText[0].text).to.equal("Another ");
+            expect(formattedText[0].pronunciation).to.be.false;
+            expect(formattedText[0].underlined).to.be.true;
+
+            expect(formattedText.slice(1).map((text) => text.underlined)).to.not.contain(true);
+
+            expect(formattedText[1].text).to.equal("(an-OTH-er) ");
+            expect(formattedText[1].pronunciation).to.be.true;
+
+            expect(formattedText[2].text).to.equal("bonus ");
+            expect(formattedText[2].pronunciation).to.be.false;
+
+            expect(formattedText[3].text).to.equal("(BONE-us) ");
+            expect(formattedText[3].pronunciation).to.be.true;
+
+            expect(formattedText[4].text).to.equal("part");
+            expect(formattedText[4].pronunciation).to.be.false;
+        });
+
+        it("No pronunication guide, but defined in format", () => {
+            const formattedText: IFormattedText[] = PacketState.getBonusWords(
+                "<b>This is</b> my bonus part",
+                GameFormats.ACFGameFormat
+            );
+
+            expect(formattedText.length).to.equal(5);
+            expect(formattedText.map((text) => text.pronunciation)).to.not.contain(true);
+
+            expect(formattedText[0].text).to.equal("This ");
+            expect(formattedText[0].bolded).to.be.true;
+
+            expect(formattedText[1].text).to.equal("is ");
+            expect(formattedText[1].bolded).to.be.true;
+
+            expect(formattedText[2].text).to.equal("my ");
+            expect(formattedText[2].bolded).to.be.false;
+
+            expect(formattedText[3].text).to.equal("bonus ");
+            expect(formattedText[3].bolded).to.be.false;
+
+            expect(formattedText[4].text).to.equal("part");
+            expect(formattedText[4].bolded).to.be.false;
         });
     });
 
