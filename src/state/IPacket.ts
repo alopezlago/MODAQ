@@ -6,14 +6,12 @@ export interface IPacket {
 export interface ITossup {
     question: string;
     answer: string;
-    number: number;
 }
 
 export interface IBonus {
     leadin: string;
     parts: string[];
     answers: string[];
-    number: number;
     values: number[];
     difficultyModifiers?: string[];
 }

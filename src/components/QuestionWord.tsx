@@ -7,13 +7,7 @@ import { FormattedText } from "./FormattedText";
 
 export const QuestionWord = observer(
     (props: IQuestionWordProps): JSX.Element => {
-        const classes = getClassNames(
-            props.selected,
-            props.correct,
-            props.wrong,
-            props.inPronunciationGuide,
-            props.index != undefined
-        );
+        const classes = getClassNames(props.selected, props.correct, props.wrong, props.index != undefined);
 
         return (
             <span ref={props.componentRef} data-index={props.index} className={classes.word}>
@@ -26,7 +20,6 @@ export const QuestionWord = observer(
 interface IQuestionWordProps {
     word: IFormattedText[];
     index: number | undefined;
-    inPronunciationGuide?: boolean;
     selected?: boolean;
     correct?: boolean;
     wrong?: boolean;
@@ -44,7 +37,6 @@ const getClassNames = memoizeFunction(
         selected: boolean | undefined,
         correct: boolean | undefined,
         wrong: boolean | undefined,
-        isPronunciation: boolean | undefined,
         isIndexDefined: boolean
     ): IQuestionWordClassNames =>
         mergeStyleSets({
@@ -67,9 +59,6 @@ const getClassNames = memoizeFunction(
                         background: "rgba(128, 128, 128, 0.2)",
                         textDecoration: "underline double",
                     },
-                isPronunciation && {
-                    color: "rgb(128, 128, 128)",
-                },
                 // Only highlight a word on hover if it's not in an existing state from selected/correct/wrong
                 isIndexDefined &&
                     !(selected || correct || wrong) && { "&:hover": { background: "rgba(200, 200, 0, 0.15)" } },

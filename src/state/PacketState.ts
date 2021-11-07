@@ -1,4 +1,4 @@
-import { observable, makeObservable, makeAutoObservable } from "mobx";
+import { makeAutoObservable } from "mobx";
 import { format } from "mobx-sync";
 
 import * as FormattedTextParser from "src/parser/FormattedTextParser";
@@ -169,11 +169,14 @@ export class Tossup implements IQuestion {
                     canBuzzOn,
                 });
             } else {
+                for (const segment of word) {
+                    segment.pronunciation = !canBuzzOn && inPronunciationGuide;
+                }
+
                 words.push({
                     nonWordIndex: index,
                     textIndex: i,
                     word,
-                    inPronunciationGuide,
                     canBuzzOn,
                 });
             }
@@ -198,13 +201,49 @@ export class Bonus {
 
     constructor(leadin: string, parts: BonusPart[]) {
         // We don't use makeAutoObservable because leadin doesn't need to be observable (never changes)
-        makeObservable(this, {
-            parts: observable,
-        });
+        makeAutoObservable(this);
 
-        this.leadin = leadin;
+        this.leadin = leadin.trim();
         this.parts = parts;
     }
+}
+
+export function getBonusWords(text: string, format: IGameFormat): IFormattedText[] {
+    if (
+        format.pronunciationGuideMarkers == undefined ||
+        format.pronunciationGuideMarkers.length !== 2 ||
+        format.pronunciationGuideMarkers.some((guide) => guide == undefined)
+    ) {
+        return FormattedTextParser.parseFormattedText(text);
+    }
+
+    const formattedText: IFormattedText[][] = FormattedTextParser.splitFormattedTextIntoWords(text);
+
+    const pronunciationGuideMarkers: [string, string] = format.pronunciationGuideMarkers;
+    let inPronunciationGuide = false;
+    for (let i = 0; i < formattedText.length; i++) {
+        const word: IFormattedText[] = formattedText[i];
+        const fullText = word.reduce((result, text) => result + text.text, "");
+
+        if (fullText.startsWith(pronunciationGuideMarkers[0])) {
+            inPronunciationGuide = true;
+        }
+
+        for (const segment of word) {
+            segment.pronunciation = inPronunciationGuide;
+        }
+
+        if (inPronunciationGuide && fullText.indexOf(pronunciationGuideMarkers[1]) >= 0) {
+            inPronunciationGuide = false;
+        }
+
+        // Add the space back to all but the last word
+        if (i !== formattedText.length - 1) {
+            word[word.length - 1].text += " ";
+        }
+    }
+
+    return formattedText.reduce((previous, next) => previous.concat(next), []);
 }
 
 export type ITossupWord = IBuzzableTossupWord | INonbuzzableTossupWord;
@@ -217,7 +256,6 @@ export interface IBuzzableTossupWord extends IBaseTossupWord {
 
 export interface INonbuzzableTossupWord extends IBaseTossupWord {
     nonWordIndex: number;
-    inPronunciationGuide: boolean;
     canBuzzOn: false;
 }
 
