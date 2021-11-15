@@ -9,7 +9,7 @@ export class PacketState {
     // Anything with methods/computeds not at the top level needs to use @format to deserialize correctly
     @format((deserializedArray: IQuestion[]) => {
         return deserializedArray.map((deserializedTossup) => {
-            return new Tossup(deserializedTossup.question, deserializedTossup.answer);
+            return new Tossup(deserializedTossup.question, deserializedTossup.answer, deserializedTossup.metadata);
         });
     })
     public tossups: Tossup[];
@@ -35,6 +35,7 @@ export class PacketState {
 export interface IQuestion {
     question: string;
     answer: string;
+    metadata?: string;
 }
 
 export interface BonusPart {
@@ -49,19 +50,14 @@ export class Tossup implements IQuestion {
 
     public question: string;
     public answer: string;
+    public metadata: string | undefined;
 
-    constructor(question: string, answer: string) {
+    constructor(question: string, answer: string, metadata?: string) {
         makeAutoObservable(this);
 
         this.question = question;
         this.answer = answer;
-    }
-
-    private get formattedQuestionText(): IFormattedText[][] {
-        // Include the ■ to give an end of question marker
-        return FormattedTextParser.splitFormattedTextIntoWords(this.question).concat([
-            [{ text: "■END■", bolded: true, emphasized: false, required: false }],
-        ]);
+        this.metadata = metadata;
     }
 
     public getPointsAtPosition(format: IGameFormat, wordIndex: number, isCorrect = true): number {
@@ -119,20 +115,15 @@ export class Tossup implements IQuestion {
     }
 
     public getWords(format: IGameFormat): ITossupWord[] {
-        const pronunciationGuideMarkers: [string | undefined, string | undefined] =
-            format.pronunciationGuideMarkers != undefined && format.pronunciationGuideMarkers.length === 2
-                ? format.pronunciationGuideMarkers
-                : Tossup.noPronunciationGuides;
-
-        const formattedTexts: IFormattedText[][] = this.formattedQuestionText;
+        const formattedTexts: IFormattedText[][] = this.formattedQuestionText(format);
         const words: ITossupWord[] = [];
         let wordIndex = 0;
         let nonwordIndex = 0;
-        let inPronunciationGuide = false;
         for (let i = 0; i < formattedTexts.length; i++) {
             const word: IFormattedText[] = formattedTexts[i];
             const fullText = word.reduce((result, text) => result + text.text, "");
             const isLastWord: boolean = i === formattedTexts.length - 1;
+            const inPronunciationGuide: boolean = word.length > 0 && word[0].pronunciation === true;
 
             // We need to skip over power markers and not count them when we calculate buzz points
             let canBuzzOn = true;
@@ -143,16 +134,15 @@ export class Tossup implements IQuestion {
                 // Last word should always be the terminal character, which can't be a power or in a pronunciation guide
                 wordIndex++;
             } else if (powerMarkerIndex >= 0) {
-                // Power markers have priority over pronunciation guides
+                // Power markers have priority over pronunciation guides, and shouldn't be treated as such
+                for (const segment of word) {
+                    segment.pronunciation = false;
+                }
+
                 canBuzzOn = false;
                 index = nonwordIndex;
                 nonwordIndex++;
-            } else if (
-                inPronunciationGuide ||
-                (pronunciationGuideMarkers[0] != undefined && trimmedText.startsWith(pronunciationGuideMarkers[0]))
-            ) {
-                // If we're in a pronunciation guide or at the start of one, then count it as a non-word
-                inPronunciationGuide = true;
+            } else if (inPronunciationGuide) {
                 canBuzzOn = false;
                 index = nonwordIndex;
                 nonwordIndex++;
@@ -169,10 +159,6 @@ export class Tossup implements IQuestion {
                     canBuzzOn,
                 });
             } else {
-                for (const segment of word) {
-                    segment.pronunciation = !canBuzzOn && inPronunciationGuide;
-                }
-
                 words.push({
                     nonWordIndex: index,
                     textIndex: i,
@@ -180,17 +166,16 @@ export class Tossup implements IQuestion {
                     canBuzzOn,
                 });
             }
-
-            if (
-                inPronunciationGuide &&
-                pronunciationGuideMarkers[1] != undefined &&
-                trimmedText.indexOf(pronunciationGuideMarkers[1]) >= 0
-            ) {
-                inPronunciationGuide = false;
-            }
         }
 
         return words;
+    }
+
+    private formattedQuestionText(format: IGameFormat): IFormattedText[][] {
+        // Include the ■ to give an end of question marker
+        return FormattedTextParser.splitFormattedTextIntoWords(this.question, format.pronunciationGuideMarkers).concat([
+            [{ text: "■END■", bolded: true, emphasized: false, required: false, pronunciation: false }],
+        ]);
     }
 }
 
@@ -199,51 +184,20 @@ export class Bonus {
 
     public parts: BonusPart[];
 
-    constructor(leadin: string, parts: BonusPart[]) {
+    public metadata: string | undefined;
+
+    constructor(leadin: string, parts: BonusPart[], metadata?: string) {
         // We don't use makeAutoObservable because leadin doesn't need to be observable (never changes)
         makeAutoObservable(this);
 
         this.leadin = leadin.trim();
         this.parts = parts;
+        this.metadata = metadata;
     }
 }
 
 export function getBonusWords(text: string, format: IGameFormat): IFormattedText[] {
-    if (
-        format.pronunciationGuideMarkers == undefined ||
-        format.pronunciationGuideMarkers.length !== 2 ||
-        format.pronunciationGuideMarkers.some((guide) => guide == undefined)
-    ) {
-        return FormattedTextParser.parseFormattedText(text);
-    }
-
-    const formattedText: IFormattedText[][] = FormattedTextParser.splitFormattedTextIntoWords(text);
-
-    const pronunciationGuideMarkers: [string, string] = format.pronunciationGuideMarkers;
-    let inPronunciationGuide = false;
-    for (let i = 0; i < formattedText.length; i++) {
-        const word: IFormattedText[] = formattedText[i];
-        const fullText = word.reduce((result, text) => result + text.text, "");
-
-        if (fullText.startsWith(pronunciationGuideMarkers[0])) {
-            inPronunciationGuide = true;
-        }
-
-        for (const segment of word) {
-            segment.pronunciation = inPronunciationGuide;
-        }
-
-        if (inPronunciationGuide && fullText.indexOf(pronunciationGuideMarkers[1]) >= 0) {
-            inPronunciationGuide = false;
-        }
-
-        // Add the space back to all but the last word
-        if (i !== formattedText.length - 1) {
-            word[word.length - 1].text += " ";
-        }
-    }
-
-    return formattedText.reduce((previous, next) => previous.concat(next), []);
+    return FormattedTextParser.parseFormattedText(text, format.pronunciationGuideMarkers);
 }
 
 export type ITossupWord = IBuzzableTossupWord | INonbuzzableTossupWord;

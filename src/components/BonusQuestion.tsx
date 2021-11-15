@@ -11,6 +11,7 @@ import { BonusProtestDialog } from "./dialogs/BonusProtestDialog";
 import { AppState } from "src/state/AppState";
 import { FormattedText } from "./FormattedText";
 import { IFormattedText } from "src/parser/IFormattedText";
+import { PostQuestionMetadata } from "./PostQuestionMetadata";
 
 const throwOutQuestionPrompt: ICancelButtonPrompt = {
     title: "Throw out Bonus",
@@ -47,6 +48,9 @@ export const BonusQuestion = observer((props: IBonusQuestionProps) => {
             <div className={classes.bonusText}>
                 <FormattedText className={classes.bonusLeadin} segments={formattedLeadin} />
                 {parts}
+                <div className={classes.bonusMetadata}>
+                    <PostQuestionMetadata metadata={props.bonus.metadata} />
+                </div>
             </div>
             <div>
                 <CancelButton
@@ -71,6 +75,7 @@ export interface IBonusQuestionProps {
 interface IBonusQuestionClassNames {
     bonusLeadin: string;
     bonusContainer: string;
+    bonusMetadata: string;
     bonusText: string;
 }
 
@@ -86,6 +91,10 @@ const getClassNames = (disabled?: boolean): IBonusQuestionClassNames =>
                 color: "#888888",
             },
         ],
+        bonusMetadata: {
+            paddingLeft: 24,
+            marginTop: "-1em",
+        },
         bonusText: {
             maxHeight: "37.5vh",
             overflowY: "auto",

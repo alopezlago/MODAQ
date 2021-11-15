@@ -220,11 +220,15 @@ function onLoad(event: ProgressEvent<FileReader>, appState: AppState): void {
     }
 
     const packet: PacketState = new PacketState();
-    const tossups: Tossup[] = parsedGame.packet.tossups.map((tossup) => new Tossup(tossup.question, tossup.answer));
+    const tossups: Tossup[] = parsedGame.packet.tossups.map(
+        (tossup) => new Tossup(tossup.question, tossup.answer, tossup.metadata)
+    );
     packet.setTossups(tossups);
 
     if (parsedGame.packet.bonuses != undefined && parsedGame.packet.bonuses.length > 0) {
-        const bonuses: Bonus[] = parsedGame.packet.bonuses.map((bonus) => new Bonus(bonus.leadin, bonus.parts));
+        const bonuses: Bonus[] = parsedGame.packet.bonuses.map(
+            (bonus) => new Bonus(bonus.leadin, bonus.parts, bonus.metadata)
+        );
         packet.setBonuses(bonuses);
     }
 

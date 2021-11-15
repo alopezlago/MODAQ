@@ -4,10 +4,16 @@ import { observer } from "mobx-react-lite";
 import * as FormattedTextParser from "src/parser/FormattedTextParser";
 import { IFormattedText } from "src/parser/IFormattedText";
 import { FormattedText } from "./FormattedText";
+import { StateContext } from "src/contexts/StateContext";
+import { AppState } from "src/state/AppState";
 
 export const Answer = observer(
     (props: IAnswerProps): JSX.Element => {
-        const formattedText: IFormattedText[] = FormattedTextParser.parseFormattedText(props.text.trimLeft());
+        const appState: AppState = React.useContext(StateContext);
+        const formattedText: IFormattedText[] = FormattedTextParser.parseFormattedText(
+            props.text.trimLeft(),
+            appState.game.gameFormat.pronunciationGuideMarkers
+        );
 
         return (
             <div>

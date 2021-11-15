@@ -1,6 +1,7 @@
 import { expect } from "chai";
 
 import * as FormattedTextParser from "src/parser/FormattedTextParser";
+import * as GameFormats from "src/state/GameFormats";
 import { IFormattedText } from "src/parser/IFormattedText";
 
 describe("FormattedTextParserTests", () => {
@@ -14,6 +15,7 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    pronunciation: false,
                 },
             ]);
         });
@@ -27,6 +29,7 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: true,
                     underlined: false,
+                    pronunciation: false,
                 },
             ]);
         });
@@ -40,6 +43,7 @@ describe("FormattedTextParserTests", () => {
                     bolded: true,
                     emphasized: false,
                     underlined: true,
+                    pronunciation: false,
                 },
             ]);
         });
@@ -53,6 +57,7 @@ describe("FormattedTextParserTests", () => {
                     bolded: true,
                     emphasized: false,
                     underlined: false,
+                    pronunciation: false,
                 },
             ]);
         });
@@ -66,6 +71,107 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: true,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("Pronunciation guide", () => {
+            const textToFormat = "This text is mine (mein).";
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(
+                textToFormat,
+                GameFormats.ACFGameFormat.pronunciationGuideMarkers
+            );
+            expect(result).to.deep.equal([
+                {
+                    text: "This text is mine ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    pronunciation: false,
+                },
+                {
+                    text: "(mein)",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    pronunciation: true,
+                },
+                {
+                    text: ".",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("Bolded pronunciation guide", () => {
+            const textToFormat = "<b>Solano Lopez (LOW-pez)</b> was in this war.";
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(
+                textToFormat,
+                GameFormats.ACFGameFormat.pronunciationGuideMarkers
+            );
+            expect(result).to.deep.equal([
+                {
+                    text: "Solano Lopez ",
+                    bolded: true,
+                    emphasized: false,
+                    underlined: false,
+                    pronunciation: false,
+                },
+                {
+                    text: "(LOW-pez)",
+                    bolded: true,
+                    emphasized: false,
+                    underlined: false,
+                    pronunciation: true,
+                },
+                {
+                    text: " was in this war.",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("Non-parentheses pronunciation guide", () => {
+            const textToFormat = "This text is mine [mein].";
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, ["[", "]"]);
+            expect(result).to.deep.equal([
+                {
+                    text: "This text is mine ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    pronunciation: false,
+                },
+                {
+                    text: "[mein]",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    pronunciation: true,
+                },
+                {
+                    text: ".",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("Different pronunciation guide", () => {
+            const textToFormat = "This text is mine (mein).";
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, ["[", "]"]);
+            expect(result).to.deep.equal([
+                {
+                    text: "This text is mine (mein).",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    pronunciation: false,
                 },
             ]);
         });
@@ -78,30 +184,35 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    pronunciation: false,
                 },
                 {
                     text: "emphasized then",
                     bolded: false,
                     emphasized: true,
                     underlined: false,
+                    pronunciation: false,
                 },
                 {
                     text: " in between ",
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    pronunciation: false,
                 },
                 {
                     text: "required then",
                     bolded: true,
                     emphasized: false,
                     underlined: true,
+                    pronunciation: false,
                 },
                 {
                     text: " done.",
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    pronunciation: false,
                 },
             ]);
         });
@@ -114,24 +225,28 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    pronunciation: false,
                 },
                 {
                     text: "The ",
                     bolded: false,
                     emphasized: true,
                     underlined: false,
+                    pronunciation: false,
                 },
                 {
                     text: "Iliad",
                     bolded: true,
                     emphasized: true,
                     underlined: true,
+                    pronunciation: false,
                 },
                 {
                     text: " is by Homer",
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    pronunciation: false,
                 },
             ]);
         });
@@ -147,6 +262,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ];
             });
@@ -164,6 +280,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ];
             });
@@ -181,6 +298,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ];
             });
@@ -198,6 +316,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: true,
+                        pronunciation: false,
                     },
                 ];
             });
@@ -215,6 +334,27 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: false,
                         underlined: true,
+                        pronunciation: false,
+                    },
+                ];
+            });
+
+            expect(result).to.deep.equal(expected);
+        });
+        it("Pronunciation", () => {
+            const textToFormat = "There is a pronunciation guide (GUY-de) in this question.";
+            const result: IFormattedText[][] = FormattedTextParser.splitFormattedTextIntoWords(
+                textToFormat,
+                GameFormats.ACFGameFormat.pronunciationGuideMarkers
+            );
+            const expected: IFormattedText[][] = textToFormat.split(/\s+/g).map((word, index) => {
+                return [
+                    {
+                        text: word,
+                        bolded: false,
+                        emphasized: false,
+                        underlined: false,
+                        pronunciation: index === 5,
                     },
                 ];
             });
@@ -231,6 +371,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -239,6 +380,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -247,6 +389,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -255,6 +398,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -263,6 +407,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -271,6 +416,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: false,
                         underlined: true,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -279,6 +425,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: false,
                         underlined: true,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -287,6 +434,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
             ]);
@@ -301,6 +449,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -309,6 +458,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -317,6 +467,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -325,6 +476,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: true,
                         underlined: true,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -333,6 +485,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -341,6 +494,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -349,6 +503,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
             ]);
@@ -363,6 +518,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -371,6 +527,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -379,6 +536,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -387,6 +545,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: true,
                         underlined: true,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -395,6 +554,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -403,6 +563,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -411,6 +572,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
             ]);
@@ -425,6 +587,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -433,6 +596,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -441,12 +605,14 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        pronunciation: false,
                     },
                     {
                         text: ",",
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -455,6 +621,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -463,6 +630,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
                 [
@@ -471,6 +639,7 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
             ]);
@@ -485,48 +654,56 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                     {
                         text: "required",
                         bolded: true,
                         emphasized: false,
                         underlined: true,
+                        pronunciation: false,
                     },
                     {
                         text: "dull",
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                     {
                         text: "emphasized",
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        pronunciation: false,
                     },
                     {
                         text: "bolded",
                         bolded: true,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                     {
                         text: "boring",
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                     {
                         text: "underlined",
                         bolded: false,
                         emphasized: false,
                         underlined: true,
+                        pronunciation: false,
                     },
                     {
                         text: "word",
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        pronunciation: false,
                     },
                 ],
             ]);

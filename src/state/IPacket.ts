@@ -6,6 +6,7 @@ export interface IPacket {
 export interface ITossup {
     question: string;
     answer: string;
+    metadata?: string;
 }
 
 export interface IBonus {
@@ -14,4 +15,5 @@ export interface IBonus {
     answers: string[];
     values: number[];
     difficultyModifiers?: string[];
+    metadata?: string;
 }

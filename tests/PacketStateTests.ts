@@ -43,6 +43,20 @@ describe("PacketStateTests", () => {
             expect(formattedWord.bolded).to.be.true;
             expect(formattedWord.emphasized).to.be.false;
             expect(formattedWord.underlined).to.be.false;
+            expect(formattedWord.pronunciation).to.be.false;
+        });
+        it("formattedQuestionText has pronunciation guide", () => {
+            const tossup: Tossup = new Tossup("My question (QWEST-shun) is this.", "Answer");
+            const formattedText: IFormattedText[][] = tossup.getWords(noPowersGameFormat).map((word) => word.word);
+            expect(formattedText.length).to.be.greaterThan(1);
+            expect(formattedText[2].length).to.equal(1);
+
+            const formattedWord: IFormattedText = formattedText[2][0];
+            expect(formattedWord.text).to.equal("(QWEST-shun)");
+            expect(formattedWord.bolded).to.be.false;
+            expect(formattedWord.emphasized).to.be.false;
+            expect(formattedWord.underlined).to.be.false;
+            expect(formattedWord.pronunciation).to.be.true;
         });
     });
 
@@ -58,12 +72,12 @@ describe("PacketStateTests", () => {
 
             const firstSegment: IFormattedText = formattedText[0];
             expect(firstSegment.text).to.equal("This is");
-            expect(firstSegment.pronunciation).to.be.undefined;
+            expect(firstSegment.pronunciation).to.be.false;
             expect(firstSegment.bolded).to.be.true;
 
             const secondSegment: IFormattedText = formattedText[1];
             expect(secondSegment.text).to.equal(" my bonus part");
-            expect(secondSegment.pronunciation).to.be.undefined;
+            expect(secondSegment.pronunciation).to.be.false;
             expect(secondSegment.bolded).to.be.false;
         });
 
@@ -73,31 +87,23 @@ describe("PacketStateTests", () => {
                 GameFormats.ACFGameFormat
             );
 
-            expect(formattedText.length).to.equal(6);
+            expect(formattedText.length).to.equal(4);
 
-            expect(formattedText[0].text).to.equal("This ");
+            expect(formattedText[0].text).to.equal("This is");
             expect(formattedText[0].pronunciation).to.be.false;
             expect(formattedText[0].bolded).to.be.true;
 
-            expect(formattedText[1].text).to.equal("is ");
+            expect(formattedText[1].text).to.equal(" my bonus ");
             expect(formattedText[1].pronunciation).to.be.false;
-            expect(formattedText[1].bolded).to.be.true;
+            expect(formattedText[1].bolded).to.be.false;
 
-            expect(formattedText[2].text).to.equal("my ");
-            expect(formattedText[2].pronunciation).to.be.false;
+            expect(formattedText[2].text).to.equal("(BONE-us)");
+            expect(formattedText[2].pronunciation).to.be.true;
             expect(formattedText[2].bolded).to.be.false;
 
-            expect(formattedText[3].text).to.equal("bonus ");
+            expect(formattedText[3].text).to.equal(" part");
             expect(formattedText[3].pronunciation).to.be.false;
             expect(formattedText[3].bolded).to.be.false;
-
-            expect(formattedText[4].text).to.equal("(BONE-us) ");
-            expect(formattedText[4].pronunciation).to.be.true;
-            expect(formattedText[4].bolded).to.be.false;
-
-            expect(formattedText[5].text).to.equal("part");
-            expect(formattedText[5].pronunciation).to.be.false;
-            expect(formattedText[5].bolded).to.be.false;
         });
 
         it("With multiple pronunciation guide", () => {
@@ -106,25 +112,28 @@ describe("PacketStateTests", () => {
                 GameFormats.ACFGameFormat
             );
 
-            expect(formattedText.length).to.equal(5);
+            expect(formattedText.length).to.equal(6);
 
-            expect(formattedText[0].text).to.equal("Another ");
+            expect(formattedText[0].text).to.equal("Another");
             expect(formattedText[0].pronunciation).to.be.false;
             expect(formattedText[0].underlined).to.be.true;
 
-            expect(formattedText.slice(1).map((text) => text.underlined)).to.not.contain(true);
+            expect(formattedText[1].text).to.equal(" ");
+            expect(formattedText[1].pronunciation).to.be.false;
+            expect(formattedText[1].underlined).to.be.false;
 
-            expect(formattedText[1].text).to.equal("(an-OTH-er) ");
-            expect(formattedText[1].pronunciation).to.be.true;
+            expect(formattedText.slice(2).map((text) => text.underlined)).to.not.contain(true);
+            expect(formattedText[2].text).to.equal("(an-OTH-er)");
+            expect(formattedText[2].pronunciation).to.be.true;
 
-            expect(formattedText[2].text).to.equal("bonus ");
-            expect(formattedText[2].pronunciation).to.be.false;
+            expect(formattedText[3].text).to.equal(" bonus ");
+            expect(formattedText[3].pronunciation).to.be.false;
 
-            expect(formattedText[3].text).to.equal("(BONE-us) ");
-            expect(formattedText[3].pronunciation).to.be.true;
+            expect(formattedText[4].text).to.equal("(BONE-us)");
+            expect(formattedText[4].pronunciation).to.be.true;
 
-            expect(formattedText[4].text).to.equal("part");
-            expect(formattedText[4].pronunciation).to.be.false;
+            expect(formattedText[5].text).to.equal(" part");
+            expect(formattedText[5].pronunciation).to.be.false;
         });
 
         it("No pronunication guide, but defined in format", () => {
@@ -133,23 +142,14 @@ describe("PacketStateTests", () => {
                 GameFormats.ACFGameFormat
             );
 
-            expect(formattedText.length).to.equal(5);
+            expect(formattedText.length).to.equal(2);
             expect(formattedText.map((text) => text.pronunciation)).to.not.contain(true);
 
-            expect(formattedText[0].text).to.equal("This ");
+            expect(formattedText[0].text).to.equal("This is");
             expect(formattedText[0].bolded).to.be.true;
 
-            expect(formattedText[1].text).to.equal("is ");
-            expect(formattedText[1].bolded).to.be.true;
-
-            expect(formattedText[2].text).to.equal("my ");
-            expect(formattedText[2].bolded).to.be.false;
-
-            expect(formattedText[3].text).to.equal("bonus ");
-            expect(formattedText[3].bolded).to.be.false;
-
-            expect(formattedText[4].text).to.equal("part");
-            expect(formattedText[4].bolded).to.be.false;
+            expect(formattedText[1].text).to.equal(" my bonus part");
+            expect(formattedText[1].bolded).to.be.false;
         });
     });
 
