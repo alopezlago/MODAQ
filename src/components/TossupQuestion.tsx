@@ -13,6 +13,7 @@ import { IFormattedText } from "src/parser/IFormattedText";
 import { TossupProtestDialog } from "./dialogs/TossupProtestDialog";
 import { CancelButton, ICancelButtonPrompt } from "./CancelButton";
 import { AppState } from "src/state/AppState";
+import { PostQuestionMetadata } from "./PostQuestionMetadata";
 
 const throwOutQuestionPrompt: ICancelButtonPrompt = {
     title: "Throw out Tossup",
@@ -73,6 +74,7 @@ export const TossupQuestion = observer(
                         {questionWords}
                     </div>
                     <Answer text={props.tossup.answer} />
+                    <PostQuestionMetadata metadata={props.tossup.metadata} />
                 </div>
                 <div>
                     <CancelButton

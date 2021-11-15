@@ -14,7 +14,9 @@ export function loadPacket(appState: AppState, parsedPacket: IPacket): PacketSta
         return;
     }
 
-    const tossups: Tossup[] = parsedPacket.tossups.map((tossup) => new Tossup(tossup.question, tossup.answer));
+    const tossups: Tossup[] = parsedPacket.tossups.map(
+        (tossup) => new Tossup(tossup.question, tossup.answer, tossup.metadata)
+    );
     let bonuses: Bonus[] = [];
 
     if (parsedPacket.bonuses) {
@@ -38,7 +40,7 @@ export function loadPacket(appState: AppState, parsedPacket: IPacket): PacketSta
                 });
             }
 
-            return new Bonus(bonus.leadin, parts);
+            return new Bonus(bonus.leadin, parts, bonus.metadata);
         });
     }
 
