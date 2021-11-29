@@ -108,7 +108,7 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
 
                 // TODO: This will now send an array of error messages. We should record all of them, and have them appear
                 // line by line. Or, alternatively, fetch the top 3/4 and say how many others there are.
-                errorMessage = errorMessageMap.errorMessage.join("\n");
+                errorMessage = errorMessageMap.errorMessages.join("\r\n");
             }
 
             props.appState.uiState.setPacketStatus({
@@ -153,5 +153,5 @@ export interface IPacketLoaderProps {
 }
 
 interface IParsingServiceErrorMessage {
-    errorMessage: [string];
+    errorMessages: [string];
 }
