@@ -932,5 +932,15 @@ describe("QBJTests", () => {
                 }
             );
         });
+        it("Packet name in packets field", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.addPlayers(players);
+
+            const qbj: string = QBJ.toQBJString(game, "Packet_17.docx");
+            expect(qbj).to.not.be.undefined;
+            const match: IMatch = JSON.parse(qbj);
+            expect(match.packets).to.equal("Packet_17");
+        });
     });
 });

@@ -3,11 +3,11 @@ import { IBonusAnswerPart, ITossupAnswerEvent } from "src/state/Events";
 import { GameState } from "src/state/GameState";
 
 // Converts games into a QBJ file that conforms to the Match interface in the QB Schema
-export function toQBJString(game: GameState): string {
-    return JSON.stringify(toQBJ(game));
+export function toQBJString(game: GameState, packetName?: string): string {
+    return JSON.stringify(toQBJ(game, packetName));
 }
 
-export function toQBJ(game: GameState): IMatch {
+export function toQBJ(game: GameState, packetName?: string): IMatch {
     // Convert it to a Match, then use JSON.stringify
 
     const players: IPlayer[] = [];
@@ -302,6 +302,16 @@ export function toQBJ(game: GameState): IMatch {
         notes: noteworthyEvents.length > 0 ? noteworthyEvents.join("\n") : undefined,
     };
 
+    if (packetName) {
+        const lastDotIndex: number = packetName.lastIndexOf(".");
+        if (lastDotIndex > 0) {
+            // Strip out the . to get the packet name
+            packetName = packetName.substring(0, lastDotIndex);
+        }
+
+        match.packets = packetName;
+    }
+
     return match;
 }
 
@@ -372,6 +382,7 @@ export interface IMatch {
     match_teams: IMatchTeam[];
     match_questions: IMatchQuestion[];
     notes?: string; // For storing protest info and thrown out Qs
+    packets?: string; // The name of the packet
 }
 
 export interface ITeam {
