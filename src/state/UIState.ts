@@ -45,7 +45,6 @@ export class UIState {
     @ignore
     public importGameStatus: IStatus | undefined;
 
-    @ignore
     public packetFilename: string | undefined;
 
     @ignore
