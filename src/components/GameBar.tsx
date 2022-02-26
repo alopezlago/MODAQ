@@ -63,31 +63,33 @@ export const GameBar = observer(
 
         const openHelpHandler = React.useCallback(() => appState.uiState.dialogState.showHelpDialog(), [appState]);
 
-        const items: ICommandBarItemProps[] = [
-            {
-                key: "newGame",
-                text: "New game",
-                iconProps: { iconName: "Add" },
-                split: true,
-                subMenuProps: {
-                    items: [
-                        {
-                            key: "newGameSubMenuItem",
-                            text: "New game...",
-                            iconProps: { iconName: "Add" },
-                            onClick: newGameHandler,
-                        },
-                        {
-                            key: "importGame",
-                            text: "Import game...",
-                            iconProps: { iconName: "Download" },
-                            onClick: importGameHandler,
-                        },
-                    ],
-                },
-                onClick: newGameHandler,
-            },
-        ];
+        const items: ICommandBarItemProps[] = appState.uiState.hideNewGame
+            ? []
+            : [
+                  {
+                      key: "newGame",
+                      text: "New game",
+                      iconProps: { iconName: "Add" },
+                      split: true,
+                      subMenuProps: {
+                          items: [
+                              {
+                                  key: "newGameSubMenuItem",
+                                  text: "New game...",
+                                  iconProps: { iconName: "Add" },
+                                  onClick: newGameHandler,
+                              },
+                              {
+                                  key: "importGame",
+                                  text: "Import game...",
+                                  iconProps: { iconName: "Download" },
+                                  onClick: importGameHandler,
+                              },
+                          ],
+                      },
+                      onClick: newGameHandler,
+                  },
+              ];
 
         const optionsSubMenuItems: ICommandBarItemProps[] = getOptionsSubMenuItems(appState);
         items.push({

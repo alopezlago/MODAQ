@@ -74,11 +74,10 @@ export const ModaqControl = (props: IModaqControlProps): JSX.Element => {
 // of game state/QBJ file?)
 export interface IModaqControlProps {
     buildVersion?: string;
-    googleClientId?: string;
-    yappServiceUrl?: string;
-
-    gameFormat?: IGameFormat;
     customExport?: ICustomExport;
+    gameFormat?: IGameFormat;
+    googleClientId?: string;
+    hideNewGame?: boolean;
 
     // This should only be set once
     packet?: IPacket;
@@ -91,6 +90,8 @@ export interface IModaqControlProps {
 
     // This can only be set on the first render
     storeName?: string | undefined;
+
+    yappServiceUrl?: string;
 }
 
 function initializeControl(appState: AppState, props: IModaqControlProps): () => void {
@@ -158,6 +159,10 @@ function update(appState: AppState, props: IModaqControlProps): void {
         } else {
             appState.uiState.setCustomExport(props.customExport);
         }
+    }
+
+    if (props.hideNewGame !== appState.uiState.hideNewGame) {
+        appState.uiState.setHideNewGame(props.hideNewGame == true);
     }
 }
 

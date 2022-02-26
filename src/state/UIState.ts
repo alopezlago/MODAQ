@@ -43,6 +43,9 @@ export class UIState {
     public customExport: ICustomExport | undefined;
 
     @ignore
+    public hideNewGame: boolean;
+
+    @ignore
     public importGameStatus: IStatus | undefined;
 
     public packetFilename: string | undefined;
@@ -90,6 +93,7 @@ export class UIState {
             visible: false,
         };
         this.customExport = undefined;
+        this.hideNewGame = false;
 
         this.isEventLogHidden = false;
         this.importGameStatus = undefined;
@@ -302,6 +306,10 @@ export class UIState {
 
     public setCustomExport(customExport: ICustomExport): void {
         this.customExport = customExport;
+    }
+
+    public setHideNewGame(value: boolean): void {
+        this.hideNewGame = value;
     }
 
     public setImportGameStatus(status: IStatus): void {
