@@ -1,6 +1,6 @@
 {
     "name": "modaq",
-    "version": "1.5.1",
+    "version": "1.6.0",
     "description": "Quiz Bowl Reader using TypeScript, React, and MobX",
     "repository": {
         "type": "git",
@@ -30,8 +30,8 @@
         "chai": "^4.3.0",
         "eslint": "^7.22.0",
         "eslint-config-prettier": "^8.1.0",
-        "eslint-plugin-react": "^7.22.0",
-        "eslint-plugin-react-hooks": "^4.2.0",
+        "eslint-plugin-react": "^7.29.4",
+        "eslint-plugin-react-hooks": "^4.3.0",
         "fork-ts-checker-webpack-plugin": "^6.1.1",
         "html-webpack-plugin": "^5.3.1",
         "mocha": "^8.3.0",
