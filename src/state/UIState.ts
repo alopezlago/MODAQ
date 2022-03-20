@@ -71,7 +71,10 @@ export class UIState {
     @ignore
     public pendingTossupProtestEvent?: ITossupProtestEvent;
 
-    // Default should be to show the event log, and this setting didn't exist before, so use hide instead of show
+    // Default should be to show the clock. This setting didn't exist before, so use hide instead of show
+    public isClockHidden: boolean;
+
+    // Default should be to show the event log. This setting didn't exist before, so use hide instead of show
     public isEventLogHidden: boolean;
 
     public questionFontSize: number;
@@ -95,6 +98,7 @@ export class UIState {
         this.customExport = undefined;
         this.hideNewGame = false;
 
+        this.isClockHidden = false;
         this.isEventLogHidden = false;
         this.importGameStatus = undefined;
         this.packetFilename = undefined;
@@ -362,6 +366,10 @@ export class UIState {
 
     public setYappServiceUrl(url: string | undefined): void {
         this.yappServiceUrl = url;
+    }
+
+    public toggleClockVisibility(): void {
+        this.isClockHidden = !this.isClockHidden;
     }
 
     public toggleEventLogVisibility(): void {

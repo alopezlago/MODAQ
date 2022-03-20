@@ -274,6 +274,13 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
 function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
     return [
         {
+            key: "showClock",
+            text: "Clock",
+            canCheck: true,
+            checked: !appState.uiState.isClockHidden,
+            onClick: () => appState.uiState.toggleClockVisibility(),
+        },
+        {
             key: "showEventLog",
             text: "Event Log",
             canCheck: true,
