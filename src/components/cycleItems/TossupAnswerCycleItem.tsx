@@ -7,7 +7,7 @@ import { CycleItem } from "./CycleItem";
 import { GameState } from "src/state/GameState";
 
 export const TossupAnswerCycleItem = observer(
-    (props: ITossupAnswerCycleItemProps): JSX.Element => {
+    function TossupAnswerCycleItem(props: ITossupAnswerCycleItemProps): JSX.Element  {
         const deleteHandler = () => {
             if (props.buzz.marker.points > 0) {
                 props.cycle.removeCorrectBuzz();

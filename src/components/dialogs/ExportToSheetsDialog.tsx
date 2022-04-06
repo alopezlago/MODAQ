@@ -84,7 +84,7 @@ const settingsStackTokens: Partial<IStackTokens> = { childrenGap: 10 };
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const ExportToSheetsDialog = observer(
-    (): JSX.Element => {
+    function ExportToSheetsDialog(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const uiState: UIState = appState.uiState;
         const cancelHandler = React.useCallback(() => onClose(appState), [appState]);
@@ -140,7 +140,7 @@ export const ExportToSheetsDialog = observer(
 );
 
 const ExportSettingsDialogBody = observer(
-    (): JSX.Element => {
+    function ExportSettingsDialogBody(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const uiState: UIState = appState.uiState;
 

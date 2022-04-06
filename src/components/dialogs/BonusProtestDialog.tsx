@@ -9,7 +9,7 @@ import { Bonus } from "src/state/PacketState";
 import { AppState } from "src/state/AppState";
 
 export const BonusProtestDialog = observer(
-    (props: IBonusProtestDialogProps): JSX.Element => {
+    function BonusProtestDialog(props: IBonusProtestDialogProps): JSX.Element  {
         const partChangeHandler = React.useCallback(
             (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
                 if (option?.text != undefined) {

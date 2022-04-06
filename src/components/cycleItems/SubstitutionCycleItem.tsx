@@ -6,7 +6,7 @@ import { ISubstitutionEvent } from "src/state/Events";
 import { CycleItem } from "./CycleItem";
 
 export const SubstitutionCycleItem = observer(
-    (props: ISubstitutionCycleItemProps): JSX.Element => {
+    function SubstitutionCycleItem(props: ISubstitutionCycleItemProps): JSX.Element  {
         const deleteHandler = () => {
             props.cycle.removeSubstitution(props.sub);
         };

@@ -45,7 +45,7 @@ const modalProps: IModalProps = {
 };
 
 export const HelpDialog = observer(
-    (): JSX.Element => {
+    function HelpDialog(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
 
@@ -67,7 +67,7 @@ export const HelpDialog = observer(
 );
 
 const HelpDialogBody = observer(
-    (): JSX.Element => {
+    function HelpDialogBody(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const version: string | undefined = appState.uiState.buildVersion && `Version: ${appState.uiState.buildVersion}`;
 

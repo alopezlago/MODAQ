@@ -32,7 +32,7 @@ const modalProps: IModalProps = {
 };
 
 export const MessageDialog = observer(
-    (): JSX.Element => {
+    function MessageDialog(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
 

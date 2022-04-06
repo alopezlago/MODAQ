@@ -18,7 +18,7 @@ const throwOutQuestionPrompt: ICancelButtonPrompt = {
     message: "Click OK to throw out the bonus. To undo this, click on the X next to its event in the Event Log.",
 };
 
-export const BonusQuestion = observer((props: IBonusQuestionProps) => {
+export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuestionProps)  {
     const classes: IBonusQuestionClassNames = getClassNames(!props.inPlay);
     const throwOutClickHandler: () => void = React.useCallback(() => {
         props.cycle.addThrownOutBonus(props.bonusIndex);

@@ -48,7 +48,7 @@ const modalProps: IModalProps = {
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const AddQuestionsDialog = observer(
-    (): JSX.Element => {
+    function AddQuestionsDialog(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const submitHandler = React.useCallback(() => onSubmit(appState), [appState]);
         const cancelHandler = React.useCallback(() => onCancel(appState), [appState]);
@@ -71,7 +71,7 @@ export const AddQuestionsDialog = observer(
 );
 
 const AddQuestionsDialogBody = observer(
-    (): JSX.Element => {
+    function AddQuestionsDialogBody(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const loadHandler = React.useCallback(
             (packet: PacketState) => appState.uiState.dialogState.addQuestions?.setPacket(packet),

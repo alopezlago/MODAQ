@@ -50,7 +50,7 @@ const modalProps: IModalProps = {
 };
 
 export const ExportToJsonDialog = observer(
-    (): JSX.Element => {
+    function ExportToJsonDialog(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const game: GameState = appState.game;
 

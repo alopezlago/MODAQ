@@ -78,7 +78,7 @@ const modalProps: IModalProps = {
 const rostersInputStyles: Partial<ITextFieldStyles> = { root: { marginRight: 10, width: "75%" } };
 
 export const NewGameDialog = observer(
-    (): JSX.Element => {
+    function NewGameDialog(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const submitHandler = React.useCallback(() => onSubmit(appState), [appState]);
         const cancelHandler = React.useCallback(() => onCancel(appState), [appState]);
@@ -101,7 +101,7 @@ export const NewGameDialog = observer(
 );
 
 const NewGameDialogBody = observer(
-    (): JSX.Element => {
+    function NewGameDialogBody(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const classes: INewGameDialogBodyClassNames = getClassNames();
         const uiState: UIState = appState.uiState;
@@ -193,7 +193,7 @@ const NewGameDialogBody = observer(
 );
 
 const ManualNewGamePivotBody = observer(
-    (props: INewGamePivotItemProps): JSX.Element => {
+    function ManualNewGamePivotBody(props: INewGamePivotItemProps): JSX.Element  {
         const uiState: UIState = props.appState.uiState;
 
         // If we ever support an arbitrary number of teams, turn this into an array, or find a way to identify which
@@ -262,7 +262,7 @@ const ManualNewGamePivotBody = observer(
 );
 
 const FromSheetsNewGameBody = observer(
-    (props: INewGamePivotItemProps): JSX.Element => {
+    function FromSheetsNewGameBody(props: INewGamePivotItemProps): JSX.Element  {
         const uiState: UIState = props.appState.uiState;
 
         const rostersUrlChangeHandler = React.useCallback(

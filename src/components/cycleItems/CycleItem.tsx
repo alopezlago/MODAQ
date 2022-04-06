@@ -6,7 +6,7 @@ import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
 import { CancelButton } from "../CancelButton";
 
 export const CycleItem = observer(
-    (props: ICycleItemProps): JSX.Element => {
+    function CycleItem(props: ICycleItemProps): JSX.Element  {
         const classes: ICycleItemClassNames = getClassNames();
         const deleteButton: JSX.Element | undefined =
             props.onDelete != undefined ? (

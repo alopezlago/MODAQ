@@ -27,7 +27,7 @@ const starterCheckboxStyle: Partial<ICheckboxStyles> = {
     },
 };
 
-export const PlayerEntry = observer((props: IPlayerEntryProps) => {
+export const PlayerEntry = observer(function PlayerEntry(props: IPlayerEntryProps)  {
     const classes: IPlayerEntryClassNames = getClassNames();
 
     const starterChangeHandler = React.useCallback(

@@ -6,7 +6,7 @@ import { IFormattedText } from "src/parser/IFormattedText";
 import { FormattedText } from "./FormattedText";
 
 export const QuestionWord = observer(
-    (props: IQuestionWordProps): JSX.Element => {
+    function QuestionWord(props: IQuestionWordProps): JSX.Element  {
         const classes = getClassNames(props.selected, props.correct, props.wrong, props.index != undefined);
 
         return (

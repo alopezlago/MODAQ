@@ -6,7 +6,7 @@ import { IPlayerLeavesEvent } from "src/state/Events";
 import { CycleItem } from "./CycleItem";
 
 export const PlayerLeavesCycleItem = observer(
-    (props: IPlayerLeavesCycleItemProps): JSX.Element => {
+    function PlayerLeavesCycleItem(props: IPlayerLeavesCycleItemProps): JSX.Element  {
         const deleteHandler = () => {
             props.cycle.removePlayerLeaves(props.leave);
         };

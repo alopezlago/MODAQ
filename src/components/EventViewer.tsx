@@ -12,7 +12,7 @@ import { StateContext } from "src/contexts/StateContext";
 const numberKey = "number";
 const cycleKey = "cycle";
 
-export const EventViewer = observer((): JSX.Element | null => {
+export const EventViewer = observer(function EventViewer(): JSX.Element | null  {
     const appState: AppState = React.useContext(StateContext);
     const classes: IEventViewerClassNames = getClassNames(appState.uiState.isEventLogHidden);
 

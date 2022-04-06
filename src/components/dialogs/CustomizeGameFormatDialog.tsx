@@ -71,7 +71,7 @@ const settingsStackTokens: Partial<IStackTokens> = { childrenGap: 10 };
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const CustomizeGameFormatDialog = observer(
-    (): JSX.Element => {
+    function CustomizeGameFormatDialog(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const submitHandler = React.useCallback(() => CustomizeGameFormatDialogController.submit(appState), [appState]);
         const cancelHandler = React.useCallback(() => CustomizeGameFormatDialogController.cancel(appState), [appState]);
@@ -94,7 +94,7 @@ export const CustomizeGameFormatDialog = observer(
 );
 
 const CustomizeGameFormatDialogBody = observer(
-    (): JSX.Element => {
+    function CustomizeGameFormatDialogBody(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const customizeGameFormatState: CustomizeGameFormatDialogState | undefined =
             appState.uiState.dialogState.customizeGameFormat;
@@ -142,7 +142,7 @@ const CustomizeGameFormatDialogBody = observer(
 );
 
 const GameLengthSettings = observer(
-    (props: ISettingProps): JSX.Element => {
+    function GameLengthSettings(props: ISettingProps): JSX.Element  {
         const { appState, gameFormat } = props;
 
         const regulationTossupCountChangeHandler = React.useCallback(
@@ -187,7 +187,7 @@ const GameLengthSettings = observer(
 );
 
 const ScoringSettings = observer(
-    (props: ISettingProps): JSX.Element => {
+    function ScoringSettings(props: ISettingProps): JSX.Element  {
         const { appState, gameFormat } = props;
 
         const negValueChangeHandler = React.useCallback(
@@ -278,7 +278,7 @@ const ScoringSettings = observer(
 );
 
 const BonusSettings = observer(
-    (props: ISettingProps): JSX.Element => {
+    function BonusSettings(props: ISettingProps): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
 
         const bouncebackChangeHandler = React.useCallback(

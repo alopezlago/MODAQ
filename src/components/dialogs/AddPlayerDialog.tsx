@@ -49,7 +49,7 @@ const modalProps: IModalProps = {
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const AddPlayerDialog = observer(
-    (): JSX.Element => {
+    function AddPlayerDialog(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const submitHandler = React.useCallback(() => AddPlayerDialogController.addPlayer(appState), [appState]);
         const cancelHandler = React.useCallback(() => AddPlayerDialogController.hideDialog(appState), [appState]);
@@ -72,7 +72,7 @@ export const AddPlayerDialog = observer(
 );
 
 const AddPlayerDialogBody = observer(
-    (): JSX.Element => {
+    function AddPlayerDialogBody(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
 
         const teamChangeHandler = React.useCallback(

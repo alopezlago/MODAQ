@@ -1,4 +1,6 @@
 import * as React from "react";
+import { observer } from "mobx-react-lite";
+
 import { IIconProps, mergeStyleSets } from "@fluentui/react";
 import { IconButton } from "@fluentui/react/lib/Button";
 import { StateContext } from "src/contexts/StateContext";
@@ -6,7 +8,7 @@ import { AppState } from "src/state/AppState";
 
 const deleteIconProps: IIconProps = { iconName: "Cancel" };
 
-export const CancelButton = (props: ICancelButtonProps): JSX.Element => {
+export const CancelButton = observer(function CancelButton(props: ICancelButtonProps): JSX.Element {
     const classes = getClassNames();
     const appState: AppState = React.useContext(StateContext);
 
@@ -29,7 +31,7 @@ export const CancelButton = (props: ICancelButtonProps): JSX.Element => {
             onClick={onClick}
         />
     );
-};
+});
 
 export interface ICancelButtonProps {
     disabled?: boolean;

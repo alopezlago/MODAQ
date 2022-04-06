@@ -6,7 +6,7 @@ import { IThrowOutQuestionEvent } from "src/state/Events";
 import { CycleItem } from "./CycleItem";
 
 export const ThrowOutQuestionCycleItem = observer(
-    (props: IThrowOutQuestionCycleItemProps): JSX.Element => {
+    function ThrowOutQuestionCycleItem(props: IThrowOutQuestionCycleItemProps): JSX.Element  {
         const questionType: string = props.isTossup ? "tossup" : "bonus";
         const text = `Threw out ${questionType} #${props.thrownOutEvent.questionIndex + 1}`;
         let deleteHandler: (() => void) | undefined = undefined;

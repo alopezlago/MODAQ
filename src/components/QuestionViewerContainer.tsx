@@ -7,7 +7,7 @@ import { QuestionViewer } from "./QuestionViewer";
 import { AppState } from "src/state/AppState";
 import { StateContext } from "src/contexts/StateContext";
 
-export const QuestionViewerContainer = observer(() => {
+export const QuestionViewerContainer = observer(function QuestionViewerContainer()  {
     const appState: AppState = React.useContext(StateContext);
     const classes: IQuestionViewerContainerClassNames = getClassNames();
 

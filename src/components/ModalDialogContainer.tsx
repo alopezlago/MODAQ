@@ -12,7 +12,7 @@ import { CustomizeGameFormatDialog } from "./dialogs/CustomizeGameFormatDialog";
 import { AddQuestionsDialog } from "./dialogs/AddQuestionsDialog";
 import { MessageDialog } from "./dialogs/MessageDialog";
 
-export const ModalDialogContainer = observer(() => {
+export const ModalDialogContainer = observer(function ModalDialogContainer()  {
     // The Protest dialogs aren't here because they require extra information
 
     return (

@@ -6,7 +6,7 @@ import { ITossupProtestEvent } from "src/state/Events";
 import { CycleItem } from "./CycleItem";
 
 export const TossupProtestCycleItem = observer(
-    (props: ITossupProtestCycleItemProps): JSX.Element => {
+    function TossupProtestCycleItem(props: ITossupProtestCycleItemProps): JSX.Element  {
         const deleteHandler = () => {
             props.cycle.removeTossupProtest(props.protest.teamName);
         };

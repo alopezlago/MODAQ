@@ -5,17 +5,17 @@ import { mergeStyleSets } from "@fluentui/react";
 import { AppState } from "src/state/AppState";
 import { StateContext } from "src/contexts/StateContext";
 
-export const PostQuestionMetadata = observer(
-    (props: IPostQuestionMetadataProps): JSX.Element => {
-        if (!props.metadata) {
-            return <></>;
-        }
-
-        const appState: AppState = React.useContext(StateContext);
-        const classNames: IPostQuestionMetadataClassNames = getClassNames(appState.uiState.questionFontSize);
-        return <div className={classNames.metadata}>{`<${props.metadata}>`}</div>;
+export const PostQuestionMetadata = observer(function PostQuestionMetadata(
+    props: IPostQuestionMetadataProps
+): JSX.Element {
+    const appState: AppState = React.useContext(StateContext);
+    if (!props.metadata) {
+        return <></>;
     }
-);
+
+    const classNames: IPostQuestionMetadataClassNames = getClassNames(appState.uiState.questionFontSize);
+    return <div className={classNames.metadata}>{`<${props.metadata}>`}</div>;
+});
 
 export interface IPostQuestionMetadataProps {
     metadata: string | undefined;
