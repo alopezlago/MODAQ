@@ -5,7 +5,7 @@ import { IBonusAnswerEvent, ITossupAnswerEvent } from "src/state/Events";
 import { CycleItem } from "./CycleItem";
 
 export const BonusAnswerCycleItem = observer(
-    (props: IBonusAnswerCycleItemProps): JSX.Element => {
+    function BonusAnswerCycleItem(props: IBonusAnswerCycleItemProps): JSX.Element  {
         const convertedPartNumbers: number[] = [];
         let convertedPoints = 0;
         const stolenPartNumbers: number[] = [];

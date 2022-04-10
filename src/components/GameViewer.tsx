@@ -12,7 +12,7 @@ import { Clock } from "./Clock";
 
 const scoreboardAndQuestionViewerTokens: IStackTokens = { childrenGap: 20 };
 
-export const GameViewer = observer(() => {
+export const GameViewer = observer(function GameViewer()  {
     const appState: AppState = React.useContext(StateContext);
     const gameExists: boolean = appState.game.isLoaded;
 

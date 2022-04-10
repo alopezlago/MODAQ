@@ -3,7 +3,7 @@ import { observer } from "mobx-react-lite";
 import { Label, DefaultButton, mergeStyleSets } from "@fluentui/react";
 
 export const FilePicker = observer(
-    (props: IPacketLoaderProps): JSX.Element => {
+    function FilePicker(props: IPacketLoaderProps): JSX.Element  {
         const fileInput: React.MutableRefObject<HTMLInputElement | null> = React.useRef<HTMLInputElement | null>(null);
         const changeHandler = React.useCallback(
             (event: React.ChangeEvent<HTMLInputElement>) => {

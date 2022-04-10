@@ -23,7 +23,7 @@ import { BonusProtestCycleItem } from "./BonusProtestCycleItem";
 import { GameState } from "src/state/GameState";
 
 export const CycleItemList = observer(
-    (props: ICycleItemListProps): JSX.Element => {
+    function CycleItemList(props: ICycleItemListProps): JSX.Element  {
         return <div>{createCycleList(props.cycle, props.game)}</div>;
     }
 );

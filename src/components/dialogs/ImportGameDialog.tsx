@@ -59,7 +59,7 @@ const modalProps: IModalProps = {
 const stackTokens: IStackTokens = { childrenGap: 10 };
 
 export const ImportGameDialog = observer(
-    (): JSX.Element => {
+    function ImportGameDialog(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const cancelHandler = React.useCallback(() => hideDialog(appState), [appState]);
         const submitHandler = React.useCallback(() => onSubmit(appState), [appState]);
@@ -82,7 +82,7 @@ export const ImportGameDialog = observer(
 );
 
 const ImportGameDialogBody = observer(
-    (): JSX.Element => {
+    function ImportGameDialogBody(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const loadHandler = React.useCallback(
             (ev: ProgressEvent<FileReader>): void => {

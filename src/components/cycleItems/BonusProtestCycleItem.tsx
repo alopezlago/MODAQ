@@ -6,7 +6,7 @@ import { IBonusProtestEvent } from "src/state/Events";
 import { CycleItem } from "./CycleItem";
 
 export const BonusProtestCycleItem = observer(
-    (props: IBonusProtestCycleItemProps): JSX.Element => {
+    function BonusProtestCycleItem(props: IBonusProtestCycleItemProps): JSX.Element  {
         const deleteHandler = () => {
             props.cycle.removeBonusProtest(props.protest.partIndex);
         };

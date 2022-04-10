@@ -48,6 +48,7 @@ export class Cycle implements ICycle {
         // actions
         makeObservable(this, {
             correctBuzz: observable,
+            firstWrongBuzz: computed,
             wrongBuzzes: observable,
             bonusAnswer: observable,
             playerJoins: observable,

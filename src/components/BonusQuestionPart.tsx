@@ -19,7 +19,7 @@ const bouncebackCorrectnessStyles: Partial<IDropdownStyles> = {
     },
 };
 
-export const BonusQuestionPart = observer((props: IBonusQuestionPartProps) => {
+export const BonusQuestionPart = observer(function BonusQuestionPart(props: IBonusQuestionPartProps)  {
     const classes: IBonusQuestionPartClassNames = getClassNames(props.disabled);
     const onCheckboxChangeHandler = React.useCallback((ev, checked) => onCorrectChange(props, ev, checked), [props]);
     const onDropdownChangeHandler = React.useCallback((ev, option) => onTeamAnswerChange(props, ev, option), [props]);

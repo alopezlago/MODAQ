@@ -46,7 +46,7 @@ const minimumFontSize = 12;
 const maximumFontSize = 40;
 
 export const FontDialog = observer(
-    (): JSX.Element => {
+    function FontDialog(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
         const submitHandler = React.useCallback(() => updateFont(appState), [appState]);
@@ -70,7 +70,7 @@ export const FontDialog = observer(
 );
 
 const FontDialogBody = observer(
-    (): JSX.Element => {
+    function FontDialogBody(): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const changeHandler = React.useCallback(
             (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) => {

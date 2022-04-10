@@ -20,7 +20,7 @@ import { StateContext } from "src/contexts/StateContext";
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
 export const GameBar = observer(
-    (): JSX.Element => {
+    function GameBar(): JSX.Element  {
         // This should pop up the new game handler
         const appState: AppState = React.useContext(StateContext);
         const uiState: UIState = appState.uiState;

@@ -3,6 +3,7 @@ import { Dialog, DialogFooter, IDialogContentProps, DialogType } from "@fluentui
 import { IModalProps } from "@fluentui/react/lib/Modal";
 import { ContextualMenu } from "@fluentui/react/lib/ContextualMenu";
 import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
+import { observer } from "mobx-react-lite";
 
 import { TextField } from "@fluentui/react/lib/TextField";
 import { AppState } from "src/state/AppState";
@@ -29,7 +30,9 @@ const modalProps: IModalProps = {
     topOffsetFixed: true,
 };
 
-export const ProtestDialogBase = (props: React.PropsWithChildren<IProtestDialogBaseProps>): JSX.Element => {
+export const ProtestDialogBase = observer(function ProtestDialogBase(
+    props: React.PropsWithChildren<IProtestDialogBaseProps>
+): JSX.Element {
     const givenAnswerChangeHandler = React.useCallback(
         (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) =>
             props.appState.uiState.updatePendingProtestGivenAnswer(newValue ?? ""),
@@ -65,7 +68,7 @@ export const ProtestDialogBase = (props: React.PropsWithChildren<IProtestDialogB
             </DialogFooter>
         </Dialog>
     );
-};
+});
 
 function onSubmit(props: IProtestDialogBaseProps): void {
     props.onSubmit();

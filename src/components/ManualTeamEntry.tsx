@@ -28,7 +28,7 @@ const addPlayerButtonStyle: Partial<IButtonStyles> = {
 
 // I looked into using a DetailsList instead of a List, so we could get rid of the Starter label on each checkbox, but
 // the column label is usually cut off, defeating the purpose
-export const ManualTeamEntry = observer((props: IManualTeamEntryProps) => {
+export const ManualTeamEntry = observer(function ManualTeamEntry(props: IManualTeamEntryProps)  {
     const classes: ITeamEntryClassNames = getClassNames(props.playerListHeight);
 
     const nameChangeHandler = React.useCallback(

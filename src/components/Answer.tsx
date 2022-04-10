@@ -8,7 +8,7 @@ import { StateContext } from "src/contexts/StateContext";
 import { AppState } from "src/state/AppState";
 
 export const Answer = observer(
-    (props: IAnswerProps): JSX.Element => {
+    function Answer(props: IAnswerProps): JSX.Element  {
         const appState: AppState = React.useContext(StateContext);
         const formattedText: IFormattedText[] = FormattedTextParser.parseFormattedText(
             props.text.trimLeft(),

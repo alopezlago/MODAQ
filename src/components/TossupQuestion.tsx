@@ -21,7 +21,7 @@ const throwOutQuestionPrompt: ICancelButtonPrompt = {
 };
 
 export const TossupQuestion = observer(
-    (props: IQuestionProps): JSX.Element => {
+    function TossupQuestion(props: IQuestionProps): JSX.Element  {
         const classes: ITossupQuestionClassNames = getClassNames();
 
         const selectedWordRef: React.MutableRefObject<null> = React.useRef(null);
@@ -89,7 +89,7 @@ export const TossupQuestion = observer(
 );
 
 // We need to use a wrapper component so we can give it a key. Otherwise, React will complain
-const QuestionWordWrapper = observer((props: IQuestionWordWrapperProps) => {
+const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuestionWordWrapperProps)  {
     const uiState: UIState = props.appState.uiState;
     const selected: boolean = props.index === uiState.selectedWordIndex;
 

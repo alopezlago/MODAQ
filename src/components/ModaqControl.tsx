@@ -14,6 +14,7 @@ import {
 } from "@fluentui/react";
 import { AsyncTrunk } from "mobx-sync";
 import { configure } from "mobx";
+import { observer } from "mobx-react-lite";
 
 import * as PacketLoaderController from "src/components/PacketLoaderController";
 import { StateProvider } from "src/contexts/StateContext";
@@ -26,7 +27,7 @@ import { IPlayer, Player } from "src/state/TeamState";
 import { PacketState } from "src/state/PacketState";
 import { ICustomExport } from "src/state/CustomExport";
 
-export const ModaqControl = (props: IModaqControlProps): JSX.Element => {
+export const ModaqControl = observer(function ModaqControl(props: IModaqControlProps): JSX.Element {
     const [appState]: [AppState, React.Dispatch<React.SetStateAction<AppState>>] = React.useState(new AppState());
 
     // We only want to run this effect once, which requires passing in an empty array of dependencies
@@ -67,7 +68,7 @@ export const ModaqControl = (props: IModaqControlProps): JSX.Element => {
             </StateProvider>
         </ErrorBoundary>
     );
-};
+});
 
 // We can't use observables here since the user could pass in different instances of IModaqControlProps
 // TODO: Should take a callback and settings for export (which ones are enabled, any new export options with a callback
@@ -174,7 +175,6 @@ interface IErrorBoundaryState {
     error: Error | string | undefined;
     showClearPrompt: boolean;
 }
-
 class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryState> {
     private static readonly dialogContent: IDialogContentProps = {
         type: DialogType.normal,

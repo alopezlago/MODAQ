@@ -5,7 +5,7 @@ import { observer } from "mobx-react-lite";
 import { AppState } from "src/state/AppState";
 import { StateContext } from "src/contexts/StateContext";
 
-export const Scoreboard = observer(() => {
+export const Scoreboard = observer(function Scoreboard()  {
     const appState: AppState = React.useContext(StateContext);
     const classes: IScoreboardStyle = getClassNames();
 
@@ -30,7 +30,7 @@ export const Scoreboard = observer(() => {
     );
 });
 
-const ProtestIndicator = observer(() => {
+const ProtestIndicator = observer(function ProtestIndicator()  {
     const appState: AppState = React.useContext(StateContext);
 
     return appState.game.protestsMatter ? (

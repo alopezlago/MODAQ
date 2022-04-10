@@ -5,7 +5,7 @@ import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
 import { IFormattedText } from "src/parser/IFormattedText";
 
 export const FormattedText = observer(
-    (props: IFormattedTextProps): JSX.Element => {
+    function FormattedText(props: IFormattedTextProps): JSX.Element  {
         const classes: IFormattedTextClassNames = useStyles();
         const elements: JSX.Element[] = [];
         for (let i = 0; i < props.segments.length; i++) {
@@ -17,7 +17,7 @@ export const FormattedText = observer(
     }
 );
 
-const FormattedSegment = observer((props: IFormattedSegmentProps) => {
+const FormattedSegment = observer(function FormattedSegment(props: IFormattedSegmentProps)  {
     // I used inline styles with divs for each individual element, but that messes up kerning when punctuation
     // following the text has a different format. Basic formatting tags (<b>, <u>, <i>) will keep them together.
     let element: JSX.Element = <>{props.segment.text}</>;

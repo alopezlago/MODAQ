@@ -8,7 +8,7 @@ import { ITossupProtestEvent } from "src/state/Events";
 import { AppState } from "src/state/AppState";
 
 export const TossupProtestDialog = observer(
-    (props: ITossupProtestDialogProps): JSX.Element => {
+    function TossupProtestDialog(props: ITossupProtestDialogProps): JSX.Element  {
         const uiState: UIState = props.appState.uiState;
         const submitHandler = React.useCallback(() => onSubmit(props), [props]);
         const hideHandler = React.useCallback(() => uiState.resetPendingTossupProtest(), [uiState]);

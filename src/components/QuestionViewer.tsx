@@ -16,7 +16,7 @@ const separatorStyles: Partial<ISeparatorStyles> = {
     },
 };
 
-export const QuestionViewer = observer(() => {
+export const QuestionViewer = observer(function QuestionViewer()  {
     const appState: AppState = React.useContext(StateContext);
     const fontSize: number = appState.uiState.questionFontSize;
     const classes: IQuestionViewerClassNames = getClassNames(fontSize);

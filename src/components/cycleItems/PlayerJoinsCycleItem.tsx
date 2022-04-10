@@ -6,7 +6,7 @@ import { IPlayerJoinsEvent } from "src/state/Events";
 import { CycleItem } from "./CycleItem";
 
 export const PlayerJoinsCycleItem = observer(
-    (props: IPlayerJoinsCycleItemProps): JSX.Element => {
+    function PlayerJoinsCycleItem(props: IPlayerJoinsCycleItemProps): JSX.Element  {
         const deleteHandler = () => {
             props.cycle.removePlayerJoins(props.join);
         };

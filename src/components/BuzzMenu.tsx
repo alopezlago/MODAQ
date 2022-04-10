@@ -19,7 +19,7 @@ import { IBuzzMarker } from "src/state/IBuzzMarker";
 import { AppState } from "src/state/AppState";
 import { ITossupAnswerEvent } from "src/state/Events";
 
-export const BuzzMenu = observer((props: IBuzzMenuProps) => {
+export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps)  {
     const onHideBuzzMenu: () => void = React.useCallback(() => onBuzzMenuDismissed(props), [props]);
 
     const teamNames: string[] = props.appState.game.teamNames;

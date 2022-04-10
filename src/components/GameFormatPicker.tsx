@@ -18,7 +18,7 @@ const bouncebackWarningStyles: Partial<ITextStyles> = {
     },
 };
 
-export const GameFormatPicker = observer((props: IGameFormatPickerProps) => {
+export const GameFormatPicker = observer(function GameFormatPicker(props: IGameFormatPickerProps)  {
     const changeHandler = React.useCallback(
         (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
             if (option?.data != undefined) {

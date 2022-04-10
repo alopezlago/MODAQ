@@ -36,7 +36,7 @@ const nextButtonStyle: Partial<IButtonStyles> = {
     },
 };
 
-export const CycleChooser = observer(() => {
+export const CycleChooser = observer(function CycleChooser()  {
     const appState: AppState = React.useContext(StateContext);
     const onPreviousClickHandler = React.useCallback(() => onPreviousClick(appState), [appState]);
     const onNextClickHandler = React.useCallback(() => onNextClick(appState), [appState]);

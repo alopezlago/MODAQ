@@ -9,7 +9,7 @@ import { AppState } from "src/state/AppState";
 import { FilePicker } from "./FilePicker";
 import { IPacket } from "src/state/IPacket";
 
-export const PacketLoader = observer((props: IPacketLoaderProps): JSX.Element | null => {
+export const PacketLoader = observer(function PacketLoader(props: IPacketLoaderProps): JSX.Element | null  {
     const onLoadHandler = React.useCallback((ev: ProgressEvent<FileReader>) => onLoad(ev, props), [props]);
     const uploadHandler = React.useCallback(
         (event: React.ChangeEvent<HTMLInputElement>, files: FileList | undefined | null) => {
