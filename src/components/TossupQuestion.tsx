@@ -1,6 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { mergeStyleSets } from "@fluentui/react";
+import { FocusZone, FocusZoneDirection, mergeStyleSets } from "@fluentui/react";
 
 import * as TossupQuestionController from "./TossupQuestionController";
 import { UIState } from "src/state/UIState";
@@ -20,76 +20,72 @@ const throwOutQuestionPrompt: ICancelButtonPrompt = {
     message: "Click OK to throw out the tossup. To undo this, click on the X next to its event in the Event Log.",
 };
 
-export const TossupQuestion = observer(
-    function TossupQuestion(props: IQuestionProps): JSX.Element  {
-        const classes: ITossupQuestionClassNames = getClassNames();
+export const TossupQuestion = observer(function TossupQuestion(props: IQuestionProps): JSX.Element {
+    const classes: ITossupQuestionClassNames = getClassNames();
 
-        const selectedWordRef: React.MutableRefObject<null> = React.useRef(null);
+    const selectedWordRef: React.MutableRefObject<null> = React.useRef(null);
 
-        const correctBuzzIndex: number = props.cycle.correctBuzz?.marker.position ?? -1;
-        const wrongBuzzIndexes: number[] = (props.cycle.wrongBuzzes ?? [])
-            .filter((buzz) => buzz.tossupIndex === props.tossupNumber - 1)
-            .map((buzz) => buzz.marker.position);
+    const correctBuzzIndex: number = props.cycle.correctBuzz?.marker.position ?? -1;
+    const wrongBuzzIndexes: number[] = (props.cycle.wrongBuzzes ?? [])
+        .filter((buzz) => buzz.tossupIndex === props.tossupNumber - 1)
+        .map((buzz) => buzz.marker.position);
 
-        const words: ITossupWord[] = props.tossup.getWords(props.appState.game.gameFormat);
+    const words: ITossupWord[] = props.tossup.getWords(props.appState.game.gameFormat);
 
-        const questionWords: JSX.Element[] = words.map((word) => (
-            <QuestionWordWrapper
-                key={word.canBuzzOn ? `qw_${word.wordIndex}` : `nqw_${word.nonWordIndex}`}
-                correctBuzzIndex={correctBuzzIndex}
-                index={word.canBuzzOn ? word.wordIndex : undefined}
-                isLastWord={word.canBuzzOn && word.isLastWord}
-                selectedWordRef={selectedWordRef}
-                word={word.word}
-                wrongBuzzIndexes={wrongBuzzIndexes}
-                {...props}
-            />
-        ));
+    const questionWords: JSX.Element[] = words.map((word) => (
+        <QuestionWordWrapper
+            key={word.canBuzzOn ? `qw_${word.wordIndex}` : `nqw_${word.nonWordIndex}`}
+            correctBuzzIndex={correctBuzzIndex}
+            index={word.canBuzzOn ? word.wordIndex : undefined}
+            isLastWord={word.canBuzzOn && word.isLastWord}
+            selectedWordRef={selectedWordRef}
+            word={word.word}
+            wrongBuzzIndexes={wrongBuzzIndexes}
+            {...props}
+        />
+    ));
 
-        const wordClickHandler: React.MouseEventHandler = React.useCallback(
-            (event: React.MouseEvent<HTMLDivElement>): void => {
-                TossupQuestionController.selectWordFromClick(props.appState, event);
-            },
-            [props]
-        );
-        const throwOutClickHandler: () => void = React.useCallback(() => {
-            TossupQuestionController.throwOutTossup(props.appState, props.cycle, props.tossupNumber);
-        }, [props]);
+    const wordClickHandler: React.MouseEventHandler = React.useCallback(
+        (event: React.MouseEvent<HTMLDivElement>): void => {
+            TossupQuestionController.selectWordFromClick(props.appState, event);
+        },
+        [props]
+    );
+    const throwOutClickHandler: () => void = React.useCallback(() => {
+        TossupQuestionController.throwOutTossup(props.appState, props.cycle, props.tossupNumber);
+    }, [props]);
 
-        const containerKeyDownHandler: React.KeyboardEventHandler<HTMLDivElement> = React.useCallback(
-            (event: React.KeyboardEvent<HTMLDivElement>) => onKeyDown(event, props.appState),
-            [props]
-        );
-
-        // Need tossuptext/answer in one container, X in the other
-        return (
-            <div className={classes.tossupContainer}>
-                <TossupProtestDialog appState={props.appState} cycle={props.cycle} />
-                <div className={classes.tossupText} tabIndex={0} onKeyDown={containerKeyDownHandler}>
-                    <div
-                        className={classes.tossupQuestionText}
-                        onClick={wordClickHandler}
-                        onDoubleClick={wordClickHandler}
-                    >
-                        {questionWords}
-                    </div>
-                    <Answer text={props.tossup.answer} />
-                    <PostQuestionMetadata metadata={props.tossup.metadata} />
-                </div>
-                <div>
-                    <CancelButton
-                        prompt={throwOutQuestionPrompt}
-                        tooltip="Throw out tossup"
-                        onClick={throwOutClickHandler}
-                    />
-                </div>
+    // Need tossuptext/answer in one container, X in the other
+    return (
+        <div className={classes.tossupContainer}>
+            <TossupProtestDialog appState={props.appState} cycle={props.cycle} />
+            <div className={classes.tossupText}>
+                <FocusZone
+                    as="div"
+                    className={classes.tossupQuestionText}
+                    shouldRaiseClicks={true}
+                    direction={FocusZoneDirection.bidirectional}
+                    onClick={wordClickHandler}
+                    onDoubleClick={wordClickHandler}
+                >
+                    {questionWords}
+                </FocusZone>
+                <Answer text={props.tossup.answer} />
+                <PostQuestionMetadata metadata={props.tossup.metadata} />
             </div>
-        );
-    }
-);
+            <div>
+                <CancelButton
+                    prompt={throwOutQuestionPrompt}
+                    tooltip="Throw out tossup"
+                    onClick={throwOutClickHandler}
+                />
+            </div>
+        </div>
+    );
+});
 
 // We need to use a wrapper component so we can give it a key. Otherwise, React will complain
-const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuestionWordWrapperProps)  {
+const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuestionWordWrapperProps) {
     const uiState: UIState = props.appState.uiState;
     const selected: boolean = props.index === uiState.selectedWordIndex;
 
@@ -122,38 +118,6 @@ const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuesti
         </>
     );
 });
-
-function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>, appState: AppState): void {
-    switch (event.key) {
-        case "ArrowLeft":
-            const previousWordIndex: number = Math.max(0, appState.uiState.selectedWordIndex - 1);
-            appState.uiState.setSelectedWordIndex(previousWordIndex);
-            event.preventDefault();
-            event.stopPropagation();
-            return;
-        case "ArrowRight":
-            const tossup: Tossup | undefined = appState.game.getTossup(appState.uiState.cycleIndex);
-            const nextWordIndex: number = Math.min(
-                appState.uiState.selectedWordIndex + 1,
-                tossup == undefined ? 0 : tossup.getWords(appState.game.gameFormat).length - 1
-            );
-            appState.uiState.setSelectedWordIndex(nextWordIndex);
-            event.preventDefault();
-            event.stopPropagation();
-            return;
-        case " ":
-            if (appState.uiState.selectedWordIndex < 0) {
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-
-            TossupQuestionController.selectWordFromKeyboardEvent(appState, event);
-            return;
-        default:
-            break;
-    }
-}
 
 export interface IQuestionProps {
     appState: AppState;

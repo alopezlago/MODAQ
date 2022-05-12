@@ -6,7 +6,7 @@ import { GameState } from "src/state/GameState";
 import { TossupQuestion } from "./TossupQuestion";
 import { BonusQuestion } from "./BonusQuestion";
 import { Cycle } from "src/state/Cycle";
-import { ISeparatorStyles, mergeStyleSets, Separator } from "@fluentui/react";
+import { ISeparatorStyles, mergeStyleSets, Separator, Stack, StackItem } from "@fluentui/react";
 import { AppState } from "src/state/AppState";
 import { StateContext } from "src/contexts/StateContext";
 
@@ -16,7 +16,7 @@ const separatorStyles: Partial<ISeparatorStyles> = {
     },
 };
 
-export const QuestionViewer = observer(function QuestionViewer()  {
+export const QuestionViewer = observer(function QuestionViewer() {
     const appState: AppState = React.useContext(StateContext);
     const fontSize: number = appState.uiState.questionFontSize;
     const classes: IQuestionViewerClassNames = getClassNames(fontSize);
@@ -80,9 +80,13 @@ export const QuestionViewer = observer(function QuestionViewer()  {
 
     return (
         <div className={classes.questionViewer}>
-            {tossup}
-            <Separator styles={separatorStyles} />
-            {bonus}
+            <Stack>
+                <StackItem>{tossup}</StackItem>
+                <StackItem>
+                    <Separator styles={separatorStyles} />
+                </StackItem>
+                <StackItem>{bonus}</StackItem>
+            </Stack>
         </div>
     );
 });

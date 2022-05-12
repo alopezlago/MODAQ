@@ -175,6 +175,7 @@ interface IErrorBoundaryState {
     error: Error | string | undefined;
     showClearPrompt: boolean;
 }
+
 class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryState> {
     private static readonly dialogContent: IDialogContentProps = {
         type: DialogType.normal,
