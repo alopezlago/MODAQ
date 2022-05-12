@@ -5,17 +5,15 @@ import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
 import { IFormattedText } from "src/parser/IFormattedText";
 import { FormattedText } from "./FormattedText";
 
-export const QuestionWord = observer(
-    function QuestionWord(props: IQuestionWordProps): JSX.Element  {
-        const classes = getClassNames(props.selected, props.correct, props.wrong, props.index != undefined);
+export const QuestionWord = observer(function QuestionWord(props: IQuestionWordProps): JSX.Element {
+    const classes = getClassNames(props.selected, props.correct, props.wrong, props.index != undefined);
 
-        return (
-            <span ref={props.componentRef} data-index={props.index} className={classes.word}>
-                <FormattedText segments={props.word} />
-            </span>
-        );
-    }
-);
+    return (
+        <span ref={props.componentRef} data-index={props.index} data-is-focusable="true" className={classes.word}>
+            <FormattedText segments={props.word} />
+        </span>
+    );
+});
 
 interface IQuestionWordProps {
     word: IFormattedText[];

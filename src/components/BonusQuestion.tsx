@@ -1,6 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { mergeStyleSets } from "@fluentui/react";
+import { FocusZone, FocusZoneDirection, mergeStyleSets, Stack, StackItem } from "@fluentui/react";
 
 import * as PacketState from "../state/PacketState";
 import { BonusQuestionPart } from "./BonusQuestionPart";
@@ -18,7 +18,7 @@ const throwOutQuestionPrompt: ICancelButtonPrompt = {
     message: "Click OK to throw out the bonus. To undo this, click on the X next to its event in the Event Log.",
 };
 
-export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuestionProps)  {
+export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuestionProps) {
     const classes: IBonusQuestionClassNames = getClassNames(!props.inPlay);
     const throwOutClickHandler: () => void = React.useCallback(() => {
         props.cycle.addThrownOutBonus(props.bonusIndex);
@@ -42,24 +42,35 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
         );
     });
 
+    const metadata: JSX.Element | undefined = props.bonus.metadata ? (
+        <div className={classes.bonusMetadata}>
+            <PostQuestionMetadata metadata={props.bonus.metadata} />
+        </div>
+    ) : undefined;
+
     return (
         <div className={classes.bonusContainer}>
             <BonusProtestDialog appState={props.appState} bonus={props.bonus} cycle={props.cycle} />
-            <div className={classes.bonusText}>
-                <FormattedText className={classes.bonusLeadin} segments={formattedLeadin} />
-                {parts}
-                <div className={classes.bonusMetadata}>
-                    <PostQuestionMetadata metadata={props.bonus.metadata} />
-                </div>
-            </div>
-            <div>
-                <CancelButton
-                    disabled={!props.inPlay}
-                    prompt={throwOutQuestionPrompt}
-                    tooltip="Throw out bonus"
-                    onClick={throwOutClickHandler}
-                />
-            </div>
+            <Stack horizontal={true}>
+                <StackItem className={classes.bonusText}>
+                    <FocusZone as="div" shouldRaiseClicks={true} direction={FocusZoneDirection.vertical}>
+                        <FormattedText className={classes.bonusLeadin} segments={formattedLeadin} />
+                        {parts}
+                        {metadata}
+                    </FocusZone>
+                </StackItem>
+                <StackItem>
+                    <div className={classes.bonusText}></div>
+                </StackItem>
+                <StackItem>
+                    <CancelButton
+                        disabled={!props.inPlay}
+                        prompt={throwOutQuestionPrompt}
+                        tooltip="Throw out bonus"
+                        onClick={throwOutClickHandler}
+                    />
+                </StackItem>
+            </Stack>
         </div>
     );
 });

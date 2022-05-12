@@ -354,6 +354,7 @@ describe("QBJTests", () => {
                     verifyBuzz(secondCycleBuzzes[0], firstTeamPlayers[2], 0, -5);
 
                     expect(match.match_teams.length).to.equal(2);
+                    expect(match.match_teams[0].match_players.length).to.equal(3);
 
                     const outFirstTeamPlayer: QBJ.IMatchPlayer = match.match_teams[0].match_players[0];
                     expect(outFirstTeamPlayer.player.name).to.equal(firstTeamPlayers[0].name);
@@ -391,6 +392,7 @@ describe("QBJTests", () => {
                     expect(match.match_questions.map((q) => q.question_number)).to.deep.equal([1, 2, 3, 4]);
 
                     expect(match.match_teams.length).to.equal(2);
+                    expect(match.match_teams[0].match_players.length).to.equal(3);
 
                     const outFirstTeamPlayer: QBJ.IMatchPlayer = match.match_teams[0].match_players[0];
                     expect(outFirstTeamPlayer.player.name).to.equal(firstTeamPlayers[0].name);
@@ -428,6 +430,7 @@ describe("QBJTests", () => {
                     expect(match.match_questions.map((q) => q.question_number)).to.deep.equal([1, 2, 3, 4]);
 
                     expect(match.match_teams.length).to.equal(2);
+                    expect(match.match_teams[1].match_players.length).to.equal(2);
 
                     const secondTeam: QBJ.IMatchTeam = match.match_teams[1];
                     const inSecondTeamPlayer: QBJ.IMatchPlayer = secondTeam.match_players[1];
