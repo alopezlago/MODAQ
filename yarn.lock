@@ -232,13 +232,6 @@
   resolved "https://registry.npmjs.org/@leichtgewicht/ip-codec/-/ip-codec-2.0.3.tgz"
   integrity sha512-nkalE/f1RvRGChwBnEIoBfSEYOXnCRdleKuv6+lePbMDrMZXeDQnqak5XDOeBgrPPyPfAdcCu/B5z+v3VhplGg==
 
-"@maxim_mazurok/gapi.client.sheets@latest":
-  version "4.0.20220503"
-  resolved "https://registry.yarnpkg.com/@maxim_mazurok/gapi.client.sheets/-/gapi.client.sheets-4.0.20220503.tgz#0a0e39262bb397c9eee8e405e14d281d23964233"
-  integrity sha512-3ZrUkFsB1C2diWM6Y8KebWBSiDh+bgMe9BbsAEy0GUS4jneOtlz6Hne2lxavYlkMkBwOwNTuMGG5IuoNXa0pMA==
-  dependencies:
-    "@types/gapi.client" "*"
-
 "@microsoft/load-themed-styles@^1.10.26":
   version "1.10.55"
   resolved "https://registry.npmjs.org/@microsoft/load-themed-styles/-/load-themed-styles-1.10.55.tgz"
@@ -438,7 +431,7 @@
   dependencies:
     "@types/react" "*"
 
-"@types/react@17.0.3", "@types/react@^17", "@types/react@^17.0.3":
+"@types/react@*", "@types/react@17.0.3", "@types/react@^17.0.3":
   version "17.0.3"
   resolved "https://registry.yarnpkg.com/@types/react/-/react-17.0.3.tgz#ba6e215368501ac3826951eef2904574c262cc79"
   integrity sha512-wYOUxIgs2HZZ0ACNiIayItyluADNbONl7kt8lkLjVK8IitMH5QMyAh75Fwhmo37r1m7L2JaFj03sIfxBVDvRAg==
@@ -2869,9 +2862,9 @@ jsonfile@^6.0.1:
     object.assign "^4.1.2"
 
 kind-of@^6.0.2:
-  version "6.0.2"
-  resolved "https://registry.npmjs.org/kind-of/-/kind-of-6.0.2.tgz"
-  integrity sha512-s5kLOcnH0XqDO+FvuaLX8DDjZ18CGFk7VygH40QoKPUQhW4e2rvM0rwUq0t8IQDOwYSeLK01U90OjzBTme2QqA==
+  version "6.0.3"
+  resolved "https://registry.yarnpkg.com/kind-of/-/kind-of-6.0.3.tgz#07c05034a6c349fa06e24fa35aa76db4580ce4dd"
+  integrity sha512-dcS1ul+9tmeD95T+x28/ehLgd9mENa3LsvDTtzm3vyBEO7RPptvAD+t44WVXaUjTBRcrpFeFlC8WCruUR456hw==
 
 levn@^0.4.1:
   version "0.4.1"
