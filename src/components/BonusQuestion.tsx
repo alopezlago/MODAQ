@@ -4,13 +4,13 @@ import { FocusZone, FocusZoneDirection, mergeStyleSets, Stack, StackItem } from 
 
 import * as PacketState from "../state/PacketState";
 import { BonusQuestionPart } from "./BonusQuestionPart";
-import { Bonus } from "src/state/PacketState";
-import { Cycle } from "src/state/Cycle";
+import { Bonus } from "../state/PacketState";
+import { Cycle } from "../state/Cycle";
 import { CancelButton, ICancelButtonPrompt } from "./CancelButton";
 import { BonusProtestDialog } from "./dialogs/BonusProtestDialog";
-import { AppState } from "src/state/AppState";
+import { AppState } from "../state/AppState";
 import { FormattedText } from "./FormattedText";
-import { IFormattedText } from "src/parser/IFormattedText";
+import { IFormattedText } from "../parser/IFormattedText";
 import { PostQuestionMetadata } from "./PostQuestionMetadata";
 
 const throwOutQuestionPrompt: ICancelButtonPrompt = {

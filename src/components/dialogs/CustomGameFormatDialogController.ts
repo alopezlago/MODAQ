@@ -1,7 +1,7 @@
-import { AppState } from "src/state/AppState";
-import { CustomizeGameFormatDialogState } from "src/state/CustomizeGameFormatDialogState";
-import { GameState } from "src/state/GameState";
-import { IGameFormat, IPowerMarker } from "src/state/IGameFormat";
+import { AppState } from "../../state/AppState";
+import { CustomizeGameFormatDialogState } from "../../state/CustomizeGameFormatDialogState";
+import { GameState } from "../../state/GameState";
+import { IGameFormat, IPowerMarker } from "../../state/IGameFormat";
 
 const customFormatName = "Custom";
 

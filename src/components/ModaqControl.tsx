@@ -16,16 +16,16 @@ import { AsyncTrunk } from "mobx-sync";
 import { configure } from "mobx";
 import { observer } from "mobx-react-lite";
 
-import * as PacketLoaderController from "src/components/PacketLoaderController";
-import { StateProvider } from "src/contexts/StateContext";
-import { AppState } from "src/state/AppState";
+import * as PacketLoaderController from "./PacketLoaderController";
+import { StateProvider } from "../contexts/StateContext";
+import { AppState } from "../state/AppState";
 import { GameViewer } from "./GameViewer";
 import { ModalDialogContainer } from "./ModalDialogContainer";
-import { IGameFormat } from "src/state/IGameFormat";
-import { IPacket } from "src/state/IPacket";
-import { IPlayer, Player } from "src/state/TeamState";
-import { PacketState } from "src/state/PacketState";
-import { ICustomExport } from "src/state/CustomExport";
+import { IGameFormat } from "../state/IGameFormat";
+import { IPacket } from "../state/IPacket";
+import { IPlayer, Player } from "../state/TeamState";
+import { PacketState } from "../state/PacketState";
+import { ICustomExport } from "../state/CustomExport";
 
 export const ModaqControl = observer(function ModaqControl(props: IModaqControlProps): JSX.Element {
     const [appState]: [AppState, React.Dispatch<React.SetStateAction<AppState>>] = React.useState(new AppState());

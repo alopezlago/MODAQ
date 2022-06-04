@@ -4,10 +4,10 @@ import { DefaultButton, IButtonStyles } from "@fluentui/react/lib/Button";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
 import { useId } from "@fluentui/react-hooks";
 
-import { UIState } from "src/state/UIState";
-import { AppState } from "src/state/AppState";
+import { UIState } from "../state/UIState";
+import { AppState } from "../state/AppState";
 import { ILabelStyles, Label, TooltipHost } from "@fluentui/react";
-import { StateContext } from "src/contexts/StateContext";
+import { StateContext } from "../contexts/StateContext";
 
 const ReturnKeyCode = 13;
 const questionNumberTextStyle: Partial<ITextFieldStyles> = {
@@ -36,7 +36,7 @@ const nextButtonStyle: Partial<IButtonStyles> = {
     },
 };
 
-export const CycleChooser = observer(function CycleChooser()  {
+export const CycleChooser = observer(function CycleChooser() {
     const appState: AppState = React.useContext(StateContext);
     const onPreviousClickHandler = React.useCallback(() => onPreviousClick(appState), [appState]);
     const onNextClickHandler = React.useCallback(() => onNextClick(appState), [appState]);

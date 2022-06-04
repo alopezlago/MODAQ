@@ -2,14 +2,14 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import { Label, ILabelStyles } from "@fluentui/react";
 
-import * as PacketLoaderController from "src/components/PacketLoaderController";
-import { UIState } from "src/state/UIState";
-import { PacketState } from "src/state/PacketState";
-import { AppState } from "src/state/AppState";
+import * as PacketLoaderController from "../components/PacketLoaderController";
+import { UIState } from "../state/UIState";
+import { PacketState } from "../state/PacketState";
+import { AppState } from "../state/AppState";
 import { FilePicker } from "./FilePicker";
-import { IPacket } from "src/state/IPacket";
+import { IPacket } from "../state/IPacket";
 
-export const PacketLoader = observer(function PacketLoader(props: IPacketLoaderProps): JSX.Element | null  {
+export const PacketLoader = observer(function PacketLoader(props: IPacketLoaderProps): JSX.Element | null {
     const onLoadHandler = React.useCallback((ev: ProgressEvent<FileReader>) => onLoad(ev, props), [props]);
     const uploadHandler = React.useCallback(
         (event: React.ChangeEvent<HTMLInputElement>, files: FileList | undefined | null) => {
@@ -121,7 +121,7 @@ async function loadDocxPacket(props: IPacketLoaderProps, docxBinary: ArrayBuffer
         const responseJson: string = await response.text();
         loadJsonPacket(props, responseJson);
     } catch (e) {
-        const error: Error = e;
+        const error: Error = e as Error;
         props.appState.uiState.setPacketStatus({
             isError: true,
             status: "Error loading packet: request to parsing service failed. Error: " + error.message,

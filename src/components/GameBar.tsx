@@ -8,151 +8,149 @@ import {
     CommandBar,
 } from "@fluentui/react";
 
-import { GameState } from "src/state/GameState";
-import { UIState } from "src/state/UIState";
-import { Cycle } from "src/state/Cycle";
-import { Bonus, Tossup } from "src/state/PacketState";
-import { Player } from "src/state/TeamState";
-import { AppState } from "src/state/AppState";
-import { ITossupAnswerEvent } from "src/state/Events";
-import { StateContext } from "src/contexts/StateContext";
+import { GameState } from "../state/GameState";
+import { UIState } from "../state/UIState";
+import { Cycle } from "../state/Cycle";
+import { Bonus, Tossup } from "../state/PacketState";
+import { Player } from "../state/TeamState";
+import { AppState } from "../state/AppState";
+import { ITossupAnswerEvent } from "../state/Events";
+import { StateContext } from "../contexts/StateContext";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
-export const GameBar = observer(
-    function GameBar(): JSX.Element  {
-        // This should pop up the new game handler
-        const appState: AppState = React.useContext(StateContext);
-        const uiState: UIState = appState.uiState;
-        const game: GameState = appState.game;
+export const GameBar = observer(function GameBar(): JSX.Element {
+    // This should pop up the new game handler
+    const appState: AppState = React.useContext(StateContext);
+    const uiState: UIState = appState.uiState;
+    const game: GameState = appState.game;
 
-        const newGameHandler = React.useCallback(() => {
-            uiState.createPendingNewGame();
-            uiState.dialogState.showNewGameDialog();
-        }, [uiState]);
-        const importGameHandler = React.useCallback(() => {
-            uiState.createPendingNewGame();
-            uiState.dialogState.showImportGameDialog();
-        }, [uiState]);
+    const newGameHandler = React.useCallback(() => {
+        uiState.createPendingNewGame();
+        uiState.dialogState.showNewGameDialog();
+    }, [uiState]);
+    const importGameHandler = React.useCallback(() => {
+        uiState.createPendingNewGame();
+        uiState.dialogState.showImportGameDialog();
+    }, [uiState]);
 
-        const protestBonusHandler = React.useCallback(() => {
-            // Issue: pending protest needs existing index. Need to update it to include the part number
-            const cycle: Cycle = game.cycles[uiState.cycleIndex];
-            if (cycle?.bonusAnswer == undefined) {
-                return;
-            }
-
-            const bonusIndex: number = game.getBonusIndex(uiState.cycleIndex);
-            const bonus: Bonus | undefined = game.packet.bonuses[bonusIndex];
-            if (bonus == undefined) {
-                // Something is wrong... the bonus is undefined, but this handler can be accessed?
-                throw new Error(`Impossible to add bonus protest for bonus question ${bonusIndex}`);
-            }
-
-            const protestableParts: number[] = cycle.getProtestableBonusPartIndexes(bonus.parts.length);
-            uiState.setPendingBonusProtest(cycle.bonusAnswer.receivingTeamName, bonusIndex, protestableParts[0]);
-        }, [game, uiState]);
-
-        const addPlayerHandler = React.useCallback(() => {
-            uiState.createPendingNewPlayer(game.teamNames[0]);
-        }, [uiState, game]);
-
-        const addQuestionsHandler = React.useCallback(() => {
-            uiState.dialogState.showAddQuestionsDialog();
-        }, [uiState]);
-
-        const openHelpHandler = React.useCallback(() => appState.uiState.dialogState.showHelpDialog(), [appState]);
-
-        const items: ICommandBarItemProps[] = appState.uiState.hideNewGame
-            ? []
-            : [
-                  {
-                      key: "newGame",
-                      text: "New game",
-                      iconProps: { iconName: "Add" },
-                      split: true,
-                      subMenuProps: {
-                          items: [
-                              {
-                                  key: "newGameSubMenuItem",
-                                  text: "New game...",
-                                  iconProps: { iconName: "Add" },
-                                  onClick: newGameHandler,
-                              },
-                              {
-                                  key: "importGame",
-                                  text: "Import game...",
-                                  iconProps: { iconName: "Download" },
-                                  onClick: importGameHandler,
-                              },
-                          ],
-                      },
-                      onClick: newGameHandler,
-                  },
-              ];
-
-        const optionsSubMenuItems: ICommandBarItemProps[] = getOptionsSubMenuItems(appState);
-        items.push({
-            key: "options",
-            text: "Options",
-            subMenuProps: {
-                items: optionsSubMenuItems,
-            },
-        });
-
-        const viewSubMenuItems: ICommandBarItemProps[] = getViewSubMenuItems(appState);
-        items.push({
-            key: "view",
-            text: "View",
-            subMenuProps: {
-                items: viewSubMenuItems,
-            },
-        });
-
-        // TODO: Look into memoizing; React.useMemo with just props doesn't seem to recognize when the cycle changes.
-        const actionSubMenuItems: ICommandBarItemProps[] = getActionSubMenuItems(
-            appState,
-            addPlayerHandler,
-            protestBonusHandler,
-            addQuestionsHandler
-        );
-        items.push({
-            key: "actions",
-            text: "Actions",
-            subMenuProps: {
-                items: actionSubMenuItems,
-            },
-        });
-
-        // If a custom export option is given, only show a button for that export
-        if (appState.uiState.customExport == undefined) {
-            const exportSubMenuItems: ICommandBarItemProps[] = getExportSubMenuItems(appState);
-            items.push({
-                key: "export",
-                text: "Export",
-                subMenuProps: {
-                    items: exportSubMenuItems,
-                },
-            });
-        } else {
-            items.push({
-                key: "export",
-                text: appState.uiState.customExport.label,
-                onClick: () => {
-                    appState.handleCustomExport();
-                },
-            });
+    const protestBonusHandler = React.useCallback(() => {
+        // Issue: pending protest needs existing index. Need to update it to include the part number
+        const cycle: Cycle = game.cycles[uiState.cycleIndex];
+        if (cycle?.bonusAnswer == undefined) {
+            return;
         }
 
-        items.push({
-            key: "help",
-            text: "Help...",
-            onClick: openHelpHandler,
-        });
+        const bonusIndex: number = game.getBonusIndex(uiState.cycleIndex);
+        const bonus: Bonus | undefined = game.packet.bonuses[bonusIndex];
+        if (bonus == undefined) {
+            // Something is wrong... the bonus is undefined, but this handler can be accessed?
+            throw new Error(`Impossible to add bonus protest for bonus question ${bonusIndex}`);
+        }
 
-        return <CommandBar items={items} overflowButtonProps={overflowProps} />;
+        const protestableParts: number[] = cycle.getProtestableBonusPartIndexes(bonus.parts.length);
+        uiState.setPendingBonusProtest(cycle.bonusAnswer.receivingTeamName, bonusIndex, protestableParts[0]);
+    }, [game, uiState]);
+
+    const addPlayerHandler = React.useCallback(() => {
+        uiState.createPendingNewPlayer(game.teamNames[0]);
+    }, [uiState, game]);
+
+    const addQuestionsHandler = React.useCallback(() => {
+        uiState.dialogState.showAddQuestionsDialog();
+    }, [uiState]);
+
+    const openHelpHandler = React.useCallback(() => appState.uiState.dialogState.showHelpDialog(), [appState]);
+
+    const items: ICommandBarItemProps[] = appState.uiState.hideNewGame
+        ? []
+        : [
+              {
+                  key: "newGame",
+                  text: "New game",
+                  iconProps: { iconName: "Add" },
+                  split: true,
+                  subMenuProps: {
+                      items: [
+                          {
+                              key: "newGameSubMenuItem",
+                              text: "New game...",
+                              iconProps: { iconName: "Add" },
+                              onClick: newGameHandler,
+                          },
+                          {
+                              key: "importGame",
+                              text: "Import game...",
+                              iconProps: { iconName: "Download" },
+                              onClick: importGameHandler,
+                          },
+                      ],
+                  },
+                  onClick: newGameHandler,
+              },
+          ];
+
+    const optionsSubMenuItems: ICommandBarItemProps[] = getOptionsSubMenuItems(appState);
+    items.push({
+        key: "options",
+        text: "Options",
+        subMenuProps: {
+            items: optionsSubMenuItems,
+        },
+    });
+
+    const viewSubMenuItems: ICommandBarItemProps[] = getViewSubMenuItems(appState);
+    items.push({
+        key: "view",
+        text: "View",
+        subMenuProps: {
+            items: viewSubMenuItems,
+        },
+    });
+
+    // TODO: Look into memoizing; React.useMemo with just props doesn't seem to recognize when the cycle changes.
+    const actionSubMenuItems: ICommandBarItemProps[] = getActionSubMenuItems(
+        appState,
+        addPlayerHandler,
+        protestBonusHandler,
+        addQuestionsHandler
+    );
+    items.push({
+        key: "actions",
+        text: "Actions",
+        subMenuProps: {
+            items: actionSubMenuItems,
+        },
+    });
+
+    // If a custom export option is given, only show a button for that export
+    if (appState.uiState.customExport == undefined) {
+        const exportSubMenuItems: ICommandBarItemProps[] = getExportSubMenuItems(appState);
+        items.push({
+            key: "export",
+            text: "Export",
+            subMenuProps: {
+                items: exportSubMenuItems,
+            },
+        });
+    } else {
+        items.push({
+            key: "export",
+            text: appState.uiState.customExport.label,
+            onClick: () => {
+                appState.handleCustomExport();
+            },
+        });
     }
-);
+
+    items.push({
+        key: "help",
+        text: "Help...",
+        onClick: openHelpHandler,
+    });
+
+    return <CommandBar items={items} overflowButtonProps={overflowProps} />;
+});
 
 async function exportToSheets(appState: AppState): Promise<void> {
     appState.uiState.createPendingSheet();

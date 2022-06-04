@@ -2,8 +2,8 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { mergeStyleSets } from "@fluentui/react";
 
-import { AppState } from "src/state/AppState";
-import { StateContext } from "src/contexts/StateContext";
+import { AppState } from "../state/AppState";
+import { StateContext } from "../contexts/StateContext";
 
 export const PostQuestionMetadata = observer(function PostQuestionMetadata(
     props: IPostQuestionMetadataProps

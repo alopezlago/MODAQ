@@ -1,4 +1,4 @@
-import { Cycle } from "src/state/Cycle";
+import { Cycle } from "../state/Cycle";
 import {
     IBonusAnswerEvent,
     IBonusProtestEvent,
@@ -7,8 +7,8 @@ import {
     ISubstitutionEvent,
     ITossupAnswerEvent,
     ITossupProtestEvent,
-} from "src/state/Events";
-import { Player } from "src/state/TeamState";
+} from "../state/Events";
+import { Player } from "../state/TeamState";
 import { IPlayerToColumnMap } from "./PlayerToColumnMap";
 export interface ISheetsGenerator {
     // Ranges for teams and players in the rosters sheet

@@ -4,10 +4,10 @@ import { mergeStyleSets } from "@fluentui/react";
 
 import { CycleChooser } from "./CycleChooser";
 import { QuestionViewer } from "./QuestionViewer";
-import { AppState } from "src/state/AppState";
-import { StateContext } from "src/contexts/StateContext";
+import { AppState } from "../state/AppState";
+import { StateContext } from "../contexts/StateContext";
 
-export const QuestionViewerContainer = observer(function QuestionViewerContainer()  {
+export const QuestionViewerContainer = observer(function QuestionViewerContainer() {
     const appState: AppState = React.useContext(StateContext);
     const classes: IQuestionViewerContainerClassNames = getClassNames();
 

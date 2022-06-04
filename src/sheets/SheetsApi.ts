@@ -1,6 +1,6 @@
-import { IStatus } from "src/IStatus";
-import { LoadingState } from "src/state/SheetState";
-import { UIState } from "src/state/UIState";
+import { IStatus } from "../IStatus";
+import { LoadingState } from "../state/SheetState";
+import { UIState } from "../state/UIState";
 import { ISheetsApi, ISheetsBatchGetResponse, ISheetsGetResponse } from "./ISheetsApi";
 
 export const SheetsApi: ISheetsApi = {
@@ -62,7 +62,7 @@ export const SheetsApi: ISheetsApi = {
                 status: "",
             };
         } catch (e) {
-            const error: Error = e;
+            const error: Error = e as Error;
             return {
                 isError: true,
                 status: error.message,
@@ -124,7 +124,7 @@ export const SheetsApi: ISheetsApi = {
                 status: "",
             };
         } catch (e) {
-            const error: Error = e;
+            const error: Error = e as Error;
             return {
                 isError: true,
                 status: error.message,

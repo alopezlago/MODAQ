@@ -1,7 +1,7 @@
-import { Player } from "src/state/TeamState";
+import { Player } from "../state/TeamState";
 import { IRoster, ISheetsGenerator } from "./ISheetsGenerator";
-import { IBonusAnswerEvent, ITossupAnswerEvent } from "src/state/Events";
-import { Cycle } from "src/state/Cycle";
+import { IBonusAnswerEvent, ITossupAnswerEvent } from "../state/Events";
+import { Cycle } from "../state/Cycle";
 import { IPlayerToColumnMap } from "./PlayerToColumnMap";
 
 export const UCSDSheetsGenerator: ISheetsGenerator = {

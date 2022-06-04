@@ -2,13 +2,13 @@ import React from "react";
 import { Checkbox, Dropdown, IDropdownOption, IDropdownStyles, mergeStyleSets } from "@fluentui/react";
 import { observer } from "mobx-react-lite";
 
-import * as PacketState from "src/state/PacketState";
-import { BonusPart } from "src/state/PacketState";
-import { Cycle } from "src/state/Cycle";
+import * as PacketState from "../state/PacketState";
+import { BonusPart } from "../state/PacketState";
+import { Cycle } from "../state/Cycle";
 import { Answer } from "./Answer";
 import { FormattedText } from "./FormattedText";
-import { IFormattedText } from "src/parser/IFormattedText";
-import { IGameFormat } from "src/state/IGameFormat";
+import { IFormattedText } from "../parser/IFormattedText";
+import { IGameFormat } from "../state/IGameFormat";
 
 const bouncebackCorrectnessStyles: Partial<IDropdownStyles> = {
     root: {
@@ -19,7 +19,7 @@ const bouncebackCorrectnessStyles: Partial<IDropdownStyles> = {
     },
 };
 
-export const BonusQuestionPart = observer(function BonusQuestionPart(props: IBonusQuestionPartProps)  {
+export const BonusQuestionPart = observer(function BonusQuestionPart(props: IBonusQuestionPartProps) {
     const classes: IBonusQuestionPartClassNames = getClassNames(props.disabled);
     const onCheckboxChangeHandler = React.useCallback((ev, checked) => onCorrectChange(props, ev, checked), [props]);
     const onDropdownChangeHandler = React.useCallback((ev, option) => onTeamAnswerChange(props, ev, option), [props]);

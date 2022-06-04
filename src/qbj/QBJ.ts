@@ -1,6 +1,6 @@
-import { Cycle } from "src/state/Cycle";
-import { IBonusAnswerPart, ITossupAnswerEvent } from "src/state/Events";
-import { GameState } from "src/state/GameState";
+import { Cycle } from "../state/Cycle";
+import { IBonusAnswerPart, ITossupAnswerEvent } from "../state/Events";
+import { GameState } from "../state/GameState";
 
 // Converts games into a QBJ file that conforms to the Match interface in the QB Schema
 export function toQBJString(game: GameState, packetName?: string): string {

@@ -6,8 +6,8 @@ import {
     ISubstitutionEvent,
     ITossupAnswerEvent,
     ITossupProtestEvent,
-} from "src/state/Events";
-import { Player } from "src/state/TeamState";
+} from "../state/Events";
+import { Player } from "../state/TeamState";
 import { IRoster, ISheetsGenerator } from "./ISheetsGenerator";
 import { IPlayerToColumnMap } from "./PlayerToColumnMap";
 

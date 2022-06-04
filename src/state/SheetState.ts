@@ -1,7 +1,7 @@
 import { makeAutoObservable } from "mobx";
 import { ignore } from "mobx-sync";
 
-import { IStatus } from "src/IStatus";
+import { IStatus } from "../IStatus";
 
 export class SheetState {
     @ignore

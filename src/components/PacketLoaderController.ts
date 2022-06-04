@@ -1,7 +1,7 @@
-import { AppState } from "src/state/AppState";
-import { IPacket } from "src/state/IPacket";
-import { Bonus, BonusPart, PacketState, Tossup } from "src/state/PacketState";
-import { UIState } from "src/state/UIState";
+import { AppState } from "../state/AppState";
+import { IPacket } from "../state/IPacket";
+import { Bonus, BonusPart, PacketState, Tossup } from "../state/PacketState";
+import { UIState } from "../state/UIState";
 
 export function loadPacket(appState: AppState, parsedPacket: IPacket): PacketState | undefined {
     const uiState: UIState = appState.uiState;

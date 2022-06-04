@@ -1,6 +1,6 @@
 import { toJS } from "mobx";
-import { IStatus } from "src/IStatus";
-import { IMatch } from "src/qbj/QBJ";
+import { IStatus } from "../IStatus";
+import { IMatch } from "../qbj/QBJ";
 
 import { ICycle } from "./Cycle";
 import { GameState } from "./GameState";

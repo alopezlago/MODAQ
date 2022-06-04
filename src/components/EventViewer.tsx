@@ -4,15 +4,15 @@ import { DetailsList, CheckboxVisibility, SelectionMode, IColumn, Label, Text } 
 import { mergeStyleSets } from "@fluentui/react";
 
 import { CycleItemList } from "./cycleItems/CycleItemList";
-import { Cycle } from "src/state/Cycle";
-import { AppState } from "src/state/AppState";
-import { GameState } from "src/state/GameState";
-import { StateContext } from "src/contexts/StateContext";
+import { Cycle } from "../state/Cycle";
+import { AppState } from "../state/AppState";
+import { GameState } from "../state/GameState";
+import { StateContext } from "../contexts/StateContext";
 
 const numberKey = "number";
 const cycleKey = "cycle";
 
-export const EventViewer = observer(function EventViewer(): JSX.Element | null  {
+export const EventViewer = observer(function EventViewer(): JSX.Element | null {
     const appState: AppState = React.useContext(StateContext);
     const classes: IEventViewerClassNames = getClassNames(appState.uiState.isEventLogHidden);
 

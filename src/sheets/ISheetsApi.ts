@@ -1,5 +1,5 @@
-import { IStatus } from "src/IStatus";
-import { UIState } from "src/state/UIState";
+import { IStatus } from "../IStatus";
+import { UIState } from "../state/UIState";
 
 export interface ISheetsApi {
     initializeIfNeeded(uiState: UIState): Promise<void>;

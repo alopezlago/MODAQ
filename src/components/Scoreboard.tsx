@@ -2,10 +2,10 @@ import React from "react";
 import { Icon, IIconStyles, Label, mergeStyleSets, Stack, StackItem } from "@fluentui/react";
 import { observer } from "mobx-react-lite";
 
-import { AppState } from "src/state/AppState";
-import { StateContext } from "src/contexts/StateContext";
+import { AppState } from "../state/AppState";
+import { StateContext } from "../contexts/StateContext";
 
-export const Scoreboard = observer(function Scoreboard()  {
+export const Scoreboard = observer(function Scoreboard() {
     const appState: AppState = React.useContext(StateContext);
     const classes: IScoreboardStyle = getClassNames();
 
@@ -30,7 +30,7 @@ export const Scoreboard = observer(function Scoreboard()  {
     );
 });
 
-const ProtestIndicator = observer(function ProtestIndicator()  {
+const ProtestIndicator = observer(function ProtestIndicator() {
     const appState: AppState = React.useContext(StateContext);
 
     return appState.game.protestsMatter ? (

@@ -2,8 +2,8 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { Dropdown, IDropdownOption, IDropdownStyles, ITextStyles, Stack, StackItem, Text } from "@fluentui/react";
 
-import * as GameFormats from "src/state/GameFormats";
-import { IGameFormat } from "src/state/IGameFormat";
+import * as GameFormats from "../state/GameFormats";
+import { IGameFormat } from "../state/IGameFormat";
 
 const dropdownStyles: Partial<IDropdownStyles> = {
     root: {
@@ -18,7 +18,7 @@ const bouncebackWarningStyles: Partial<ITextStyles> = {
     },
 };
 
-export const GameFormatPicker = observer(function GameFormatPicker(props: IGameFormatPickerProps)  {
+export const GameFormatPicker = observer(function GameFormatPicker(props: IGameFormatPickerProps) {
     const changeHandler = React.useCallback(
         (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
             if (option?.data != undefined) {

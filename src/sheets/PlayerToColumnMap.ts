@@ -1,4 +1,4 @@
-import { IPlayer } from "src/state/TeamState";
+import { IPlayer } from "../state/TeamState";
 
 export interface IPlayerToColumnMap {
     get(player: IPlayer): string | undefined;

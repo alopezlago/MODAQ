@@ -4,8 +4,8 @@ import { IIconProps, Label, List, mergeStyleSets } from "@fluentui/react";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
 import { IconButton, IButtonStyles } from "@fluentui/react/lib/Button";
 
-import * as NewGameValidator from "src/state/NewGameValidator";
-import { Player } from "src/state/TeamState";
+import * as NewGameValidator from "../state/NewGameValidator";
+import { Player } from "../state/TeamState";
 import { PlayerEntry } from "./PlayerEntry";
 
 const addButtonProps: IIconProps = {
@@ -28,7 +28,7 @@ const addPlayerButtonStyle: Partial<IButtonStyles> = {
 
 // I looked into using a DetailsList instead of a List, so we could get rid of the Starter label on each checkbox, but
 // the column label is usually cut off, defeating the purpose
-export const ManualTeamEntry = observer(function ManualTeamEntry(props: IManualTeamEntryProps)  {
+export const ManualTeamEntry = observer(function ManualTeamEntry(props: IManualTeamEntryProps) {
     const classes: ITeamEntryClassNames = getClassNames(props.playerListHeight);
 
     const nameChangeHandler = React.useCallback(
