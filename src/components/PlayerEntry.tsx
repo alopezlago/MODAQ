@@ -4,7 +4,7 @@ import { Checkbox, ICheckboxStyles } from "@fluentui/react/lib/Checkbox";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
 import { ILabelStyles, Label, mergeStyleSets } from "@fluentui/react";
 
-import { Player } from "src/state/TeamState";
+import { Player } from "../state/TeamState";
 import { CancelButton } from "./CancelButton";
 
 const playerNameStyle: Partial<ITextFieldStyles> = {
@@ -27,7 +27,7 @@ const starterCheckboxStyle: Partial<ICheckboxStyles> = {
     },
 };
 
-export const PlayerEntry = observer(function PlayerEntry(props: IPlayerEntryProps)  {
+export const PlayerEntry = observer(function PlayerEntry(props: IPlayerEntryProps) {
     const classes: IPlayerEntryClassNames = getClassNames();
 
     const starterChangeHandler = React.useCallback(

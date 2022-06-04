@@ -2,10 +2,10 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import { Dropdown, IDropdownOption, List, mergeStyleSets } from "@fluentui/react";
 
-import { Player } from "src/state/TeamState";
+import { Player } from "../state/TeamState";
 import { PlayerEntry } from "./PlayerEntry";
 
-export const FromRostersTeamEntry = observer(function FromRostersTeamEntry(props: IFromRostersTeamEntryProps)  {
+export const FromRostersTeamEntry = observer(function FromRostersTeamEntry(props: IFromRostersTeamEntryProps) {
     const classes: ITeamEntryClassNames = getClassNames(props.playerListHeight);
 
     const partChangeHandler = React.useCallback(

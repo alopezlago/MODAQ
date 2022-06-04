@@ -1,7 +1,7 @@
 import React from "react";
-import { AppState } from "src/state/AppState";
-import { Cycle } from "src/state/Cycle";
-import { UIState } from "src/state/UIState";
+import { AppState } from "../state/AppState";
+import { Cycle } from "../state/Cycle";
+import { UIState } from "../state/UIState";
 
 export function selectWordFromClick(appState: AppState, event: React.MouseEvent<HTMLDivElement>): void {
     const target = event.target as HTMLDivElement;

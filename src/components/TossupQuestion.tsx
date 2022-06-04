@@ -3,16 +3,16 @@ import { observer } from "mobx-react-lite";
 import { FocusZone, FocusZoneDirection, mergeStyleSets } from "@fluentui/react";
 
 import * as TossupQuestionController from "./TossupQuestionController";
-import { UIState } from "src/state/UIState";
-import { ITossupWord, Tossup } from "src/state/PacketState";
+import { UIState } from "../state/UIState";
+import { ITossupWord, Tossup } from "../state/PacketState";
 import { QuestionWord } from "./QuestionWord";
-import { Cycle } from "src/state/Cycle";
+import { Cycle } from "../state/Cycle";
 import { BuzzMenu } from "./BuzzMenu";
 import { Answer } from "./Answer";
-import { IFormattedText } from "src/parser/IFormattedText";
+import { IFormattedText } from "../parser/IFormattedText";
 import { TossupProtestDialog } from "./dialogs/TossupProtestDialog";
 import { CancelButton, ICancelButtonPrompt } from "./CancelButton";
-import { AppState } from "src/state/AppState";
+import { AppState } from "../state/AppState";
 import { PostQuestionMetadata } from "./PostQuestionMetadata";
 
 const throwOutQuestionPrompt: ICancelButtonPrompt = {

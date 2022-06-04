@@ -13,8 +13,8 @@ import {
     Stack,
     StackItem,
 } from "@fluentui/react";
-import { AppState } from "src/state/AppState";
-import { StateContext } from "src/contexts/StateContext";
+import { AppState } from "../../state/AppState";
+import { StateContext } from "../../contexts/StateContext";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -44,47 +44,43 @@ const modalProps: IModalProps = {
     topOffsetFixed: true,
 };
 
-export const HelpDialog = observer(
-    function HelpDialog(): JSX.Element  {
-        const appState: AppState = React.useContext(StateContext);
-        const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
+export const HelpDialog = observer(function HelpDialog(): JSX.Element {
+    const appState: AppState = React.useContext(StateContext);
+    const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
 
-        return (
-            <Dialog
-                hidden={!appState.uiState.dialogState.helpDialogVisible}
-                dialogContentProps={content}
-                modalProps={modalProps}
-                maxWidth="30vw"
-                onDismiss={closeHandler}
-            >
-                <HelpDialogBody />
-                <DialogFooter>
-                    <PrimaryButton text="Close" onClick={closeHandler} />
-                </DialogFooter>
-            </Dialog>
-        );
-    }
-);
+    return (
+        <Dialog
+            hidden={!appState.uiState.dialogState.helpDialogVisible}
+            dialogContentProps={content}
+            modalProps={modalProps}
+            maxWidth="30vw"
+            onDismiss={closeHandler}
+        >
+            <HelpDialogBody />
+            <DialogFooter>
+                <PrimaryButton text="Close" onClick={closeHandler} />
+            </DialogFooter>
+        </Dialog>
+    );
+});
 
-const HelpDialogBody = observer(
-    function HelpDialogBody(): JSX.Element  {
-        const appState: AppState = React.useContext(StateContext);
-        const version: string | undefined = appState.uiState.buildVersion && `Version: ${appState.uiState.buildVersion}`;
+const HelpDialogBody = observer(function HelpDialogBody(): JSX.Element {
+    const appState: AppState = React.useContext(StateContext);
+    const version: string | undefined = appState.uiState.buildVersion && `Version: ${appState.uiState.buildVersion}`;
 
-        return (
-            <Stack>
-                <StackItem>
-                    <Label>{version}</Label>
-                </StackItem>
-                <StackItem>
-                    <Link href="https://github.com/alopezlago/MODAQ/wiki" target="_blank">
-                        How to use MODAQ
-                    </Link>
-                </StackItem>
-            </Stack>
-        );
-    }
-);
+    return (
+        <Stack>
+            <StackItem>
+                <Label>{version}</Label>
+            </StackItem>
+            <StackItem>
+                <Link href="https://github.com/alopezlago/MODAQ/wiki" target="_blank">
+                    How to use MODAQ
+                </Link>
+            </StackItem>
+        </Stack>
+    );
+});
 
 function hideDialog(appState: AppState): void {
     appState.uiState.dialogState.hideHelpDialog();

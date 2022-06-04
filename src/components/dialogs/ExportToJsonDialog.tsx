@@ -12,10 +12,10 @@ import {
     IModalProps,
 } from "@fluentui/react";
 
-import * as QBJ from "src/qbj/QBJ";
-import { AppState } from "src/state/AppState";
-import { GameState } from "src/state/GameState";
-import { StateContext } from "src/contexts/StateContext";
+import * as QBJ from "../../qbj/QBJ";
+import { AppState } from "../../state/AppState";
+import { GameState } from "../../state/GameState";
+import { StateContext } from "../../contexts/StateContext";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -49,54 +49,52 @@ const modalProps: IModalProps = {
     topOffsetFixed: true,
 };
 
-export const ExportToJsonDialog = observer(
-    function ExportToJsonDialog(): JSX.Element  {
-        const appState: AppState = React.useContext(StateContext);
-        const game: GameState = appState.game;
+export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.Element {
+    const appState: AppState = React.useContext(StateContext);
+    const game: GameState = appState.game;
 
-        const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
+    const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
 
-        const joinedTeamNames: string = game.teamNames.join("_");
+    const joinedTeamNames: string = game.teamNames.join("_");
 
-        const cyclesJson: Blob = new Blob([JSON.stringify(game.cycles)], { type: "application/json" });
-        const cyclesHref: string = URL.createObjectURL(cyclesJson);
-        const cyclesFilename = `${joinedTeamNames}_Events.json`;
+    const cyclesJson: Blob = new Blob([JSON.stringify(game.cycles)], { type: "application/json" });
+    const cyclesHref: string = URL.createObjectURL(cyclesJson);
+    const cyclesFilename = `${joinedTeamNames}_Events.json`;
 
-        const gameJson: Blob = new Blob([JSON.stringify(game)], { type: "application/json" });
-        const gameHref: string = URL.createObjectURL(gameJson);
-        const gameFilename = `${joinedTeamNames}_Game.json`;
+    const gameJson: Blob = new Blob([JSON.stringify(game)], { type: "application/json" });
+    const gameHref: string = URL.createObjectURL(gameJson);
+    const gameFilename = `${joinedTeamNames}_Game.json`;
 
-        const qbjJson: Blob = new Blob([QBJ.toQBJString(game, appState.uiState.packetFilename)], {
-            type: "application/json",
-        });
-        const qbjHref: string = URL.createObjectURL(qbjJson);
-        const qbjFilename = `${joinedTeamNames}.qbj`;
+    const qbjJson: Blob = new Blob([QBJ.toQBJString(game, appState.uiState.packetFilename)], {
+        type: "application/json",
+    });
+    const qbjHref: string = URL.createObjectURL(qbjJson);
+    const qbjFilename = `${joinedTeamNames}.qbj`;
 
-        return (
-            <Dialog
-                hidden={!appState.uiState.dialogState.exportToJsonDialogVisible}
-                dialogContentProps={content}
-                modalProps={modalProps}
-                maxWidth="40vw"
-                onDismiss={closeHandler}
-            >
-                <Label>To export the whole game (packet, players, and events), click on &quot;Export game&quot;.</Label>
-                <Label>To only export the events, click on &quot;Export events&quot;.</Label>
-                <DialogFooter>
-                    <PrimaryButton text="Export game" onClick={closeHandler} href={gameHref} download={gameFilename} />
-                    <PrimaryButton
-                        text="Export events"
-                        onClick={closeHandler}
-                        href={cyclesHref}
-                        download={cyclesFilename}
-                    />
-                    <PrimaryButton text="Export QBJ" onClick={closeHandler} href={qbjHref} download={qbjFilename} />
-                    <DefaultButton text="Cancel" onClick={closeHandler} />
-                </DialogFooter>
-            </Dialog>
-        );
-    }
-);
+    return (
+        <Dialog
+            hidden={!appState.uiState.dialogState.exportToJsonDialogVisible}
+            dialogContentProps={content}
+            modalProps={modalProps}
+            maxWidth="40vw"
+            onDismiss={closeHandler}
+        >
+            <Label>To export the whole game (packet, players, and events), click on &quot;Export game&quot;.</Label>
+            <Label>To only export the events, click on &quot;Export events&quot;.</Label>
+            <DialogFooter>
+                <PrimaryButton text="Export game" onClick={closeHandler} href={gameHref} download={gameFilename} />
+                <PrimaryButton
+                    text="Export events"
+                    onClick={closeHandler}
+                    href={cyclesHref}
+                    download={cyclesFilename}
+                />
+                <PrimaryButton text="Export QBJ" onClick={closeHandler} href={qbjHref} download={qbjFilename} />
+                <DefaultButton text="Cancel" onClick={closeHandler} />
+            </DialogFooter>
+        </Dialog>
+    );
+});
 
 function hideDialog(appState: AppState) {
     appState.uiState.dialogState.hideExportToJsonDialog();

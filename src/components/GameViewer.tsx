@@ -6,13 +6,13 @@ import { QuestionViewerContainer } from "./QuestionViewerContainer";
 import { Scoreboard } from "./Scoreboard";
 import { EventViewer } from "./EventViewer";
 import { GameBar } from "./GameBar";
-import { AppState } from "src/state/AppState";
-import { StateContext } from "src/contexts/StateContext";
+import { AppState } from "../state/AppState";
+import { StateContext } from "../contexts/StateContext";
 import { Clock } from "./Clock";
 
 const scoreboardAndQuestionViewerTokens: IStackTokens = { childrenGap: 20 };
 
-export const GameViewer = observer(function GameViewer()  {
+export const GameViewer = observer(function GameViewer() {
     const appState: AppState = React.useContext(StateContext);
     const gameExists: boolean = appState.game.isLoaded;
 

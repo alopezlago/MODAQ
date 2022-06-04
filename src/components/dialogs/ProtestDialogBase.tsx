@@ -6,7 +6,7 @@ import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
 import { observer } from "mobx-react-lite";
 
 import { TextField } from "@fluentui/react/lib/TextField";
-import { AppState } from "src/state/AppState";
+import { AppState } from "../../state/AppState";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,

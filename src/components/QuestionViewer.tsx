@@ -1,14 +1,14 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 
-import { UIState } from "src/state/UIState";
-import { GameState } from "src/state/GameState";
+import { UIState } from "../state/UIState";
+import { GameState } from "../state/GameState";
 import { TossupQuestion } from "./TossupQuestion";
 import { BonusQuestion } from "./BonusQuestion";
-import { Cycle } from "src/state/Cycle";
+import { Cycle } from "../state/Cycle";
 import { ISeparatorStyles, mergeStyleSets, Separator, Stack, StackItem } from "@fluentui/react";
-import { AppState } from "src/state/AppState";
-import { StateContext } from "src/contexts/StateContext";
+import { AppState } from "../state/AppState";
+import { StateContext } from "../contexts/StateContext";
 
 const separatorStyles: Partial<ISeparatorStyles> = {
     root: {

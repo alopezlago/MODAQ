@@ -1,18 +1,18 @@
 import { assertNever } from "@fluentui/react";
 
 import * as PlayerToColumnMap from "./PlayerToColumnMap";
-import { UIState } from "src/state/UIState";
-import { ExportState, LoadingState, SheetType } from "src/state/SheetState";
-import { GameState } from "src/state/GameState";
-import { AppState } from "src/state/AppState";
-import { SheetsApi } from "src/sheets/SheetsApi";
+import { UIState } from "../state/UIState";
+import { ExportState, LoadingState, SheetType } from "../state/SheetState";
+import { GameState } from "../state/GameState";
+import { AppState } from "../state/AppState";
+import { SheetsApi } from "../sheets/SheetsApi";
 import { ISheetsApi, ISheetsBatchGetResponse, ISheetsGetResponse } from "./ISheetsApi";
-import { IStatus } from "src/IStatus";
+import { IStatus } from "../IStatus";
 import { IRoster, ISheetsGenerator } from "./ISheetsGenerator";
 import { LifsheetsGenerator } from "./LifsheetsGenerator";
 import { TJSheetsGenerator } from "./TJSheetsGenerator";
 import { UCSDSheetsGenerator } from "./UCSDSheetsGenerator";
-import { ITossupAnswerEvent } from "src/state/Events";
+import { ITossupAnswerEvent } from "../state/Events";
 
 // TODO:
 // - Socket integration! Can be very tricky because of how the cycle/phases are backed differently
@@ -103,7 +103,7 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
             uiState.sheetsState.setExportStatus(
                 {
                     isError: true,
-                    status: `Check failed. Error: ${e.message}`,
+                    status: `Check failed. Error: ${(e as Error).message}`,
                 },
                 ExportState.Error
             );
@@ -378,7 +378,7 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
         uiState.sheetsState?.setExportStatus(
             {
                 isError: true,
-                status: `Export failed. Error: ${e.message}`,
+                status: `Export failed. Error: ${(e as Error).message}`,
             },
             ExportState.Error
         );
@@ -455,7 +455,7 @@ export async function loadRosters(appState: AppState, sheetsApi: ISheetsApi = Sh
         uiState.sheetsState.setRosterLoadStatus(
             {
                 isError: true,
-                status: `Load failed. Error: ${e.message}`,
+                status: `Load failed. Error: ${(e as Error).message}`,
             },
             LoadingState.Error
         );

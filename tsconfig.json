@@ -1,25 +1,29 @@
 {
     "compilerOptions": {
-        "target": "es6",
-        "declaration": true,
-        "removeComments": false,
-        "sourceMap": true,
-        "experimentalDecorators": true,
-        "esModuleInterop": true,
-        "strict": true,
-        "jsx": "react",
-        "outDir": "out",
-        "lib": ["dom", "es6", "ES2020.String"],
+        "allowJs": false,
+        "allowSyntheticDefaultImports": true,
         "alwaysStrict": true,
+        "baseUrl": ".",
+        "declaration": true,
+        "esModuleInterop": false,
+        "experimentalDecorators": true,
+        "forceConsistentCasingInFileNames": true,
         "importsNotUsedAsValues": "preserve",
-        "useDefineForClassFields": true,
-        "rootDir": ".",
-        "baseUrl": "./",
+        "jsx": "react-jsx",
+        "strict": true,
+        "moduleResolution": "Node",
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "lib": ["dom", "es6", "ES2020.String", "ES2019"],
         "module": "CommonJS",
-        "paths": {
-            "src": ["src"],
-            "tests": ["tests"]
-        }
+        "outDir": "out",
+        "removeComments": false,
+        "rootDir": ".",
+        // Set to true to handle some issues with fabric ui
+        "skipLibCheck": true,
+        "sourceMap": true,
+        "target": "es6",
+        "useDefineForClassFields": true
     },
-    "exclude": ["node_modules", "static", "out/**/*.d.ts"]
+    "include": ["src", "tests", "vite.env.d.ts", "index.ts"]
 }

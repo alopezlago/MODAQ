@@ -11,15 +11,15 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { ContextualMenu, ContextualMenuItemType, IContextualMenuItem } from "@fluentui/react/lib/ContextualMenu";
 
-import * as CompareUtils from "src/state/CompareUtils";
-import { Player } from "src/state/TeamState";
-import { Cycle } from "src/state/Cycle";
-import { Tossup } from "src/state/PacketState";
-import { IBuzzMarker } from "src/state/IBuzzMarker";
-import { AppState } from "src/state/AppState";
-import { ITossupAnswerEvent } from "src/state/Events";
+import * as CompareUtils from "../state/CompareUtils";
+import { Player } from "../state/TeamState";
+import { Cycle } from "../state/Cycle";
+import { Tossup } from "../state/PacketState";
+import { IBuzzMarker } from "../state/IBuzzMarker";
+import { AppState } from "../state/AppState";
+import { ITossupAnswerEvent } from "../state/Events";
 
-export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps)  {
+export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps) {
     const onHideBuzzMenu: () => void = React.useCallback(() => onBuzzMenuDismissed(props), [props]);
 
     const teamNames: string[] = props.appState.game.teamNames;

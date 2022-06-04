@@ -1,7 +1,7 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
 
-import { Cycle } from "src/state/Cycle";
+import { Cycle } from "../../state/Cycle";
 import {
     IThrowOutQuestionEvent,
     ITossupAnswerEvent,
@@ -11,7 +11,7 @@ import {
     IBonusAnswerEvent,
     IPlayerJoinsEvent,
     IPlayerLeavesEvent,
-} from "src/state/Events";
+} from "../../state/Events";
 import { PlayerLeavesCycleItem } from "./PlayerLeaveCycleItem";
 import { PlayerJoinsCycleItem } from "./PlayerJoinsCycleItem";
 import { SubstitutionCycleItem } from "./SubstitutionCycleItem";
@@ -20,13 +20,11 @@ import { ThrowOutQuestionCycleItem } from "./ThrowOutQuestionCycleItem";
 import { BonusAnswerCycleItem } from "./BonusAnswerCycleItem";
 import { TossupProtestCycleItem } from "./TossupProtestCycleItem";
 import { BonusProtestCycleItem } from "./BonusProtestCycleItem";
-import { GameState } from "src/state/GameState";
+import { GameState } from "../../state/GameState";
 
-export const CycleItemList = observer(
-    function CycleItemList(props: ICycleItemListProps): JSX.Element  {
-        return <div>{createCycleList(props.cycle, props.game)}</div>;
-    }
-);
+export const CycleItemList = observer(function CycleItemList(props: ICycleItemListProps): JSX.Element {
+    return <div>{createCycleList(props.cycle, props.game)}</div>;
+});
 
 // TODO: Consider moving some of this logic to a separate class for testing; specifically ordering ones
 // TODO: Investigate using List/DetailedList for this, instead of returning a bunch of individual elements

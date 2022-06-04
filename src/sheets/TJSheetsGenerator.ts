@@ -1,4 +1,4 @@
-import { Player } from "src/state/TeamState";
+import { Player } from "../state/TeamState";
 import { IRoster, ISheetsGenerator } from "./ISheetsGenerator";
 import {
     IBonusAnswerEvent,
@@ -6,7 +6,7 @@ import {
     IPlayerLeavesEvent,
     ISubstitutionEvent,
     ITossupAnswerEvent,
-} from "src/state/Events";
+} from "../state/Events";
 import { IPlayerToColumnMap } from "./PlayerToColumnMap";
 
 const playerRow = 3;

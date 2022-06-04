@@ -1,8 +1,8 @@
-import * as NewGameValidator from "src/state/NewGameValidator";
-import { AppState } from "src/state/AppState";
-import { GameState } from "src/state/GameState";
-import { Player } from "src/state/TeamState";
-import { UIState } from "src/state/UIState";
+import * as NewGameValidator from "../../state/NewGameValidator";
+import { AppState } from "../../state/AppState";
+import { GameState } from "../../state/GameState";
+import { Player } from "../../state/TeamState";
+import { UIState } from "../../state/UIState";
 
 // TODO: Consider making AppState something we can get from a single instance (AppState.instance? AppServices.getAppState)
 // This would be a type of dependency injection. Most places get it from React.useContext, and now that ModaqControl

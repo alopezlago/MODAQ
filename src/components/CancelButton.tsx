@@ -3,8 +3,8 @@ import { observer } from "mobx-react-lite";
 
 import { IIconProps, mergeStyleSets } from "@fluentui/react";
 import { IconButton } from "@fluentui/react/lib/Button";
-import { StateContext } from "src/contexts/StateContext";
-import { AppState } from "src/state/AppState";
+import { StateContext } from "../contexts/StateContext";
+import { AppState } from "../state/AppState";
 
 const deleteIconProps: IIconProps = { iconName: "Cancel" };
 
