@@ -22,6 +22,7 @@ import { ICustomExport } from "./CustomExport";
 // outside of that component here.
 
 export class UIState {
+    @ignore
     public buildVersion: string | undefined;
 
     // TODO: Should we also include the Cycle? This would simplify anything that needs access to the cycle
