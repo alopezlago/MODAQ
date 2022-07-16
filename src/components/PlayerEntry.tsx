@@ -2,7 +2,7 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import { Checkbox, ICheckboxStyles } from "@fluentui/react/lib/Checkbox";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
-import { ILabelStyles, Label, mergeStyleSets } from "@fluentui/react";
+import { FocusZone, FocusZoneDirection, ILabelStyles, Label, mergeStyleSets } from "@fluentui/react";
 
 import { Player } from "../state/TeamState";
 import { CancelButton } from "./CancelButton";
@@ -70,7 +70,7 @@ export const PlayerEntry = observer(function PlayerEntry(props: IPlayerEntryProp
     }
 
     return (
-        <div className={classes.playerEntryContainer}>
+        <FocusZone as="div" direction={FocusZoneDirection.horizontal} className={classes.playerEntryContainer}>
             {playerName}
             <Checkbox
                 label="Starter"
@@ -79,7 +79,7 @@ export const PlayerEntry = observer(function PlayerEntry(props: IPlayerEntryProp
                 checked={props.player.isStarter}
             />
             {cancelButtonOrSpacer}
-        </div>
+        </FocusZone>
     );
 });
 

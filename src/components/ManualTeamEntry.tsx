@@ -1,12 +1,15 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { IIconProps, Label, List, mergeStyleSets } from "@fluentui/react";
+import { FocusZone, FocusZoneDirection, IIconProps, Label, List, mergeStyleSets } from "@fluentui/react";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
 import { IconButton, IButtonStyles } from "@fluentui/react/lib/Button";
 
 import * as NewGameValidator from "../state/NewGameValidator";
 import { Player } from "../state/TeamState";
 import { PlayerEntry } from "./PlayerEntry";
+
+const teamEntryClassName = "team-name-entry";
+const listCellClassName = "ms-List-cell";
 
 const addButtonProps: IIconProps = {
     iconName: "Add",
@@ -62,10 +65,11 @@ export const ManualTeamEntry = observer(function ManualTeamEntry(props: IManualT
 
     const addButtonDisabled: boolean = props.players.findIndex((player) => player.name === "") >= 0;
 
-    // TODO: Down key on the last player entry should trigger the addPlayerHandler
+    // Use a focus zone so that we only tab to a team entry instead of everything tabbable within the team entry
     return (
-        <div className={classes.teamEntry}>
+        <FocusZone direction={FocusZoneDirection.vertical} className={classes.teamEntry} onKeyDown={focusZoneKeyDown}>
             <TextField
+                className={teamEntryClassName}
                 label={props.teamLabel}
                 defaultValue={props.defaultTeamName}
                 errorMessage={props.teamNameErrorMessage}
@@ -88,8 +92,128 @@ export const ManualTeamEntry = observer(function ManualTeamEntry(props: IManualT
                     disabled={addButtonDisabled}
                 />
             </div>
-        </div>
+        </FocusZone>
     );
+
+    function focusZoneKeyDown(ev?: React.KeyboardEvent<HTMLElement>): void {
+        if (ev == undefined) {
+            return;
+        }
+
+        let change = 0;
+        switch (ev.key) {
+            case "ArrowDown":
+                // Go down a class if possible
+                change = 1;
+                break;
+            case "ArrowUp":
+                // Go up a class if possible
+                change = -1;
+                break;
+            default:
+                return;
+        }
+
+        // We doing focus handling manually here because Fabric UI isn't liking the nested FocusZones
+        const target: HTMLElement = ev.target as HTMLElement;
+
+        // Find the manual team entry container class, so we can look for other elements under it
+        let cellContainer = null;
+        let rootContainer = target;
+        while (rootContainer.parentElement != undefined && rootContainer.className.indexOf(classes.teamEntry) === -1) {
+            if (rootContainer.className.indexOf(listCellClassName) !== -1) {
+                cellContainer = rootContainer;
+            }
+
+            rootContainer = rootContainer.parentElement;
+        }
+
+        const cells = rootContainer.querySelectorAll("." + listCellClassName);
+
+        ev.stopPropagation();
+        ev.preventDefault();
+
+        // The class name isn't on the element that is focused, but on a child of it
+        if (
+            target.id != undefined &&
+            target.id.length > 0 &&
+            rootContainer.querySelector(`.${teamEntryClassName} #${target.id}`) != undefined
+        ) {
+            // Only go to the first cell if we pressed down
+            if (ev.key === "ArrowDown") {
+                // Focus on the first input of the first cell
+                focusOnFirstInputInPlayerEntry(cells[0] as HTMLElement);
+            }
+
+            return;
+        } else if (
+            target.tagName === "BUTTON" &&
+            rootContainer.querySelector("." + classes.addButtonContainer + " button") === target
+        ) {
+            if (ev.key === "ArrowUp") {
+                // Focus on the first input of the last cell
+                focusOnFirstInputInPlayerEntry(cells[cells.length - 1] as HTMLElement);
+            }
+
+            return;
+        }
+
+        if (cellContainer == undefined) {
+            // We're not in a cell, something weird has happened
+            return;
+        }
+
+        const rawListIndex: string | null = cellContainer.getAttribute("data-list-index");
+        if (rawListIndex == undefined) {
+            return;
+        }
+
+        let listIndex = Number.parseInt(rawListIndex);
+        listIndex += change;
+
+        if (listIndex >= cells.length) {
+            // Focus on the add player button if possible
+            const addButtonContainer: HTMLElement | null = rootContainer.getElementsByClassName(
+                classes.addButtonContainer
+            )[0] as HTMLElement;
+            if (addButtonContainer == undefined) {
+                return;
+            }
+
+            const addButton: HTMLElement | null = addButtonContainer.getElementsByTagName("button")[0] as HTMLElement;
+            if (addButton == undefined) {
+                return;
+            }
+
+            if (addButton.getAttribute("is-disabled") == null) {
+                addButton.focus();
+            }
+
+            return;
+        } else if (listIndex < 0) {
+            // Focus on the team name entry
+            const element: HTMLElement | null = rootContainer.querySelector(
+                `.${teamEntryClassName} input`
+            ) as HTMLElement;
+            element?.focus();
+        }
+
+        // Find the cell we need to go to, then focus on the same control if possible
+        const focusedCell: HTMLElement | null = cells[listIndex].firstChild as HTMLElement;
+        if (focusedCell == null) {
+            return;
+        }
+
+        // If we can get the control, go to it. Right now only the player name text box isn't selectable, but that's
+        // also the first element
+        const targetInNewCell: HTMLCollectionOf<Element> = focusedCell.getElementsByClassName(target.className);
+        if (targetInNewCell.length === 0) {
+            // Focus on the first input
+            focusOnFirstInputInPlayerEntry(focusedCell);
+        } else {
+            (targetInNewCell[0] as HTMLElement).focus();
+        }
+    }
 });
 
 function onRenderPlayerEntry(
@@ -112,6 +236,11 @@ function onRenderPlayerEntry(
             onRemovePlayerClick={onRemovePlayerHandler}
         />
     );
+}
+
+function focusOnFirstInputInPlayerEntry(playerEntryElement: HTMLElement): void {
+    // Focus on the first input in the player entry
+    playerEntryElement.getElementsByTagName("input")[0].focus();
 }
 
 const getClassNames = (playerListHeight: number | string): ITeamEntryClassNames =>

@@ -16,6 +16,7 @@ import { Player } from "../state/TeamState";
 import { AppState } from "../state/AppState";
 import { ITossupAnswerEvent } from "../state/Events";
 import { StateContext } from "../contexts/StateContext";
+import { MessageDialog } from "./dialogs/MessageDialog";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
@@ -556,9 +557,26 @@ function onSwapPlayerClick(
         return;
     }
 
-    item.data.appState.game.cycles[item.data.appState.uiState.cycleIndex].addSwapSubstitution(
-        item.data.player,
-        item.data.activePlayer
+    const { uiState, game } = item.data.appState;
+    const cycleIndex: number = uiState.cycleIndex;
+    const halftimeIndex: number = Math.floor(game.gameFormat.regulationTossupCount / 2);
+
+    // If a substitution doesn't happen in the beginning, after halftime, or during OT, ask the reader if a substitution
+    // was intended. Otherwise just do the substitution as normal
+    if (cycleIndex === 0 || cycleIndex === halftimeIndex || cycleIndex >= game.gameFormat.regulationTossupCount) {
+        game.cycles[uiState.cycleIndex].addSwapSubstitution(item.data.player, item.data.activePlayer);
+        return;
+    }
+
+    const additionalHint: string =
+        Math.abs(cycleIndex - halftimeIndex) <= 1
+            ? ` If you want to substitue a player at halftime, do it on question ${Math.floor(halftimeIndex + 1)}.`
+            : "";
+    item.data.appState.uiState.dialogState.showOKCancelMessageDialog(
+        "Substitute Player",
+        "You are substituting players outside of a normal time (beginning of the game, after halftime, overtime). Are you sure you want to substitute now?" +
+            additionalHint,
+        () => game.cycles[uiState.cycleIndex].addSwapSubstitution(item.data.player, item.data.activePlayer)
     );
 }
 

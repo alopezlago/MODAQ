@@ -1,6 +1,6 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { DefaultButton, IButtonStyles } from "@fluentui/react/lib/Button";
+import { DefaultButton, IButtonStyles, PrimaryButton } from "@fluentui/react/lib/Button";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
 import { useId } from "@fluentui/react-hooks";
 
@@ -69,20 +69,39 @@ export const CycleChooser = observer(function CycleChooser() {
         </TooltipHost>
     );
 
+    let nextButton: JSX.Element;
+    let nextButtonTooltip;
     const doesNextButtonExport: boolean = shouldNextButtonExport(appState);
-    const nextButtonText: string = doesNextButtonExport ? "Export..." : "Next →";
-    const nextButtonTooltip: string = doesNextButtonExport ? "Export" : "Next (Shift+N)";
-    const nextButtonTooltipId: string = useId();
-    const nextButton: JSX.Element = (
-        <TooltipHost content={nextButtonTooltip} id={nextButtonTooltipId}>
-            <DefaultButton
-                aria-describedby={nextButtonTooltipId}
+    if (doesNextButtonExport) {
+        nextButtonTooltip = "Export";
+        nextButton = (
+            <PrimaryButton
+                aria-describedby={nextButtonTooltip}
                 key="nextButton"
                 onClick={onNextClickHandler}
                 styles={nextButtonStyle}
             >
-                {nextButtonText}
+                Export...
+            </PrimaryButton>
+        );
+    } else {
+        nextButtonTooltip = "Next (Shift+N)";
+        nextButton = (
+            <DefaultButton
+                aria-describedby={nextButtonTooltip}
+                key="nextButton"
+                onClick={onNextClickHandler}
+                styles={nextButtonStyle}
+            >
+                Next →
             </DefaultButton>
+        );
+    }
+
+    const nextButtonTooltipId: string = useId();
+    const nextButtonWrapper: JSX.Element = (
+        <TooltipHost content={nextButtonTooltip} id={nextButtonTooltipId}>
+            {nextButton}
         </TooltipHost>
     );
 
@@ -112,7 +131,7 @@ export const CycleChooser = observer(function CycleChooser() {
         <div>
             {previousButton}
             {questionNumberViewer}
-            {nextButton}
+            {nextButtonWrapper}
         </div>
     );
 });
