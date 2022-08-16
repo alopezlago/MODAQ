@@ -16,7 +16,6 @@ import { Player } from "../state/TeamState";
 import { AppState } from "../state/AppState";
 import { ITossupAnswerEvent } from "../state/Events";
 import { StateContext } from "../contexts/StateContext";
-import { MessageDialog } from "./dialogs/MessageDialog";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
