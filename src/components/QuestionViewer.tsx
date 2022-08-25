@@ -6,7 +6,7 @@ import { GameState } from "../state/GameState";
 import { TossupQuestion } from "./TossupQuestion";
 import { BonusQuestion } from "./BonusQuestion";
 import { Cycle } from "../state/Cycle";
-import { ISeparatorStyles, mergeStyleSets, Separator, Stack, StackItem } from "@fluentui/react";
+import { ISeparatorStyles, IStackStyles, mergeStyleSets, Separator, Stack, StackItem } from "@fluentui/react";
 import { AppState } from "../state/AppState";
 import { StateContext } from "../contexts/StateContext";
 
@@ -26,6 +26,13 @@ export const QuestionViewer = observer(function QuestionViewer() {
     const cycle: Cycle = game.playableCycles[uiState.cycleIndex];
     const tossupIndex: number = game.getTossupIndex(uiState.cycleIndex);
     const bonusIndex: number = game.getBonusIndex(uiState.cycleIndex);
+
+    // Unfortunately StackItems reset the font, so we have to override the font there
+    const stackItemStyles: IStackStyles = {
+        root: {
+            fontSize,
+        },
+    };
 
     let bonus: JSX.Element | null = null;
     const bonusInPlay: boolean = cycle.correctBuzz != undefined;
@@ -81,11 +88,11 @@ export const QuestionViewer = observer(function QuestionViewer() {
     return (
         <div className={classes.questionViewer}>
             <Stack>
-                <StackItem>{tossup}</StackItem>
+                <StackItem styles={stackItemStyles}>{tossup}</StackItem>
                 <StackItem>
                     <Separator styles={separatorStyles} />
                 </StackItem>
-                <StackItem>{bonus}</StackItem>
+                <StackItem styles={stackItemStyles}>{bonus}</StackItem>
             </Stack>
         </div>
     );

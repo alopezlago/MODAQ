@@ -49,6 +49,7 @@ export class GameState {
             loadPacket: action,
             setCycles: action,
             setGameFormat: action,
+            setPlayers: action,
         });
 
         this.packet = new PacketState();
@@ -62,15 +63,23 @@ export class GameState {
     }
 
     public get teamNames(): string[] {
-        const teamSet: Set<string> = new Set<string>(this.players.map((player) => player.teamName));
-
-        const teamNames: string[] = [];
-        for (const teamName of teamSet.values()) {
-            teamNames.push(teamName);
+        // There should be very few teams names (really two)
+        if (this.players.length === 0) {
+            return [];
         }
 
-        teamNames.sort();
-        return teamNames;
+        const firstTeamName = this.players[0].teamName;
+        let secondTeamName = "";
+
+        // Go in reverse order since the other team is likely to be at the end
+        for (let i = this.players.length - 1; i > 0; i--) {
+            const player: Player = this.players[i];
+            if (player.teamName !== firstTeamName) {
+                secondTeamName = player.teamName;
+            }
+        }
+
+        return [firstTeamName, secondTeamName];
     }
 
     public get finalScore(): [number, number] {
