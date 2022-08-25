@@ -19,7 +19,8 @@ const throwOutQuestionPrompt: ICancelButtonPrompt = {
 };
 
 export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuestionProps) {
-    const classes: IBonusQuestionClassNames = getClassNames(!props.inPlay);
+    const fontSize: number = props.appState.uiState.questionFontSize;
+    const classes: IBonusQuestionClassNames = getClassNames(fontSize, !props.inPlay);
     const throwOutClickHandler: () => void = React.useCallback(() => {
         props.cycle.addThrownOutBonus(props.bonusIndex);
     }, [props]);
@@ -90,14 +91,14 @@ interface IBonusQuestionClassNames {
     bonusText: string;
 }
 
-const getClassNames = (disabled?: boolean): IBonusQuestionClassNames =>
+const getClassNames = (fontSize: number, disabled: boolean): IBonusQuestionClassNames =>
     mergeStyleSets({
         bonusContainer: {
             display: "flex",
             justifyContent: "space-between",
         },
         bonusLeadin: [
-            { paddingLeft: "24px", display: "inline-block" },
+            { paddingLeft: "24px", display: "inline-block", fontSize },
             disabled && {
                 color: "#888888",
             },
@@ -109,5 +110,6 @@ const getClassNames = (disabled?: boolean): IBonusQuestionClassNames =>
         bonusText: {
             maxHeight: "37.5vh",
             overflowY: "auto",
+            fontSize,
         },
     });

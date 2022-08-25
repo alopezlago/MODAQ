@@ -1,3 +1,5 @@
+import * as he from "he";
+
 import { AppState } from "../state/AppState";
 import { IPacket } from "../state/IPacket";
 import { Bonus, BonusPart, PacketState, Tossup } from "../state/PacketState";
@@ -15,7 +17,12 @@ export function loadPacket(appState: AppState, parsedPacket: IPacket): PacketSta
     }
 
     const tossups: Tossup[] = parsedPacket.tossups.map(
-        (tossup) => new Tossup(tossup.question, tossup.answer, tossup.metadata)
+        (tossup) =>
+            new Tossup(
+                he.decode(tossup.question),
+                he.decode(tossup.answer),
+                tossup.metadata ? he.decode(tossup.metadata) : tossup.metadata
+            )
     );
     let bonuses: Bonus[] = [];
 
@@ -33,14 +40,18 @@ export function loadPacket(appState: AppState, parsedPacket: IPacket): PacketSta
             const parts: BonusPart[] = [];
             for (let i = 0; i < bonus.answers.length; i++) {
                 parts.push({
-                    answer: bonus.answers[i],
-                    question: bonus.parts[i],
+                    answer: he.decode(bonus.answers[i]),
+                    question: he.decode(bonus.parts[i]),
                     value: bonus.values[i],
                     difficultyModifier: bonus.difficultyModifiers ? bonus.difficultyModifiers[i] : undefined,
                 });
             }
 
-            return new Bonus(bonus.leadin, parts, bonus.metadata);
+            return new Bonus(
+                he.decode(bonus.leadin),
+                parts,
+                bonus.metadata ? he.decode(bonus.metadata) : bonus.metadata
+            );
         });
     }
 

@@ -1,9 +1,15 @@
 import React from "react";
-import { Icon, IIconStyles, Label, mergeStyleSets, Stack, StackItem } from "@fluentui/react";
+import { Icon, IIconStyles, ILabelStyles, Label, mergeStyleSets, Stack, StackItem } from "@fluentui/react";
 import { observer } from "mobx-react-lite";
 
 import { AppState } from "../state/AppState";
 import { StateContext } from "../contexts/StateContext";
+
+const labelStyles: ILabelStyles = {
+    root: {
+        fontSize: 18,
+    },
+};
 
 export const Scoreboard = observer(function Scoreboard() {
     const appState: AppState = React.useContext(StateContext);
@@ -18,7 +24,7 @@ export const Scoreboard = observer(function Scoreboard() {
         <div className={classes.board}>
             <Stack>
                 <StackItem>
-                    <Label>{result}</Label>
+                    <Label styles={labelStyles}>{result}</Label>
                 </StackItem>
                 {protestIndicator != undefined && (
                     <StackItem>
@@ -65,6 +71,5 @@ const getClassNames = (): IScoreboardStyle =>
             justifyContent: "center",
             textAlign: "center",
             padding: "5px 10px",
-            fontSize: 16,
         },
     });
