@@ -325,6 +325,9 @@ async function onExport(appState: AppState): Promise<void> {
     uiState.sheetsState.setSheetId(uiState.pendingSheet.sheetId);
 
     await Sheets.exportToSheet(appState);
+
+    // We've exported, so we don't have more updates
+    appState.game.markUpdateComplete();
 }
 
 function onClose(appState: AppState): void {

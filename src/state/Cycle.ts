@@ -43,6 +43,8 @@ export class Cycle implements ICycle {
 
     thrownOutBonuses?: Events.IThrowOutQuestionEvent[];
 
+    onUpdate?: () => void;
+
     constructor(deserializedCycle?: ICycle) {
         // We don't use makeAutoObservable because there are methods like getProtestableBonusPartIndexes which aren't
         // actions
@@ -80,6 +82,10 @@ export class Cycle implements ICycle {
             removeWrongBuzz: action,
             setBonusPartAnswer: action,
         });
+
+        // Using autorun requries checking all the events and could be called multiple times, so just use this method
+        // directly instead
+        this.onUpdate = undefined;
 
         if (deserializedCycle) {
             this.bonusAnswer =
@@ -235,6 +241,8 @@ export class Cycle implements ICycle {
             this.wrongBuzzes = this.wrongBuzzes.filter((buzz) => buzz.marker.position <= marker.position);
             this.updateNeg(gameFormat);
         }
+
+        this.updateIfNeeded();
     }
 
     public addWrongBuzz(marker: IBuzzMarker, tossupIndex: number, gameFormat: IGameFormat): void {
@@ -264,6 +272,8 @@ export class Cycle implements ICycle {
         if (this.correctBuzz && this.correctBuzz.marker.position < marker.position) {
             this.removeCorrectBuzz();
         }
+
+        this.updateIfNeeded();
     }
 
     public addBonusProtest(
@@ -290,6 +300,8 @@ export class Cycle implements ICycle {
             questionIndex,
             teamName,
         });
+
+        this.updateIfNeeded();
     }
 
     public addPlayerJoins(inPlayer: IPlayer): void {
@@ -300,6 +312,8 @@ export class Cycle implements ICycle {
         this.playerJoins.push({
             inPlayer,
         });
+
+        this.updateIfNeeded();
     }
 
     public addPlayerLeaves(outPlayer: IPlayer): void {
@@ -325,6 +339,8 @@ export class Cycle implements ICycle {
         });
 
         this.removePlayerBuzzes(outPlayer);
+
+        this.updateIfNeeded();
     }
 
     public addSwapSubstitution(inPlayer: IPlayer, outPlayer: IPlayer): void {
@@ -338,6 +354,8 @@ export class Cycle implements ICycle {
         });
 
         this.removePlayerBuzzes(outPlayer);
+
+        this.updateIfNeeded();
     }
 
     public addThrownOutBonus(bonusIndex: number): void {
@@ -354,6 +372,8 @@ export class Cycle implements ICycle {
             this.resetBonusAnswer();
             this.bonusAnswer.bonusIndex = bonusIndex + 1;
         }
+
+        this.updateIfNeeded();
     }
 
     public addThrownOutTossup(tossupIndex: number): void {
@@ -368,6 +388,8 @@ export class Cycle implements ICycle {
         // If we threw out the tossup, then we can't have a correct buzz; otherwise the tossup would've been allowed to
         // stay. Clear the correct buzz
         this.removeCorrectBuzz();
+
+        this.updateIfNeeded();
     }
 
     public addTossupProtest(
@@ -388,6 +410,8 @@ export class Cycle implements ICycle {
             questionIndex,
             teamName,
         });
+
+        this.updateIfNeeded();
     }
 
     // TODO: Try to make this a computed function
@@ -415,12 +439,16 @@ export class Cycle implements ICycle {
         if (this.bonusProtests.length === 0) {
             this.bonusProtests = undefined;
         }
+
+        this.updateIfNeeded();
     }
 
     public removeCorrectBuzz(): void {
         this.correctBuzz = undefined;
         this.bonusAnswer = undefined;
         this.bonusProtests = undefined;
+
+        this.updateIfNeeded();
     }
 
     public removePlayerJoins(joinToRemove: Events.IPlayerJoinsEvent): void {
@@ -429,6 +457,8 @@ export class Cycle implements ICycle {
         }
 
         this.playerJoins = this.playerJoins.filter((join) => join !== joinToRemove);
+
+        this.updateIfNeeded();
     }
 
     public removePlayerLeaves(leaveToRemove: Events.IPlayerLeavesEvent): void {
@@ -437,6 +467,8 @@ export class Cycle implements ICycle {
         }
 
         this.playerLeaves = this.playerLeaves.filter((leave) => leave !== leaveToRemove);
+
+        this.updateIfNeeded();
     }
 
     public removeSubstitution(subToRemove: Events.ISubstitutionEvent): void {
@@ -445,6 +477,8 @@ export class Cycle implements ICycle {
         }
 
         this.subs = this.subs.filter((sub) => sub !== subToRemove);
+
+        this.updateIfNeeded();
     }
 
     public removeThrownOutBonus(bonusIndex: number): void {
@@ -464,6 +498,8 @@ export class Cycle implements ICycle {
             this.resetBonusAnswer();
             this.bonusAnswer.bonusIndex = bonusIndex - 1;
         }
+
+        this.updateIfNeeded();
     }
 
     public removeThrownOutTossup(tossupIndex: number): void {
@@ -480,6 +516,8 @@ export class Cycle implements ICycle {
 
         // If the latest tossup is no longer thrown out, then the correct buzz doesn't apply anymore
         this.removeCorrectBuzz();
+
+        this.updateIfNeeded();
     }
 
     public removeTossupProtest(teamName: string): void {
@@ -491,6 +529,8 @@ export class Cycle implements ICycle {
         if (this.tossupProtests.length === 0) {
             this.tossupProtests = undefined;
         }
+
+        this.updateIfNeeded();
     }
 
     public removeWrongBuzz(player: IPlayer, gameFormat: IGameFormat): void {
@@ -507,6 +547,8 @@ export class Cycle implements ICycle {
 
         this.updateNeg(gameFormat);
         this.removeTossupProtest(player.teamName);
+
+        this.updateIfNeeded();
     }
 
     public setBonusPartAnswer(index: number, teamName: string, points: number): void {
@@ -519,6 +561,12 @@ export class Cycle implements ICycle {
         }
 
         this.bonusAnswer.parts[index] = { teamName, points };
+
+        this.updateIfNeeded();
+    }
+
+    public setUpdateHandler(handler: () => void | undefined): void {
+        this.onUpdate = handler;
     }
 
     private resetBonusAnswer(): void {
@@ -535,12 +583,16 @@ export class Cycle implements ICycle {
                 parts,
             };
         }
+
+        this.updateIfNeeded();
     }
 
     private removePlayerBuzzes(player: IPlayer): void {
         this.removeBuzzes((event) => CompareUtils.playersEqual(player, event.marker.player));
 
         this.tossupProtests = this.tossupProtests?.filter((protest) => protest.teamName !== player.teamName);
+
+        this.updateIfNeeded();
     }
 
     private removeTeamsBuzzes(teamName: string, tossupIndex: number): void {
@@ -555,6 +607,12 @@ export class Cycle implements ICycle {
             this.removeCorrectBuzz();
         } else if (this.wrongBuzzes && this.wrongBuzzes.findIndex((buzz) => filter(buzz)) >= 0) {
             this.wrongBuzzes = this.wrongBuzzes.filter((buzz) => !filter(buzz));
+        }
+    }
+
+    private updateIfNeeded(): void {
+        if (this.onUpdate) {
+            this.onUpdate();
         }
     }
 

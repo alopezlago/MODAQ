@@ -105,6 +105,16 @@ export class DialogState {
         };
     }
 
+    public showYesNoCancelMessageDialog(title: string, message: string, onYes: () => void, onNo: () => void): void {
+        this.messageDialog = {
+            title,
+            message,
+            type: MessageDialogType.YesNocCancel,
+            onOK: onYes,
+            onNo,
+        };
+    }
+
     public showNewGameDialog(): void {
         this.newGameDialogVisible = true;
     }

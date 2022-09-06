@@ -1,6 +1,6 @@
 {
     "name": "modaq",
-    "version": "1.8.2",
+    "version": "1.9.0",
     "description": "Quiz Bowl Reader using TypeScript, React, and MobX",
     "repository": {
         "type": "git",
@@ -41,7 +41,7 @@
         "tsconfig-paths": "^3.9.0",
         "ts-node": "^9.1.1",
         "typescript": "^4.2.3",
-        "vite": "^2.9.9"
+        "vite": "^2.9.14"
     },
     "dependencies": {
         "@fluentui/react": "^8.64.2",

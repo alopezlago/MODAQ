@@ -53,7 +53,8 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
     const appState: AppState = React.useContext(StateContext);
     const game: GameState = appState.game;
 
-    const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
+    const cancelHandler = React.useCallback(() => hideDialog(appState), [appState]);
+    const exportHandler = React.useCallback(() => exportGame(appState), [appState]);
 
     const joinedTeamNames: string = game.teamNames.join("_");
 
@@ -77,24 +78,29 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
             dialogContentProps={content}
             modalProps={modalProps}
             maxWidth="40vw"
-            onDismiss={closeHandler}
+            onDismiss={cancelHandler}
         >
             <Label>To export the whole game (packet, players, and events), click on &quot;Export game&quot;.</Label>
             <Label>To only export the events, click on &quot;Export events&quot;.</Label>
             <DialogFooter>
-                <PrimaryButton text="Export game" onClick={closeHandler} href={gameHref} download={gameFilename} />
+                <PrimaryButton text="Export game" onClick={exportHandler} href={gameHref} download={gameFilename} />
                 <PrimaryButton
                     text="Export events"
-                    onClick={closeHandler}
+                    onClick={exportHandler}
                     href={cyclesHref}
                     download={cyclesFilename}
                 />
-                <PrimaryButton text="Export QBJ" onClick={closeHandler} href={qbjHref} download={qbjFilename} />
-                <DefaultButton text="Cancel" onClick={closeHandler} />
+                <PrimaryButton text="Export QBJ" onClick={exportHandler} href={qbjHref} download={qbjFilename} />
+                <DefaultButton text="Cancel" onClick={cancelHandler} />
             </DialogFooter>
         </Dialog>
     );
 });
+
+function exportGame(appState: AppState): void {
+    appState.game.markUpdateComplete();
+    hideDialog(appState);
+}
 
 function hideDialog(appState: AppState) {
     appState.uiState.dialogState.hideExportToJsonDialog();
