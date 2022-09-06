@@ -37,8 +37,12 @@ export const MessageDialog = observer(function MessageDialog(): JSX.Element {
 
     const messageDialog: IMessageDialogState | undefined = appState.uiState.dialogState.messageDialog;
 
+    if (messageDialog == undefined) {
+        return <></>;
+    }
+
     const okHandler = () => {
-        if (messageDialog?.onOK !== undefined) {
+        if (messageDialog.onOK !== undefined) {
             messageDialog.onOK();
         }
 
@@ -47,15 +51,31 @@ export const MessageDialog = observer(function MessageDialog(): JSX.Element {
 
     const dialogContent: IDialogContentProps = {
         type: DialogType.normal,
-        title: messageDialog?.title,
+        title: messageDialog.title,
         closeButtonAriaLabel: "Close",
         showCloseButton: true,
     };
 
+    const noButton: JSX.Element | undefined =
+        messageDialog.type === MessageDialogType.YesNocCancel ? (
+            <DefaultButton
+                text="No"
+                onClick={() => {
+                    if (messageDialog.onNo !== undefined) {
+                        messageDialog.onNo();
+                    }
+
+                    hideDialog(appState);
+                }}
+            />
+        ) : undefined;
+
     const cancelButton: JSX.Element | undefined =
-        messageDialog?.type === MessageDialogType.OK ? undefined : (
+        messageDialog.type === MessageDialogType.OK ? undefined : (
             <DefaultButton text="Cancel" onClick={closeHandler} />
         );
+
+    const okButtonText = messageDialog.type === MessageDialogType.YesNocCancel ? "Yes" : "OK";
 
     return (
         <Dialog
@@ -67,7 +87,8 @@ export const MessageDialog = observer(function MessageDialog(): JSX.Element {
         >
             <Label>{messageDialog?.message}</Label>
             <DialogFooter>
-                <PrimaryButton text="OK" onClick={okHandler} />
+                <PrimaryButton text={okButtonText} onClick={okHandler} />
+                {noButton}
                 {cancelButton}
             </DialogFooter>
         </Dialog>

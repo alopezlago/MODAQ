@@ -1,4 +1,4 @@
-import { computed, observable, action, makeObservable } from "mobx";
+import { computed, observable, action, makeObservable, when } from "mobx";
 import { format } from "mobx-sync";
 
 import * as GameFormats from "./GameFormats";
@@ -22,7 +22,13 @@ export class GameState {
     // In general we should prefer playableCycles, but if it's used for updating cycles directly, then
     // using cycles can be safer since we're less likely to have an issue with the index being out of bounds
     // Anything with methods/computeds not at the top level needs to use @format to deserialize correctly
-    @format((deserializedArray: ICycle[]) => {
+    @format((deserializedArray: ICycle[], currentCycles: Cycle[]) => {
+        // This is sometimes called twice, and the second time the old value is the same as the new one. In that case,
+        // just return the current value. This fixes an issue where the update handler on the cycle gets wiped out.
+        if (deserializedArray === currentCycles) {
+            return currentCycles;
+        }
+
         return deserializedArray.map((deserializedCycle) => {
             return new Cycle(deserializedCycle);
         });
@@ -32,11 +38,14 @@ export class GameState {
     @format((deserializedFormat: IGameFormat) => GameFormats.getUpgradedFormatVersion(deserializedFormat))
     public gameFormat: IGameFormat;
 
+    public hasUpdates: boolean;
+
     constructor() {
         makeObservable(this, {
             cycles: observable,
             teamNames: computed,
             gameFormat: observable,
+            hasUpdates: observable,
             packet: observable,
             players: observable,
             isLoaded: computed,
@@ -56,6 +65,18 @@ export class GameState {
         this.players = [];
         this.cycles = [];
         this.gameFormat = GameFormats.UndefinedGameFormat;
+        this.hasUpdates = false;
+
+        // Once we've filled out all the cycles, then add the update handlers to all of the cycles. This is needed
+        // because we can't do this when getting data from deserialized cycles (no access to this in the decorator)
+        when(
+            () => this.cycles.length >= this.gameFormat.regulationTossupCount,
+            () => {
+                for (const cycle of this.cycles) {
+                    cycle.setUpdateHandler(() => this.markUpdateNeeded());
+                }
+            }
+        );
     }
 
     public get isLoaded(): boolean {
@@ -68,18 +89,21 @@ export class GameState {
             return [];
         }
 
-        const firstTeamName = this.players[0].teamName;
-        let secondTeamName = "";
+        const seenTeams: Set<string> = new Set<string>();
 
-        // Go in reverse order since the other team is likely to be at the end
-        for (let i = this.players.length - 1; i > 0; i--) {
-            const player: Player = this.players[i];
-            if (player.teamName !== firstTeamName) {
-                secondTeamName = player.teamName;
+        const firstTeamName = this.players[0].teamName;
+        seenTeams.add(firstTeamName);
+        const teamNames = [firstTeamName];
+
+        for (let i = 1; i < this.players.length; i++) {
+            const teamName = this.players[i].teamName;
+            if (!seenTeams.has(teamName)) {
+                seenTeams.add(teamName);
+                teamNames.push(teamName);
             }
         }
 
-        return [firstTeamName, secondTeamName];
+        return teamNames;
     }
 
     public get finalScore(): [number, number] {
@@ -340,10 +364,21 @@ export class GameState {
         this.packet = packet;
 
         if (this.cycles.length < this.packet.tossups.length) {
+            const handler = () => this.markUpdateNeeded();
             for (let i = this.cycles.length; i < this.packet.tossups.length; i++) {
-                this.cycles.push(new Cycle());
+                const cycle: Cycle = new Cycle();
+                cycle.setUpdateHandler(handler);
+                this.cycles.push(cycle);
             }
         }
+    }
+
+    public markUpdateNeeded(): void {
+        this.hasUpdates = true;
+    }
+
+    public markUpdateComplete(): void {
+        this.hasUpdates = false;
     }
 
     public setCycles(cycles: Cycle[]): void {
@@ -351,10 +386,12 @@ export class GameState {
     }
 
     public setGameFormat(gameFormat: IGameFormat): void {
+        this.hasUpdates = true;
         this.gameFormat = gameFormat;
     }
 
     public setPlayers(players: Player[]): void {
+        this.hasUpdates = true;
         this.players = players;
     }
 

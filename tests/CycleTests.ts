@@ -3,7 +3,7 @@ import { assert, expect } from "chai";
 import * as GameFormats from "src/state/GameFormats";
 import { Cycle } from "src/state/Cycle";
 import { IBuzzMarker } from "src/state/IBuzzMarker";
-import { Player } from "src/state/TeamState";
+import { IPlayer, Player } from "src/state/TeamState";
 import { IBonusAnswerEvent, ITossupAnswerEvent } from "src/state/Events";
 
 function addDefaultCorrectBuzz(cycle: Cycle): void {
@@ -203,6 +203,125 @@ describe("CycleTests", () => {
                 { teamName: "Alpha", points: 10 },
                 { teamName: "Alpha", points: 15 },
             ]);
+        });
+    });
+    describe("Update handler", () => {
+        it("Update handler called on updates", () => {
+            const cycle: Cycle = new Cycle();
+
+            let updated = false;
+            cycle.setUpdateHandler(() => {
+                updated = true;
+            });
+
+            cycle.addThrownOutTossup(0);
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.addWrongBuzz(
+                { player: new Player("Bob", "Beta", /* isStarter */ true), position: 5, points: -5 },
+                1,
+                GameFormats.UndefinedGameFormat
+            );
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.addTossupProtest("Beta", 1, 5, "Wrong thing", "Reason");
+            expect(updated).to.be.true;
+            updated = false;
+
+            addDefaultCorrectBuzz(cycle);
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.addThrownOutBonus(0);
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.setBonusPartAnswer(0, "Alpha", 10);
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.addBonusProtest(1, 1, "Wrong", "Reason", "Alpha");
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.removeBonusProtest(1);
+            expect(updated).to.be.true;
+            updated = false;
+
+            const newPlayer: IPlayer = { name: "Alvaro", teamName: "Alpha", isStarter: false };
+            cycle.addPlayerJoins(newPlayer);
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.addSwapSubstitution(newPlayer, { name: "Alice", teamName: "Alpha", isStarter: true });
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.addPlayerLeaves({ name: "Anna", teamName: "Alpha", isStarter: false });
+            expect(updated).to.be.true;
+            updated = false;
+
+            if (cycle.playerLeaves == undefined) {
+                assert.fail("There should be a player leaves event");
+            }
+            cycle.removePlayerLeaves(cycle.playerLeaves[0]);
+            expect(updated).to.be.true;
+            updated = false;
+
+            if (cycle.subs == undefined) {
+                assert.fail("There should be a substitution event");
+            }
+            cycle.removeSubstitution(cycle.subs[0]);
+            expect(updated).to.be.true;
+            updated = false;
+
+            if (cycle.playerJoins == undefined) {
+                assert.fail("There should be a player joins event");
+            }
+            cycle.removePlayerJoins(cycle.playerJoins[0]);
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.removeThrownOutBonus(0);
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.removeCorrectBuzz();
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.removeTossupProtest("Beta");
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.removeWrongBuzz(new Player("Bob", "Beta", /* isStarter */ true), GameFormats.UndefinedGameFormat);
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.removeThrownOutTossup(0);
+            expect(updated).to.be.true;
+            updated = false;
+        });
+        it("Update handler can be cleared", () => {
+            const cycle: Cycle = new Cycle();
+
+            let updated = false;
+            cycle.setUpdateHandler(() => {
+                updated = true;
+            });
+
+            const newPlayer: IPlayer = { name: "Alvaro", teamName: "Alpha", isStarter: false };
+            cycle.addPlayerJoins(newPlayer);
+            expect(updated).to.be.true;
+            updated = false;
+
+            cycle.setUpdateHandler(() => {
+                return;
+            });
+            cycle.addPlayerJoins(newPlayer);
+            expect(updated).to.be.false;
         });
     });
 });

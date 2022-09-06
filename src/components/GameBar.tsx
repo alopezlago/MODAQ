@@ -26,9 +26,35 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     const game: GameState = appState.game;
 
     const newGameHandler = React.useCallback(() => {
-        uiState.createPendingNewGame();
-        uiState.dialogState.showNewGameDialog();
-    }, [uiState]);
+        if (appState.game.hasUpdates) {
+            // Prompt the user
+            uiState.dialogState.showYesNoCancelMessageDialog(
+                "Export Game?",
+                "The game has changes that haven't been exported. Would you like to export the game before starting a new one?",
+                () => {
+                    // Open the export dialog, depending on if they have sheets. We should ideally abstract this logic
+                    // to another method
+                    if (appState.uiState.customExport != undefined) {
+                        appState.handleCustomExport();
+                    } else if (appState.uiState.sheetsState.sheetId != undefined) {
+                        exportToSheets(appState);
+                    } else {
+                        // Manual export
+                        appState.uiState.dialogState.showExportToJsonDialog();
+                    }
+                },
+                () => {
+                    // User doesn't want any updates, so clear them
+                    appState.game.markUpdateComplete();
+                    uiState.createPendingNewGame();
+                    uiState.dialogState.showNewGameDialog();
+                }
+            );
+        } else {
+            uiState.createPendingNewGame();
+            uiState.dialogState.showNewGameDialog();
+        }
+    }, [appState, uiState]);
     const importGameHandler = React.useCallback(() => {
         uiState.createPendingNewGame();
         uiState.dialogState.showImportGameDialog();

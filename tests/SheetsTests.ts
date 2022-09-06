@@ -36,7 +36,6 @@ function createMockApi(mocks: Partial<ISheetsApi>): ISheetsApi {
 }
 
 function createAppStateForExport(sheetType: SheetType = SheetType.Lifsheets): AppState {
-    //return runInAction(() => {
     const appState: AppState = new AppState();
 
     appState.game.addPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
@@ -57,14 +56,12 @@ function createAppStateForExport(sheetType: SheetType = SheetType.Lifsheets): Ap
     appState.uiState.sheetsState.setSheetType(sheetType);
 
     return appState;
-    //});
 }
 
 function createAppStateForRosters(
     sheetType: SheetType = SheetType.Lifsheets,
     pendingGameType: PendingGameType = PendingGameType.Lifsheets
 ): AppState {
-    //return runInAction(() => {
     const appState: AppState = new AppState();
 
     appState.uiState.createPendingNewGame();
@@ -73,7 +70,6 @@ function createAppStateForRosters(
     appState.uiState.sheetsState.setSheetType(sheetType);
 
     return appState;
-    //});
 }
 
 function findPlayerOnTeam(appState: AppState, teamName: string): Player {
@@ -91,7 +87,6 @@ async function verifyExportToSheetsError(
     sheetsApi: ISheetsApi,
     errorMessage: string
 ): Promise<void> {
-    //await flow(function* () {
     await Sheets.exportToSheet(appState, sheetsApi);
 
     expect(appState.uiState.sheetsState).to.exist;
@@ -99,7 +94,6 @@ async function verifyExportToSheetsError(
     expect(appState.uiState.sheetsState.exportStatus?.isError).to.be.true;
     expect(appState.uiState.sheetsState.exportStatus?.status).to.equal(errorMessage);
     expect(appState.uiState.sheetsState.exportState).to.equal(ExportState.Error);
-    //});
 }
 
 async function verifyExportToSheetSuccess(

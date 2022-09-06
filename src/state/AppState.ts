@@ -43,6 +43,7 @@ export class AppState {
                 if (status.isError) {
                     this.uiState.dialogState.showOKMessageDialog("Export Error", `Export failed: ${status.status}.`);
                 } else {
+                    this.game.markUpdateComplete();
                     this.uiState.dialogState.showOKMessageDialog("Export Succeeded", "Export succeeded.");
                 }
             })
