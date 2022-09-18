@@ -50,7 +50,7 @@ function createCycleList(cycle: Cycle, game: GameState): JSX.Element[] {
 
     if (cycle.playerJoins) {
         for (let i = 0; i < cycle.playerJoins.length; i++) {
-            elements.push(createPlayerJoinDetails(cycle, cycle.playerJoins[i], i));
+            elements.push(createPlayerJoinDetails(game, cycle.playerJoins[i], i));
         }
     }
 
@@ -160,8 +160,8 @@ function createPlayerLeaveDetails(cycle: Cycle, leave: IPlayerLeavesEvent, index
     return <PlayerLeavesCycleItem key={`sub_${index}_out_${leave.outPlayer?.name}`} cycle={cycle} leave={leave} />;
 }
 
-function createPlayerJoinDetails(cycle: Cycle, join: IPlayerJoinsEvent, index: number): JSX.Element {
-    return <PlayerJoinsCycleItem key={`sub_${index}_in_${join.inPlayer.name}`} cycle={cycle} join={join} />;
+function createPlayerJoinDetails(game: GameState, join: IPlayerJoinsEvent, index: number): JSX.Element {
+    return <PlayerJoinsCycleItem key={`sub_${index}_in_${join.inPlayer.name}`} game={game} join={join} />;
 }
 
 function createSubstitutionDetails(cycle: Cycle, sub: ISubstitutionEvent, index: number): JSX.Element {

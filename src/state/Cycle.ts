@@ -451,6 +451,57 @@ export class Cycle implements ICycle {
         this.updateIfNeeded();
     }
 
+    public removeNewPlayerEvents(removedPlayer: IPlayer): void {
+        if (this.playerJoins) {
+            // Remove their joins
+            let playerJoinsToRemove: Events.IPlayerJoinsEvent | undefined;
+            for (const playerJoins of this.playerJoins) {
+                if (playerJoins.inPlayer === removedPlayer) {
+                    playerJoinsToRemove = playerJoins;
+                    break;
+                }
+            }
+
+            if (playerJoinsToRemove) {
+                this.removePlayerJoins(playerJoinsToRemove);
+            }
+        }
+
+        if (this.playerLeaves) {
+            // Remove their leaves (no longer leaves, since they were never added)
+            let playerLeavesToRemove: Events.IPlayerLeavesEvent | undefined;
+            for (const playerLeaves of this.playerLeaves) {
+                if (playerLeaves.outPlayer === removedPlayer) {
+                    playerLeavesToRemove = playerLeaves;
+                    break;
+                }
+            }
+
+            if (playerLeavesToRemove) {
+                this.removePlayerLeaves(playerLeavesToRemove);
+            }
+        }
+
+        if (this.subs) {
+            // Remove their substitutions
+            let subToRemove: Events.ISubstitutionEvent | undefined;
+            for (const sub of this.subs) {
+                if (sub.inPlayer === removedPlayer || sub.outPlayer === removedPlayer) {
+                    subToRemove = sub;
+                    break;
+                }
+            }
+
+            if (subToRemove) {
+                this.removeSubstitution(subToRemove);
+            }
+        }
+
+        this.removePlayerBuzzes(removedPlayer);
+
+        this.updateIfNeeded();
+    }
+
     public removePlayerJoins(joinToRemove: Events.IPlayerJoinsEvent): void {
         if (this.playerJoins == undefined) {
             return;
