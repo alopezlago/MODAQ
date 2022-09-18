@@ -324,4 +324,107 @@ describe("CycleTests", () => {
             expect(updated).to.be.false;
         });
     });
+    describe("removeNewPlayerEvents", () => {
+        it("Remove new player's correct buzz and bonus events", () => {
+            const newPlayer: Player = new Player("Newton", "Alpha", false);
+            const existingPlayer: Player = new Player("Zach", "Zeta", true);
+
+            const cycle: Cycle = new Cycle();
+            cycle.addPlayerJoins(newPlayer);
+            cycle.addWrongBuzz(
+                { player: existingPlayer, points: -5, position: 10 },
+                1,
+                GameFormats.UndefinedGameFormat
+            );
+
+            cycle.addCorrectBuzz(
+                { player: newPlayer, points: 10, position: 20 },
+                1,
+                GameFormats.UndefinedGameFormat,
+                0,
+                3
+            );
+            cycle.addBonusProtest(0, 0, "Answer", "Reason", newPlayer.teamName);
+            cycle.setBonusPartAnswer(1, newPlayer.teamName, 10);
+            cycle.setBonusPartAnswer(2, newPlayer.teamName, 10);
+
+            // Verify we have the parts and protests and buzzes
+            if (cycle.playerJoins == undefined) {
+                assert.fail("There should be a player joins event");
+            }
+
+            expect(cycle.playerJoins[0].inPlayer).to.equal(newPlayer);
+
+            expect(cycle.correctBuzz).to.exist;
+            expect(cycle.correctBuzz?.marker.player).to.equal(newPlayer);
+
+            if (cycle.bonusProtests == undefined) {
+                assert.fail("bonus protest should exist before we remove the player");
+            }
+
+            expect(cycle.bonusProtests[0].teamName).to.equal(newPlayer.teamName);
+            expect(cycle.bonusAnswer).to.exist;
+            expect(cycle.bonusAnswer?.receivingTeamName).to.equal(newPlayer.teamName);
+            expect(cycle.bonusAnswer?.parts[1]).to.exist;
+            expect(cycle.bonusAnswer?.parts[2]).to.exist;
+
+            cycle.removeNewPlayerEvents(newPlayer);
+
+            // Verify that the parts are gone
+            expect(cycle.playerJoins.length).to.equal(0);
+            expect(cycle.correctBuzz).to.not.exist;
+            expect(cycle.bonusAnswer).to.not.exist;
+            expect(cycle.bonusProtests).to.not.exist;
+            expect(cycle.wrongBuzzes?.length).to.equal(1);
+        });
+        it("Remove new player's wrong buzz and protest", () => {
+            const newPlayer: Player = new Player("Newton", "Alpha", false);
+            const existingPlayer: Player = new Player("Zach", "Zeta", true);
+
+            const cycle: Cycle = new Cycle();
+            cycle.addPlayerJoins(newPlayer);
+            cycle.addWrongBuzz({ player: newPlayer, points: -5, position: 10 }, 1, GameFormats.UndefinedGameFormat);
+            cycle.addTossupProtest(newPlayer.teamName, 1, 10, "Answer", "Reason");
+
+            cycle.addCorrectBuzz(
+                { player: existingPlayer, points: 10, position: 20 },
+                1,
+                GameFormats.UndefinedGameFormat,
+                0,
+                3
+            );
+            cycle.addBonusProtest(0, 0, "Answer", "Reason", existingPlayer.teamName);
+            cycle.setBonusPartAnswer(1, existingPlayer.teamName, 10);
+
+            // Verify we have the parts and protests and buzzes
+            if (cycle.playerJoins == undefined) {
+                assert.fail("There should be a player joins event");
+            }
+
+            expect(cycle.playerJoins[0].inPlayer).to.equal(newPlayer);
+
+            if (cycle.wrongBuzzes == undefined) {
+                assert.fail("There should be at least one wrong buzz");
+            }
+
+            expect(cycle.wrongBuzzes[0].marker.player).to.equal(newPlayer);
+
+            if (cycle.tossupProtests == undefined) {
+                assert.fail("bonus protest should exist before we remove the player");
+            }
+
+            expect(cycle.tossupProtests[0].teamName).to.equal(newPlayer.teamName);
+
+            cycle.removeNewPlayerEvents(newPlayer);
+
+            // Verify that the parts are gone
+            expect(cycle.playerJoins.length).to.equal(0);
+            expect(cycle.wrongBuzzes?.length).to.equal(0);
+            expect(cycle.tossupProtests.length).to.equal(0);
+
+            // Other player events shouldn't be changed
+            expect(cycle.correctBuzz).to.exist;
+            expect(cycle.bonusAnswer).to.exist;
+        });
+    });
 });

@@ -3,7 +3,7 @@ import { format } from "mobx-sync";
 
 import * as GameFormats from "./GameFormats";
 import { PacketState, Bonus, Tossup } from "./PacketState";
-import { Player } from "./TeamState";
+import { IPlayer, Player } from "./TeamState";
 import { Cycle, ICycle } from "./Cycle";
 import {
     ISubstitutionEvent,
@@ -58,6 +58,7 @@ export class GameState {
             loadPacket: action,
             setCycles: action,
             setGameFormat: action,
+            removeNewPlayer: action,
             setPlayers: action,
         });
 
@@ -379,6 +380,23 @@ export class GameState {
 
     public markUpdateComplete(): void {
         this.hasUpdates = false;
+    }
+
+    public removeNewPlayer(player: IPlayer): void {
+        const playersSize = this.players.length;
+        this.players = this.players.filter((p) => p !== player);
+
+        if (this.players.length === playersSize) {
+            return;
+        }
+
+        // We have to go through future cycles and remove events where the player is mentioned. This should be handled
+        // inside of the cycle.
+        for (const cycle of this.cycles) {
+            cycle.removeNewPlayerEvents(player);
+        }
+
+        this.hasUpdates = true;
     }
 
     public setCycles(cycles: Cycle[]): void {

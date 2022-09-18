@@ -1,15 +1,15 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 
-import { Cycle } from "../../state/Cycle";
 import { IPlayerJoinsEvent } from "../../state/Events";
 import { CycleItem } from "./CycleItem";
+import { GameState } from "../../state/GameState";
 
 export const PlayerJoinsCycleItem = observer(function PlayerJoinsCycleItem(
     props: IPlayerJoinsCycleItemProps
 ): JSX.Element {
     const deleteHandler = () => {
-        props.cycle.removePlayerJoins(props.join);
+        props.game.removeNewPlayer(props.join.inPlayer);
     };
     return (
         <CycleItem
@@ -20,6 +20,6 @@ export const PlayerJoinsCycleItem = observer(function PlayerJoinsCycleItem(
 });
 
 export interface IPlayerJoinsCycleItemProps {
-    cycle: Cycle;
+    game: GameState;
     join: IPlayerJoinsEvent;
 }
