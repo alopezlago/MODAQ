@@ -16,6 +16,7 @@ import * as QBJ from "../../qbj/QBJ";
 import { AppState } from "../../state/AppState";
 import { GameState } from "../../state/GameState";
 import { StateContext } from "../../contexts/StateContext";
+import { RoundSelector } from "../RoundSelector";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -56,21 +57,23 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
     const cancelHandler = React.useCallback(() => hideDialog(appState), [appState]);
     const exportHandler = React.useCallback(() => exportGame(appState), [appState]);
 
+    const roundNumber: number | undefined =
+        appState.uiState.exportRoundNumber ?? appState.uiState.sheetsState.roundNumber ?? 1;
     const joinedTeamNames: string = game.teamNames.join("_");
 
     const cyclesJson: Blob = new Blob([JSON.stringify(game.cycles)], { type: "application/json" });
     const cyclesHref: string = URL.createObjectURL(cyclesJson);
-    const cyclesFilename = `${joinedTeamNames}_Events.json`;
+    const cyclesFilename = `Round_${roundNumber}_${joinedTeamNames}_Events.json`;
 
     const gameJson: Blob = new Blob([JSON.stringify(game)], { type: "application/json" });
     const gameHref: string = URL.createObjectURL(gameJson);
-    const gameFilename = `${joinedTeamNames}_Game.json`;
+    const gameFilename = `Round_${roundNumber}_${joinedTeamNames}_Game.json`;
 
-    const qbjJson: Blob = new Blob([QBJ.toQBJString(game, appState.uiState.packetFilename)], {
+    const qbjJson: Blob = new Blob([QBJ.toQBJString(game, appState.uiState.packetFilename, roundNumber)], {
         type: "application/json",
     });
     const qbjHref: string = URL.createObjectURL(qbjJson);
-    const qbjFilename = `${joinedTeamNames}.qbj`;
+    const qbjFilename = `Round_${roundNumber}_${joinedTeamNames}.qbj`;
 
     return (
         <Dialog
@@ -82,6 +85,10 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
         >
             <Label>To export the whole game (packet, players, and events), click on &quot;Export game&quot;.</Label>
             <Label>To only export the events, click on &quot;Export events&quot;.</Label>
+            <RoundSelector
+                roundNumber={roundNumber}
+                onRoundNumberChange={(newValue) => appState.uiState.setExportRoundNumber(newValue)}
+            />
             <DialogFooter>
                 <PrimaryButton text="Export game" onClick={exportHandler} href={gameHref} download={gameFilename} />
                 <PrimaryButton

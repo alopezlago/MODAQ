@@ -945,5 +945,15 @@ describe("QBJTests", () => {
             const match: IMatch = JSON.parse(qbj);
             expect(match.packets).to.equal("Packet_17");
         });
+        it("Round number in _round field", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.addPlayers(players);
+
+            const qbj: string = QBJ.toQBJString(game, "Packet_The_U.docx", 5);
+            expect(qbj).to.not.be.undefined;
+            const match: IMatch = JSON.parse(qbj);
+            expect(match._round).to.equal(5);
+        });
     });
 });

@@ -44,6 +44,9 @@ export class UIState {
     public customExport: ICustomExport | undefined;
 
     @ignore
+    public exportRoundNumber: number;
+
+    @ignore
     public hideNewGame: boolean;
 
     @ignore
@@ -97,6 +100,7 @@ export class UIState {
             visible: false,
         };
         this.customExport = undefined;
+        this.exportRoundNumber = 1;
         this.hideNewGame = false;
 
         this.isClockHidden = false;
@@ -311,6 +315,10 @@ export class UIState {
 
     public setCustomExport(customExport: ICustomExport): void {
         this.customExport = customExport;
+    }
+
+    public setExportRoundNumber(newRoundNumber: number): void {
+        this.exportRoundNumber = newRoundNumber;
     }
 
     public setHideNewGame(value: boolean): void {

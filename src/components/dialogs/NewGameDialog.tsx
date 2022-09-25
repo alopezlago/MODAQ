@@ -462,8 +462,14 @@ function onSubmit(appState: AppState): void {
         uiState.resetSheetsId();
     }
 
-    // We always want to reset the round number, since this could be for a different round
-    uiState.sheetsState.clearRoundNumber();
+    // Increase the round number by 1 if the round number exists, since the person is probably reading the next game
+    if (uiState.sheetsState.roundNumber != undefined) {
+        uiState.sheetsState.setRoundNumber(uiState.sheetsState.roundNumber + 1);
+    }
+
+    if (uiState.exportRoundNumber != undefined) {
+        uiState.setExportRoundNumber(uiState.exportRoundNumber + 1);
+    }
 
     hideDialog(appState);
 }
