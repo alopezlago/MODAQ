@@ -27,6 +27,9 @@ import { IPlayer, Player } from "../state/TeamState";
 import { PacketState } from "../state/PacketState";
 import { ICustomExport } from "../state/CustomExport";
 
+// Initialize Fluent UI icons when this is loaded, before the first render
+initializeIcons();
+
 export const ModaqControl = observer(function ModaqControl(props: IModaqControlProps): JSX.Element {
     const [appState]: [AppState, React.Dispatch<React.SetStateAction<AppState>>] = React.useState(new AppState());
 
@@ -96,9 +99,6 @@ export interface IModaqControlProps {
 }
 
 function initializeControl(appState: AppState, props: IModaqControlProps): () => void {
-    // Initialize Fluent UI icons on the first render
-    initializeIcons();
-
     if (props.persistState) {
         configure({ enforceActions: "observed", computedRequiresReaction: true });
         const trunk = new AsyncTrunk(appState, { storage: localStorage, storageKey: props.storeName, delay: 200 });

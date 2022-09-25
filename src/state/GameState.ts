@@ -46,6 +46,7 @@ export class GameState {
             teamNames: computed,
             gameFormat: observable,
             hasUpdates: observable,
+            markUpdateComplete: action,
             packet: observable,
             players: observable,
             isLoaded: computed,

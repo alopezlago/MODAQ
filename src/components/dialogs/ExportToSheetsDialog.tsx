@@ -11,7 +11,6 @@ import {
     PrimaryButton,
     DefaultButton,
     Label,
-    SpinButton,
     Stack,
     IStackTokens,
     Icon,
@@ -27,6 +26,7 @@ import { IPendingSheet } from "../../state/IPendingSheet";
 import { ExportState, SheetType } from "../../state/SheetState";
 import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
+import { RoundSelector } from "../RoundSelector";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -160,52 +160,6 @@ const ExportSettingsDialogBody = observer(function ExportSettingsDialogBody(): J
         [appState]
     );
 
-    const roundNumberChangeHandler = React.useCallback(
-        (newValue: string) => {
-            if (newValue == undefined) {
-                return;
-            }
-
-            const roundNumber: number = parseInt(newValue, 10);
-            if (isNaN(roundNumber) || roundNumber < 1 || roundNumber > maximumRoundNumber) {
-                // Don't accept the input if it's not a number
-                return;
-            }
-
-            uiState.updatePendingSheetRoundNumber(roundNumber);
-            return roundNumber.toString();
-        },
-        [uiState]
-    );
-
-    const roundNumberDecrementHandler = React.useCallback(
-        (newValue: string) => {
-            const roundNumber: number = parseInt(newValue, 10);
-            if (isNaN(roundNumber) || roundNumber <= 1) {
-                return;
-            }
-
-            const newRoundNumber: number = roundNumber - 1;
-            uiState.updatePendingSheetRoundNumber(newRoundNumber);
-            return newRoundNumber.toString();
-        },
-        [uiState]
-    );
-
-    const roundNumberIncrementHandler = React.useCallback(
-        (newValue: string) => {
-            const roundNumber: number = parseInt(newValue, 10);
-            if (isNaN(roundNumber) || roundNumber >= maximumRoundNumber) {
-                return;
-            }
-
-            const newRoundNumber: number = roundNumber + 1;
-            uiState.updatePendingSheetRoundNumber(newRoundNumber);
-            return newRoundNumber.toString();
-        },
-        [uiState]
-    );
-
     const sheet: IPendingSheet | undefined = uiState.pendingSheet;
     if (sheet === undefined) {
         return <></>;
@@ -265,18 +219,10 @@ const ExportSettingsDialogBody = observer(function ExportSettingsDialogBody(): J
                 />
             </StackItem>
             <StackItem>
-                <SpinButton
-                    label="Round Number"
-                    onIncrement={roundNumberIncrementHandler}
-                    onDecrement={roundNumberDecrementHandler}
-                    onValidate={roundNumberChangeHandler}
+                <RoundSelector
+                    roundNumber={roundNumber}
                     disabled={controlsDisabled}
-                    value={roundNumber.toString()}
-                    min={1}
-                    max={maximumRoundNumber}
-                    step={1}
-                    incrementButtonAriaLabel={"Increase round nubmer by 1"}
-                    decrementButtonAriaLabel={"Decrease round number by 1"}
+                    onRoundNumberChange={(newValue) => uiState.updatePendingSheetRoundNumber(newValue)}
                 />
             </StackItem>
             <StackItem>

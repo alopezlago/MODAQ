@@ -3,11 +3,11 @@ import { IBonusAnswerPart, ITossupAnswerEvent } from "../state/Events";
 import { GameState } from "../state/GameState";
 
 // Converts games into a QBJ file that conforms to the Match interface in the QB Schema
-export function toQBJString(game: GameState, packetName?: string): string {
-    return JSON.stringify(toQBJ(game, packetName));
+export function toQBJString(game: GameState, packetName?: string, round?: number): string {
+    return JSON.stringify(toQBJ(game, packetName, round));
 }
 
-export function toQBJ(game: GameState, packetName?: string): IMatch {
+export function toQBJ(game: GameState, packetName?: string, round?: number): IMatch {
     // Convert it to a Match, then use JSON.stringify
 
     const players: IPlayer[] = [];
@@ -300,6 +300,7 @@ export function toQBJ(game: GameState, packetName?: string): IMatch {
         match_teams: [...matchTeams.values()],
         match_questions: matchQuestions,
         notes: noteworthyEvents.length > 0 ? noteworthyEvents.join("\n") : undefined,
+        _round: round,
     };
 
     if (packetName) {
@@ -383,6 +384,8 @@ export interface IMatch {
     match_questions: IMatchQuestion[];
     notes?: string; // For storing protest info and thrown out Qs
     packets?: string; // The name of the packet
+
+    _round?: number; // This isn't in the QBJ spec, but is useful for MODAQ since some of its use cases are for reading one game at a time
 }
 
 export interface ITeam {
