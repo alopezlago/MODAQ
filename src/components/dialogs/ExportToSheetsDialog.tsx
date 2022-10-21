@@ -77,7 +77,6 @@ const typeOptions: IDropdownOption[] = [
     },
 ];
 
-const maximumRoundNumber = 30;
 const sheetsPrefix = "https://docs.google.com/spreadsheets/d/";
 
 const settingsStackTokens: Partial<IStackTokens> = { childrenGap: 10 };

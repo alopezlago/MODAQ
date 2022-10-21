@@ -441,6 +441,22 @@
     "@jridgewell/resolve-uri" "^3.0.3"
     "@jridgewell/sourcemap-codec" "^1.4.10"
 
+"@maxim_mazurok/gapi.client.discovery-v1@latest":
+  version "0.0.20200806"
+  resolved "https://registry.yarnpkg.com/@maxim_mazurok/gapi.client.discovery-v1/-/gapi.client.discovery-v1-0.0.20200806.tgz#c257738ef5bbf9fefa5b10b0decd444a5f3328b4"
+  integrity sha512-0pZtrElj8bc0YROIo7nH8VVvks/iww/L68l7r74oC9+ksSVO3Lum1zUR8dXTvJ7TqLGaNYiiNaUZianK6doh/w==
+  dependencies:
+    "@types/gapi.client" "*"
+    "@types/gapi.client.discovery" "*"
+
+"@maxim_mazurok/gapi.client.sheets-v4@latest":
+  version "0.0.20221013"
+  resolved "https://registry.yarnpkg.com/@maxim_mazurok/gapi.client.sheets-v4/-/gapi.client.sheets-v4-0.0.20221013.tgz#e47777c47ae18a81cd8f1f2c7021d12c92039803"
+  integrity sha512-EsS+9GZ9pIPEBkLlK+aoIisQOUpOV6BWapKc2gbQtQ6UQQ9LD4bRN6/ZcAug53wNIRfNRRjMrd1/VpgaoSN/PQ==
+  dependencies:
+    "@types/gapi.client" "*"
+    "@types/gapi.client.discovery" "*"
+
 "@microsoft/load-themed-styles@^1.10.26":
   version "1.10.55"
   resolved "https://registry.npmjs.org/@microsoft/load-themed-styles/-/load-themed-styles-1.10.55.tgz"
@@ -485,29 +501,34 @@
   resolved "https://registry.npmjs.org/@types/color-name/-/color-name-1.1.1.tgz"
   integrity sha512-rr+OQyAjxze7GgWrSaJwydHStIhHq2lvY3BOC2Mj7KnzI7XK0Uw1TOOdI9lDoajEbSWLiYgoo4f1R51erQfhPQ==
 
-"@types/gapi.auth2@^0.0.47":
-  version "0.0.47"
-  resolved "https://registry.npmjs.org/@types/gapi.auth2/-/gapi.auth2-0.0.47.tgz"
-  integrity sha512-+V/w7MUyPAUcTX0A7qd9Fj0nxnhERptFtgY9GaybXdlVPGGNDhQgXfm+yiMa+LN6/8UIKTdLC8yyrVEHXZTgEg==
+"@types/gapi.client.discovery@*":
+  version "1.0.8"
+  resolved "https://registry.yarnpkg.com/@types/gapi.client.discovery/-/gapi.client.discovery-1.0.8.tgz#8a52ea339546c73054ef1b3d90fbf007a4191651"
+  integrity sha512-cYVp7ISY2oqH/cHIfLVjppJo7xmMiY/RhMVN0O/6Z+X3grwojmuDIHcUw/C1F31/zFpFWDSjaPkwNP0aKIbbcw==
   dependencies:
-    "@types/gapi" "*"
+    "@maxim_mazurok/gapi.client.discovery-v1" latest
 
-"@types/gapi.client.sheets@^4.0.0":
-  version "4.0.9"
-  resolved "https://registry.npmjs.org/@types/gapi.client.sheets/-/gapi.client.sheets-4.0.9.tgz"
-  integrity sha512-y2RzlXk1SDNGJFAXs5otUN4KXlrJ1W8hNLcb01qvTCcx2pQ+1+3JCHplxkAnxVbEQLJvF/W8edHqqpyWGL83zw==
+"@types/gapi.client.sheets@^4.0.20201030":
+  version "4.0.20201030"
+  resolved "https://registry.yarnpkg.com/@types/gapi.client.sheets/-/gapi.client.sheets-4.0.20201030.tgz#792160242b06441962de017f33c58b3413832a0a"
+  integrity sha512-U6sBNFNbIV8Z18jKDpK3m5ehyHXbAJKfT3kM84hb57/tkcWvfXFu84xg4PFKHHxTSUlL0arF1ikesNdM3hRrjw==
   dependencies:
-    "@types/gapi.client" "*"
+    "@maxim_mazurok/gapi.client.sheets-v4" latest
 
 "@types/gapi.client@*":
   version "1.0.3"
   resolved "https://registry.npmjs.org/@types/gapi.client/-/gapi.client-1.0.3.tgz"
   integrity sha512-XhJ45zhedkqXln75Y0XZAFmHFHNu6zCGe9EyPiu5a20Q7XnsEENR3dnUqbYvp7w9e6vjXW+uKGqb3z/ezZijDg==
 
-"@types/gapi@*":
-  version "0.0.39"
-  resolved "https://registry.npmjs.org/@types/gapi/-/gapi-0.0.39.tgz"
-  integrity sha512-R1TZeZbvvbIC60DBJMhuOEivQHzOQtzl3uMDOOENTYQTSSDB6oEMpJo8HVPOTWivdUTbyEcB5qQOVr/JCKRlCQ==
+"@types/gapi.client@^1.0.5":
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/@types/gapi.client/-/gapi.client-1.0.5.tgz#a6eb97e664fe51656c5b52258bd0afef28c76308"
+  integrity sha512-OTpbBMuzfC4lkvaomxqskI/iWRGW3zOZbDXZLNSyiuswTiSSGgILRLkg0POuZ4EgzEdaYaTlXpnXiCp07ri/Yw==
+
+"@types/google.accounts@^0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@types/google.accounts/-/google.accounts-0.0.2.tgz#4e03bd249fe490f004f4f8d6423343fc51f5614a"
+  integrity sha512-wmnbDIiGZNr3dJ+NCGiWme78rhsf5gn1YJM6uRjf3FCb8lrRptybQeAnHQ+GDfKSo+z2hRxhS32VRDXJEAvCmg==
 
 "@types/he@^1.1.2":
   version "1.1.2"

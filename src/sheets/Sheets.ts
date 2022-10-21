@@ -100,10 +100,11 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
 
             values = response.valueRanges;
         } catch (e) {
+            const message: string = getErrorFromSheetsResponse(e);
             uiState.sheetsState.setExportStatus(
                 {
                     isError: true,
-                    status: `Check failed. Error: ${(e as Error).message}`,
+                    status: `Check failed. Error: ${message}`,
                 },
                 ExportState.Error
             );
@@ -375,10 +376,11 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
             ExportState.Success
         );
     } catch (e) {
+        const message: string = getErrorFromSheetsResponse(e);
         uiState.sheetsState?.setExportStatus(
             {
                 isError: true,
-                status: `Export failed. Error: ${(e as Error).message}`,
+                status: `Export failed. Error: ${message}`,
             },
             ExportState.Error
         );
@@ -452,10 +454,11 @@ export async function loadRosters(appState: AppState, sheetsApi: ISheetsApi = Sh
 
         values = response.valueRange;
     } catch (e) {
+        const message: string = getErrorFromSheetsResponse(e);
         uiState.sheetsState.setRosterLoadStatus(
             {
                 isError: true,
-                status: `Load failed. Error: ${(e as Error).message}`,
+                status: `Load failed. Error: ${message}`,
             },
             LoadingState.Error
         );
@@ -542,6 +545,21 @@ export async function loadRosters(appState: AppState, sheetsApi: ISheetsApi = Sh
     return;
 }
 
+function getErrorFromSheetsResponse(e: unknown): string {
+    const error: Error = e as Error;
+    if (error.message != undefined) {
+        return error.message;
+        // May be from the network
+    } else {
+        const eAsGoogleError: IGoogleError = e as IGoogleError;
+        if (eAsGoogleError.result && eAsGoogleError.result.error && eAsGoogleError.result.error.message) {
+            return eAsGoogleError.result.error.message;
+        }
+    }
+
+    return "";
+}
+
 function getSheetsGenerator(uiState: UIState): ISheetsGenerator {
     switch (uiState.sheetsState.sheetType) {
         // Default to Lifsheets if undefined
@@ -555,4 +573,8 @@ function getSheetsGenerator(uiState: UIState): ISheetsGenerator {
         default:
             assertNever(uiState.sheetsState.sheetType);
     }
+}
+
+interface IGoogleError {
+    result: { error: { message: string } };
 }
