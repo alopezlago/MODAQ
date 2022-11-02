@@ -24,6 +24,16 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
     const classes: ITossupQuestionClassNames = getClassNames();
 
     const selectedWordRef: React.MutableRefObject<null> = React.useRef(null);
+    const tossupTextRef: React.MutableRefObject<HTMLDivElement | null> = React.useRef(null);
+    const [lastTossup, setLastTossup] = React.useState(props.tossup);
+
+    if (lastTossup !== props.tossup) {
+        setLastTossup(props.tossup);
+        if (tossupTextRef.current != null) {
+            // Reset the scrollbar to go back to the top so they can read from the beginning
+            tossupTextRef.current.scrollTop = 0;
+        }
+    }
 
     const correctBuzzIndex: number = props.cycle.correctBuzz?.marker.position ?? -1;
     const wrongBuzzIndexes: number[] = (props.cycle.wrongBuzzes ?? [])
@@ -59,7 +69,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
     return (
         <div className={classes.tossupContainer}>
             <TossupProtestDialog appState={props.appState} cycle={props.cycle} />
-            <div className={classes.tossupText}>
+            <div className={classes.tossupText} ref={tossupTextRef}>
                 <FocusZone
                     as="div"
                     className={classes.tossupQuestionText}
