@@ -1,6 +1,6 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { Label, ILabelStyles } from "@fluentui/react";
+import { Label, ILabelStyles, ThemeContext } from "@fluentui/react";
 
 import * as PacketLoaderController from "../components/PacketLoaderController";
 import { UIState } from "../state/UIState";
@@ -18,27 +18,41 @@ export const PacketLoader = observer(function PacketLoader(props: IPacketLoaderP
         [props, onLoadHandler]
     );
 
-    const statusStyles: ILabelStyles = {
-        root: {
-            color: props.appState.uiState.packetParseStatus?.isError ?? false ? "rgb(128, 0, 0)" : undefined,
-        },
-    };
-
-    if (props.appState.uiState.yappServiceUrl == undefined) {
-        return null;
-    }
+    // Some state needs to exist outside of the theme function, otherwise mobx isn't smart enough to know it's changed
+    const status: string | undefined = props.appState.uiState.packetParseStatus?.status;
 
     return (
-        <div>
-            <FilePicker
-                accept="application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                buttonText="Load..."
-                label="Packet"
-                required={true}
-                onChange={uploadHandler}
-            />
-            <Label styles={statusStyles}>{props.appState.uiState.packetParseStatus?.status}</Label>
-        </div>
+        <ThemeContext.Consumer>
+            {(theme) => {
+                const statusStyles: ILabelStyles = {
+                    root: {
+                        color:
+                            props.appState.uiState.packetParseStatus?.isError ?? false
+                                ? theme
+                                    ? theme.palette.red
+                                    : "rgb(128, 0, 0)"
+                                : undefined,
+                    },
+                };
+
+                if (props.appState.uiState.yappServiceUrl == undefined) {
+                    return null;
+                }
+
+                return (
+                    <div>
+                        <FilePicker
+                            accept="application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            buttonText="Load..."
+                            label="Packet"
+                            required={true}
+                            onChange={uploadHandler}
+                        />
+                        <Label styles={statusStyles}>{status}</Label>
+                    </div>
+                );
+            }}
+        </ThemeContext.Consumer>
     );
 });
 

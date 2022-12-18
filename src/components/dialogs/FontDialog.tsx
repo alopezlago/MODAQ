@@ -10,6 +10,12 @@ import {
     IDialogContentProps,
     IModalProps,
     SpinButton,
+    Dropdown,
+    IDropdownOption,
+    Stack,
+    StackItem,
+    IStackTokens,
+    Label,
 } from "@fluentui/react";
 import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
@@ -42,8 +48,14 @@ const modalProps: IModalProps = {
     topOffsetFixed: true,
 };
 
+const defaultFont = "Segoe UI";
+
+const fonts: string[] = ["Arial", "Consolas", "Helvetica", "Times New Roman", "Segoe UI"];
+
 const minimumFontSize = 12;
 const maximumFontSize = 40;
+
+const stackTokens: Partial<IStackTokens> = { childrenGap: 10 };
 
 export const FontDialog = observer(function FontDialog(): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
@@ -52,7 +64,7 @@ export const FontDialog = observer(function FontDialog(): JSX.Element {
 
     return (
         <Dialog
-            hidden={appState.uiState.pendingQuestionFontSize == undefined}
+            hidden={appState.uiState.pendingFontSize == undefined}
             dialogContentProps={content}
             modalProps={modalProps}
             maxWidth="40vw"
@@ -69,7 +81,7 @@ export const FontDialog = observer(function FontDialog(): JSX.Element {
 
 const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
-    const changeHandler = React.useCallback(
+    const fontSizeChangeHandler = React.useCallback(
         (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) => {
             if (newValue == undefined) {
                 return;
@@ -77,33 +89,70 @@ const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
 
             const size = Number.parseInt(newValue, 10);
             if (!isNaN(size)) {
-                appState.uiState.setPendingQuestionFontSize(size);
+                appState.uiState.setPendingFontSize(size);
             }
         },
         [appState]
     );
 
-    const value: string = (appState.uiState.pendingQuestionFontSize ?? appState.uiState.questionFontSize).toString();
+    const value: string = (appState.uiState.pendingFontSize ?? appState.uiState.questionFontSize).toString();
+
+    const fontOptions: IDropdownOption[] = fonts.map((font) => {
+        return {
+            key: font,
+            text: font,
+            // fontFamily has several fonts, but the one we choose should be the primary font, so look for that
+            selected: appState.uiState.pendingFontFamily
+                ? appState.uiState.pendingFontFamily.startsWith(font)
+                : appState.uiState.fontFamily.startsWith(font),
+        };
+    });
 
     return (
-        <SpinButton
-            label="Font size (question)"
-            onChange={changeHandler}
-            value={value}
-            min={minimumFontSize}
-            max={maximumFontSize}
-            step={1}
-            incrementButtonAriaLabel={"Increase font size by 1"}
-            decrementButtonAriaLabel={"Decrease font size by 1"}
-        />
+        <Stack tokens={stackTokens}>
+            <StackItem>
+                <Dropdown
+                    label="Font"
+                    options={fontOptions}
+                    onRenderOption={(props, defaultRender) => {
+                        if (props == undefined || defaultRender == undefined) {
+                            return <></>;
+                        }
+
+                        // Fall back to the default UI if it's not loaded in the system
+                        return (
+                            <Label key={props.key} styles={{ root: { fontFamily: props.text + ", " + defaultFont } }}>
+                                {props.text}
+                            </Label>
+                        );
+                    }}
+                    onChange={(event, option) => {
+                        appState.uiState.setPendingFontFamily(option?.text ?? defaultFont);
+                    }}
+                />
+            </StackItem>
+            <StackItem>
+                <SpinButton
+                    label="Font size"
+                    onChange={fontSizeChangeHandler}
+                    value={value}
+                    min={minimumFontSize}
+                    max={maximumFontSize}
+                    step={1}
+                    incrementButtonAriaLabel={"Increase font size by 1"}
+                    decrementButtonAriaLabel={"Decrease font size by 1"}
+                />
+            </StackItem>
+        </Stack>
     );
 });
 
 function updateFont(appState: AppState): void {
-    appState.uiState.setQuestionFontSize(appState.uiState.pendingQuestionFontSize ?? minimumFontSize);
+    appState.uiState.setFontFamily(appState.uiState.pendingFontFamily ?? defaultFont);
+    appState.uiState.setQuestionFontSize(appState.uiState.pendingFontSize ?? minimumFontSize);
     hideDialog(appState);
 }
 
 function hideDialog(appState: AppState): void {
-    appState.uiState.resetPendingQuestionFontSize();
+    appState.uiState.resetPendingFonts();
 }

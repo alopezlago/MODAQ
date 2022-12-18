@@ -1,17 +1,33 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
+import { mergeStyleSets, memoizeFunction, ThemeContext, Theme } from "@fluentui/react";
 
 import { IFormattedText } from "../parser/IFormattedText";
 import { FormattedText } from "./FormattedText";
 
 export const QuestionWord = observer(function QuestionWord(props: IQuestionWordProps): JSX.Element {
-    const classes = getClassNames(props.selected, props.correct, props.wrong, props.index != undefined);
-
     return (
-        <span ref={props.componentRef} data-index={props.index} data-is-focusable="true" className={classes.word}>
-            <FormattedText segments={props.word} />
-        </span>
+        <ThemeContext.Consumer>
+            {(theme) => {
+                const classes = getClassNames(
+                    theme,
+                    props.selected,
+                    props.correct,
+                    props.wrong,
+                    props.index != undefined
+                );
+                return (
+                    <span
+                        ref={props.componentRef}
+                        data-index={props.index}
+                        data-is-focusable="true"
+                        className={classes.word}
+                    >
+                        <FormattedText segments={props.word} />
+                    </span>
+                );
+            }}
+        </ThemeContext.Consumer>
     );
 });
 
@@ -32,6 +48,7 @@ interface IQuestionWordClassNames {
 // This would be a great place for theming or settings
 const getClassNames = memoizeFunction(
     (
+        theme: Theme | undefined,
         selected: boolean | undefined,
         correct: boolean | undefined,
         wrong: boolean | undefined,
@@ -42,24 +59,28 @@ const getClassNames = memoizeFunction(
                 { display: "inline-flex" },
                 selected && {
                     fontWeight: "bold",
-                    background: "rgba(192, 192, 192, 0.1)",
+                    background: theme ? theme.palette.themeLight + "20" : "rbg(192, 192, 192)",
                 },
                 correct && {
-                    background: "rgba(0, 128, 128, 0.1)",
+                    background: theme ? theme.palette.tealLight + "20" : "rbg(0, 128, 128)",
                     textDecoration: "underline solid",
                 },
                 wrong && {
-                    background: "rgba(128, 0, 0, 0.1)",
+                    background: theme ? theme.palette.red + "20" : "rgb(128, 0, 0)",
                     textDecoration: "underline wavy",
                 },
                 correct &&
                     wrong && {
-                        background: "rgba(128, 128, 128, 0.2)",
+                        background: theme ? theme.palette.neutralLight : "rgb(128, 128, 128)",
                         textDecoration: "underline double",
                     },
                 // Only highlight a word on hover if it's not in an existing state from selected/correct/wrong
                 isIndexDefined &&
-                    !(selected || correct || wrong) && { "&:hover": { background: "rgba(200, 200, 0, 0.15)" } },
+                    !(selected || correct || wrong) && {
+                        "&:hover": {
+                            background: theme ? theme.palette.themeLighter : "rgb(200, 200, 0)",
+                        },
+                    },
             ],
         })
 );

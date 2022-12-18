@@ -21,6 +21,8 @@ import { ICustomExport } from "./CustomExport";
 // Alternatively, keep certain component-local states in the component state, and only store values that could be used
 // outside of that component here.
 
+const DefaultFontFamily = "Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif";
+
 export class UIState {
     @ignore
     public buildVersion: string | undefined;
@@ -30,6 +32,8 @@ export class UIState {
 
     @ignore
     public dialogState: DialogState;
+
+    public fontFamily: string;
 
     @ignore
     public isEditingCycleIndex: boolean;
@@ -67,7 +71,10 @@ export class UIState {
     public pendingNewPlayer?: Player;
 
     @ignore
-    public pendingQuestionFontSize?: number;
+    public pendingFontFamily?: string;
+
+    @ignore
+    public pendingFontSize?: number;
 
     @ignore
     public pendingSheet?: IPendingSheet;
@@ -84,6 +91,8 @@ export class UIState {
     public questionFontSize: number;
 
     public sheetsState: SheetState;
+
+    public useDarkMode: boolean;
 
     public yappServiceUrl: string | undefined;
 
@@ -103,6 +112,9 @@ export class UIState {
         this.exportRoundNumber = 1;
         this.hideNewGame = false;
 
+        // Default to Fabric UI's default font (Segoe UI), then Times New Roman
+        this.fontFamily = DefaultFontFamily;
+
         this.isClockHidden = false;
         this.isEventLogHidden = false;
         this.importGameStatus = undefined;
@@ -111,9 +123,11 @@ export class UIState {
         this.pendingBonusProtestEvent = undefined;
         this.pendingNewGame = undefined;
         this.pendingNewPlayer = undefined;
-        this.pendingQuestionFontSize = undefined;
+        this.pendingFontFamily = undefined;
+        this.pendingFontSize = undefined;
         this.pendingSheet = undefined;
         this.pendingTossupProtestEvent = undefined;
+        this.useDarkMode = false;
         this.yappServiceUrl = undefined;
 
         // The default font size is 16px
@@ -200,6 +214,10 @@ export class UIState {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
             this.pendingNewGame.secondTeamPlayers = this.pendingNewGame?.secondTeamPlayers.filter((p) => p !== player);
         }
+    }
+
+    public setFontFamily(listedFont: string): void {
+        this.fontFamily = listedFont + ", " + DefaultFontFamily;
     }
 
     public setPendingNewGameType(type: PendingGameType): void {
@@ -337,8 +355,12 @@ export class UIState {
         this.packetFilename = name;
     }
 
-    public setPendingQuestionFontSize(size: number): void {
-        this.pendingQuestionFontSize = size;
+    public setPendingFontFamily(font: string): void {
+        this.pendingFontFamily = font;
+    }
+
+    public setPendingFontSize(size: number): void {
+        this.pendingFontSize = size;
     }
 
     public setPacketStatus(packetStatus: IStatus): void {
@@ -385,12 +407,20 @@ export class UIState {
         this.isEventLogHidden = !this.isEventLogHidden;
     }
 
+    public toggleDarkMode(): void {
+        this.useDarkMode = !this.useDarkMode;
+    }
+
     public hideBuzzMenu(): void {
         this.buzzMenuState.visible = false;
     }
 
     public resetCustomExport(): void {
         this.customExport = undefined;
+    }
+
+    public resetFontFamily(): void {
+        this.fontFamily = DefaultFontFamily;
     }
 
     public resetPacketFilename(): void {
@@ -430,8 +460,9 @@ export class UIState {
         this.pendingNewPlayer = undefined;
     }
 
-    public resetPendingQuestionFontSize(): void {
-        this.pendingQuestionFontSize = undefined;
+    public resetPendingFonts(): void {
+        this.pendingFontFamily = undefined;
+        this.pendingFontSize = undefined;
     }
 
     public resetPendingSheet(): void {
