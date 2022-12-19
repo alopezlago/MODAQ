@@ -18,38 +18,46 @@ import { Tossup } from "../state/PacketState";
 import { IBuzzMarker } from "../state/IBuzzMarker";
 import { AppState } from "../state/AppState";
 import { ITossupAnswerEvent } from "../state/Events";
+import { Theme, ThemeContext } from "@fluentui/react";
 
 export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps) {
     const onHideBuzzMenu: () => void = React.useCallback(() => onBuzzMenuDismissed(props), [props]);
 
     const teamNames: string[] = props.appState.game.teamNames;
     const menuItems: IContextualMenuItem[] = [];
-    for (const teamName of teamNames) {
-        const subMenuItems: IContextualMenuItem[] = getPlayerMenuItems(props, teamName);
-        menuItems.push({
-            key: `${teamName}_${menuItems.length}_Section`,
-            itemType: ContextualMenuItemType.Section,
-            sectionProps: {
-                bottomDivider: true,
-                title: teamName,
-                items: subMenuItems,
-            },
-        });
-    }
 
     return (
-        <ContextualMenu
-            hidden={!props.appState.uiState.buzzMenuState.visible}
-            target={props.target}
-            items={menuItems}
-            onDismiss={onHideBuzzMenu}
-            shouldFocusOnMount={true}
-            shouldUpdateWhenHidden={true}
-        />
+        <ThemeContext.Consumer>
+            {(theme) => {
+                for (const teamName of teamNames) {
+                    const subMenuItems: IContextualMenuItem[] = getPlayerMenuItems(props, theme, teamName);
+                    menuItems.push({
+                        key: `${teamName}_${menuItems.length}_Section`,
+                        itemType: ContextualMenuItemType.Section,
+                        sectionProps: {
+                            bottomDivider: true,
+                            title: teamName,
+                            items: subMenuItems,
+                        },
+                    });
+                }
+
+                return (
+                    <ContextualMenu
+                        hidden={!props.appState.uiState.buzzMenuState.visible}
+                        target={props.target}
+                        items={menuItems}
+                        onDismiss={onHideBuzzMenu}
+                        shouldFocusOnMount={true}
+                        shouldUpdateWhenHidden={true}
+                    />
+                );
+            }}
+        </ThemeContext.Consumer>
     );
 });
 
-function getPlayerMenuItems(props: IBuzzMenuProps, teamName: string): IContextualMenuItem[] {
+function getPlayerMenuItems(props: IBuzzMenuProps, theme: Theme | undefined, teamName: string): IContextualMenuItem[] {
     // TODO: Need to support Wrong (1st buzz) and Wrong (2nd buzz)
     // TODO: Add some highlighting/indicator on the player to show that they have a buzz in a different word
 
@@ -111,7 +119,16 @@ function getPlayerMenuItems(props: IBuzzMenuProps, teamName: string): IContextua
             key: `Team_${teamName}_Player_${index}`,
             text: player.name,
             style: {
-                background: isCorrectChecked ? "rgba(0,128,128,0.1)" : isWrongChecked ? "rgba(128,0,0,0.1)" : undefined,
+                // + "20" makes the background translucent by 32/255 ~15%
+                background: isCorrectChecked
+                    ? theme
+                        ? theme.palette.teal + "20"
+                        : "rgb(0, 128, 128)"
+                    : isWrongChecked
+                    ? theme
+                        ? theme.palette.red + "20"
+                        : "rgb(128, 0, 0)"
+                    : undefined,
             },
             subMenuProps: {
                 items: subMenuItems,

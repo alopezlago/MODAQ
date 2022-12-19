@@ -16,6 +16,7 @@ window.onload = () => {
     if (element) {
         ReactDOM.render(
             <ModaqControl
+                applyStylingToRoot={true}
                 buildVersion={__BUILD_VERSION__}
                 googleClientId={demoGoogleClientId}
                 yappServiceUrl={demoYappService}

@@ -1,5 +1,13 @@
 import React from "react";
-import { Checkbox, Dropdown, IDropdownOption, IDropdownStyles, mergeStyleSets } from "@fluentui/react";
+import {
+    Checkbox,
+    Dropdown,
+    IDropdownOption,
+    IDropdownStyles,
+    ITheme,
+    mergeStyleSets,
+    ThemeContext,
+} from "@fluentui/react";
 import { observer } from "mobx-react-lite";
 
 import * as PacketState from "../state/PacketState";
@@ -20,7 +28,6 @@ const bouncebackCorrectnessStyles: Partial<IDropdownStyles> = {
 };
 
 export const BonusQuestionPart = observer(function BonusQuestionPart(props: IBonusQuestionPartProps) {
-    const classes: IBonusQuestionPartClassNames = getClassNames(props.disabled);
     const onCheckboxChangeHandler = React.useCallback((ev, checked) => onCorrectChange(props, ev, checked), [props]);
     const onDropdownChangeHandler = React.useCallback((ev, option) => onTeamAnswerChange(props, ev, option), [props]);
 
@@ -73,18 +80,26 @@ export const BonusQuestionPart = observer(function BonusQuestionPart(props: IBon
 
     // TODO: We should try to resize the checkbox's box to match the font size
     return (
-        <div>
-            <div className={classes.bonusPartQuestionText}>
-                {correctnessMarker}
-                <span>
-                    [{props.bonusPart.value}
-                    {props.bonusPart.difficultyModifier}] <FormattedText segments={bonusPartText} />
-                </span>
-            </div>
-            <div className={classes.bonusPartAnswerSpacer}>
-                <Answer className={classes.bonusPartAnswer} text={props.bonusPart.answer.trimLeft()} />
-            </div>
-        </div>
+        <ThemeContext.Consumer>
+            {(theme) => {
+                const classes: IBonusQuestionPartClassNames = getClassNames(theme, props.disabled);
+
+                return (
+                    <div>
+                        <div className={classes.bonusPartQuestionText}>
+                            {correctnessMarker}
+                            <span>
+                                [{props.bonusPart.value}
+                                {props.bonusPart.difficultyModifier}] <FormattedText segments={bonusPartText} />
+                            </span>
+                        </div>
+                        <div className={classes.bonusPartAnswerSpacer}>
+                            <Answer className={classes.bonusPartAnswer} text={props.bonusPart.answer.trimStart()} />
+                        </div>
+                    </div>
+                );
+            }}
+        </ThemeContext.Consumer>
     );
 });
 
@@ -137,17 +152,17 @@ interface IBonusQuestionPartClassNames {
     bonusPartAnswerSpacer: string;
 }
 
-const getClassNames = (disabled: boolean): IBonusQuestionPartClassNames =>
+const getClassNames = (theme: ITheme | undefined, disabled: boolean): IBonusQuestionPartClassNames =>
     mergeStyleSets({
         bonusPartQuestionText: [
             { display: "flex", marginTop: "1em" },
             disabled && {
-                color: "#888888",
+                color: theme ? theme.palette.neutralSecondaryAlt : "#888888",
             },
         ],
         bonusPartAnswer: [
             disabled && {
-                color: "#888888",
+                color: theme ? theme.palette.neutralSecondaryAlt : "#888888",
             },
         ],
         bonusPartAnswerSpacer: {

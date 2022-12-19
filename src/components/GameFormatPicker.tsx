@@ -1,6 +1,15 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { Dropdown, IDropdownOption, IDropdownStyles, ITextStyles, Stack, StackItem, Text } from "@fluentui/react";
+import {
+    Dropdown,
+    IDropdownOption,
+    IDropdownStyles,
+    ITextStyles,
+    Stack,
+    StackItem,
+    Text,
+    ThemeContext,
+} from "@fluentui/react";
 
 import * as GameFormats from "../state/GameFormats";
 import { IGameFormat } from "../state/IGameFormat";
@@ -8,13 +17,6 @@ import { IGameFormat } from "../state/IGameFormat";
 const dropdownStyles: Partial<IDropdownStyles> = {
     root: {
         width: "100%",
-    },
-};
-
-const bouncebackWarningStyles: Partial<ITextStyles> = {
-    root: {
-        color: "rgb(128, 0, 0)",
-        display: "block",
     },
 };
 
@@ -42,34 +44,56 @@ export const GameFormatPicker = observer(function GameFormatPicker(props: IGameF
         options[options.length - 1].selected = true;
     }
 
-    const bouncebackWarning: React.ReactElement | undefined =
-        props.gameFormat.bonusesBounceBack && props.exportFormatSupportsBouncebacks === false ? (
-            <Text styles={bouncebackWarningStyles}>{"Note: This sheet type doesn't support bouncebacks"}</Text>
-        ) : undefined;
-
     return (
-        <Stack horizontal={true}>
-            <StackItem grow={2}>
-                <Dropdown label="Format" options={options} onChange={changeHandler} styles={dropdownStyles} />
-            </StackItem>
-            <StackItem grow={1}>
-                <ul>
-                    <li>
-                        <Text>{`Tossups in regulation: ${props.gameFormat.regulationTossupCount}`}</Text>
-                    </li>
-                    <li>
-                        <Text>{`Neg value: ${props.gameFormat.negValue}`}</Text>
-                    </li>
-                    <li>
-                        <Text>{`Has powers: ${formatBoolean(props.gameFormat.powers.length > 0)}`}</Text>
-                    </li>
-                    <li>
-                        <Text>{`Bonuses bounce back: ${formatBoolean(props.gameFormat.bonusesBounceBack)}`}</Text>
-                        {bouncebackWarning}
-                    </li>
-                </ul>
-            </StackItem>
-        </Stack>
+        <ThemeContext.Consumer>
+            {(theme) => {
+                const bouncebackWarningStyles: Partial<ITextStyles> = {
+                    root: {
+                        color: theme ? theme.palette.red : "rgb(128, 0, 0)",
+                        display: "block",
+                    },
+                };
+
+                const bouncebackWarning: React.ReactElement | undefined =
+                    props.gameFormat.bonusesBounceBack && props.exportFormatSupportsBouncebacks === false ? (
+                        <Text styles={bouncebackWarningStyles}>
+                            {"Note: This sheet type doesn't support bouncebacks"}
+                        </Text>
+                    ) : undefined;
+
+                return (
+                    <Stack horizontal={true}>
+                        <StackItem grow={2}>
+                            <Dropdown
+                                label="Format"
+                                options={options}
+                                onChange={changeHandler}
+                                styles={dropdownStyles}
+                            />
+                        </StackItem>
+                        <StackItem grow={1}>
+                            <ul>
+                                <li>
+                                    <Text>{`Tossups in regulation: ${props.gameFormat.regulationTossupCount}`}</Text>
+                                </li>
+                                <li>
+                                    <Text>{`Neg value: ${props.gameFormat.negValue}`}</Text>
+                                </li>
+                                <li>
+                                    <Text>{`Has powers: ${formatBoolean(props.gameFormat.powers.length > 0)}`}</Text>
+                                </li>
+                                <li>
+                                    <Text>{`Bonuses bounce back: ${formatBoolean(
+                                        props.gameFormat.bonusesBounceBack
+                                    )}`}</Text>
+                                    {bouncebackWarning}
+                                </li>
+                            </ul>
+                        </StackItem>
+                    </Stack>
+                );
+            }}
+        </ThemeContext.Consumer>
     );
 });
 

@@ -1,18 +1,26 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
+import { mergeStyleSets, memoizeFunction, getTheme, ITheme, ThemeContext } from "@fluentui/react";
 
 import { IFormattedText } from "../parser/IFormattedText";
 
 export const FormattedText = observer(function FormattedText(props: IFormattedTextProps): JSX.Element {
-    const classes: IFormattedTextClassNames = useStyles();
-    const elements: JSX.Element[] = [];
-    for (let i = 0; i < props.segments.length; i++) {
-        elements.push(<FormattedSegment key={`segment_${i}`} classNames={classes} segment={props.segments[i]} />);
-    }
+    return (
+        <ThemeContext.Consumer>
+            {(theme) => {
+                const classes: IFormattedTextClassNames = useStyles(theme);
+                const elements: JSX.Element[] = [];
+                for (let i = 0; i < props.segments.length; i++) {
+                    elements.push(
+                        <FormattedSegment key={`segment_${i}`} classNames={classes} segment={props.segments[i]} />
+                    );
+                }
 
-    const className: string = props.className ? `${classes.text} ${props.className}` : classes.text;
-    return <div className={className}>{elements}</div>;
+                const className: string = props.className ? `${classes.text} ${props.className}` : classes.text;
+                return <div className={className}>{elements}</div>;
+            }}
+        </ThemeContext.Consumer>
+    );
 });
 
 const FormattedSegment = observer(function FormattedSegment(props: IFormattedSegmentProps) {
@@ -63,13 +71,15 @@ interface IFormattedTextClassNames {
 }
 
 const useStyles = memoizeFunction(
-    (): IFormattedTextClassNames =>
+    (theme: ITheme | undefined): IFormattedTextClassNames =>
         mergeStyleSets({
             text: {
                 display: "inline",
             },
             pronunciationGuide: {
-                color: "rgb(128, 128, 128)",
+                // TODO: This is the one place theming doesn't work well; all of the netural colors have poor contrast
+                // or don't stick out enough from regular text.
+                color: "#777777",
             },
         })
 );

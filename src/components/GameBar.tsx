@@ -287,7 +287,7 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             key: "font",
             text: "Font...",
             onClick: () => {
-                appState.uiState.setPendingQuestionFontSize(appState.uiState.questionFontSize);
+                appState.uiState.setPendingFontSize(appState.uiState.questionFontSize);
             },
         }
     );
@@ -310,6 +310,19 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             canCheck: true,
             checked: !appState.uiState.isEventLogHidden,
             onClick: () => appState.uiState.toggleEventLogVisibility(),
+        },
+        {
+            key: "viewDivider",
+            itemType: ContextualMenuItemType.Divider,
+        },
+        {
+            key: "darkMode",
+            text: "Dark Mode",
+            canCheck: true,
+            checked: appState.uiState.useDarkMode,
+            onClick: () => {
+                appState.uiState.toggleDarkMode();
+            },
         },
     ];
 }

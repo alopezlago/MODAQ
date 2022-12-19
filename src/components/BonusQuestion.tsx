@@ -1,6 +1,15 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { FocusZone, FocusZoneDirection, mergeStyleSets, Stack, StackItem } from "@fluentui/react";
+import {
+    FocusZone,
+    FocusZoneDirection,
+    ITheme,
+    mergeStyleSets,
+    Stack,
+    StackItem,
+    ThemeContext,
+    ThemeProvider,
+} from "@fluentui/react";
 
 import * as PacketState from "../state/PacketState";
 import { BonusQuestionPart } from "./BonusQuestionPart";
@@ -21,8 +30,6 @@ const throwOutQuestionPrompt: ICancelButtonPrompt = {
 let bonusQuestionTextIdCounter = 0;
 
 export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuestionProps) {
-    const fontSize: number = props.appState.uiState.questionFontSize;
-    const classes: IBonusQuestionClassNames = getClassNames(fontSize, !props.inPlay);
     const throwOutClickHandler: () => void = React.useCallback(() => {
         props.cycle.addThrownOutBonus(props.bonusIndex);
     }, [props]);
@@ -66,36 +73,45 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
         );
     });
 
-    const metadata: JSX.Element | undefined = props.bonus.metadata ? (
-        <div className={classes.bonusMetadata}>
-            <PostQuestionMetadata metadata={props.bonus.metadata} />
-        </div>
-    ) : undefined;
-
     return (
-        <div className={classes.bonusContainer}>
-            <BonusProtestDialog appState={props.appState} bonus={props.bonus} cycle={props.cycle} />
-            <Stack horizontal={true}>
-                <StackItem id={bonusQuestionTextId} className={classes.bonusText}>
-                    <FocusZone as="div" shouldRaiseClicks={true} direction={FocusZoneDirection.vertical}>
-                        <FormattedText className={classes.bonusLeadin} segments={formattedLeadin} />
-                        {parts}
-                        {metadata}
-                    </FocusZone>
-                </StackItem>
-                <StackItem>
-                    <div className={classes.bonusText}></div>
-                </StackItem>
-                <StackItem>
-                    <CancelButton
-                        disabled={!props.inPlay}
-                        prompt={throwOutQuestionPrompt}
-                        tooltip="Throw out bonus"
-                        onClick={throwOutClickHandler}
-                    />
-                </StackItem>
-            </Stack>
-        </div>
+        <ThemeContext.Consumer>
+            {(theme) => {
+                const fontSize: number = props.appState.uiState.questionFontSize;
+                const classes: IBonusQuestionClassNames = getClassNames(theme, fontSize, !props.inPlay);
+
+                const metadata: JSX.Element | undefined = props.bonus.metadata ? (
+                    <div className={classes.bonusMetadata}>
+                        <PostQuestionMetadata metadata={props.bonus.metadata} />
+                    </div>
+                ) : undefined;
+
+                return (
+                    <div className={classes.bonusContainer}>
+                        <BonusProtestDialog appState={props.appState} bonus={props.bonus} cycle={props.cycle} />
+                        <Stack horizontal={true}>
+                            <StackItem id={bonusQuestionTextId} className={classes.bonusText}>
+                                <FocusZone as="div" shouldRaiseClicks={true} direction={FocusZoneDirection.vertical}>
+                                    <FormattedText className={classes.bonusLeadin} segments={formattedLeadin} />
+                                    {parts}
+                                    {metadata}
+                                </FocusZone>
+                            </StackItem>
+                            <StackItem>
+                                <div className={classes.bonusText}></div>
+                            </StackItem>
+                            <StackItem>
+                                <CancelButton
+                                    disabled={!props.inPlay}
+                                    prompt={throwOutQuestionPrompt}
+                                    tooltip="Throw out bonus"
+                                    onClick={throwOutClickHandler}
+                                />
+                            </StackItem>
+                        </Stack>
+                    </div>
+                );
+            }}
+        </ThemeContext.Consumer>
     );
 });
 
@@ -114,7 +130,7 @@ interface IBonusQuestionClassNames {
     bonusText: string;
 }
 
-const getClassNames = (fontSize: number, disabled: boolean): IBonusQuestionClassNames =>
+const getClassNames = (theme: ITheme | undefined, fontSize: number, disabled: boolean): IBonusQuestionClassNames =>
     mergeStyleSets({
         bonusContainer: {
             display: "flex",
@@ -123,13 +139,18 @@ const getClassNames = (fontSize: number, disabled: boolean): IBonusQuestionClass
         bonusLeadin: [
             { paddingLeft: "24px", display: "inline-block", fontSize },
             disabled && {
-                color: "#888888",
+                color: theme ? theme.palette.neutralSecondaryAlt : "#888888",
             },
         ],
-        bonusMetadata: {
-            paddingLeft: 24,
-            marginTop: "-1em",
-        },
+        bonusMetadata: [
+            {
+                paddingLeft: 24,
+                marginTop: "-1em",
+            },
+            disabled && {
+                color: theme ? theme.palette.neutralSecondaryAlt : "#888888",
+            },
+        ],
         bonusText: {
             maxHeight: "37.5vh",
             overflowY: "auto",

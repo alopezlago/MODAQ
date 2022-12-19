@@ -14,6 +14,7 @@ import {
     ILabelStyles,
     StackItem,
     IStackTokens,
+    ThemeContext,
 } from "@fluentui/react";
 
 import * as NewGameValidator from "../../state/NewGameValidator";
@@ -93,27 +94,35 @@ const ImportGameDialogBody = observer(function ImportGameDialogBody(): JSX.Eleme
         [appState, loadHandler]
     );
 
-    const statusStyles: ILabelStyles = {
-        root: {
-            color: appState.uiState.importGameStatus?.isError ?? false ? "rgb(128, 0, 0)" : undefined,
-        },
-    };
+    const isImportError: boolean = appState.uiState.importGameStatus?.isError ?? false;
 
     return (
-        <Stack tokens={stackTokens}>
-            <StackItem>
-                <FilePicker
-                    accept="application/json"
-                    buttonText="Load..."
-                    label="Game file (JSON)"
-                    required={true}
-                    onChange={changeHandler}
-                />
-            </StackItem>
-            <StackItem>
-                <Label styles={statusStyles}>{appState.uiState.importGameStatus?.status}</Label>
-            </StackItem>
-        </Stack>
+        <ThemeContext.Consumer>
+            {(theme) => {
+                const statusStyles: ILabelStyles = {
+                    root: {
+                        color: isImportError ? (theme ? theme.palette.red : "rbg(128, 0, 0)") : undefined,
+                    },
+                };
+
+                return (
+                    <Stack tokens={stackTokens}>
+                        <StackItem>
+                            <FilePicker
+                                accept="application/json"
+                                buttonText="Load..."
+                                label="Game file (JSON)"
+                                required={true}
+                                onChange={changeHandler}
+                            />
+                        </StackItem>
+                        <StackItem>
+                            <Label styles={statusStyles}>{appState.uiState.importGameStatus?.status}</Label>
+                        </StackItem>
+                    </Stack>
+                );
+            }}
+        </ThemeContext.Consumer>
     );
 });
 
