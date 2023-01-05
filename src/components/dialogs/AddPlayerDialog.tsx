@@ -50,20 +50,18 @@ const modalProps: IModalProps = {
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const AddPlayerDialog = observer(function AddPlayerDialog(): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
-    const submitHandler = React.useCallback(() => AddPlayerDialogController.addPlayer(appState), [appState]);
-    const cancelHandler = React.useCallback(() => AddPlayerDialogController.hideDialog(appState), [appState]);
 
     return (
         <Dialog
             hidden={appState.uiState.pendingNewPlayer === undefined}
             dialogContentProps={content}
             modalProps={modalProps}
-            onDismiss={cancelHandler}
+            onDismiss={AddPlayerDialogController.hideDialog}
         >
             <AddPlayerDialogBody />
             <DialogFooter>
-                <PrimaryButton text="Add" onClick={submitHandler} />
-                <DefaultButton text="Cancel" onClick={cancelHandler} />
+                <PrimaryButton text="Add" onClick={AddPlayerDialogController.addPlayer} />
+                <DefaultButton text="Cancel" onClick={AddPlayerDialogController.hideDialog} />
             </DialogFooter>
         </Dialog>
     );
@@ -72,24 +70,16 @@ export const AddPlayerDialog = observer(function AddPlayerDialog(): JSX.Element 
 const AddPlayerDialogBody = observer(function AddPlayerDialogBody(): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
 
-    const teamChangeHandler = React.useCallback(
-        (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
-            if (option?.text != undefined) {
-                AddPlayerDialogController.changeTeamName(appState, option.text);
-            }
-        },
-        [appState]
-    );
+    const teamChangeHandler = React.useCallback((ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
+        if (option?.text != undefined) {
+            AddPlayerDialogController.changeTeamName(option.text);
+        }
+    }, []);
 
     const nameChangeHandler = React.useCallback(
         (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) =>
-            AddPlayerDialogController.changePlayerName(appState, newValue ?? ""),
-        [appState]
-    );
-
-    const onGetErrorMessageHandler = React.useCallback(
-        (): string | undefined => AddPlayerDialogController.validatePlayer(appState),
-        [appState]
+            AddPlayerDialogController.changePlayerName(newValue ?? ""),
+        []
     );
 
     const newPlayer: IPlayer | undefined = appState.uiState.pendingNewPlayer;
@@ -113,7 +103,7 @@ const AddPlayerDialogBody = observer(function AddPlayerDialogBody(): JSX.Element
                 value={newPlayer.name}
                 required={true}
                 onChange={nameChangeHandler}
-                onGetErrorMessage={onGetErrorMessageHandler}
+                onGetErrorMessage={AddPlayerDialogController.validatePlayer}
                 validateOnFocusOut={true}
                 validateOnLoad={false}
             />

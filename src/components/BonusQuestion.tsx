@@ -1,15 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import {
-    FocusZone,
-    FocusZoneDirection,
-    ITheme,
-    mergeStyleSets,
-    Stack,
-    StackItem,
-    ThemeContext,
-    ThemeProvider,
-} from "@fluentui/react";
+import { FocusZone, FocusZoneDirection, ITheme, mergeStyleSets, Stack, StackItem, ThemeContext } from "@fluentui/react";
 
 import * as PacketState from "../state/PacketState";
 import { BonusQuestionPart } from "./BonusQuestionPart";

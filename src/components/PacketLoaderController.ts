@@ -5,7 +5,8 @@ import { IPacket } from "../state/IPacket";
 import { Bonus, BonusPart, PacketState, Tossup } from "../state/PacketState";
 import { UIState } from "../state/UIState";
 
-export function loadPacket(appState: AppState, parsedPacket: IPacket): PacketState | undefined {
+export function loadPacket(parsedPacket: IPacket): PacketState | undefined {
+    const appState: AppState = AppState.instance;
     const uiState: UIState = appState.uiState;
 
     if (parsedPacket.tossups == undefined) {

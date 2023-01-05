@@ -2,7 +2,7 @@ import { observer } from "mobx-react-lite";
 import React, { ReactElement } from "react";
 import { AppState } from "../state/AppState";
 
-export const StateContext = React.createContext<AppState>(new AppState());
+export const StateContext = React.createContext<AppState>(AppState.instance);
 
 export const StateProvider = observer(function StateProvider(
     props: React.PropsWithChildren<IStateProviderProps>

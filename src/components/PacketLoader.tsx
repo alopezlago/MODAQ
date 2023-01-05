@@ -153,7 +153,7 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
     });
 
     const parsedPacket: IPacket = JSON.parse(json) as IPacket;
-    const packet: PacketState | undefined = PacketLoaderController.loadPacket(props.appState, parsedPacket);
+    const packet: PacketState | undefined = PacketLoaderController.loadPacket(parsedPacket);
     if (packet == undefined) {
         return;
     }

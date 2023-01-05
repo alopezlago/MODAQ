@@ -55,14 +55,8 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
         />
     ));
 
-    const wordClickHandler: React.MouseEventHandler = React.useCallback(
-        (event: React.MouseEvent<HTMLDivElement>): void => {
-            TossupQuestionController.selectWordFromClick(props.appState, event);
-        },
-        [props]
-    );
     const throwOutClickHandler: () => void = React.useCallback(() => {
-        TossupQuestionController.throwOutTossup(props.appState, props.cycle, props.tossupNumber);
+        TossupQuestionController.throwOutTossup(props.cycle, props.tossupNumber);
     }, [props]);
 
     // Need tossuptext/answer in one container, X in the other
@@ -75,8 +69,8 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
                     className={classes.tossupQuestionText}
                     shouldRaiseClicks={true}
                     direction={FocusZoneDirection.bidirectional}
-                    onClick={wordClickHandler}
-                    onDoubleClick={wordClickHandler}
+                    onClick={TossupQuestionController.selectWordFromClick}
+                    onDoubleClick={TossupQuestionController.selectWordFromClick}
                 >
                     {questionWords}
                 </FocusZone>

@@ -1,26 +1,19 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { mergeStyleSets, memoizeFunction, getTheme, ITheme, ThemeContext } from "@fluentui/react";
+import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
 
 import { IFormattedText } from "../parser/IFormattedText";
 
 export const FormattedText = observer(function FormattedText(props: IFormattedTextProps): JSX.Element {
-    return (
-        <ThemeContext.Consumer>
-            {(theme) => {
-                const classes: IFormattedTextClassNames = useStyles(theme);
-                const elements: JSX.Element[] = [];
-                for (let i = 0; i < props.segments.length; i++) {
-                    elements.push(
-                        <FormattedSegment key={`segment_${i}`} classNames={classes} segment={props.segments[i]} />
-                    );
-                }
+    const classes: IFormattedTextClassNames = useStyles();
 
-                const className: string = props.className ? `${classes.text} ${props.className}` : classes.text;
-                return <div className={className}>{elements}</div>;
-            }}
-        </ThemeContext.Consumer>
-    );
+    const elements: JSX.Element[] = [];
+    for (let i = 0; i < props.segments.length; i++) {
+        elements.push(<FormattedSegment key={`segment_${i}`} classNames={classes} segment={props.segments[i]} />);
+    }
+
+    const className: string = props.className ? `${classes.text} ${props.className}` : classes.text;
+    return <div className={className}>{elements}</div>;
 });
 
 const FormattedSegment = observer(function FormattedSegment(props: IFormattedSegmentProps) {
@@ -71,7 +64,7 @@ interface IFormattedTextClassNames {
 }
 
 const useStyles = memoizeFunction(
-    (theme: ITheme | undefined): IFormattedTextClassNames =>
+    (): IFormattedTextClassNames =>
         mergeStyleSets({
             text: {
                 display: "inline",

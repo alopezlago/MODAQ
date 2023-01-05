@@ -9,6 +9,8 @@ import { GameState } from "./GameState";
 import { UIState } from "./UIState";
 
 export class AppState {
+    public static instance: AppState = new AppState();
+
     public game: GameState;
 
     public uiState: UIState;
@@ -18,6 +20,11 @@ export class AppState {
 
         this.game = new GameState();
         this.uiState = new UIState();
+    }
+
+    // Only use in tests
+    public static resetInstance(): void {
+        this.instance = new AppState();
     }
 
     public handleCustomExport(): Promise<void> {
