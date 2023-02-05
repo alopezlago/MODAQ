@@ -2,24 +2,15 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { Dropdown, IDropdownOption } from "@fluentui/react/lib/Dropdown";
 
+import * as BonusProtestDialogController from "./BonusProtestDialogController";
 import { ProtestDialogBase } from "./ProtestDialogBase";
 import { Cycle } from "../../state/Cycle";
-import { IBonusAnswerPart, IBonusProtestEvent } from "../../state/Events";
+import { IBonusProtestEvent } from "../../state/Events";
 import { Bonus } from "../../state/PacketState";
 import { AppState } from "../../state/AppState";
 
 export const BonusProtestDialog = observer(function BonusProtestDialog(props: IBonusProtestDialogProps): JSX.Element {
-    const partChangeHandler = React.useCallback(
-        (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
-            if (option?.text != undefined) {
-                props.appState.uiState.updatePendingBonusProtestPart(option.key);
-            }
-        },
-        [props]
-    );
-
-    const submitHandler = React.useCallback(() => onSubmit(props), [props]);
-    const hideHandler = React.useCallback(() => props.appState.uiState.resetPendingBonusProtest(), [props]);
+    const submitHandler = React.useCallback(() => BonusProtestDialogController.commit(props.cycle), [props]);
 
     const protestEvent: IBonusProtestEvent | undefined = props.appState.uiState.pendingBonusProtestEvent;
     if (protestEvent == undefined) {
@@ -38,14 +29,14 @@ export const BonusProtestDialog = observer(function BonusProtestDialog(props: IB
             };
         });
 
-    const children: JSX.Element = <Dropdown label="Part" options={partOptions} onChange={partChangeHandler} />;
+    const children: JSX.Element = <Dropdown label="Part" options={partOptions} onChange={onPartChange} />;
 
     return (
         <ProtestDialogBase
             appState={props.appState}
             givenAnswer={protestEvent.givenAnswer}
             hidden={props.appState.uiState.pendingBonusProtestEvent == undefined}
-            hideDialog={hideHandler}
+            hideDialog={BonusProtestDialogController.cancel}
             onSubmit={submitHandler}
             reason={protestEvent.reason}
         >
@@ -54,33 +45,9 @@ export const BonusProtestDialog = observer(function BonusProtestDialog(props: IB
     );
 });
 
-function onSubmit(props: IBonusProtestDialogProps): void {
-    const pendingProtestEvent: IBonusProtestEvent | undefined = props.appState.uiState.pendingBonusProtestEvent;
-    let teamName = "";
-    if (props.cycle.correctBuzz != undefined && props.cycle.bonusAnswer != undefined) {
-        const bonusTeamName: string = props.cycle.correctBuzz.marker.player.teamName;
-        const part: IBonusAnswerPart | undefined =
-            pendingProtestEvent != undefined ? props.cycle.bonusAnswer.parts[pendingProtestEvent.partIndex] : undefined;
-
-        // If a bonus part was wrong (points <= 0) and the part isn't assigned to anyone, or it's assigned to the team
-        // who got the question right, then the team protesting must be the team who got the question right
-        // Otherwise, some other team is protesting.
-        // TODO: If we ever support more than two teams, we'll have to get the protesting team from the UI
-        teamName =
-            part == undefined || (part.points <= 0 && (part.teamName === bonusTeamName || part.teamName === ""))
-                ? bonusTeamName
-                : props.appState.game.teamNames.find((name) => name !== bonusTeamName) ?? "";
-    }
-
-    if (pendingProtestEvent) {
-        props.cycle.addBonusProtest(
-            pendingProtestEvent.questionIndex,
-            pendingProtestEvent.partIndex,
-            pendingProtestEvent.givenAnswer,
-            pendingProtestEvent.reason,
-            teamName
-        );
-        props.appState.uiState.resetPendingBonusProtest();
+function onPartChange(ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void {
+    if (option?.text != undefined) {
+        BonusProtestDialogController.changePart(option.key);
     }
 }
 

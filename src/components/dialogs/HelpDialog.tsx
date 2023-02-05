@@ -82,6 +82,7 @@ const HelpDialogBody = observer(function HelpDialogBody(): JSX.Element {
     );
 });
 
+// This is simple enough where we don't really need a controller for testing
 function hideDialog(appState: AppState): void {
     appState.uiState.dialogState.hideHelpDialog();
 }

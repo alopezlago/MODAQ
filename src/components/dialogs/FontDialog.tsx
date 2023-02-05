@@ -17,6 +17,8 @@ import {
     IStackTokens,
     Label,
 } from "@fluentui/react";
+
+import * as FontDialogController from "./FontDialogController";
 import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
 
@@ -59,8 +61,6 @@ const stackTokens: Partial<IStackTokens> = { childrenGap: 10 };
 
 export const FontDialog = observer(function FontDialog(): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
-    const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
-    const submitHandler = React.useCallback(() => updateFont(appState), [appState]);
 
     return (
         <Dialog
@@ -68,12 +68,12 @@ export const FontDialog = observer(function FontDialog(): JSX.Element {
             dialogContentProps={content}
             modalProps={modalProps}
             maxWidth="40vw"
-            onDismiss={closeHandler}
+            onDismiss={FontDialogController.cancel}
         >
             <FontDialogBody />
             <DialogFooter>
-                <PrimaryButton text="OK" onClick={submitHandler} />
-                <DefaultButton text="Cancel" onClick={closeHandler} />
+                <PrimaryButton text="OK" onClick={FontDialogController.update} />
+                <DefaultButton text="Cancel" onClick={FontDialogController.cancel} />
             </DialogFooter>
         </Dialog>
     );
@@ -81,20 +81,6 @@ export const FontDialog = observer(function FontDialog(): JSX.Element {
 
 const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
-    const fontSizeChangeHandler = React.useCallback(
-        (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) => {
-            if (newValue == undefined) {
-                return;
-            }
-
-            const size = Number.parseInt(newValue, 10);
-            if (!isNaN(size)) {
-                appState.uiState.setPendingFontSize(size);
-            }
-        },
-        [appState]
-    );
-
     const value: string = (appState.uiState.pendingFontSize ?? appState.uiState.questionFontSize).toString();
 
     const fontOptions: IDropdownOption[] = fonts.map((font) => {
@@ -127,14 +113,14 @@ const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
                         );
                     }}
                     onChange={(event, option) => {
-                        appState.uiState.setPendingFontFamily(option?.text ?? defaultFont);
+                        FontDialogController.changeFontFamily(option?.text);
                     }}
                 />
             </StackItem>
             <StackItem>
                 <SpinButton
                     label="Font size"
-                    onChange={fontSizeChangeHandler}
+                    onChange={changeFontSize}
                     value={value}
                     min={minimumFontSize}
                     max={maximumFontSize}
@@ -147,12 +133,13 @@ const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
     );
 });
 
-function updateFont(appState: AppState): void {
-    appState.uiState.setFontFamily(appState.uiState.pendingFontFamily ?? defaultFont);
-    appState.uiState.setQuestionFontSize(appState.uiState.pendingFontSize ?? minimumFontSize);
-    hideDialog(appState);
-}
+function changeFontSize(event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined): void {
+    if (newValue == undefined) {
+        return;
+    }
 
-function hideDialog(appState: AppState): void {
-    appState.uiState.resetPendingFonts();
+    const size = Number.parseInt(newValue, 10);
+    if (!isNaN(size)) {
+        FontDialogController.changePendingSize(newValue);
+    }
 }
