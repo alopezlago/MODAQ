@@ -55,6 +55,13 @@ interface ICustomQBJExport extends IBaseCustomExport {
 
 interface IBaseCustomExport {
     label: string;
+
+    /**
+     * If defined, how often the customExport handler should be called in milliseconds. Setting this to null or undefined
+     * will stop calling the customExport handler automatically.
+     * The smallest interval allowed is 5000 milliseconds.
+     */
+    customExportInterval?: number;
 }
 
 export type ExportType = "Raw" | "QBJ";

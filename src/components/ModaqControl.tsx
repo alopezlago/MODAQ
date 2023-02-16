@@ -234,11 +234,18 @@ function update(appState: AppState, props: IModaqControlProps): void {
         appState.game.setGameFormat(props.gameFormat);
     }
 
-    if (props.customExport != appState.uiState.customExport) {
+    if (props.customExport != appState.uiState.customExportOptions) {
         if (props.customExport == undefined) {
             appState.uiState.resetCustomExport();
+            appState.setCustomExportInterval(undefined);
         } else {
+            const updateInterval: boolean =
+                props.customExport.customExportInterval !== appState.uiState.customExportOptions?.customExportInterval;
+
             appState.uiState.setCustomExport(props.customExport);
+            if (updateInterval) {
+                appState.setCustomExportInterval(props.customExport.customExportInterval);
+            }
         }
     }
 

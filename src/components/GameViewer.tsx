@@ -9,6 +9,7 @@ import { GameBar } from "./GameBar";
 import { AppState } from "../state/AppState";
 import { StateContext } from "../contexts/StateContext";
 import { Clock } from "./Clock";
+import { ExportStatus } from "./ExportStatus";
 
 const scoreboardAndQuestionViewerTokens: IStackTokens = { childrenGap: 20 };
 
@@ -47,6 +48,9 @@ export const GameViewer = observer(function GameViewer() {
                         </StackItem>
                         <StackItem>
                             <QuestionViewerContainer />
+                        </StackItem>
+                        <StackItem>
+                            <ExportStatus />
                         </StackItem>
                     </Stack>
                 </StackItem>
