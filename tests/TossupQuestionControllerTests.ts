@@ -9,7 +9,8 @@ import { AppState } from "src/state/AppState";
 describe("TossupQuestionControllerTests", () => {
     describe("throwOutTossup", () => {
         it("Throw out Tossup", () => {
-            const appState: AppState = new AppState();
+            AppState.resetInstance();
+            const appState: AppState = AppState.instance;
             appState.game.addPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
 
             const packet: PacketState = new PacketState();
@@ -21,7 +22,7 @@ describe("TossupQuestionControllerTests", () => {
             appState.game.loadPacket(packet);
             const cycle: Cycle = appState.game.cycles[0];
 
-            TossupQuestionController.throwOutTossup(appState, cycle, 1);
+            TossupQuestionController.throwOutTossup(cycle, 1);
 
             if (cycle.thrownOutTossups == undefined) {
                 assert.fail("ThrownOutTossups was undefined");

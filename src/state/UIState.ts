@@ -45,7 +45,13 @@ export class UIState {
     public buzzMenuState: BuzzMenuState;
 
     @ignore
-    public customExport: ICustomExport | undefined;
+    public customExportOptions: ICustomExport | undefined;
+
+    @ignore
+    public customExportIntervalId: number | undefined;
+
+    @ignore
+    public customExportStatus: string | undefined;
 
     @ignore
     public exportRoundNumber: number;
@@ -88,6 +94,9 @@ export class UIState {
     // Default should be to show the event log. This setting didn't exist before, so use hide instead of show
     public isEventLogHidden: boolean;
 
+    // Default should be to show the export status. This setting didn't exist before, so use hide instead of show
+    public isCustomExportStatusHidden: boolean;
+
     public questionFontSize: number;
 
     public sheetsState: SheetState;
@@ -108,7 +117,9 @@ export class UIState {
             clearSelectedWordOnClose: true,
             visible: false,
         };
-        this.customExport = undefined;
+        this.customExportOptions = undefined;
+        this.customExportIntervalId = undefined;
+        this.customExportStatus = undefined;
         this.exportRoundNumber = 1;
         this.hideNewGame = false;
 
@@ -117,6 +128,7 @@ export class UIState {
 
         this.isClockHidden = false;
         this.isEventLogHidden = false;
+        this.isCustomExportStatusHidden = false;
         this.importGameStatus = undefined;
         this.packetFilename = undefined;
         this.packetParseStatus = undefined;
@@ -332,7 +344,15 @@ export class UIState {
     }
 
     public setCustomExport(customExport: ICustomExport): void {
-        this.customExport = customExport;
+        this.customExportOptions = customExport;
+    }
+
+    public setCustomExportIntervalId(intervalId: number | undefined): void {
+        this.customExportIntervalId = intervalId;
+    }
+
+    public setCustomExportStatus(status: string | undefined): void {
+        this.customExportStatus = status;
     }
 
     public setExportRoundNumber(newRoundNumber: number): void {
@@ -403,6 +423,10 @@ export class UIState {
         this.isClockHidden = !this.isClockHidden;
     }
 
+    public toggleCustomExportStatusVisibility(): void {
+        this.isCustomExportStatusHidden = !this.isCustomExportStatusHidden;
+    }
+
     public toggleEventLogVisibility(): void {
         this.isEventLogHidden = !this.isEventLogHidden;
     }
@@ -416,7 +440,7 @@ export class UIState {
     }
 
     public resetCustomExport(): void {
-        this.customExport = undefined;
+        this.customExportOptions = undefined;
     }
 
     public resetFontFamily(): void {

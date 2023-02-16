@@ -3,7 +3,8 @@ import { AppState } from "../state/AppState";
 import { Cycle } from "../state/Cycle";
 import { UIState } from "../state/UIState";
 
-export function selectWordFromClick(appState: AppState, event: React.MouseEvent<HTMLDivElement>): void {
+export function selectWordFromClick(event: React.MouseEvent<HTMLDivElement>): void {
+    const appState: AppState = AppState.instance;
     const target = event.target as HTMLDivElement;
 
     // I'd like to avoid looking for a specific HTML element instead of a class. This would mean giving QuestionWord a
@@ -27,7 +28,8 @@ export function selectWordFromClick(appState: AppState, event: React.MouseEvent<
     event.stopPropagation();
 }
 
-export function selectWordFromKeyboardEvent(appState: AppState, event: React.KeyboardEvent<HTMLDivElement>): void {
+export function selectWordFromKeyboardEvent(event: React.KeyboardEvent<HTMLDivElement>): void {
+    const appState: AppState = AppState.instance;
     const target = event.target as HTMLDivElement;
 
     // We're looking for spans with the word index that matches the selectedWordIndex
@@ -46,7 +48,8 @@ export function selectWordFromKeyboardEvent(appState: AppState, event: React.Key
     event.stopPropagation();
 }
 
-export function throwOutTossup(appState: AppState, cycle: Cycle, tossupNumber: number): void {
+export function throwOutTossup(cycle: Cycle, tossupNumber: number): void {
+    const appState: AppState = AppState.instance;
     cycle.addThrownOutTossup(tossupNumber - 1);
     appState.uiState.setSelectedWordIndex(-1);
 }

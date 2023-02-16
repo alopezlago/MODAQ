@@ -16,6 +16,7 @@ import { Player } from "../state/TeamState";
 import { AppState } from "../state/AppState";
 import { ITossupAnswerEvent } from "../state/Events";
 import { StateContext } from "../contexts/StateContext";
+import { StatusDisplayType } from "../state/StatusDisplayType";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
@@ -34,8 +35,8 @@ export const GameBar = observer(function GameBar(): JSX.Element {
                 () => {
                     // Open the export dialog, depending on if they have sheets. We should ideally abstract this logic
                     // to another method
-                    if (appState.uiState.customExport != undefined) {
-                        appState.handleCustomExport();
+                    if (appState.uiState.customExportOptions != undefined) {
+                        appState.handleCustomExport(StatusDisplayType.MessageDialog);
                     } else if (appState.uiState.sheetsState.sheetId != undefined) {
                         exportToSheets(appState);
                     } else {
@@ -150,7 +151,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     });
 
     // If a custom export option is given, only show a button for that export
-    if (appState.uiState.customExport == undefined) {
+    if (appState.uiState.customExportOptions == undefined) {
         const exportSubMenuItems: ICommandBarItemProps[] = getExportSubMenuItems(appState);
         items.push({
             key: "export",
@@ -162,9 +163,9 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     } else {
         items.push({
             key: "export",
-            text: appState.uiState.customExport.label,
+            text: appState.uiState.customExportOptions.label,
             onClick: () => {
-                appState.handleCustomExport();
+                appState.handleCustomExport(StatusDisplayType.MessageDialog);
             },
         });
     }
@@ -296,7 +297,7 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
 }
 
 function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
-    return [
+    let items: ICommandBarItemProps[] = [
         {
             key: "showClock",
             text: "Clock",
@@ -311,6 +312,19 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             checked: !appState.uiState.isEventLogHidden,
             onClick: () => appState.uiState.toggleEventLogVisibility(),
         },
+    ];
+
+    if (appState.uiState.customExportOptions?.customExportInterval != undefined) {
+        items.push({
+            key: "showExportStatus",
+            text: "Export Status",
+            canCheck: true,
+            checked: !appState.uiState.isCustomExportStatusHidden,
+            onClick: () => appState.uiState.toggleCustomExportStatusVisibility(),
+        });
+    }
+
+    items = items.concat([
         {
             key: "viewDivider",
             itemType: ContextualMenuItemType.Divider,
@@ -324,7 +338,9 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
                 appState.uiState.toggleDarkMode();
             },
         },
-    ];
+    ]);
+
+    return items;
 }
 
 function getPlayerManagementSubMenuItems(

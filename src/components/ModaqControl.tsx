@@ -14,7 +14,6 @@ import {
     ThemeProvider,
     createTheme,
     Theme,
-    themeRulesStandardCreator,
     IPalette,
 } from "@fluentui/react";
 import { AsyncTrunk } from "mobx-sync";
@@ -91,7 +90,7 @@ const darkModePalette: Partial<IPalette> = {
 };
 
 export const ModaqControl = observer(function ModaqControl(props: IModaqControlProps): JSX.Element {
-    const [appState]: [AppState, React.Dispatch<React.SetStateAction<AppState>>] = React.useState(new AppState());
+    const [appState]: [AppState, React.Dispatch<React.SetStateAction<AppState>>] = React.useState(AppState.instance);
 
     // We only want to run this effect once, which requires passing in an empty array of dependencies
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -105,7 +104,7 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
     }, [appState, props.gameFormat]);
     React.useEffect(() => {
         if (props.packet != undefined) {
-            const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, props.packet);
+            const packet: PacketState | undefined = PacketLoaderController.loadPacket(props.packet);
             if (packet) {
                 appState.game.loadPacket(packet);
             }
@@ -235,11 +234,18 @@ function update(appState: AppState, props: IModaqControlProps): void {
         appState.game.setGameFormat(props.gameFormat);
     }
 
-    if (props.customExport != appState.uiState.customExport) {
+    if (props.customExport != appState.uiState.customExportOptions) {
         if (props.customExport == undefined) {
             appState.uiState.resetCustomExport();
+            appState.setCustomExportInterval(undefined);
         } else {
+            const updateInterval: boolean =
+                props.customExport.customExportInterval !== appState.uiState.customExportOptions?.customExportInterval;
+
             appState.uiState.setCustomExport(props.customExport);
+            if (updateInterval) {
+                appState.setCustomExportInterval(props.customExport.customExportInterval);
+            }
         }
     }
 

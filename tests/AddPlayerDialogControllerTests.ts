@@ -12,7 +12,7 @@ defaultPacket.setTossups([new Tossup("first q", "first a"), new Tossup("second q
 
 const defaultTeamNames: string[] = ["First Team", "Team2"];
 
-function createApp(): AppState {
+function initializeApp(): AppState {
     const gameState: GameState = new GameState();
     gameState.loadPacket(defaultPacket);
 
@@ -23,7 +23,8 @@ function createApp(): AppState {
     ];
     gameState.addPlayers(defaultExistingPlayers);
 
-    const appState: AppState = new AppState();
+    AppState.resetInstance();
+    const appState: AppState = AppState.instance;
     appState.game = gameState;
     appState.uiState.createPendingNewPlayer(defaultTeamNames[0]);
     return appState;
@@ -40,8 +41,8 @@ function getPendingNewPlayer(appState: AppState): Player {
 describe("AddPlayerDialogControllerTests", () => {
     it("changePlayerName", () => {
         const name = "New player name";
-        const appState: AppState = createApp();
-        AddPlayerDialogController.changePlayerName(appState, name);
+        const appState: AppState = initializeApp();
+        AddPlayerDialogController.changePlayerName(name);
         const player: Player = getPendingNewPlayer(appState);
 
         expect(player.name).to.equal(name);
@@ -50,9 +51,9 @@ describe("AddPlayerDialogControllerTests", () => {
     });
     it("changeTeamName", () => {
         const name = defaultTeamNames[1];
-        const appState: AppState = createApp();
-        AddPlayerDialogController.changePlayerName(appState, "Player");
-        AddPlayerDialogController.changeTeamName(appState, name);
+        const appState: AppState = initializeApp();
+        AddPlayerDialogController.changePlayerName("Player");
+        AddPlayerDialogController.changeTeamName(name);
         const player: Player = getPendingNewPlayer(appState);
 
         expect(player.name).to.equal("Player");
@@ -60,45 +61,45 @@ describe("AddPlayerDialogControllerTests", () => {
         expect(player.isStarter).to.be.false;
     });
     it("hideDialog", () => {
-        const appState: AppState = createApp();
-        AddPlayerDialogController.hideDialog(appState);
+        const appState: AppState = initializeApp();
+        AddPlayerDialogController.hideDialog();
 
         expect(appState.uiState.pendingNewPlayer).to.be.undefined;
     });
     describe("validatePlayer", () => {
         it("validatePlayer - non-empty name", () => {
-            const appState: AppState = createApp();
-            AddPlayerDialogController.changePlayerName(appState, " ");
-            const errorMessage: string | undefined = AddPlayerDialogController.validatePlayer(appState);
+            initializeApp();
+            AddPlayerDialogController.changePlayerName(" ");
+            const errorMessage: string | undefined = AddPlayerDialogController.validatePlayer();
             expect(errorMessage).to.not.be.undefined;
         });
         it("validatePlayer - non-existent team", () => {
-            const appState: AppState = createApp();
-            AddPlayerDialogController.changeTeamName(appState, defaultTeamNames[0] + defaultTeamNames[1]);
-            const errorMessage: string | undefined = AddPlayerDialogController.validatePlayer(appState);
+            initializeApp();
+            AddPlayerDialogController.changeTeamName(defaultTeamNames[0] + defaultTeamNames[1]);
+            const errorMessage: string | undefined = AddPlayerDialogController.validatePlayer();
             expect(errorMessage).to.not.be.undefined;
         });
         it("validatePlayer - valid player (no team change)", () => {
-            const appState: AppState = createApp();
-            AddPlayerDialogController.changePlayerName(appState, "Newbie");
-            const errorMessage: string | undefined = AddPlayerDialogController.validatePlayer(appState);
+            initializeApp();
+            AddPlayerDialogController.changePlayerName("Newbie");
+            const errorMessage: string | undefined = AddPlayerDialogController.validatePlayer();
             expect(errorMessage).to.be.undefined;
         });
         it("validatePlayer - valid player (with team change)", () => {
-            const appState: AppState = createApp();
-            AddPlayerDialogController.changeTeamName(appState, defaultTeamNames[1]);
-            AddPlayerDialogController.changePlayerName(appState, "Newbie");
-            const errorMessage: string | undefined = AddPlayerDialogController.validatePlayer(appState);
+            initializeApp();
+            AddPlayerDialogController.changeTeamName(defaultTeamNames[1]);
+            AddPlayerDialogController.changePlayerName("Newbie");
+            const errorMessage: string | undefined = AddPlayerDialogController.validatePlayer();
             expect(errorMessage).to.be.undefined;
         });
     });
     describe("addPlayer", () => {
         it("addPlayer succeeds", () => {
-            const appState: AppState = createApp();
+            const appState: AppState = initializeApp();
             appState.uiState.setCycleIndex(1);
-            AddPlayerDialogController.changeTeamName(appState, defaultTeamNames[1]);
-            AddPlayerDialogController.changePlayerName(appState, "Newbie");
-            AddPlayerDialogController.addPlayer(appState);
+            AddPlayerDialogController.changeTeamName(defaultTeamNames[1]);
+            AddPlayerDialogController.changePlayerName("Newbie");
+            AddPlayerDialogController.addPlayer();
 
             // Verify - dialog hidden, player is in game, add player event in cycle
             expect(appState.uiState.pendingNewPlayer).to.be.undefined;
@@ -121,10 +122,10 @@ describe("AddPlayerDialogControllerTests", () => {
             expect(playerJoins[0].inPlayer).to.equal(newPlayer);
         });
         it("addPlayer fails (empty name)", () => {
-            const appState: AppState = createApp();
-            AddPlayerDialogController.changeTeamName(appState, defaultTeamNames[1]);
-            AddPlayerDialogController.changePlayerName(appState, " ");
-            AddPlayerDialogController.addPlayer(appState);
+            const appState: AppState = initializeApp();
+            AddPlayerDialogController.changeTeamName(defaultTeamNames[1]);
+            AddPlayerDialogController.changePlayerName(" ");
+            AddPlayerDialogController.addPlayer();
 
             // Verify - dialog hidden, player is in game, add player event in cycle
             expect(appState.uiState.pendingNewPlayer).to.not.be.undefined;
@@ -137,10 +138,10 @@ describe("AddPlayerDialogControllerTests", () => {
             expect(appState.game.cycles[0].playerJoins).to.be.undefined;
         });
         it("addPlayer fails (non-existent team)", () => {
-            const appState: AppState = createApp();
-            AddPlayerDialogController.changeTeamName(appState, defaultTeamNames[0] + defaultTeamNames[1]);
-            AddPlayerDialogController.changePlayerName(appState, "Newbie");
-            AddPlayerDialogController.addPlayer(appState);
+            const appState: AppState = initializeApp();
+            AddPlayerDialogController.changeTeamName(defaultTeamNames[0] + defaultTeamNames[1]);
+            AddPlayerDialogController.changePlayerName("Newbie");
+            AddPlayerDialogController.addPlayer();
 
             // Verify - dialog hidden, player is in game, add player event in cycle
             expect(appState.uiState.pendingNewPlayer).to.not.be.undefined;

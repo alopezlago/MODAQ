@@ -1,7 +1,7 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
 
-import { IIconProps, ITheme, memoize, memoizeFunction, mergeStyleSets, ThemeContext } from "@fluentui/react";
+import { IIconProps, ITheme, memoizeFunction, mergeStyleSets, ThemeContext } from "@fluentui/react";
 import { IconButton } from "@fluentui/react/lib/Button";
 import { StateContext } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";
