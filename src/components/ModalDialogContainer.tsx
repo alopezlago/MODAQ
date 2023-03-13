@@ -11,8 +11,9 @@ import { HelpDialog } from "./dialogs/HelpDialog";
 import { CustomizeGameFormatDialog } from "./dialogs/CustomizeGameFormatDialog";
 import { AddQuestionsDialog } from "./dialogs/AddQuestionsDialog";
 import { MessageDialog } from "./dialogs/MessageDialog";
+import { RenamePlayerDialog } from "./dialogs/RenamePlayerDialog";
 
-export const ModalDialogContainer = observer(function ModalDialogContainer()  {
+export const ModalDialogContainer = observer(function ModalDialogContainer() {
     // The Protest dialogs aren't here because they require extra information
 
     return (
@@ -27,6 +28,7 @@ export const ModalDialogContainer = observer(function ModalDialogContainer()  {
             <ImportGameDialog />
             <MessageDialog />
             <NewGameDialog />
+            <RenamePlayerDialog />
         </>
     );
 });

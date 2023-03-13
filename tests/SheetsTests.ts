@@ -702,7 +702,7 @@ describe("SheetsTests", () => {
 
         it("First team bouncebacks written to sheet (TJ Sheets)", async () => {
             const appState: AppState = createAppStateForExport(SheetType.TJSheets);
-            appState.game.gameFormat = { ...appState.game.gameFormat, bonusesBounceBack: true };
+            appState.game.setGameFormat({ ...appState.game.gameFormat, bonusesBounceBack: true });
 
             const player: Player = findPlayerOnTeam(appState, "Beta");
             const position = 1;
@@ -732,7 +732,7 @@ describe("SheetsTests", () => {
         });
         it("Second team bouncebacks written to sheet (TJ Sheets)", async () => {
             const appState: AppState = createAppStateForExport(SheetType.TJSheets);
-            appState.game.gameFormat = { ...appState.game.gameFormat, bonusesBounceBack: true };
+            appState.game.setGameFormat({ ...appState.game.gameFormat, bonusesBounceBack: true });
 
             const player: Player = findPlayerOnTeam(appState, "Alpha");
             const position = 1;
