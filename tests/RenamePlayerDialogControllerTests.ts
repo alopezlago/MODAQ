@@ -203,8 +203,6 @@ describe("RenamePlayerDialogControllerTests", () => {
             gameState.cycles[2].addSwapSubstitution(players[players.length - 1], originalPlayer);
 
             appState.uiState.dialogState.showRenamePlayerDialog(originalPlayer);
-
-            const state: RenamePlayerDialogState = getRenamePlayerDialogState(appState);
             RenamePlayerDialogController.changeNewName(name);
             RenamePlayerDialogController.renamePlayer();
 
