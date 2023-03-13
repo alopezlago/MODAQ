@@ -414,6 +414,80 @@ export class GameState {
         this.players = players;
     }
 
+    public tryUpdatePlayerName(playerTeam: string, oldPlayerName: string, newPlayerName: string): boolean {
+        let player: IPlayer | undefined;
+        for (const p of this.players) {
+            if (p.teamName === playerTeam && p.name === oldPlayerName) {
+                if (p.name === oldPlayerName) {
+                    player = p;
+                } else if (p.name === newPlayerName) {
+                    // Can't update the player, since that name already exists
+                    return false;
+                }
+            }
+        }
+
+        if (player == undefined) {
+            return false;
+        }
+
+        player.name = newPlayerName;
+
+        // Setting player.name to newPlayerName doesn't work if you're going off of a copy of the player
+        // Go through and update all events manually.
+        // If we need this to be more performant, we should be able to get away with updating the name just once,
+        // but we do it everywhere here in case we use a copy (.e.g. like {...player})
+        for (const cycle of this.cycles) {
+            if (
+                cycle.correctBuzz != undefined &&
+                cycle.correctBuzz.marker.player.name === oldPlayerName &&
+                cycle.correctBuzz.marker.player.teamName === playerTeam
+            ) {
+                cycle.correctBuzz.marker.player.name = newPlayerName;
+            }
+
+            if (cycle.wrongBuzzes != undefined) {
+                for (const wrongBuzz of cycle.wrongBuzzes) {
+                    if (
+                        wrongBuzz.marker.player.name === oldPlayerName &&
+                        wrongBuzz.marker.player.teamName === playerTeam
+                    ) {
+                        wrongBuzz.marker.player.name = newPlayerName;
+                    }
+                }
+            }
+
+            if (cycle.playerJoins != undefined) {
+                for (const join of cycle.playerJoins) {
+                    if (join.inPlayer.name === oldPlayerName && join.inPlayer.teamName === playerTeam) {
+                        join.inPlayer.name = newPlayerName;
+                    }
+                }
+            }
+
+            if (cycle.playerLeaves != undefined) {
+                for (const leave of cycle.playerLeaves) {
+                    if (leave.outPlayer.name === oldPlayerName && leave.outPlayer.teamName === playerTeam) {
+                        leave.outPlayer.name = newPlayerName;
+                    }
+                }
+            }
+
+            if (cycle.subs != undefined) {
+                // Could be in or out player
+                for (const sub of cycle.subs) {
+                    if (sub.inPlayer.name === oldPlayerName && sub.inPlayer.teamName === playerTeam) {
+                        sub.inPlayer.name = newPlayerName;
+                    } else if (sub.outPlayer.name === oldPlayerName && sub.outPlayer.teamName === playerTeam) {
+                        sub.outPlayer.name = newPlayerName;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
     private getScoreChangeFromCycle(cycle: Cycle): [number, number] {
         const change: [number, number] = [0, 0];
         if (cycle.correctBuzz) {

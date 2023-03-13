@@ -395,12 +395,19 @@ function getPlayerManagementSubMenuItems(
                 onClick: onRemovePlayerClick,
                 // TODO: should this be styled in a different color?
             };
+            const renameItem: ICommandBarItemProps = {
+                key: `rename_${teamName}_${activePlayer.name}`,
+                text: "Rename",
+                data: removeItemData,
+                onClick: onRenamePlayerClick,
+                // TODO: should this be styled in a different color?
+            };
 
             activePlayerMenuItems.push({
                 key: `active_${teamName}_${activePlayer.name}`,
                 text: activePlayer.name,
                 subMenuProps: {
-                    items: [subMenuSectionItem, removeItem],
+                    items: [subMenuSectionItem, removeItem, renameItem],
                 },
             });
         }
@@ -599,6 +606,20 @@ function onRemovePlayerClick(
         `Are you sure you want to remove the player "${item.data.activePlayer.name}" from team "${item.data.activePlayer.teamName}"?`,
         () => appState.game.cycles[appState.uiState.cycleIndex].addPlayerLeaves(item.data.activePlayer)
     );
+}
+
+function onRenamePlayerClick(
+    ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
+    item?: IContextualMenuItem
+): void {
+    if (item == undefined) {
+        return;
+    } else if (!isSubMenuItemData(item.data)) {
+        return;
+    }
+
+    const appState: AppState = item.data.appState;
+    appState.uiState.dialogState.showRenamePlayerDialog(item.data.activePlayer);
 }
 
 function onSwapPlayerClick(
