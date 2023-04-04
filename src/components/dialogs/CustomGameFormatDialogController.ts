@@ -74,6 +74,14 @@ export function changeRegulationTossupCount(appState: AppState, newValue?: strin
     }
 }
 
+export function changeMaxActivePlayersCount(appState: AppState, newValue?: string | undefined): void {
+    const customizeGameFormatState: CustomizeGameFormatDialogState = getState(appState);
+    const count: number | undefined = getNumberOrUndefined(newValue);
+    if (count != undefined) {
+        customizeGameFormatState.updateGameFormat({ maxActivePlayers: count });
+    }
+}
+
 export function changeNegValue(appState: AppState, newValue?: string | undefined): void {
     const customizeGameFormatState: CustomizeGameFormatDialogState = getState(appState);
     const negValue: number | undefined = getNumberOrUndefined(newValue);
