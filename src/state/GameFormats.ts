@@ -10,6 +10,7 @@ export const ACFGameFormat: IGameFormat = {
     minimumOvertimeQuestionCount: 1,
     overtimeIncludesBonuses: false,
     negValue: -5,
+    maxActivePlayers: 4,
     powers: [],
     regulationTossupCount: 20,
     timeoutsAllowed: 1,
@@ -23,6 +24,7 @@ export const PACEGameFormat: IGameFormat = {
     minimumOvertimeQuestionCount: 1,
     overtimeIncludesBonuses: false,
     negValue: 0,
+    maxActivePlayers: 4,
     powers: [{ marker: "(*)", points: 20 }],
     regulationTossupCount: 20,
     timeoutsAllowed: 1,
@@ -41,6 +43,7 @@ export const UndefinedGameFormat: IGameFormat = {
     minimumOvertimeQuestionCount: 1,
     overtimeIncludesBonuses: false,
     negValue: -5,
+    maxActivePlayers: 999,
     powers: [{ marker: "(*)", points: 15 }],
     regulationTossupCount: 999,
     timeoutsAllowed: 999,
@@ -65,6 +68,7 @@ export function getUpgradedFormatVersion(format: IGameFormat): IGameFormat {
     }
 
     updatePowerMarkers(format);
+    updateMaxActivePlayers(format);
 
     // We need to compare the fields between the given format and the current format, so we need to iterate over them.
     // This requires using the array/dictionary syntax for accessing fields, which requires using any.
@@ -112,6 +116,11 @@ function updatePowerMarkers(gameFormat: IGameFormat): void {
             points: gameFormat.pointsForPowers[i],
         });
     }
+}
+
+function updateMaxActivePlayers(gameFormat: IGameFormat): void {
+    if (gameFormat.maxActivePlayers != undefined) return;
+    gameFormat.maxActivePlayers = 4; // default value
 }
 
 function throwInvalidGameFormatError(message: string): void {
