@@ -19,6 +19,7 @@ import {
 
 import * as NewGameValidator from "../../state/NewGameValidator";
 import * as PendingNewGameUtils from "../../state/PendingNewGameUtils";
+import * as QBJ from "../../qbj/QBJ";
 import * as Sheets from "../../sheets/Sheets";
 import { UIState } from "../../state/UIState";
 import { PacketLoader } from "../PacketLoader";
@@ -33,6 +34,7 @@ import { SheetType } from "../../state/SheetState";
 import { GameFormatPicker } from "../GameFormatPicker";
 import { StateContext } from "../../contexts/StateContext";
 import { IGameFormat } from "../../state/IGameFormat";
+import { FilePicker } from "../FilePicker";
 
 const playerListHeight = "20vh";
 
@@ -41,6 +43,7 @@ const enum PivotKey {
     Lifsheets = "L",
     TJSheets = "T",
     UCSDSheets = "U",
+    QBJRegistration = "R",
 }
 
 const content: IDialogContentProps = {
@@ -134,6 +137,9 @@ const NewGameDialogBody = observer(function NewGameDialogBody(): JSX.Element {
                 case PivotKey.UCSDSheets:
                     newGameType = PendingGameType.UCSDSheets;
                     break;
+                case PivotKey.QBJRegistration:
+                    newGameType = PendingGameType.QBJRegistration;
+                    break;
                 default:
                     assertNever(itemPivotKey);
             }
@@ -171,6 +177,9 @@ const NewGameDialogBody = observer(function NewGameDialogBody(): JSX.Element {
                 </PivotItem>
                 <PivotItem headerText="From UCSD Sheets" itemKey={PivotKey.UCSDSheets}>
                     <FromSheetsNewGameBody appState={appState} classes={classes} />
+                </PivotItem>
+                <PivotItem headerText="From QBJ Registration" itemKey={PivotKey.QBJRegistration}>
+                    <FromQBJRegistrationNewGameBody appState={appState} classes={classes} />
                 </PivotItem>
             </Pivot>
             <Separator />
@@ -272,6 +281,10 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
             return;
         }
 
+        if (uiState.pendingNewGame.type === PendingGameType.QBJRegistration) {
+            return;
+        }
+
         const url: string | undefined = uiState.pendingNewGame?.rostersUrl;
         if (url == undefined) {
             return;
@@ -306,7 +319,11 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
 
     const teamChangeHandler = React.useCallback(
         (newTeamName: string, oldPlayers: Player[]): void => {
-            if (uiState.pendingNewGame == undefined || uiState.pendingNewGame.type === PendingGameType.Manual) {
+            if (
+                uiState.pendingNewGame == undefined ||
+                uiState.pendingNewGame.type === PendingGameType.Manual ||
+                uiState.pendingNewGame.type === PendingGameType.QBJRegistration
+            ) {
                 return;
             }
 
@@ -325,7 +342,11 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
     );
 
     const pendingNewGame: IPendingNewGame | undefined = uiState.pendingNewGame;
-    if (pendingNewGame == undefined || pendingNewGame.type === PendingGameType.Manual) {
+    if (
+        pendingNewGame == undefined ||
+        pendingNewGame.type === PendingGameType.Manual ||
+        pendingNewGame.type === PendingGameType.QBJRegistration
+    ) {
         return <></>;
     }
 
@@ -376,6 +397,102 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
     );
 });
 
+const FromQBJRegistrationNewGameBody = observer(function FromSheetsNewGameBody(
+    props: INewGamePivotItemProps
+): JSX.Element {
+    const uiState: UIState = props.appState.uiState;
+
+    const loadHandler = React.useCallback(
+        (event: React.ChangeEvent<HTMLInputElement>, fileList: FileList | null | undefined) => {
+            if (
+                fileList == undefined ||
+                uiState.pendingNewGame == undefined ||
+                uiState.pendingNewGame.type !== PendingGameType.QBJRegistration
+            ) {
+                return;
+            }
+
+            const file: File | null = fileList.item(0);
+            if (file === null) {
+                return;
+            }
+
+            file.text().then((value) => {
+                const players: Player[] = QBJ.parseRegistration(value);
+                uiState.setPendingNewGameRosters(players);
+            });
+        },
+        [uiState]
+    );
+
+    const teamChangeHandler = React.useCallback(
+        (newTeamName: string, oldPlayers: Player[]): void => {
+            if (
+                uiState.pendingNewGame == undefined ||
+                uiState.pendingNewGame.type !== PendingGameType.QBJRegistration
+            ) {
+                return;
+            }
+
+            // If rosters exist, then so do the players, so we can do strict equality to see which team needs to be updated
+            if (oldPlayers === uiState.pendingNewGame.firstTeamPlayers) {
+                uiState.setPendingNewGameFirstTeamPlayers(
+                    uiState.pendingNewGame.players.filter((player) => player.teamName === newTeamName) ?? []
+                );
+            } else if (oldPlayers === uiState.pendingNewGame.secondTeamPlayers) {
+                uiState.setPendingNewGameSecondTeamPlayers(
+                    uiState.pendingNewGame.players.filter((player) => player.teamName === newTeamName) ?? []
+                );
+            }
+        },
+        [uiState]
+    );
+
+    const pendingNewGame: IPendingNewGame | undefined = uiState.pendingNewGame;
+    if (pendingNewGame == undefined || pendingNewGame.type !== PendingGameType.QBJRegistration) {
+        return <></>;
+    }
+
+    const firstTeamPlayers: Player[] = pendingNewGame.firstTeamPlayers ?? [];
+    const secondTeamPlayers: Player[] = pendingNewGame.secondTeamPlayers ?? [];
+
+    // We should only do this if we have any players from the rosters
+    const teamNameErrorMessage = NewGameValidator.playerTeamsUnique(firstTeamPlayers, secondTeamPlayers);
+
+    const playersFromRosters: Player[] = pendingNewGame.players ?? [];
+
+    return (
+        <Stack>
+            <StackItem>
+                <div className={props.classes.loadContainer}>
+                    <FilePicker buttonText="Load Roster..." onChange={loadHandler} />
+                </div>
+            </StackItem>
+            <Separator />
+            <StackItem>
+                <div className={props.classes.teamEntriesContainer}>
+                    <FromRostersTeamEntry
+                        playerListHeight={playerListHeight}
+                        playerPool={playersFromRosters}
+                        players={firstTeamPlayers}
+                        teamLabel="First team"
+                        onTeamChange={teamChangeHandler}
+                    />
+                    <Separator vertical={true} />
+                    <FromRostersTeamEntry
+                        playerListHeight={playerListHeight}
+                        playerPool={playersFromRosters}
+                        players={secondTeamPlayers}
+                        teamNameErrorMessage={teamNameErrorMessage}
+                        teamLabel="Second team"
+                        onTeamChange={teamChangeHandler}
+                    />
+                </div>
+            </StackItem>
+        </Stack>
+    );
+});
+
 function getDefaultPivotKey(pendingGameType: PendingGameType | undefined): PivotKey {
     switch (pendingGameType) {
         case PendingGameType.Manual:
@@ -387,6 +504,8 @@ function getDefaultPivotKey(pendingGameType: PendingGameType | undefined): Pivot
             return PivotKey.TJSheets;
         case PendingGameType.UCSDSheets:
             return PivotKey.UCSDSheets;
+        case PendingGameType.QBJRegistration:
+            return PivotKey.QBJRegistration;
         default:
             assertNever(pendingGameType);
     }

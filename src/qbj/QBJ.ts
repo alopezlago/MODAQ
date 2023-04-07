@@ -1,6 +1,45 @@
+import { Player } from "../state/TeamState";
 import { Cycle } from "../state/Cycle";
 import { IBonusAnswerPart, ITossupAnswerEvent } from "../state/Events";
 import { GameState } from "../state/GameState";
+
+export function parseRegistration(json: string): Player[] {
+    // Either it's a JSON object with "name" or a JSON array
+    const parsedInput: IRegistration[] | ITournament = JSON.parse(json);
+    let registrations: IRegistration[];
+    if (isTournament(parsedInput)) {
+        registrations = parsedInput.registrations;
+    } else {
+        registrations = parsedInput;
+    }
+
+    const teamCounts: Map<string, number> = new Map<string, number>();
+    const players: Player[] = [];
+    for (const registration of registrations) {
+        for (const team of registration.teams) {
+            for (const player of team.players) {
+                let playerCount = teamCounts.get(team.name);
+                if (playerCount == undefined) {
+                    playerCount = 0;
+                }
+
+                playerCount++;
+                teamCounts.set(team.name, playerCount);
+
+                // TODO: This should be determined by the format
+                players.push(new Player(player.name, team.name, playerCount <= 4));
+            }
+        }
+    }
+
+    return players;
+}
+
+// Needed for the type guard
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isTournament(registrations: any): registrations is ITournament {
+    return registrations.name != undefined && registrations.registrations != undefined;
+}
 
 // Converts games into a QBJ file that conforms to the Match interface in the QB Schema
 export function toQBJString(game: GameState, packetName?: string, round?: number): string {
@@ -461,4 +500,15 @@ export interface IMatchQuestionBonus {
 export interface IMatchQuestionBonusPart {
     controlled_points: number;
     bounceback_points?: number;
+}
+
+// Follow https://schema.quizbowl.technology/tournament
+export interface ITournament {
+    name: string;
+    registrations: IRegistration[];
+}
+
+export interface IRegistration {
+    name: string;
+    teams: ITeam[];
 }

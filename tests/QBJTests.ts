@@ -2,7 +2,7 @@ import { assert, expect } from "chai";
 
 import * as GameFormats from "src/state/GameFormats";
 import * as QBJ from "src/qbj/QBJ";
-import { IMatch } from "src/qbj/QBJ";
+import { IMatch, ITournament } from "src/qbj/QBJ";
 import { GameState } from "src/state/GameState";
 import { Bonus, PacketState, Tossup } from "src/state/PacketState";
 import { Player } from "src/state/TeamState";
@@ -954,6 +954,172 @@ describe("QBJTests", () => {
             expect(qbj).to.not.be.undefined;
             const match: IMatch = JSON.parse(qbj);
             expect(match._round).to.equal(5);
+        });
+    });
+    describe("parseRegistration", () => {
+        function verifyRegistration(tournament: ITournament, verify: (players: Player[]) => void) {
+            verify(QBJ.parseRegistration(JSON.stringify(tournament)));
+            verify(QBJ.parseRegistration(JSON.stringify(tournament.registrations)));
+        }
+
+        it("Parse single registration", () => {
+            const teamName = "Washington A";
+            const tournament: ITournament = {
+                name: "Tournament",
+                registrations: [
+                    {
+                        name: "Washington",
+                        teams: [
+                            {
+                                name: teamName,
+                                players: [
+                                    {
+                                        name: "Alice",
+                                    },
+                                    {
+                                        name: "Bob",
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            verifyRegistration(tournament, (players) => {
+                expect(players.length).to.equal(2);
+
+                const firstPlayer: Player = players[0];
+                expect(firstPlayer.name).to.equal("Alice");
+                expect(firstPlayer.teamName).to.equal(teamName);
+                expect(firstPlayer.isStarter).to.be.true;
+
+                const secondPlayer: Player = players[1];
+                expect(secondPlayer.name).to.equal("Bob");
+                expect(secondPlayer.teamName).to.equal(teamName);
+                expect(secondPlayer.isStarter).to.be.true;
+            });
+        });
+        it("Parse multiple registrations", () => {
+            const tournament: ITournament = {
+                name: "Tournament",
+                registrations: [
+                    {
+                        name: "Washington",
+                        teams: [
+                            {
+                                name: "Washington A",
+                                players: [
+                                    {
+                                        name: "Alice",
+                                    },
+                                ],
+                            },
+                            {
+                                name: "Washington B",
+                                players: [
+                                    {
+                                        name: "Bob",
+                                    },
+                                    {
+                                        name: "Betty",
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                    {
+                        name: "Claremont",
+                        teams: [
+                            {
+                                name: "Claremont A",
+                                players: [
+                                    {
+                                        name: "Charlie",
+                                    },
+                                    {
+                                        name: "Carol",
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            verifyRegistration(tournament, (players) => {
+                expect(players.length).to.equal(5);
+
+                const firstPlayer: Player = players[0];
+                expect(firstPlayer.name).to.equal("Alice");
+                expect(firstPlayer.teamName).to.equal("Washington A");
+                expect(firstPlayer.isStarter).to.be.true;
+
+                const secondPlayer: Player = players[1];
+                expect(secondPlayer.name).to.equal("Bob");
+                expect(secondPlayer.teamName).to.equal("Washington B");
+                expect(secondPlayer.isStarter).to.be.true;
+
+                const thirdPlayer: Player = players[2];
+                expect(thirdPlayer.name).to.equal("Betty");
+                expect(thirdPlayer.teamName).to.equal("Washington B");
+                expect(thirdPlayer.isStarter).to.be.true;
+
+                const fourthPlayer: Player = players[3];
+                expect(fourthPlayer.name).to.equal("Charlie");
+                expect(fourthPlayer.teamName).to.equal("Claremont A");
+                expect(fourthPlayer.isStarter).to.be.true;
+
+                const fifthPlayer: Player = players[4];
+                expect(fifthPlayer.name).to.equal("Carol");
+                expect(fifthPlayer.teamName).to.equal("Claremont A");
+                expect(fifthPlayer.isStarter).to.be.true;
+            });
+        });
+        it("Fifth player in registered team isn't a starter", () => {
+            const teamName = "Washington A";
+            const tournament: ITournament = {
+                name: "Tournament",
+                registrations: [
+                    {
+                        name: "Washington",
+                        teams: [
+                            {
+                                name: teamName,
+                                players: [
+                                    {
+                                        name: "Alice",
+                                    },
+                                    {
+                                        name: "Alan",
+                                    },
+                                    {
+                                        name: "Alexandra",
+                                    },
+                                    {
+                                        name: "Arthur",
+                                    },
+                                    {
+                                        name: "Anna",
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            verifyRegistration(tournament, (players) => {
+                expect(players.length).to.equal(5, `Expected five players in ${players.map((p) => p.name).join(", ")}`);
+                for (let i = 0; i < 4; i++) {
+                    expect(players[i].isStarter).to.equal(true, `${players[i].name} ($${i}) wasn't a starter`);
+                }
+
+                const lastPlayer: Player = players[4];
+                expect(lastPlayer.name).to.equal("Anna");
+                expect(lastPlayer.teamName).to.equal(teamName);
+                expect(lastPlayer.isStarter).to.be.false;
+            });
         });
     });
 });
