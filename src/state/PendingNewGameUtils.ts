@@ -4,6 +4,8 @@ import { Player } from "./TeamState";
 export function getPendingNewGamePlayers(pendingNewGame: IPendingNewGame): [Player[], Player[]] {
     if (pendingNewGame.type === PendingGameType.Manual) {
         return [pendingNewGame.firstTeamPlayers, pendingNewGame.secondTeamPlayers];
+    } else if (pendingNewGame.type === PendingGameType.QBJRegistration) {
+        return [pendingNewGame.firstTeamPlayers ?? [], pendingNewGame.secondTeamPlayers ?? []];
     } else {
         return [pendingNewGame.firstTeamPlayersFromRosters ?? [], pendingNewGame.secondTeamPlayersFromRosters ?? []];
     }

@@ -1324,7 +1324,10 @@ describe("SheetsTests", () => {
             }
 
             // Use an if here to get the type coercion benefits
-            if (appState.uiState.pendingNewGame.type === PendingGameType.Manual) {
+            if (
+                appState.uiState.pendingNewGame.type === PendingGameType.Manual ||
+                appState.uiState.pendingNewGame.type === PendingGameType.QBJRegistration
+            ) {
                 assert.fail(
                     `PendingNewGame type should've been Lifsheets, but was ${appState.uiState.pendingNewGame?.type}`
                 );
