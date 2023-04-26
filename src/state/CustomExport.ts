@@ -43,13 +43,17 @@ export interface IExportFields {
     packet: IPacket;
 }
 
+export interface IExportContext {
+    source: ExportSource;
+}
+
 interface ICustomRawExport extends IBaseCustomExport {
-    onExport: (fields: IExportFields) => Promise<IStatus>;
+    onExport: (fields: IExportFields, context?: IExportContext) => Promise<IStatus>;
     type: "Raw";
 }
 
 interface ICustomQBJExport extends IBaseCustomExport {
-    onExport: (qbj: IMatch) => Promise<IStatus>;
+    onExport: (qbj: IMatch, context?: IExportContext) => Promise<IStatus>;
     type: "QBJ";
 }
 
@@ -65,3 +69,5 @@ interface IBaseCustomExport {
 }
 
 export type ExportType = "Raw" | "QBJ";
+
+export type ExportSource = "Menu" | "NewGame" | "NextButton" | "Timer";

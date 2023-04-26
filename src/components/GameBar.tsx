@@ -36,7 +36,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
                     // Open the export dialog, depending on if they have sheets. We should ideally abstract this logic
                     // to another method
                     if (appState.uiState.customExportOptions != undefined) {
-                        appState.handleCustomExport(StatusDisplayType.MessageDialog);
+                        appState.handleCustomExport(StatusDisplayType.MessageDialog, "NewGame");
                     } else if (appState.uiState.sheetsState.sheetId != undefined) {
                         exportToSheets(appState);
                     } else {
@@ -161,11 +161,34 @@ export const GameBar = observer(function GameBar(): JSX.Element {
             },
         });
     } else {
+        // This should be a split button, with custom as the default item
+        const handleCustomExport: () => void = () => {
+            appState.handleCustomExport(StatusDisplayType.MessageDialog, "Menu");
+        };
+
         items.push({
             key: "export",
             text: appState.uiState.customExportOptions.label,
-            onClick: () => {
-                appState.handleCustomExport(StatusDisplayType.MessageDialog);
+            disabled: appState.game.cycles.length === 0,
+            split: true,
+            onClick: handleCustomExport,
+            subMenuProps: {
+                items: [
+                    {
+                        key: "exportSubMenuItem",
+                        text: appState.uiState.customExportOptions.label,
+                        disabled: appState.game.cycles.length === 0,
+                        onClick: handleCustomExport,
+                    },
+                    {
+                        key: "downloadJson",
+                        text: "Backup to JSON...",
+                        disabled: appState.game.cycles.length === 0,
+                        onClick: () => {
+                            appState.uiState.dialogState.showExportToJsonDialog();
+                        },
+                    },
+                ],
             },
         });
     }
@@ -249,16 +272,6 @@ function getExportSubMenuItems(appState: AppState): ICommandBarItemProps[] {
         }
 
         return result.join("\t");
-    });
-    items.push({
-        key: "copyBuzzPoints",
-        text: "Copy buzz points",
-        disabled,
-        onClick: () => {
-            // Translate this to lines of tab delimited strings
-            const buzzPointsText: string = buzzPoints.join("\n");
-            copyText(buzzPointsText);
-        },
     });
 
     items.push({
@@ -661,31 +674,6 @@ function isSubMenuItemData(data: ISubMenuItemData | undefined): data is ISubMenu
 
 function isTossupProtestMenuItemData(data: ITossupProtestMenuItemData | undefined): data is ITossupProtestMenuItemData {
     return data?.appState !== undefined && data.buzz !== undefined;
-}
-
-// Adapted from this gist: https://gist.github.com/lgarron/d1dee380f4ed9d825ca7
-function copyText(text: string) {
-    return new Promise<void>(function (resolve, reject) {
-        let success = false;
-        function listener(e: ClipboardEvent) {
-            if (e == undefined || e.clipboardData == undefined) {
-                return;
-            }
-
-            e.clipboardData.setData("text/plain", text);
-            e.preventDefault();
-            success = true;
-        }
-
-        document.addEventListener("copy", listener);
-        document.execCommand("copy");
-        document.removeEventListener("copy", listener);
-        if (success) {
-            resolve();
-        } else {
-            reject();
-        }
-    });
 }
 
 interface ISubMenuItemData {
