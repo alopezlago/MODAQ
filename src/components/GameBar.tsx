@@ -263,17 +263,6 @@ function getExportSubMenuItems(appState: AppState): ICommandBarItemProps[] {
         disabled: disabled || appState.uiState.sheetsState.clientId == undefined,
     });
 
-    // We have to compute this outside of onClick because MobX will complain about reading orderedBuzzes outside of a
-    // reaction otherwise
-    const buzzPoints: string[] = game.playableCycles.map((cycle) => {
-        const result: string[] = [];
-        for (const buzz of cycle.orderedBuzzes) {
-            result.push(buzz.marker.position.toString(10));
-        }
-
-        return result.join("\t");
-    });
-
     items.push({
         key: "downloadJson",
         text: "Export to JSON...",
