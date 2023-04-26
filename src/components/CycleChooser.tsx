@@ -156,7 +156,7 @@ function onNextClick(appState: AppState): void {
     if (shouldNextButtonExport(appState)) {
         // If they use Sheets, show the Export Sheets dialog. Otherwise, show the Export JSON dialog
         if (appState.uiState.customExportOptions != undefined) {
-            appState.handleCustomExport(StatusDisplayType.MessageDialog);
+            appState.handleCustomExport(StatusDisplayType.MessageDialog, "NextButton");
         } else if (appState.uiState.sheetsState.sheetId != undefined) {
             appState.uiState.createPendingSheet();
         } else {

@@ -32,8 +32,13 @@ export class AppState {
 
     // Could do a version with callbacks. There are 4 places this gets called from, and 3 use the same callback
     // Could also just do a bool, and pass in a different value (e.g. enum) if we want more flexibility in the future
-    public handleCustomExport(displayType: StatusDisplayType): Promise<void> {
-        if (this.uiState == undefined || this.uiState.customExportOptions == undefined) {
+    public handleCustomExport(displayType: StatusDisplayType, source: CustomExport.ExportSource): Promise<void> {
+        // Custom export must be defined and we must have an existing game
+        if (
+            this.uiState == undefined ||
+            this.uiState.customExportOptions == undefined ||
+            this.game.cycles.length === 0
+        ) {
             return Promise.resolve();
         }
 
@@ -41,10 +46,10 @@ export class AppState {
         let exportPromise: Promise<IStatus> | undefined;
         switch (customExport.type) {
             case "Raw":
-                exportPromise = customExport.onExport(CustomExport.convertGameToExportFields(this.game));
+                exportPromise = customExport.onExport(CustomExport.convertGameToExportFields(this.game), { source });
                 break;
             case "QBJ":
-                exportPromise = customExport.onExport(QBJ.toQBJ(this.game, this.uiState.packetFilename));
+                exportPromise = customExport.onExport(QBJ.toQBJ(this.game, this.uiState.packetFilename), { source });
                 break;
             default:
                 assertNever(customExport);
@@ -112,7 +117,7 @@ export class AppState {
             interval = minimumIntervalInMs;
         }
 
-        const newIntervalId = setInterval(() => this.handleCustomExport(StatusDisplayType.Label), interval);
+        const newIntervalId = setInterval(() => this.handleCustomExport(StatusDisplayType.Label, "Timer"), interval);
         this.uiState.setCustomExportIntervalId(newIntervalId);
     }
 }
