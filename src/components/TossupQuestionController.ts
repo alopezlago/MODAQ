@@ -50,6 +50,16 @@ export function selectWordFromKeyboardEvent(event: React.KeyboardEvent<HTMLDivEl
 
 export function throwOutTossup(cycle: Cycle, tossupNumber: number): void {
     const appState: AppState = AppState.instance;
+
+    appState.uiState.dialogState.showOKCancelMessageDialog(
+        "Throw out Tossup",
+        "Click OK to throw out the tossup. To undo this, click on the X next to its event in the Event Log.",
+        () => onConfirmThrowOutTossup(cycle, tossupNumber)
+    );
+}
+
+function onConfirmThrowOutTossup(cycle: Cycle, tossupNumber: number) {
+    const appState: AppState = AppState.instance;
     cycle.addThrownOutTossup(tossupNumber - 1);
     appState.uiState.setSelectedWordIndex(-1);
 }

@@ -11,14 +11,9 @@ import { BuzzMenu } from "./BuzzMenu";
 import { Answer } from "./Answer";
 import { IFormattedText } from "../parser/IFormattedText";
 import { TossupProtestDialog } from "./dialogs/TossupProtestDialog";
-import { CancelButton, ICancelButtonPrompt } from "./CancelButton";
+import { CancelButton } from "./CancelButton";
 import { AppState } from "../state/AppState";
 import { PostQuestionMetadata } from "./PostQuestionMetadata";
-
-const throwOutQuestionPrompt: ICancelButtonPrompt = {
-    title: "Throw out Tossup",
-    message: "Click OK to throw out the tossup. To undo this, click on the X next to its event in the Event Log.",
-};
 
 export const TossupQuestion = observer(function TossupQuestion(props: IQuestionProps): JSX.Element {
     const classes: ITossupQuestionClassNames = getClassNames();
@@ -78,11 +73,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
                 <PostQuestionMetadata metadata={props.tossup.metadata} />
             </div>
             <div>
-                <CancelButton
-                    prompt={throwOutQuestionPrompt}
-                    tooltip="Throw out tossup"
-                    onClick={throwOutClickHandler}
-                />
+                <CancelButton tooltip="Throw out tossup" onClick={throwOutClickHandler} />
             </div>
         </div>
     );

@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
     return {
         build: {
             assetsDir: "out",
-            sourcemap: true,
+               sourcemap: true,
         },
         plugins: [react(), splitVendorChunkPlugin()],
         define: {
