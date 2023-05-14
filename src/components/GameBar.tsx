@@ -251,7 +251,6 @@ function getActionSubMenuItems(
 
 function getExportSubMenuItems(appState: AppState): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
-    const game: GameState = appState.game;
     const disabled: boolean = appState.game.cycles.length === 0;
 
     items.push({

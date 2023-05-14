@@ -1,6 +1,6 @@
 # Introduction
 
-MODAQ (**MOD**erator **A**ssistant for **Q**uizbowl)  is an application for assisting moderators with reading and scorekeeping quiz bowl matches. It helps track all the events that occur during the match, such as buzzes, substituions, protests, and more. It also tracks buzz point data, and can export it to Lifsheets or a JSON file.
+MODAQ (**MOD**erator **A**ssistant for **Q**uizbowl) is an application for assisting moderators with reading and scorekeeping quiz bowl matches. It helps track all the events that occur during the match, such as buzzes, substituions, protests, and more. It also tracks buzz point data, and can export it to TJ/UCSDSheets or a JSON file.
 
 See [the wiki](https://github.com/alopezlago/MODAQ/wiki) to learn how to use the reader.
 
