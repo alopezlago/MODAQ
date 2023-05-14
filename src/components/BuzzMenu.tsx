@@ -85,7 +85,7 @@ function getPlayerMenuItems(props: IBuzzMenuProps, theme: Theme | undefined, tea
         const subMenuItems: IContextualMenuItem[] = [
             {
                 key: `${topLevelKey}_correct`,
-                text: "Correct",
+                text: "Correct ✓",
                 data: buzzMenuItemData,
                 canCheck: true,
                 checked: isCorrectChecked,
@@ -93,24 +93,26 @@ function getPlayerMenuItems(props: IBuzzMenuProps, theme: Theme | undefined, tea
             },
             {
                 key: `${topLevelKey}_wrong`,
-                text: "Wrong",
+                text: "Wrong ✗",
                 data: buzzMenuItemData,
                 canCheck: true,
                 checked: isWrongChecked,
                 onClick: onWrongClicked,
             },
-        ];
-
-        if (isWrongChecked || isCorrectChecked) {
-            subMenuItems.push({
+            {
+                key: `${topLevelKey}_Divider`,
+                itemType: ContextualMenuItemType.Divider,
+            },
+            {
                 key: `${topLevelKey}_protest`,
                 text: "Protest",
                 data: buzzMenuItemData,
+                disabled: !(isWrongChecked || isCorrectChecked),
                 canCheck: true,
                 checked: isProtestChecked,
                 onClick: onProtestClicked,
-            });
-        }
+            },
+        ];
 
         // TODO: See if we can improve the style, since the background doesn't change on hover. We can look into
         // tagging this with a class name and using react-jss, or using a style on the parent component (much harder to

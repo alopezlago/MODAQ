@@ -14,7 +14,6 @@ export interface IPendingManualNewGame extends IBasePendingNewGame {
 
 export const enum PendingGameType {
     Manual,
-    Lifsheets,
     TJSheets,
     UCSDSheets,
     QBJRegistration,
@@ -25,7 +24,7 @@ export interface IPendingFromSheetsNewGame extends IBasePendingNewGame {
     playersFromRosters: Player[] | undefined;
     firstTeamPlayersFromRosters: Player[] | undefined;
     secondTeamPlayersFromRosters: Player[] | undefined;
-    type: PendingGameType.Lifsheets | PendingGameType.TJSheets | PendingGameType.UCSDSheets;
+    type: PendingGameType.TJSheets | PendingGameType.UCSDSheets;
 }
 
 export interface IPendingQBJRegistrationNewGame extends IBasePendingNewGame {

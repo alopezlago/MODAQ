@@ -8,6 +8,8 @@ import {
     CommandBar,
 } from "@fluentui/react";
 
+import * as BonusQuestionController from "./BonusQuestionController";
+import * as TossupQuestionController from "./TossupQuestionController";
 import { GameState } from "../state/GameState";
 import { UIState } from "../state/UIState";
 import { Cycle } from "../state/Cycle";
@@ -228,6 +230,38 @@ function getActionSubMenuItems(
     const protestsSection: ICommandBarItemProps = getProtestSubMenuItems(appState, game, uiState, protestBonusHandler);
     items.push(protestsSection);
 
+    const removeQuestionSection: ICommandBarItemProps = {
+        key: "removeQuestionSection",
+        itemType: ContextualMenuItemType.Section,
+        sectionProps: {
+            bottomDivider: true,
+            title: "Remove Question",
+            items: [
+                {
+                    key: "removeTossup",
+                    text: "Throw out tossup",
+                    onClick: () =>
+                        TossupQuestionController.throwOutTossup(
+                            appState.game.cycles[appState.uiState.cycleIndex],
+                            appState.game.getTossupIndex(appState.uiState.cycleIndex) + 1
+                        ),
+                    disabled: appState.game.cycles.length === 0,
+                },
+                {
+                    key: "removeBonus",
+                    text: "Throw out bonus",
+                    onClick: () =>
+                        BonusQuestionController.throwOutBonus(
+                            appState.game.cycles[appState.uiState.cycleIndex],
+                            appState.game.getBonusIndex(appState.uiState.cycleIndex)
+                        ),
+                    disabled: appState.game.cycles.length === 0,
+                },
+            ],
+        },
+    };
+    items.push(removeQuestionSection);
+
     const packetSection: ICommandBarItemProps = {
         key: "packetSection",
         itemType: ContextualMenuItemType.Section,
@@ -251,7 +285,6 @@ function getActionSubMenuItems(
 
 function getExportSubMenuItems(appState: AppState): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
-    const game: GameState = appState.game;
     const disabled: boolean = appState.game.cycles.length === 0;
 
     items.push({

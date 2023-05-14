@@ -1,14 +1,15 @@
 import { assert, expect } from "chai";
 
-import * as TossupQuestionController from "src/components/TossupQuestionController";
+import * as BonusQuestionController from "src/components/BonusQuestionController";
+import * as GameFormats from "src/state/GameFormats";
 import { Player } from "src/state/TeamState";
-import { PacketState, Tossup } from "src/state/PacketState";
+import { Bonus, PacketState, Tossup } from "src/state/PacketState";
 import { Cycle } from "src/state/Cycle";
 import { AppState } from "src/state/AppState";
 
-describe("TossupQuestionControllerTests", () => {
-    describe("throwOutTossup", () => {
-        it("Throw out Tossup", () => {
+describe("BonusQuestionControllerTests", () => {
+    describe("throwOutBonus", () => {
+        it("Throw out Bonus", () => {
             AppState.resetInstance();
             const appState: AppState = AppState.instance;
             appState.game.addPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
@@ -18,11 +19,19 @@ describe("TossupQuestionControllerTests", () => {
                 new Tossup("This is the first question", "Answer"),
                 new Tossup("This is the second question", "Second answer"),
             ]);
+            packet.setBonuses([new Bonus("First leadin", []), new Bonus("Second leadin", [])]);
 
             appState.game.loadPacket(packet);
             const cycle: Cycle = appState.game.cycles[0];
+            cycle.addCorrectBuzz(
+                { player: appState.game.players[0], points: 10, position: 0 },
+                0,
+                GameFormats.UndefinedGameFormat,
+                0,
+                3
+            );
 
-            TossupQuestionController.throwOutTossup(cycle, 1);
+            BonusQuestionController.throwOutBonus(cycle, 0);
 
             const messageDialog = appState.uiState.dialogState.messageDialog;
             if (messageDialog == undefined || messageDialog.onOK == undefined) {
@@ -30,12 +39,12 @@ describe("TossupQuestionControllerTests", () => {
             }
             messageDialog.onOK();
 
-            if (cycle.thrownOutTossups == undefined) {
-                assert.fail("ThrownOutTossups was undefined");
+            if (cycle.thrownOutBonuses == undefined) {
+                assert.fail("ThrownOutBonuses was undefined");
             }
 
-            expect(cycle.thrownOutTossups[0].questionIndex).to.equal(0);
-            expect(appState.game.getTossupIndex(0)).to.equal(1);
+            expect(cycle.thrownOutBonuses[0].questionIndex).to.equal(0);
+            expect(appState.game.getBonusIndex(0)).to.equal(1);
         });
     });
 });

@@ -60,7 +60,7 @@ function createAppStateForExport(sheetType: SheetType = SheetType.Lifsheets): Ap
 
 function createAppStateForRosters(
     sheetType: SheetType = SheetType.Lifsheets,
-    pendingGameType: PendingGameType = PendingGameType.Lifsheets
+    pendingGameType: PendingGameType = PendingGameType.TJSheets
 ): AppState {
     const appState: AppState = new AppState();
 
@@ -1347,29 +1347,6 @@ describe("SheetsTests", () => {
             verifyPlayers(pendingNewGame, playerNamesFromRosters);
         };
 
-        it("Success (Lifsheets)", async () => {
-            const firstRow: string[] = ["Alpha", "Alice", "Andrew", "Ana"];
-            const secondRow: string[] = ["Beta", "Bob", "Barbara"];
-            const thirdRow: string[] = ["Gamma", "Gabe", "Gina"];
-
-            await loadRostersSucceedsTest(
-                SheetType.Lifsheets,
-                PendingGameType.Lifsheets,
-                [firstRow, secondRow, thirdRow],
-                (pendingNewGame, playerNamesFromRosters) => {
-                    for (const name of firstRow.slice(1).concat(secondRow.slice(1)).concat(thirdRow.slice(1))) {
-                        expect(playerNamesFromRosters).to.contain(name);
-                    }
-
-                    expect(
-                        pendingNewGame.firstTeamPlayersFromRosters?.map((player) => player.name) ?? []
-                    ).to.deep.equal(firstRow.slice(1));
-                    expect(
-                        pendingNewGame.secondTeamPlayersFromRosters?.map((player) => player.name) ?? []
-                    ).to.deep.equal(secondRow.slice(1));
-                }
-            );
-        });
         it("Success (TJSheets)", async () => {
             const teamNames: string[] = ["Alpha", "Beta", "Gamma"];
             const firstTeamPlayers: string[] = ["Alice", "Andrew", "Ana"];

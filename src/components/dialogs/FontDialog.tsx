@@ -129,6 +129,16 @@ const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
                     decrementButtonAriaLabel={"Decrease font size by 1"}
                 />
             </StackItem>
+            <StackItem>
+                <span
+                    style={{
+                        fontFamily: appState.uiState.pendingFontFamily ?? appState.uiState.fontFamily,
+                        fontSize: appState.uiState.pendingFontSize ?? appState.uiState.questionFontSize,
+                    }}
+                >
+                    Sample text.
+                </span>
+            </StackItem>
         </Stack>
     );
 });

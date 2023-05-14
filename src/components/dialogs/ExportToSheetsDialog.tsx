@@ -64,10 +64,6 @@ const warningIconStyles: IIconStyles = {
 
 const typeOptions: IDropdownOption[] = [
     {
-        key: SheetType.Lifsheets,
-        text: "Lifsheets",
-    },
-    {
         key: SheetType.TJSheets,
         text: "TJ Sheets",
     },
@@ -164,7 +160,7 @@ const ExportSettingsDialogBody = observer(function ExportSettingsDialogBody(): J
         return <></>;
     }
 
-    const selectedType: number = uiState.sheetsState.sheetType ?? SheetType.Lifsheets;
+    const selectedType: number = uiState.sheetsState.sheetType ?? SheetType.TJSheets;
     const roundNumber: number = sheet.roundNumber ?? 1;
 
     let warningIconName: string | undefined;

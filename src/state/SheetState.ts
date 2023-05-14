@@ -110,6 +110,9 @@ export const enum ExportState {
 }
 
 export const enum SheetType {
+    /**
+     * DEPRECATED
+     */
     Lifsheets = 0,
     TJSheets = 1,
     UCSDSheets = 2,

@@ -2,27 +2,23 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { FocusZone, FocusZoneDirection, ITheme, mergeStyleSets, Stack, StackItem, ThemeContext } from "@fluentui/react";
 
+import * as BonusQuestionController from "./BonusQuestionController";
 import * as PacketState from "../state/PacketState";
 import { BonusQuestionPart } from "./BonusQuestionPart";
 import { Bonus } from "../state/PacketState";
 import { Cycle } from "../state/Cycle";
-import { CancelButton, ICancelButtonPrompt } from "./CancelButton";
+import { CancelButton } from "./CancelButton";
 import { BonusProtestDialog } from "./dialogs/BonusProtestDialog";
 import { AppState } from "../state/AppState";
 import { FormattedText } from "./FormattedText";
 import { IFormattedText } from "../parser/IFormattedText";
 import { PostQuestionMetadata } from "./PostQuestionMetadata";
 
-const throwOutQuestionPrompt: ICancelButtonPrompt = {
-    title: "Throw out Bonus",
-    message: "Click OK to throw out the bonus. To undo this, click on the X next to its event in the Event Log.",
-};
-
 let bonusQuestionTextIdCounter = 0;
 
 export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuestionProps) {
     const throwOutClickHandler: () => void = React.useCallback(() => {
-        props.cycle.addThrownOutBonus(props.bonusIndex);
+        BonusQuestionController.throwOutBonus(props.cycle, props.bonusIndex);
     }, [props]);
     const formattedLeadin: IFormattedText[] = React.useMemo(
         () => PacketState.getBonusWords(props.bonus.leadin, props.appState.game.gameFormat),
@@ -93,7 +89,6 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
                             <StackItem>
                                 <CancelButton
                                     disabled={!props.inPlay}
-                                    prompt={throwOutQuestionPrompt}
                                     tooltip="Throw out bonus"
                                     onClick={throwOutClickHandler}
                                 />

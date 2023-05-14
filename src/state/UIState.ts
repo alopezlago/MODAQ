@@ -196,7 +196,6 @@ export class UIState {
                         secondTeamPlayers,
                     };
                     break;
-                case PendingGameType.Lifsheets:
                 case PendingGameType.TJSheets:
                 case PendingGameType.UCSDSheets:
                     break;
@@ -327,7 +326,6 @@ export class UIState {
         }
 
         switch (this.pendingNewGame.type) {
-            case PendingGameType.Lifsheets:
             case PendingGameType.TJSheets:
             case PendingGameType.UCSDSheets:
                 this.pendingNewGame.firstTeamPlayersFromRosters = players;
@@ -347,7 +345,6 @@ export class UIState {
         }
 
         switch (this.pendingNewGame.type) {
-            case PendingGameType.Lifsheets:
             case PendingGameType.TJSheets:
             case PendingGameType.UCSDSheets:
                 this.pendingNewGame.secondTeamPlayersFromRosters = players;
@@ -516,7 +513,6 @@ export class UIState {
                     this.pendingNewGame.secondTeamPlayers = [];
                     break;
                 case undefined:
-                case PendingGameType.Lifsheets:
                 case PendingGameType.TJSheets:
                 case PendingGameType.UCSDSheets:
                     // Don't clear the sheets URL or the players

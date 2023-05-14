@@ -40,7 +40,6 @@ const playerListHeight = "20vh";
 
 const enum PivotKey {
     Manual = "M",
-    Lifsheets = "L",
     TJSheets = "T",
     UCSDSheets = "U",
     QBJRegistration = "R",
@@ -128,9 +127,6 @@ const NewGameDialogBody = observer(function NewGameDialogBody(): JSX.Element {
                 case undefined:
                     newGameType = PendingGameType.Manual;
                     break;
-                case PivotKey.Lifsheets:
-                    newGameType = PendingGameType.Lifsheets;
-                    break;
                 case PivotKey.TJSheets:
                     newGameType = PendingGameType.TJSheets;
                     break;
@@ -169,9 +165,6 @@ const NewGameDialogBody = observer(function NewGameDialogBody(): JSX.Element {
                 <PivotItem headerText="Manual" itemKey={PivotKey.Manual}>
                     <ManualNewGamePivotBody appState={appState} classes={classes} />
                 </PivotItem>
-                <PivotItem headerText="From Lifsheets" itemKey={PivotKey.Lifsheets}>
-                    <FromSheetsNewGameBody appState={appState} classes={classes} />
-                </PivotItem>
                 <PivotItem headerText="From TJ Sheets" itemKey={PivotKey.TJSheets}>
                     <FromSheetsNewGameBody appState={appState} classes={classes} />
                 </PivotItem>
@@ -187,10 +180,7 @@ const NewGameDialogBody = observer(function NewGameDialogBody(): JSX.Element {
             <Separator />
             <GameFormatPicker
                 gameFormat={uiState.pendingNewGame.gameFormat}
-                exportFormatSupportsBouncebacks={
-                    uiState.pendingNewGame.type !== PendingGameType.Lifsheets &&
-                    uiState.pendingNewGame.type !== PendingGameType.UCSDSheets
-                }
+                exportFormatSupportsBouncebacks={uiState.pendingNewGame.type !== PendingGameType.UCSDSheets}
                 updateGameFormat={updateGameFormat}
             />
         </>
@@ -299,9 +289,6 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
         const pendingNewGameType: PendingGameType = uiState.pendingNewGame.type;
         switch (pendingNewGameType) {
             case undefined:
-            case PendingGameType.Lifsheets:
-                sheetType = SheetType.Lifsheets;
-                break;
             case PendingGameType.TJSheets:
                 sheetType = SheetType.TJSheets;
                 break;
@@ -498,8 +485,6 @@ function getDefaultPivotKey(pendingGameType: PendingGameType | undefined): Pivot
         case PendingGameType.Manual:
         case undefined:
             return PivotKey.Manual;
-        case PendingGameType.Lifsheets:
-            return PivotKey.Lifsheets;
         case PendingGameType.TJSheets:
             return PivotKey.TJSheets;
         case PendingGameType.UCSDSheets:
