@@ -49,7 +49,39 @@ describe("FontDialogControllerTests", () => {
         expect(appState.uiState.pendingFontSize).to.equal(oldFontSize);
     });
 
-    it("update", () => {
+    it("update only font size", () => {
+        AppState.resetInstance();
+        const appState: AppState = AppState.instance;
+        appState.uiState.setFontFamily("Comic Sans MS");
+        appState.uiState.setQuestionFontSize(16);
+
+        appState.uiState.setPendingFontSize(16);
+
+        FontDialogController.changePendingSize("40");
+        FontDialogController.update();
+
+        expect(appState.uiState.pendingFontFamily).to.be.undefined;
+        expect(appState.uiState.pendingFontSize).to.be.undefined;
+        expect(appState.uiState.questionFontSize).to.equal(40);
+        expect(appState.uiState.fontFamily.startsWith("Comic Sans MS")).to.be.true;
+    });
+
+    it("update only font family", () => {
+        AppState.resetInstance();
+        const appState: AppState = AppState.instance;
+        appState.uiState.setFontFamily("Comic Sans MS");
+        appState.uiState.setQuestionFontSize(40);
+
+        appState.uiState.setPendingFontFamily("Arial");
+        FontDialogController.update();
+
+        expect(appState.uiState.pendingFontFamily).to.be.undefined;
+        expect(appState.uiState.pendingFontSize).to.be.undefined;
+        expect(appState.uiState.questionFontSize).to.equal(40);
+        expect(appState.uiState.fontFamily.startsWith("Arial")).to.be.true;
+    });
+
+    it("update both", () => {
         const appState: AppState = initializeApp();
 
         FontDialogController.changePendingSize("40");

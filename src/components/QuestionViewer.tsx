@@ -19,6 +19,7 @@ const separatorStyles: Partial<ISeparatorStyles> = {
 export const QuestionViewer = observer(function QuestionViewer() {
     const appState: AppState = React.useContext(StateContext);
     const fontSize: number = appState.uiState.questionFontSize;
+    const fontFamily: string = appState.uiState.fontFamily;
     const classes: IQuestionViewerClassNames = getClassNames(fontSize);
     const game: GameState = appState.game;
     const uiState: UIState = appState.uiState;
@@ -30,6 +31,7 @@ export const QuestionViewer = observer(function QuestionViewer() {
     // Unfortunately StackItems reset the font, so we have to override the font there
     const stackItemStyles: IStackStyles = {
         root: {
+            fontFamily,
             fontSize,
         },
     };

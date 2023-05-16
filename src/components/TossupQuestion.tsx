@@ -58,7 +58,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
     return (
         <div className={classes.tossupContainer}>
             <TossupProtestDialog appState={props.appState} cycle={props.cycle} />
-            <div className={classes.tossupText} ref={tossupTextRef}>
+            <div ref={tossupTextRef}>
                 <FocusZone
                     as="div"
                     className={classes.tossupQuestionText}
@@ -139,7 +139,6 @@ interface IQuestionWordWrapperProps {
 interface ITossupQuestionClassNames {
     tossupContainer: string;
     tossupQuestionText: string;
-    tossupText: string;
 }
 
 const getClassNames = (): ITossupQuestionClassNames =>
@@ -152,9 +151,5 @@ const getClassNames = (): ITossupQuestionClassNames =>
         tossupQuestionText: {
             display: "inline-block",
             marginBottom: "0.25em",
-        },
-        tossupText: {
-            maxHeight: "37.5vh",
-            overflowY: "auto",
         },
     });
