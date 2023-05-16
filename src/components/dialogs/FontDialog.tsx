@@ -52,7 +52,18 @@ const modalProps: IModalProps = {
 
 const defaultFont = "Segoe UI";
 
-const fonts: string[] = ["Arial", "Consolas", "Helvetica", "Times New Roman", "Segoe UI"];
+const fonts: string[] = [
+    "Arial",
+    "Consolas",
+    "Courier New",
+    "Garamond",
+    "Georgia",
+    "Helvetica",
+    "Segoe UI",
+    "Tahoma",
+    "Times New Roman",
+    "Verdana",
+];
 
 const minimumFontSize = 12;
 const maximumFontSize = 40;

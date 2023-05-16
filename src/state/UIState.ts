@@ -21,7 +21,7 @@ import { ICustomExport } from "./CustomExport";
 // Alternatively, keep certain component-local states in the component state, and only store values that could be used
 // outside of that component here.
 
-const DefaultFontFamily = "Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif";
+const DefaultFontFamily = "Segoe UI, Times New Roman, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, serif";
 
 export class UIState {
     @ignore

@@ -1,6 +1,15 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { FocusZone, FocusZoneDirection, ITheme, mergeStyleSets, Stack, StackItem, ThemeContext } from "@fluentui/react";
+import {
+    FocusZone,
+    FocusZoneDirection,
+    IStackStyles,
+    ITheme,
+    mergeStyleSets,
+    Stack,
+    StackItem,
+    ThemeContext,
+} from "@fluentui/react";
 
 import * as BonusQuestionController from "./BonusQuestionController";
 import * as PacketState from "../state/PacketState";
@@ -25,6 +34,16 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
         [props.bonus.leadin, props.appState.game.gameFormat]
     );
     const [lastBonus, setLastBonus] = React.useState(props.bonus);
+
+    // Unfortunately StackItems reset the font, so we have to override the font there
+    const fontSize: number = props.appState.uiState.questionFontSize;
+    const fontFamily: string = props.appState.uiState.fontFamily;
+    const stackItemStyles: IStackStyles = {
+        root: {
+            fontFamily,
+            fontSize,
+        },
+    };
 
     // Set the ID and bump it up for the next item
     const [bonusId] = React.useState(bonusQuestionTextIdCounter);
@@ -76,15 +95,15 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
                     <div className={classes.bonusContainer}>
                         <BonusProtestDialog appState={props.appState} bonus={props.bonus} cycle={props.cycle} />
                         <Stack horizontal={true}>
-                            <StackItem id={bonusQuestionTextId} className={classes.bonusText}>
+                            <StackItem id={bonusQuestionTextId} styles={stackItemStyles}>
                                 <FocusZone as="div" shouldRaiseClicks={true} direction={FocusZoneDirection.vertical}>
                                     <FormattedText className={classes.bonusLeadin} segments={formattedLeadin} />
                                     {parts}
                                     {metadata}
                                 </FocusZone>
                             </StackItem>
-                            <StackItem>
-                                <div className={classes.bonusText}></div>
+                            <StackItem styles={stackItemStyles}>
+                                <div />
                             </StackItem>
                             <StackItem>
                                 <CancelButton
@@ -113,7 +132,6 @@ interface IBonusQuestionClassNames {
     bonusLeadin: string;
     bonusContainer: string;
     bonusMetadata: string;
-    bonusText: string;
 }
 
 const getClassNames = (theme: ITheme | undefined, fontSize: number, disabled: boolean): IBonusQuestionClassNames =>
@@ -137,9 +155,4 @@ const getClassNames = (theme: ITheme | undefined, fontSize: number, disabled: bo
                 color: theme ? theme.palette.neutralSecondaryAlt : "#888888",
             },
         ],
-        bonusText: {
-            maxHeight: "37.5vh",
-            overflowY: "auto",
-            fontSize,
-        },
     });

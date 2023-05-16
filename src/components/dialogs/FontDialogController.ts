@@ -23,11 +23,15 @@ export function changeFontFamily(newValue: string | undefined): void {
 
 export function update(): void {
     const appState: AppState = AppState.instance;
-    if (appState.uiState.pendingFontSize != undefined) {
+    if (appState.uiState.pendingFontFamily != undefined) {
         appState.uiState.setFontFamily(appState.uiState.pendingFontFamily ?? defaultFont);
-        appState.uiState.setQuestionFontSize(appState.uiState.pendingFontSize ?? minimumFontSize);
-        hideDialog();
     }
+
+    if (appState.uiState.pendingFontSize != undefined) {
+        appState.uiState.setQuestionFontSize(appState.uiState.pendingFontSize ?? minimumFontSize);
+    }
+
+    hideDialog();
 }
 
 function hideDialog(): void {

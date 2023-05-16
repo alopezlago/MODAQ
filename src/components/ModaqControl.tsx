@@ -123,14 +123,10 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
     const theme: Theme = React.useMemo(
         () =>
             createTheme({
-                defaultFontStyle: {
-                    fontFamily: appState.uiState.fontFamily,
-                    fontSize: appState.uiState.questionFontSize,
-                },
                 // isInverted doesn't seem to work for creating a dark mode, so use a specific theme that is close enough
                 palette: appState.uiState.useDarkMode ? darkModePalette : lightModePalette,
             }),
-        [appState.uiState.questionFontSize, appState.uiState.fontFamily, appState.uiState.useDarkMode]
+        [appState.uiState.useDarkMode]
     );
 
     const applyTo = props.applyStylingToRoot ? "body" : "element";
