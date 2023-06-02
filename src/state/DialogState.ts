@@ -6,6 +6,7 @@ import { IGameFormat } from "./IGameFormat";
 import { IMessageDialogState, MessageDialogType } from "./IMessageDialogState";
 import { RenamePlayerDialogState } from "./RenamePlayerDialogState";
 import { Player } from "./TeamState";
+import { ReorderPlayersDialogState } from "./ReorderPlayersDialogState";
 
 export class DialogState {
     @ignore
@@ -32,6 +33,9 @@ export class DialogState {
     @ignore
     public renamePlayerDialog: RenamePlayerDialogState | undefined;
 
+    @ignore
+    public reorderPlayersDialog: ReorderPlayersDialogState | undefined;
+
     constructor() {
         makeAutoObservable(this);
 
@@ -43,6 +47,7 @@ export class DialogState {
         this.messageDialog = undefined;
         this.newGameDialogVisible = false;
         this.renamePlayerDialog = undefined;
+        this.reorderPlayersDialog = undefined;
     }
 
     public hideAddQuestionsDialog(): void {
@@ -77,6 +82,10 @@ export class DialogState {
         this.renamePlayerDialog = undefined;
     }
 
+    public hideReorderPlayersDialog(): void {
+        this.reorderPlayersDialog = undefined;
+    }
+
     public showAddQuestionsDialog(): void {
         this.addQuestions = new AddQuestionDialogState();
     }
@@ -99,6 +108,10 @@ export class DialogState {
 
     public showRenamePlayerDialog(player: Player): void {
         this.renamePlayerDialog = new RenamePlayerDialogState(player);
+    }
+
+    public showReorderPlayersDialog(players: Player[]): void {
+        this.reorderPlayersDialog = new ReorderPlayersDialogState(players);
     }
 
     public showOKMessageDialog(title: string, message: string, onOK?: () => void): void {

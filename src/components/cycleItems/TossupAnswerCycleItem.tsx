@@ -38,9 +38,7 @@ export const TossupAnswerCycleItem = observer(function TossupAnswerCycleItem(
         }
     }
 
-    const text = `${props.buzz.marker.player.name} (${
-        props.buzz.marker.player.teamName
-    }) ${buzzDescription} on tossup #${props.buzz.tossupIndex + 1} at word ${props.buzz.marker.position + 1}`;
+    const text = `${props.buzz.marker.player.name} (${props.buzz.marker.player.teamName}) ${buzzDescription}`;
     return <CycleItem text={text} onDelete={deleteHandler} />;
 });
 
