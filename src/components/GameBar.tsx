@@ -91,6 +91,10 @@ export const GameBar = observer(function GameBar(): JSX.Element {
 
     const openHelpHandler = React.useCallback(() => appState.uiState.dialogState.showHelpDialog(), [appState]);
 
+    const reorderPlayersHandler = React.useCallback(() => {
+        uiState.dialogState.showReorderPlayersDialog(game.players);
+    }, [uiState, game]);
+
     const items: ICommandBarItemProps[] = appState.uiState.hideNewGame
         ? []
         : [
@@ -142,6 +146,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         appState,
         addPlayerHandler,
         protestBonusHandler,
+        reorderPlayersHandler,
         addQuestionsHandler
     );
     items.push({
@@ -213,6 +218,7 @@ function getActionSubMenuItems(
     appState: AppState,
     addPlayerHandler: () => void,
     protestBonusHandler: () => void,
+    reorderPlayersHandler: () => void,
     addQuestionsHandler: () => void
 ): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
@@ -223,7 +229,8 @@ function getActionSubMenuItems(
         appState,
         game,
         uiState,
-        addPlayerHandler
+        addPlayerHandler,
+        reorderPlayersHandler
     );
     items.push(playerManagementSection);
 
@@ -382,7 +389,8 @@ function getPlayerManagementSubMenuItems(
     appState: AppState,
     game: GameState,
     uiState: UIState,
-    addPlayerHandler: () => void
+    addPlayerHandler: () => void,
+    reorderPlayersHandler: () => void
 ): ICommandBarItemProps {
     const teamNames: string[] = game.teamNames;
     const swapActivePlayerMenus: ICommandBarItemProps[] = [];
@@ -477,13 +485,20 @@ function getPlayerManagementSubMenuItems(
         disabled: appState.game.cycles.length === 0,
     };
 
+    const reorderPlayersItem: ICommandBarItemProps = {
+        key: "reorderPlayers",
+        text: "Reorder players...",
+        onClick: reorderPlayersHandler,
+        disabled: appState.game.cycles.length === 0,
+    };
+
     return {
         key: "playerManagement",
         itemType: ContextualMenuItemType.Section,
         sectionProps: {
             bottomDivider: true,
             title: "Player Management",
-            items: [swapPlayerItem, addPlayerItem],
+            items: [swapPlayerItem, addPlayerItem, reorderPlayersItem],
         },
     };
 }
