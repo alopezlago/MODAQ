@@ -25,6 +25,22 @@ describe("GameStateTests", () => {
             const game: GameState = createDefaultGame();
             expect(game.scores[0]).to.deep.equal([0, 0]);
         });
+        it("Game with more than two teams", () => {
+            const game: GameState = new GameState();
+            const thirdPlayer: Player = new Player("Charlie", "C", /* isStarter */ true);
+            game.addPlayers(players.concat(thirdPlayer));
+            game.loadPacket(defaultPacket);
+            game.setGameFormat(GameFormats.StandardPowersMACFGameFormat);
+            expect(game.scores[0]).to.deep.equal([0, 0, 0]);
+
+            game.cycles[0].addWrongBuzz(
+                { player: thirdPlayer, points: -5, position: 2, isLastWord: false },
+                0,
+                game.gameFormat
+            );
+
+            expect(game.scores[0]).to.deep.equal([0, 0, -5]);
+        });
         it("Neg with zero-point neg format", () => {
             const game: GameState = createDefaultGame();
             game.setGameFormat({ ...game.gameFormat, negValue: 0 });

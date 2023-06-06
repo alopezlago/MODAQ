@@ -108,7 +108,7 @@ export class GameState {
         return teamNames;
     }
 
-    public get finalScore(): [number, number] {
+    public get finalScore(): number[] {
         return this.scores[this.playableCycles.length - 1];
     }
 
@@ -119,14 +119,25 @@ export class GameState {
 
         // Check if the game is tied at the end of regulation and at the end of each overtime period. If it isn't,
         // return those cycles.
-        const score: [number, number][] = this.scores;
+        const score: number[][] = this.scores;
         for (
             let i = this.gameFormat.regulationTossupCount - 1;
             i < this.cycles.length;
             i += this.gameFormat.minimumOvertimeQuestionCount
         ) {
-            const scoreAtInterval: [number, number] = score[i];
-            if (scoreAtInterval[0] !== scoreAtInterval[1]) {
+            const scoreAtInterval: number[] = score[i];
+            let isTied = false;
+            let maxScore = -Infinity;
+            for (const teamScore of scoreAtInterval) {
+                if (teamScore > maxScore) {
+                    maxScore = teamScore;
+                    isTied = false;
+                } else if (teamScore === maxScore) {
+                    isTied = true;
+                }
+            }
+
+            if (!isTied) {
                 return this.cycles.slice(0, i + 1);
             }
         }
@@ -134,18 +145,19 @@ export class GameState {
         return this.cycles;
     }
 
-    public get scores(): [number, number][] {
-        const score: [number, number][] = [];
-        let firstTeamPreviousScore = 0;
-        let secondTeamPreviousScore = 0;
+    public get scores(): number[][] {
+        const score: number[][] = [];
+        const previousScores: number[] = Array.from(this.teamNames, () => 0);
 
         // We should keep calculating until we're at the end of regulation or there are more tiebreaker questions
         // needed
         for (const cycle of this.cycles) {
-            const scoreChange: [number, number] = this.getScoreChangeFromCycle(cycle);
-            firstTeamPreviousScore += scoreChange[0];
-            secondTeamPreviousScore += scoreChange[1];
-            score.push([firstTeamPreviousScore, secondTeamPreviousScore]);
+            const scoreChange: number[] = this.getScoreChangeFromCycle(cycle);
+            for (let i = 0; i < scoreChange.length; i++) {
+                previousScores[i] += scoreChange[i];
+            }
+
+            score.push([...previousScores]);
         }
 
         return score;
@@ -488,8 +500,8 @@ export class GameState {
         return true;
     }
 
-    private getScoreChangeFromCycle(cycle: Cycle): [number, number] {
-        const change: [number, number] = [0, 0];
+    private getScoreChangeFromCycle(cycle: Cycle): number[] {
+        const change: number[] = Array.from(this.teamNames, () => 0);
         if (cycle.correctBuzz) {
             const indexToUpdate: number = this.teamNames.indexOf(cycle.correctBuzz.marker.player.teamName);
             if (indexToUpdate < 0) {

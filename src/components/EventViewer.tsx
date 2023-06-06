@@ -128,13 +128,13 @@ function onRenderItemColumn(item: Cycle, appState: AppState, index: number, colu
 
             return <Label>{index + 1}</Label>;
         case cycleKey:
-            const scores: [number, number][] = column.data;
-            const scoreInCurrentCycle: [number, number] = scores[index];
+            const scores: number[][] = column.data;
+            const scoreInCurrentCycle: number[] = scores[index];
 
             return (
                 <>
                     <CycleItemList cycle={item} game={appState.game} />
-                    <Text>{`(${scoreInCurrentCycle[0]} - ${scoreInCurrentCycle[1]})`}</Text>
+                    <Text>{`(${scoreInCurrentCycle.join(" - ")})`}</Text>
                 </>
             );
         default:
