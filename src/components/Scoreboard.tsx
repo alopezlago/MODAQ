@@ -15,7 +15,7 @@ export const Scoreboard = observer(function Scoreboard() {
     const appState: AppState = React.useContext(StateContext);
     const classes: IScoreboardStyle = getClassNames();
 
-    const scores: [number, number] = appState.game.finalScore;
+    const scores: number[] = appState.game.finalScore;
     const teamNames = appState.game.teamNames;
     const result = teamNames.length >= 2 ? `${teamNames[0]}: ${scores[0]}, ${teamNames[1]}: ${scores[1]}` : "";
 

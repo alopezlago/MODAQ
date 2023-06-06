@@ -368,7 +368,7 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
 
     items = items.concat([
         {
-            key: "viewDivider",
+            key: "viewDivider1",
             itemType: ContextualMenuItemType.Divider,
         },
         {
@@ -378,6 +378,21 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             checked: appState.uiState.useDarkMode,
             onClick: () => {
                 appState.uiState.toggleDarkMode();
+            },
+        },
+    ]);
+
+    items = items.concat([
+        {
+            key: "viewDivider2",
+            itemType: ContextualMenuItemType.Divider,
+        },
+        {
+            key: "scoresheet",
+            text: "Scoresheet...",
+            disabled: appState.game.cycles.length === 0,
+            onClick: () => {
+                appState.uiState.dialogState.showScoresheetDialog();
             },
         },
     ]);

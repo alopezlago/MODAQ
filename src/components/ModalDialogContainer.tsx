@@ -13,6 +13,7 @@ import { AddQuestionsDialog } from "./dialogs/AddQuestionsDialog";
 import { MessageDialog } from "./dialogs/MessageDialog";
 import { RenamePlayerDialog } from "./dialogs/RenamePlayerDialog";
 import { ReorderPlayerDialog } from "./dialogs/ReorderPlayerDialog";
+import { ScoresheetDialog } from "./dialogs/ScoresheetDialog";
 
 export const ModalDialogContainer = observer(function ModalDialogContainer() {
     // The Protest dialogs aren't here because they require extra information
@@ -31,6 +32,7 @@ export const ModalDialogContainer = observer(function ModalDialogContainer() {
             <NewGameDialog />
             <RenamePlayerDialog />
             <ReorderPlayerDialog />
+            <ScoresheetDialog />
         </>
     );
 });
