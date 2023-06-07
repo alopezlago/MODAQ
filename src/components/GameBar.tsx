@@ -380,6 +380,13 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
                 appState.uiState.toggleDarkMode();
             },
         },
+        {
+            key: "showVerticalScore",
+            text: "Vertical Score",
+            canCheck: true,
+            checked: appState.uiState.isScoreVertical,
+            onClick: () => appState.uiState.toggleScoreVerticality(),
+        },
     ]);
 
     items = items.concat([
