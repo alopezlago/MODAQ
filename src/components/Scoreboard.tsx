@@ -17,15 +17,30 @@ export const Scoreboard = observer(function Scoreboard() {
 
     const scores: number[] = appState.game.finalScore;
     const teamNames = appState.game.teamNames;
-    const result = teamNames.length >= 2 ? `${teamNames[0]}: ${scores[0]}, ${teamNames[1]}: ${scores[1]}` : "";
+    let label: JSX.Element | undefined;
+    if (appState.uiState.isScoreVertical) {
+        label = (
+            <div>
+                {teamNames.map((teamName, index) => (
+                    <Label styles={labelStyles} key={teamName}>
+                        {teamName}: {scores[index]}
+                    </Label>
+                ))}
+            </div>
+        );
+    } else {
+        label = (
+            <Label styles={labelStyles}>
+                {teamNames.map((teamName, index) => `${teamName}: ${scores[index]}`).join(", ")}
+            </Label>
+        );
+    }
 
     const protestIndicator = <ProtestIndicator />;
     return (
         <div className={classes.board}>
             <Stack>
-                <StackItem>
-                    <Label styles={labelStyles}>{result}</Label>
-                </StackItem>
+                <StackItem>{label}</StackItem>
                 {protestIndicator != undefined && (
                     <StackItem>
                         <ProtestIndicator />

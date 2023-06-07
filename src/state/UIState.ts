@@ -97,6 +97,9 @@ export class UIState {
     // Default should be to show the export status. This setting didn't exist before, so use hide instead of show
     public isCustomExportStatusHidden: boolean;
 
+    // Default should be to have it horizontal.
+    public isScoreVertical: boolean;
+
     public questionFontSize: number;
 
     public sheetsState: SheetState;
@@ -129,6 +132,7 @@ export class UIState {
         this.isClockHidden = false;
         this.isEventLogHidden = false;
         this.isCustomExportStatusHidden = false;
+        this.isScoreVertical = false;
         this.importGameStatus = undefined;
         this.packetFilename = undefined;
         this.packetParseStatus = undefined;
@@ -465,12 +469,16 @@ export class UIState {
         this.isCustomExportStatusHidden = !this.isCustomExportStatusHidden;
     }
 
+    public toggleDarkMode(): void {
+        this.useDarkMode = !this.useDarkMode;
+    }
+
     public toggleEventLogVisibility(): void {
         this.isEventLogHidden = !this.isEventLogHidden;
     }
 
-    public toggleDarkMode(): void {
-        this.useDarkMode = !this.useDarkMode;
+    public toggleScoreVerticality(): void {
+        this.isScoreVertical = !this.isScoreVertical;
     }
 
     public hideBuzzMenu(): void {
