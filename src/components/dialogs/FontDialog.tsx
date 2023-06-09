@@ -52,18 +52,22 @@ const modalProps: IModalProps = {
 
 const defaultFont = "Segoe UI";
 
-const fonts: string[] = [
+const fonts: string[] = getAvailableFonts([
     "Arial",
+    "Century Schoolbook L",
     "Consolas",
     "Courier New",
     "Garamond",
     "Georgia",
     "Helvetica",
+    "Liberation Serif",
+    "Palatino",
+    "serif",
     "Segoe UI",
     "Tahoma",
     "Times New Roman",
     "Verdana",
-];
+]);
 
 const minimumFontSize = 12;
 const maximumFontSize = 40;
@@ -94,16 +98,24 @@ const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
     const value: string = (appState.uiState.pendingFontSize ?? appState.uiState.questionFontSize).toString();
 
+    let fontSelected = false;
     const fontOptions: IDropdownOption[] = fonts.map((font) => {
+        // fontFamily has several fonts, but the one we choose should be the primary font, so look for that
+        const selected: boolean = appState.uiState.pendingFontFamily
+            ? appState.uiState.pendingFontFamily.startsWith(font)
+            : appState.uiState.fontFamily.startsWith(font);
+        fontSelected = fontSelected || selected;
+
         return {
             key: font,
             text: font,
-            // fontFamily has several fonts, but the one we choose should be the primary font, so look for that
-            selected: appState.uiState.pendingFontFamily
-                ? appState.uiState.pendingFontFamily.startsWith(font)
-                : appState.uiState.fontFamily.startsWith(font),
+            selected,
         };
     });
+
+    if (!fontSelected && fontOptions.length > 0) {
+        fontOptions[0].selected = true;
+    }
 
     return (
         <Stack tokens={stackTokens}>
@@ -163,4 +175,29 @@ function changeFontSize(event: React.SyntheticEvent<HTMLElement, Event>, newValu
     if (!isNaN(size)) {
         FontDialogController.changePendingSize(newValue);
     }
+}
+
+// Returns only the fonts that don't fallback to the system default
+// Based off of https://www.samclarke.com/javascript-is-font-available/
+function getAvailableFonts(fonts: string[]): string[] {
+    // This creates an element with a large string outside of the view of the browser
+    const container = document.createElement("span");
+    container.innerHTML = Array(100).join("wi");
+    container.style.cssText = ["position:absolute", "width:auto", "font-size:128px", "left:-99999px"].join(
+        " !important;"
+    );
+
+    document.body.append(container);
+
+    // We're never using a fantasy font like Papyrus, so check if we use the fallback font
+    container.style.fontFamily = "fantasy";
+    const defaultFontWidth = container.clientWidth;
+    const availableFonts: string[] = fonts.filter((font) => {
+        container.style.fontFamily = `${font}, fantasy`;
+        return container.clientWidth !== defaultFontWidth;
+    });
+
+    document.body.removeChild(container);
+
+    return availableFonts;
 }

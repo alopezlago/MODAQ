@@ -1,6 +1,6 @@
 {
     "name": "modaq",
-    "version": "1.20.0",
+    "version": "1.21.0",
     "description": "Quiz Bowl Reader using TypeScript, React, and MobX",
     "repository": {
         "type": "git",
