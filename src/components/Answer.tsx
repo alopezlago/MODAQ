@@ -16,7 +16,7 @@ export const Answer = observer(function Answer(props: IAnswerProps): JSX.Element
 
     return (
         <div>
-            <span className={props.className}>ANSWER:&nbsp;</span>
+            <span className={props.className}>ANSWER: </span>
             <FormattedText segments={formattedText} className={props.className} />
         </div>
     );

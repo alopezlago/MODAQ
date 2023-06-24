@@ -330,7 +330,7 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             key: "font",
             text: "Font...",
             onClick: () => {
-                appState.uiState.setPendingFontSize(appState.uiState.questionFontSize);
+                appState.uiState.showFontDialog();
             },
         }
     );

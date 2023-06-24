@@ -16,11 +16,13 @@ import {
     StackItem,
     IStackTokens,
     Label,
+    Checkbox,
 } from "@fluentui/react";
 
 import * as FontDialogController from "./FontDialogController";
 import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
+import { FontDialogState } from "../../state/FontDialogState";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -79,7 +81,7 @@ export const FontDialog = observer(function FontDialog(): JSX.Element {
 
     return (
         <Dialog
-            hidden={appState.uiState.pendingFontSize == undefined}
+            hidden={appState.uiState.dialogState.fontDialog == undefined}
             dialogContentProps={content}
             modalProps={modalProps}
             maxWidth="40vw"
@@ -94,15 +96,23 @@ export const FontDialog = observer(function FontDialog(): JSX.Element {
     );
 });
 
+// If we really want flexibility for text/pronunciation guide colors we can use a ColorPicker, but it takes up a lot of
+// space and users realistically won't use most of the colors
+
 const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
-    const value: string = (appState.uiState.pendingFontSize ?? appState.uiState.questionFontSize).toString();
+    const dialogState: FontDialogState | undefined = appState.uiState.dialogState.fontDialog;
+    if (dialogState == undefined) {
+        return <></>;
+    }
+
+    const value: string = (dialogState.fontSize ?? appState.uiState.questionFontSize).toString();
 
     let fontSelected = false;
     const fontOptions: IDropdownOption[] = fonts.map((font) => {
         // fontFamily has several fonts, but the one we choose should be the primary font, so look for that
-        const selected: boolean = appState.uiState.pendingFontFamily
-            ? appState.uiState.pendingFontFamily.startsWith(font)
+        const selected: boolean = dialogState.fontFamily
+            ? dialogState.fontFamily.startsWith(font)
             : appState.uiState.fontFamily.startsWith(font);
         fontSelected = fontSelected || selected;
 
@@ -116,6 +126,95 @@ const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
     if (!fontSelected && fontOptions.length > 0) {
         fontOptions[0].selected = true;
     }
+
+    const blackTextCheckbox = (
+        <Checkbox
+            label="Use pure black for text"
+            onChange={(ev, checked) => {
+                // Dark mode already uses pure white
+                if (checked === true && !appState.uiState.useDarkMode) {
+                    FontDialogController.changeTextColor("black");
+                } else {
+                    FontDialogController.changeTextColor(undefined);
+                }
+            }}
+            checked={dialogState.textColor === "black"}
+            disabled={appState.uiState.useDarkMode}
+        ></Checkbox>
+    );
+
+    const textColor: string | undefined = dialogState.textColor;
+    const pronunciationGuideOptions: IDropdownOption[] = [
+        {
+            key: "default",
+            text: "Default",
+            data: "#777777",
+            // There are cases where the color isn't set yet, so undefined and 777777 should match with this
+            selected: dialogState.pronunciationGuideColor == undefined,
+        },
+        {
+            key: "burgundy",
+            text: "Burgundy",
+            data: "#770077",
+        },
+        {
+            key: "darkGray",
+            text: "Dark Gray",
+            data: "#555555",
+        },
+        {
+            key: "lightGray",
+            text: "Light Gray",
+            data: "#888888",
+        },
+        {
+            key: "purple",
+            text: "Purple",
+            data: "#6666FF",
+        },
+        {
+            key: "teal",
+            text: "Teal",
+            data: "#007777",
+        },
+    ];
+
+    for (const option of pronunciationGuideOptions) {
+        if (dialogState.pronunciationGuideColor === option.data) {
+            option.selected = true;
+        }
+    }
+
+    const pronunciationGuideDropdown = (
+        <Dropdown
+            label="Pronunciation guide color"
+            options={pronunciationGuideOptions}
+            onChange={(ev, option) => {
+                FontDialogController.changePronunciationGuideColor(option?.data);
+            }}
+            onRenderItem={(props, defaultRender) => {
+                if (props == undefined || defaultRender == undefined) {
+                    return <></>;
+                }
+                const elements = defaultRender(props);
+                return (
+                    <Stack horizontal={true}>
+                        <StackItem>
+                            <div
+                                key={`block_${props.key}`}
+                                style={{
+                                    backgroundColor: props?.data ?? dialogState.textColor,
+                                    width: 36,
+                                    height: "100%",
+                                }}
+                            ></div>
+                        </StackItem>
+                        <StackItem>{elements}</StackItem>
+                    </Stack>
+                );
+            }}
+        ></Dropdown>
+    );
 
     return (
         <Stack tokens={stackTokens}>
@@ -152,14 +251,27 @@ const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
                     decrementButtonAriaLabel={"Decrease font size by 1"}
                 />
             </StackItem>
+            <StackItem>{pronunciationGuideDropdown}</StackItem>
+            <StackItem>{blackTextCheckbox}</StackItem>
             <StackItem>
                 <span
                     style={{
-                        fontFamily: appState.uiState.pendingFontFamily ?? appState.uiState.fontFamily,
-                        fontSize: appState.uiState.pendingFontSize ?? appState.uiState.questionFontSize,
+                        fontFamily: dialogState.fontFamily ?? appState.uiState.fontFamily,
+                        fontSize: dialogState.fontSize ?? appState.uiState.questionFontSize,
+                        color: textColor,
                     }}
                 >
-                    Sample text.
+                    Sample text
+                </span>
+                <span
+                    style={{
+                        fontFamily: dialogState.fontFamily ?? appState.uiState.fontFamily,
+                        fontSize: dialogState.fontSize ?? appState.uiState.questionFontSize,
+                        color: dialogState.pronunciationGuideColor,
+                    }}
+                >
+                    {" "}
+                    (text)
                 </span>
             </StackItem>
         </Stack>

@@ -18,8 +18,8 @@ export const ACFGameFormat: IGameFormat = {
 };
 
 export const PACEGameFormat: IGameFormat = {
-    bonusesBounceBack: true,
-    displayName: "PACE (pre-2022)",
+    bonusesBounceBack: false,
+    displayName: "PACE",
     minimumOvertimeQuestionCount: 1,
     overtimeIncludesBonuses: false,
     negValue: 0,

@@ -3,9 +3,12 @@ import { observer } from "mobx-react-lite";
 import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
 
 import { IFormattedText } from "../parser/IFormattedText";
+import { StateContext } from "../contexts/StateContext";
+import { AppState } from "../state/AppState";
 
 export const FormattedText = observer(function FormattedText(props: IFormattedTextProps): JSX.Element {
-    const classes: IFormattedTextClassNames = useStyles();
+    const appState: AppState = React.useContext(StateContext);
+    const classes: IFormattedTextClassNames = useStyles(appState.uiState.pronunciationGuideColor);
 
     const elements: JSX.Element[] = [];
     for (let i = 0; i < props.segments.length; i++) {
@@ -64,7 +67,7 @@ interface IFormattedTextClassNames {
 }
 
 const useStyles = memoizeFunction(
-    (): IFormattedTextClassNames =>
+    (pronunciationGuideColor: string | undefined): IFormattedTextClassNames =>
         mergeStyleSets({
             text: {
                 display: "inline",
@@ -72,7 +75,7 @@ const useStyles = memoizeFunction(
             pronunciationGuide: {
                 // TODO: This is the one place theming doesn't work well; all of the netural colors have poor contrast
                 // or don't stick out enough from regular text.
-                color: "#777777",
+                color: pronunciationGuideColor ?? "#777777",
             },
         })
 );
