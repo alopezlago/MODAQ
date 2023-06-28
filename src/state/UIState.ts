@@ -94,6 +94,9 @@ export class UIState {
     // Default should be to have it horizontal.
     public isScoreVertical: boolean;
 
+    // Default should be to highlight answered bonuses
+    public noBonusHighlight: boolean;
+
     public pronunciationGuideColor: string | undefined;
 
     public questionFontColor: string | undefined;
@@ -132,6 +135,7 @@ export class UIState {
         this.isCustomExportStatusHidden = false;
         this.isScoreVertical = false;
         this.importGameStatus = undefined;
+        this.noBonusHighlight = false;
         this.packetFilename = undefined;
         this.packetParseStatus = undefined;
         this.pendingBonusProtestEvent = undefined;
@@ -465,6 +469,10 @@ export class UIState {
 
     public setYappServiceUrl(url: string | undefined): void {
         this.yappServiceUrl = url;
+    }
+
+    public toggleBonusHighlight(): void {
+        this.noBonusHighlight = !this.noBonusHighlight;
     }
 
     public toggleClockVisibility(): void {

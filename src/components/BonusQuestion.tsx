@@ -30,8 +30,9 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
         BonusQuestionController.throwOutBonus(props.cycle, props.bonusIndex);
     }, [props]);
     const formattedLeadin: IFormattedText[] = React.useMemo(
-        () => PacketState.getBonusWords(props.bonus.leadin, props.appState.game.gameFormat),
-        [props.bonus.leadin, props.appState.game.gameFormat]
+        () =>
+            PacketState.getBonusWords(`${props.bonusIndex + 1}. ${props.bonus.leadin}`, props.appState.game.gameFormat),
+        [props.bonusIndex, props.bonus.leadin, props.appState.game.gameFormat]
     );
     const [lastBonus, setLastBonus] = React.useState(props.bonus);
 
@@ -65,6 +66,7 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
         }
     }
 
+    const disabled = !props.inPlay;
     const parts: JSX.Element[] = props.bonus.parts.map((bonusPartProps, index) => {
         return (
             <BonusQuestionPart
@@ -74,7 +76,7 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
                 gameFormat={props.appState.game.gameFormat}
                 partNumber={index + 1}
                 teamNames={props.appState.game.teamNames}
-                disabled={!props.inPlay}
+                disabled={disabled}
             />
         );
     });
@@ -97,7 +99,11 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
                         <Stack horizontal={true}>
                             <StackItem id={bonusQuestionTextId} styles={stackItemStyles}>
                                 <FocusZone as="div" shouldRaiseClicks={true} direction={FocusZoneDirection.vertical}>
-                                    <FormattedText className={classes.bonusLeadin} segments={formattedLeadin} />
+                                    <FormattedText
+                                        className={classes.bonusLeadin}
+                                        segments={formattedLeadin}
+                                        disabled={disabled}
+                                    />
                                     {parts}
                                     {metadata}
                                 </FocusZone>
@@ -107,7 +113,7 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
                             </StackItem>
                             <StackItem>
                                 <CancelButton
-                                    disabled={!props.inPlay}
+                                    disabled={disabled}
                                     tooltip="Throw out bonus"
                                     onClick={throwOutClickHandler}
                                 />
@@ -149,7 +155,6 @@ const getClassNames = (theme: ITheme | undefined, fontSize: number, disabled: bo
         bonusMetadata: [
             {
                 paddingLeft: 24,
-                marginTop: "-1em",
             },
             disabled && {
                 color: theme ? theme.palette.neutralSecondaryAlt : "#888888",

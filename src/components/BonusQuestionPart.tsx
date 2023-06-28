@@ -17,6 +17,8 @@ import { Answer } from "./Answer";
 import { FormattedText } from "./FormattedText";
 import { IFormattedText } from "../parser/IFormattedText";
 import { IGameFormat } from "../state/IGameFormat";
+import { StateContext } from "../contexts/StateContext";
+import { AppState } from "../state/AppState";
 
 const bouncebackCorrectnessStyles: Partial<IDropdownStyles> = {
     root: {
@@ -28,10 +30,18 @@ const bouncebackCorrectnessStyles: Partial<IDropdownStyles> = {
 };
 
 export const BonusQuestionPart = observer(function BonusQuestionPart(props: IBonusQuestionPartProps) {
+    const appState: AppState = React.useContext(StateContext);
     const onCheckboxChangeHandler = React.useCallback((ev, checked) => onCorrectChange(props, ev, checked), [props]);
     const onDropdownChangeHandler = React.useCallback((ev, option) => onTeamAnswerChange(props, ev, option), [props]);
 
+    const highlightBackground = !appState.uiState.noBonusHighlight;
     const isCorrect: boolean = (props.cycle.bonusAnswer?.parts[props.partNumber - 1].points ?? 0) > 0;
+
+    // TODO: Make more efficient. Right now O(n^2), but generally not bad because n is almost always 3
+    // Looks for a correct part after this one to determine if this is incorrect, since we don't know if it is incorrect
+    // or if they are still reading the part
+    const isWrong: boolean =
+        !isCorrect && props.cycle.bonusAnswer?.parts.slice(props.partNumber)?.some((part) => part.points > 0) === true;
 
     let correctnessMarker: React.ReactElement | undefined = undefined;
     if (props.gameFormat.bonusesBounceBack) {
@@ -82,19 +92,30 @@ export const BonusQuestionPart = observer(function BonusQuestionPart(props: IBon
     return (
         <ThemeContext.Consumer>
             {(theme) => {
-                const classes: IBonusQuestionPartClassNames = getClassNames(theme, props.disabled);
+                const classes: IBonusQuestionPartClassNames = getClassNames(
+                    theme,
+                    props.disabled,
+                    isCorrect,
+                    isWrong,
+                    highlightBackground
+                );
 
                 return (
-                    <div>
+                    <div className={classes.bonusPartContainer}>
                         <div className={classes.bonusPartQuestionText}>
                             {correctnessMarker}
                             <span>
                                 [{props.bonusPart.value}
-                                {props.bonusPart.difficultyModifier}] <FormattedText segments={bonusPartText} />
+                                {props.bonusPart.difficultyModifier}]{" "}
+                                <FormattedText segments={bonusPartText} disabled={props.disabled} />
                             </span>
                         </div>
                         <div className={classes.bonusPartAnswerSpacer}>
-                            <Answer className={classes.bonusPartAnswer} text={props.bonusPart.answer.trimStart()} />
+                            <Answer
+                                className={classes.bonusPartAnswer}
+                                text={props.bonusPart.answer.trimStart()}
+                                disabled={props.disabled}
+                            />
                         </div>
                     </div>
                 );
@@ -147,15 +168,32 @@ export interface IBonusQuestionPartProps {
 }
 
 interface IBonusQuestionPartClassNames {
+    bonusPartContainer: string;
     bonusPartQuestionText: string;
     bonusPartAnswer: string;
     bonusPartAnswerSpacer: string;
 }
 
-const getClassNames = (theme: ITheme | undefined, disabled: boolean): IBonusQuestionPartClassNames =>
+const getClassNames = (
+    theme: ITheme | undefined,
+    disabled: boolean,
+    isCorrect: boolean,
+    isWrong: boolean,
+    highlightBackground: boolean
+): IBonusQuestionPartClassNames =>
     mergeStyleSets({
+        bonusPartContainer: [
+            highlightBackground &&
+                isCorrect && {
+                    background: theme ? theme.palette.tealLight + "20" : "rbg(0, 128, 128)",
+                },
+            highlightBackground &&
+                isWrong && {
+                    background: theme ? theme.palette.red + "20" : "rgb(128, 0, 0)",
+                },
+        ],
         bonusPartQuestionText: [
-            { display: "flex", marginTop: "1em" },
+            { display: "flex", paddingTop: "1em" },
             disabled && {
                 color: theme ? theme.palette.neutralSecondaryAlt : "#888888",
             },
@@ -165,8 +203,5 @@ const getClassNames = (theme: ITheme | undefined, disabled: boolean): IBonusQues
                 color: theme ? theme.palette.neutralSecondaryAlt : "#888888",
             },
         ],
-        bonusPartAnswerSpacer: {
-            padding: "0 24px",
-            margin: "0.25em 0 1em 0",
-        },
+        bonusPartAnswerSpacer: { padding: "0.25em 24px 0 24px" },
     });

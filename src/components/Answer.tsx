@@ -17,7 +17,7 @@ export const Answer = observer(function Answer(props: IAnswerProps): JSX.Element
     return (
         <div>
             <span className={props.className}>ANSWER: </span>
-            <FormattedText segments={formattedText} className={props.className} />
+            <FormattedText segments={formattedText} className={props.className} disabled={props.disabled} />
         </div>
     );
 });
@@ -25,4 +25,5 @@ export const Answer = observer(function Answer(props: IAnswerProps): JSX.Element
 export interface IAnswerProps {
     text: string;
     className?: string;
+    disabled?: boolean;
 }

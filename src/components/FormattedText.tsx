@@ -8,7 +8,7 @@ import { AppState } from "../state/AppState";
 
 export const FormattedText = observer(function FormattedText(props: IFormattedTextProps): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
-    const classes: IFormattedTextClassNames = useStyles(appState.uiState.pronunciationGuideColor);
+    const classes: IFormattedTextClassNames = useStyles(appState.uiState.pronunciationGuideColor, props.disabled);
 
     const elements: JSX.Element[] = [];
     for (let i = 0; i < props.segments.length; i++) {
@@ -54,6 +54,7 @@ const FormattedSegment = observer(function FormattedSegment(props: IFormattedSeg
 export interface IFormattedTextProps {
     segments: IFormattedText[];
     className?: string;
+    disabled?: boolean;
 }
 
 interface IFormattedSegmentProps {
@@ -67,15 +68,14 @@ interface IFormattedTextClassNames {
 }
 
 const useStyles = memoizeFunction(
-    (pronunciationGuideColor: string | undefined): IFormattedTextClassNames =>
+    (pronunciationGuideColor: string | undefined, disabled: boolean | undefined): IFormattedTextClassNames =>
         mergeStyleSets({
             text: {
                 display: "inline",
             },
             pronunciationGuide: {
-                // TODO: This is the one place theming doesn't work well; all of the netural colors have poor contrast
-                // or don't stick out enough from regular text.
-                color: pronunciationGuideColor ?? "#777777",
+                // Don't override the color if it's disabled; the container has that responsibility
+                color: disabled ? undefined : pronunciationGuideColor ?? "#777777",
             },
         })
 );

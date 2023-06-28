@@ -11,12 +11,17 @@ import { StateContext } from "../contexts/StateContext";
 const numberKey = "number";
 const cycleKey = "cycle";
 
+const cellClassName = "ms-List-cell";
+
 // Needed for filling in dummy values into an interface
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 function dummyFunction() {}
 
 export const EventViewer = observer(function EventViewer(): JSX.Element | null {
     const appState: AppState = React.useContext(StateContext);
+    const [lastIndex, setLastIndex] = React.useState<number>(-1);
+    const containerRef: React.MutableRefObject<HTMLDivElement | null> = React.useRef(null);
+
     const classes: IEventViewerClassNames = getClassNames(appState.uiState.isEventLogHidden);
 
     const activeItemChangedHandler = React.useCallback(
@@ -89,15 +94,37 @@ export const EventViewer = observer(function EventViewer(): JSX.Element | null {
         selectToIndex: (index: number): void => appState.uiState.setCycleIndex(index),
         toggleAllSelected: dummyFunction,
         toggleKeySelected: dummyFunction,
-        toggleIndexSelected: (index: number): void => {
-            appState.uiState.setCycleIndex(index);
-        },
+        toggleIndexSelected: (index: number): void => appState.uiState.setCycleIndex(index),
         toggleRangeSelected: dummyFunction,
     };
 
+    // This makes sure that the selected event is always in view
+    if (lastIndex !== appState.uiState.cycleIndex) {
+        setLastIndex(appState.uiState.cycleIndex);
+
+        if (containerRef.current !== null) {
+            const eventViewerContainer: HTMLDivElement = containerRef.current;
+            const selectedCell: Element | undefined = eventViewerContainer.getElementsByClassName(cellClassName)[
+                appState.uiState.cycleIndex
+            ];
+            if (selectedCell != undefined) {
+                const eventContainerBoundingRect: DOMRect = eventViewerContainer.getBoundingClientRect();
+                const selectedCellBoundingRect: DOMRect = selectedCell.getBoundingClientRect();
+
+                // scrollIntoView defaults to scrolling to the top of the item. If it's past the bottom, we want to
+                // scroll to the bottom of the element.
+                if (eventContainerBoundingRect.y > selectedCellBoundingRect.y) {
+                    selectedCell.scrollIntoView();
+                } else if (eventContainerBoundingRect.bottom < selectedCellBoundingRect.bottom) {
+                    selectedCell.scrollIntoView(false);
+                }
+            }
+        }
+    }
+
     // This needs to re-render based on cycleIndex so it can select the current one
     return (
-        <div className={classes.eventViewerContainer} data-is-scrollable="true">
+        <div className={classes.eventViewerContainer} data-is-scrollable="true" ref={containerRef}>
             <DetailsList
                 checkboxVisibility={CheckboxVisibility.hidden}
                 selectionMode={SelectionMode.single}

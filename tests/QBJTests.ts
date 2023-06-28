@@ -467,7 +467,6 @@ describe("QBJTests", () => {
 
                     packet.setTossups(tossups);
                     game.loadPacket(packet);
-                    console.log("Packet length: " + game.packet.tossups.length);
 
                     game.cycles[0].addWrongBuzz(
                         {

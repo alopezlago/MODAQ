@@ -387,6 +387,14 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             checked: appState.uiState.isScoreVertical,
             onClick: () => appState.uiState.toggleScoreVerticality(),
         },
+        {
+            key: "highlightBonus",
+            text: "Highlight Bonus",
+            title: "Highlight the background of answered bonuses",
+            canCheck: true,
+            checked: !appState.uiState.noBonusHighlight,
+            onClick: () => appState.uiState.toggleBonusHighlight(),
+        },
     ]);
 
     items = items.concat([
