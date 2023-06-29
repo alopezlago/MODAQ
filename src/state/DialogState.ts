@@ -7,6 +7,7 @@ import { IMessageDialogState, MessageDialogType } from "./IMessageDialogState";
 import { RenamePlayerDialogState } from "./RenamePlayerDialogState";
 import { Player } from "./TeamState";
 import { ReorderPlayersDialogState } from "./ReorderPlayersDialogState";
+import { FontDialogState } from "./FontDialogState";
 
 export class DialogState {
     @ignore
@@ -17,6 +18,9 @@ export class DialogState {
 
     @ignore
     public exportToJsonDialogVisible: boolean;
+
+    @ignore
+    public fontDialog: FontDialogState | undefined;
 
     @ignore
     public helpDialogVisible: boolean;
@@ -47,6 +51,7 @@ export class DialogState {
         this.exportToJsonDialogVisible = false;
         this.helpDialogVisible = false;
         this.importGameDialogVisible = false;
+        this.fontDialog = undefined;
         this.messageDialog = undefined;
         this.newGameDialogVisible = false;
         this.renamePlayerDialog = undefined;
@@ -72,6 +77,10 @@ export class DialogState {
 
     public hideImportGameDialog(): void {
         this.importGameDialogVisible = false;
+    }
+
+    public hideFontDialog(): void {
+        this.fontDialog = undefined;
     }
 
     public hideMessageDialog(): void {
@@ -104,6 +113,20 @@ export class DialogState {
 
     public showExportToJsonDialog(): void {
         this.exportToJsonDialogVisible = true;
+    }
+
+    public showFontDialog(
+        existingFontFamily: string,
+        existingFontSize: number,
+        existingTextColor: string | undefined,
+        existingPronunciationGuideColor: string | undefined
+    ): void {
+        this.fontDialog = new FontDialogState(
+            existingFontFamily,
+            existingFontSize,
+            existingTextColor,
+            existingPronunciationGuideColor
+        );
     }
 
     public showHelpDialog(): void {

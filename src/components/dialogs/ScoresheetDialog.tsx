@@ -222,7 +222,7 @@ function renderBonusCell(
             bonusTotal += part.points;
         }
 
-        lines.push(<span key={`Bonus_${cycleIndex}_${teamName}_Total`}>&nbsp;{bonusTotal}</span>);
+        lines.push(<span key={`Bonus_${cycleIndex}_${teamName}_Total`}> {bonusTotal}</span>);
 
         return (
             <td className={`${classNames.bonusCell} ${classNames.tableCell}`} key={`Bonus_${cycleIndex}_${teamName}`}>

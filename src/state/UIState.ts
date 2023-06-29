@@ -77,12 +77,6 @@ export class UIState {
     public pendingNewPlayer?: Player;
 
     @ignore
-    public pendingFontFamily?: string;
-
-    @ignore
-    public pendingFontSize?: number;
-
-    @ignore
     public pendingSheet?: IPendingSheet;
 
     @ignore
@@ -99,6 +93,13 @@ export class UIState {
 
     // Default should be to have it horizontal.
     public isScoreVertical: boolean;
+
+    // Default should be to highlight answered bonuses
+    public noBonusHighlight: boolean;
+
+    public pronunciationGuideColor: string | undefined;
+
+    public questionFontColor: string | undefined;
 
     public questionFontSize: number;
 
@@ -134,18 +135,20 @@ export class UIState {
         this.isCustomExportStatusHidden = false;
         this.isScoreVertical = false;
         this.importGameStatus = undefined;
+        this.noBonusHighlight = false;
         this.packetFilename = undefined;
         this.packetParseStatus = undefined;
         this.pendingBonusProtestEvent = undefined;
         this.pendingNewGame = undefined;
         this.pendingNewPlayer = undefined;
-        this.pendingFontFamily = undefined;
-        this.pendingFontSize = undefined;
         this.pendingSheet = undefined;
         this.pendingTossupProtestEvent = undefined;
         this.useDarkMode = false;
         this.yappServiceUrl = undefined;
 
+        // These are defined by the theme if not set explicitly
+        this.pronunciationGuideColor = undefined;
+        this.questionFontColor = undefined;
         // The default font size is 16px
         this.questionFontSize = 16;
         this.sheetsState = new SheetState();
@@ -233,6 +236,13 @@ export class UIState {
     }
 
     public setFontFamily(listedFont: string): void {
+        // It's possible the listed font has default fonts listed too. Cut them out so that we don't keep compounding
+        // the default fonts on top.
+        const commaIndex: number = listedFont.indexOf(",");
+        if (commaIndex >= 0) {
+            listedFont = listedFont.substring(0, commaIndex);
+        }
+
         this.fontFamily = listedFont + ", " + DefaultFontFamily;
     }
 
@@ -417,14 +427,6 @@ export class UIState {
         this.packetFilename = name;
     }
 
-    public setPendingFontFamily(font: string): void {
-        this.pendingFontFamily = font;
-    }
-
-    public setPendingFontSize(size: number): void {
-        this.pendingFontSize = size;
-    }
-
     public setPacketStatus(packetStatus: IStatus): void {
         this.packetParseStatus = packetStatus;
     }
@@ -449,6 +451,14 @@ export class UIState {
         };
     }
 
+    public setPronunciationGuideColor(color: string | undefined): void {
+        this.pronunciationGuideColor = color;
+    }
+
+    public setQuestionFontColor(color: string | undefined): void {
+        this.questionFontColor = color;
+    }
+
     public setQuestionFontSize(size: number): void {
         this.questionFontSize = size;
     }
@@ -459,6 +469,10 @@ export class UIState {
 
     public setYappServiceUrl(url: string | undefined): void {
         this.yappServiceUrl = url;
+    }
+
+    public toggleBonusHighlight(): void {
+        this.noBonusHighlight = !this.noBonusHighlight;
     }
 
     public toggleClockVisibility(): void {
@@ -535,11 +549,6 @@ export class UIState {
         this.pendingNewPlayer = undefined;
     }
 
-    public resetPendingFonts(): void {
-        this.pendingFontFamily = undefined;
-        this.pendingFontSize = undefined;
-    }
-
     public resetPendingSheet(): void {
         this.pendingSheet = undefined;
     }
@@ -556,6 +565,16 @@ export class UIState {
     public showBuzzMenu(clearSelectedWordOnClose: boolean): void {
         this.buzzMenuState.visible = true;
         this.buzzMenuState.clearSelectedWordOnClose = clearSelectedWordOnClose;
+    }
+
+    // We have to do this call here because this is where the information is available
+    public showFontDialog(): void {
+        this.dialogState.showFontDialog(
+            this.fontFamily,
+            this.questionFontSize,
+            this.questionFontColor,
+            this.pronunciationGuideColor
+        );
     }
 
     public updatePendingProtestGivenAnswer(givenAnswer: string): void {

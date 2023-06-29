@@ -6,7 +6,15 @@ import { GameState } from "../state/GameState";
 import { TossupQuestion } from "./TossupQuestion";
 import { BonusQuestion } from "./BonusQuestion";
 import { Cycle } from "../state/Cycle";
-import { ISeparatorStyles, IStackStyles, mergeStyleSets, Separator, Stack, StackItem } from "@fluentui/react";
+import {
+    ISeparatorStyles,
+    IStackStyles,
+    memoizeFunction,
+    mergeStyleSets,
+    Separator,
+    Stack,
+    StackItem,
+} from "@fluentui/react";
 import { AppState } from "../state/AppState";
 import { StateContext } from "../contexts/StateContext";
 
@@ -20,7 +28,7 @@ export const QuestionViewer = observer(function QuestionViewer() {
     const appState: AppState = React.useContext(StateContext);
     const fontSize: number = appState.uiState.questionFontSize;
     const fontFamily: string = appState.uiState.fontFamily;
-    const classes: IQuestionViewerClassNames = getClassNames(fontSize);
+    const classes: IQuestionViewerClassNames = getClassNames(appState.uiState.questionFontColor, fontSize);
     const game: GameState = appState.game;
     const uiState: UIState = appState.uiState;
 
@@ -105,15 +113,18 @@ interface IQuestionViewerClassNames {
     separator: string;
 }
 
-const getClassNames = (fontSize: number): IQuestionViewerClassNames =>
-    mergeStyleSets({
-        questionViewer: {
-            border: "1px solid darkgray",
-            padding: "5px 10px",
-            fontSize,
-        },
-        separator: {
-            borderTop: "1px dotted black",
-            margin: "10px 0",
-        },
-    });
+const getClassNames = memoizeFunction(
+    (fontColor: string | undefined, fontSize: number): IQuestionViewerClassNames =>
+        mergeStyleSets({
+            questionViewer: {
+                border: "1px solid darkgray",
+                padding: "5px 10px",
+                fontSize,
+                color: fontColor,
+            },
+            separator: {
+                borderTop: "1px dotted black",
+                margin: "10px 0",
+            },
+        })
+);

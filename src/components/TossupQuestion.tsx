@@ -37,18 +37,22 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
 
     const words: ITossupWord[] = props.tossup.getWords(props.appState.game.gameFormat);
 
-    const questionWords: JSX.Element[] = words.map((word) => (
-        <QuestionWordWrapper
-            key={word.canBuzzOn ? `qw_${word.wordIndex}` : `nqw_${word.nonWordIndex}`}
-            correctBuzzIndex={correctBuzzIndex}
-            index={word.canBuzzOn ? word.wordIndex : undefined}
-            isLastWord={word.canBuzzOn && word.isLastWord}
-            selectedWordRef={selectedWordRef}
-            word={word.word}
-            wrongBuzzIndexes={wrongBuzzIndexes}
-            {...props}
-        />
-    ));
+    let questionWords: JSX.Element[] = [<span key="tuNumber">{props.tossupNumber}. </span>];
+
+    questionWords = questionWords.concat(
+        words.map((word) => (
+            <QuestionWordWrapper
+                key={word.canBuzzOn ? `qw_${word.wordIndex}` : `nqw_${word.nonWordIndex}`}
+                correctBuzzIndex={correctBuzzIndex}
+                index={word.canBuzzOn ? word.wordIndex : undefined}
+                isLastWord={word.canBuzzOn && word.isLastWord}
+                selectedWordRef={selectedWordRef}
+                word={word.word}
+                wrongBuzzIndexes={wrongBuzzIndexes}
+                {...props}
+            />
+        ))
+    );
 
     const throwOutClickHandler: () => void = React.useCallback(() => {
         TossupQuestionController.throwOutTossup(props.cycle, props.tossupNumber);
@@ -150,6 +154,6 @@ const getClassNames = (): ITossupQuestionClassNames =>
         },
         tossupQuestionText: {
             display: "inline-block",
-            marginBottom: "0.25em",
+            marginBottom: "0.5em",
         },
     });
