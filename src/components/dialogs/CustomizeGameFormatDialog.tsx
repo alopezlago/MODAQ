@@ -152,6 +152,12 @@ const GameLengthSettings = observer(function GameLengthSettings(props: ISettingP
         [appState]
     );
 
+    const maxActivePlayersCountChangeHandler = React.useCallback(
+        (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) =>
+            CustomizeGameFormatDialogController.changeMaxActivePlayersCount(appState, newValue),
+        [appState]
+    );
+
     return (
         <Stack tokens={settingsStackTokens}>
             <StackItem>
@@ -174,6 +180,17 @@ const GameLengthSettings = observer(function GameLengthSettings(props: ISettingP
                     max={99}
                     incrementButtonAriaLabel={"Increase minimum number of questions in overtime by 1"}
                     decrementButtonAriaLabel={"Decrease minimum number of questions in overtime by 1"}
+                />
+            </StackItem>
+            <StackItem>
+                <SpinButton
+                    label="Maximum active players on a team"
+                    onChange={maxActivePlayersCountChangeHandler}
+                    value={gameFormat.maxActivePlayers.toString()}
+                    min={1}
+                    max={99}
+                    incrementButtonAriaLabel={"Increase maximum active number of players on team by 1"}
+                    decrementButtonAriaLabel={"Decrese maximum active number of players on team by 1"}
                 />
             </StackItem>
         </Stack>

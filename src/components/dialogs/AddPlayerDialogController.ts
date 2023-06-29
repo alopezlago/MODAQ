@@ -20,8 +20,13 @@ export function addPlayer(): void {
 
     game.addPlayer(newPlayer);
 
-    // TODO: Only do this if the number of active players is less than the maximum number of active players
-    game.cycles[uiState.cycleIndex].addPlayerJoins(newPlayer);
+    const teamName: string = newPlayer.teamName;
+    const activePlayersCount: number = game.getActivePlayers(teamName, uiState.cycleIndex).size;
+    const maxActivePlayers: number = game.getMaxActivePlayers();
+
+    if (activePlayersCount < maxActivePlayers) {
+        game.cycles[uiState.cycleIndex].addPlayerJoins(newPlayer);
+    }
 
     hideDialog();
 }

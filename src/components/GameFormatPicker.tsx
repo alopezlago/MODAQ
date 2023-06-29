@@ -80,6 +80,9 @@ export const GameFormatPicker = observer(function GameFormatPicker(props: IGameF
                                     <Text>{`Neg value: ${props.gameFormat.negValue}`}</Text>
                                 </li>
                                 <li>
+                                    <Text>{`Max active players: ${props.gameFormat.maxActivePlayers}`}</Text>
+                                </li>
+                                <li>
                                     <Text>{`Has powers: ${formatBoolean(props.gameFormat.powers.length > 0)}`}</Text>
                                 </li>
                                 <li>

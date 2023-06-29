@@ -324,6 +324,22 @@ export class GameState {
         return this.players.filter((player) => player.teamName === teamName);
     }
 
+    public getMaxActivePlayers(): number {
+        let maxActivePlayers = 0;
+
+        for (const teamName of this.teamNames) {
+            for (let i = 0; i < this.cycles.length; i++) {
+                const activePlayers: Set<Player> = this.getActivePlayers(teamName, i);
+                const activePlayerCount = Array.from(activePlayers).filter((player) => player.isStarter).length;
+                if (activePlayerCount > maxActivePlayers) {
+                    maxActivePlayers = activePlayerCount;
+                }
+            }
+        }
+
+        return maxActivePlayers;
+    }
+
     public getBonus(cycleIndex: number): Bonus | undefined {
         return this.packet.bonuses[this.getBonusIndex(cycleIndex)];
     }
