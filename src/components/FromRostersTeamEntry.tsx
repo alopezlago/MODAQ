@@ -1,9 +1,9 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { Dropdown, IDropdownOption, List, mergeStyleSets } from "@fluentui/react";
+import { Dropdown, IDropdownOption, mergeStyleSets } from "@fluentui/react";
 
 import { Player } from "../state/TeamState";
-import { PlayerEntry } from "./PlayerEntry";
+import { PlayerRoster } from "./PlayerRoster";
 
 export const FromRostersTeamEntry = observer(function FromRostersTeamEntry(props: IFromRostersTeamEntryProps) {
     const classes: ITeamEntryClassNames = getClassNames(props.playerListHeight);
@@ -41,19 +41,17 @@ export const FromRostersTeamEntry = observer(function FromRostersTeamEntry(props
                 errorMessage={props.teamNameErrorMessage}
             />
             <div className={classes.playerListContainer} data-is-scrollable="true">
-                <List items={[...props.players]} onRenderCell={onRenderPlayerEntry} />
+                <PlayerRoster
+                    canSetStarter={true}
+                    players={props.players}
+                    onMovePlayerBackward={props.onMovePlayerBackward}
+                    onMovePlayerForward={props.onMovePlayerForward}
+                    onMovePlayerToIndex={props.onMovePlayerToIndex}
+                />
             </div>
         </div>
     );
 });
-
-function onRenderPlayerEntry(player: Player | undefined): JSX.Element {
-    if (player == undefined) {
-        return <></>;
-    }
-
-    return <PlayerEntry player={player} readonly={true} />;
-}
 
 // TODO: Unify with ManualTeamEntry
 const getClassNames = (playerListHeight: number | string): ITeamEntryClassNames =>
@@ -77,6 +75,9 @@ export interface IFromRostersTeamEntryProps {
     playerPool: Player[];
     teamLabel: string;
     teamNameErrorMessage?: string;
+    onMovePlayerBackward: (player: Player) => void;
+    onMovePlayerForward: (player: Player) => void;
+    onMovePlayerToIndex: (player: Player, index: number) => void;
     onTeamChange(newTeamName: string, players: Player[]): void;
 }
 

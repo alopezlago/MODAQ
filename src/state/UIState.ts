@@ -4,7 +4,12 @@ import { ignore } from "mobx-sync";
 
 import * as GameFormats from "./GameFormats";
 import { ITossupProtestEvent, IBonusProtestEvent } from "./Events";
-import { IPendingNewGame, PendingGameType } from "./IPendingNewGame";
+import {
+    IPendingFromSheetsNewGameState,
+    IPendingNewGame,
+    IPendingQBJRegistrationNewGameState,
+    PendingGameType,
+} from "./IPendingNewGame";
 import { PacketState } from "./PacketState";
 import { Player } from "./TeamState";
 import { SheetState } from "./SheetState";
@@ -157,13 +162,13 @@ export class UIState {
     // TODO: Feels off. Could generalize to array of teams
     public addPlayerToFirstTeamInPendingNewGame(player: Player): void {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
-            this.pendingNewGame?.firstTeamPlayers.push(player);
+            this.pendingNewGame.manual.firstTeamPlayers.push(player);
         }
     }
 
     public addPlayerToSecondTeamInPendingNewGame(player: Player): void {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
-            this.pendingNewGame?.secondTeamPlayers.push(player);
+            this.pendingNewGame.manual.secondTeamPlayers.push(player);
         }
     }
 
@@ -172,20 +177,22 @@ export class UIState {
     }
 
     public createPendingNewGame(): void {
-        const firstTeamPlayers: Player[] = [];
-        const secondTeamPlayers: Player[] = [];
-        for (let i = 0; i < 4; i++) {
-            firstTeamPlayers.push(new Player("", "Team 1", /* isStarter */ true));
-            secondTeamPlayers.push(new Player("", "Team 2", /* isStarter */ true));
-        }
-
         if (this.pendingNewGame == undefined) {
+            const firstTeamPlayers: Player[] = [];
+            const secondTeamPlayers: Player[] = [];
+            for (let i = 0; i < 4; i++) {
+                firstTeamPlayers.push(new Player("", "Team 1", /* isStarter */ true));
+                secondTeamPlayers.push(new Player("", "Team 2", /* isStarter */ true));
+            }
+
             this.pendingNewGame = {
                 packet: new PacketState(),
-                firstTeamPlayers,
-                secondTeamPlayers,
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.ACFGameFormat,
+                manual: {
+                    firstTeamPlayers,
+                    secondTeamPlayers,
+                },
             };
         } else {
             this.pendingNewGame = {
@@ -195,16 +202,39 @@ export class UIState {
 
             switch (this.pendingNewGame.type) {
                 case PendingGameType.Manual:
+                    this.pendingNewGame = {
+                        ...this.pendingNewGame,
+                        manual: {
+                            ...this.pendingNewGame.manual,
+                            cycles: undefined,
+                        },
+                    };
+
+                    break;
                 case PendingGameType.QBJRegistration:
                     this.pendingNewGame = {
                         ...this.pendingNewGame,
-                        cycles: undefined,
-                        firstTeamPlayers,
-                        secondTeamPlayers,
+                        registration: {
+                            ...this.pendingNewGame.registration,
+                            cycles: undefined,
+                        },
                     };
                     break;
                 case PendingGameType.TJSheets:
+                    this.pendingNewGame = {
+                        ...this.pendingNewGame,
+                        tjSheets: {
+                            ...this.pendingNewGame.tjSheets,
+                        },
+                    };
+                    break;
                 case PendingGameType.UCSDSheets:
+                    this.pendingNewGame = {
+                        ...this.pendingNewGame,
+                        ucsdSheets: {
+                            ...this.pendingNewGame.ucsdSheets,
+                        },
+                    };
                     break;
                 default:
                     assertNever(this.pendingNewGame);
@@ -225,13 +255,17 @@ export class UIState {
 
     public removePlayerToFirstTeamInPendingNewGame(player: Player): void {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
-            this.pendingNewGame.firstTeamPlayers = this.pendingNewGame?.firstTeamPlayers.filter((p) => p !== player);
+            this.pendingNewGame.manual.firstTeamPlayers = this.pendingNewGame.manual.firstTeamPlayers.filter(
+                (p) => p !== player
+            );
         }
     }
 
     public removePlayerToSecondTeamInPendingNewGame(player: Player): void {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
-            this.pendingNewGame.secondTeamPlayers = this.pendingNewGame?.secondTeamPlayers.filter((p) => p !== player);
+            this.pendingNewGame.manual.secondTeamPlayers = this.pendingNewGame.manual.secondTeamPlayers.filter(
+                (p) => p !== player
+            );
         }
     }
 
@@ -248,26 +282,49 @@ export class UIState {
 
     public setPendingNewGameType(type: PendingGameType): void {
         if (this.pendingNewGame != undefined) {
-            // If we're changing between different Sheets types (e.g. Lifsheets and TJ Sheets), clear the pending game
-            if (
-                type != PendingGameType.Manual &&
-                this.pendingNewGame.type != PendingGameType.Manual &&
-                type != PendingGameType.QBJRegistration &&
-                this.pendingNewGame.type != PendingGameType.QBJRegistration
-            ) {
-                this.pendingNewGame.firstTeamPlayersFromRosters = undefined;
-                this.pendingNewGame.playersFromRosters = undefined;
-                this.pendingNewGame.rostersUrl = undefined;
-                this.pendingNewGame.secondTeamPlayersFromRosters = undefined;
-            }
-
             this.pendingNewGame.type = type;
+            if (
+                this.pendingNewGame.type === PendingGameType.QBJRegistration &&
+                this.pendingNewGame.registration == undefined
+            ) {
+                this.pendingNewGame.registration = {
+                    firstTeamPlayers: undefined,
+                    players: [],
+                    secondTeamPlayers: undefined,
+                };
+            } else if (
+                this.pendingNewGame.type === PendingGameType.TJSheets &&
+                this.pendingNewGame.tjSheets == undefined
+            ) {
+                this.pendingNewGame.tjSheets = {
+                    firstTeamPlayersFromRosters: undefined,
+                    playersFromRosters: undefined,
+                    rostersUrl: undefined,
+                    secondTeamPlayersFromRosters: undefined,
+                };
+            } else if (
+                this.pendingNewGame.type === PendingGameType.UCSDSheets &&
+                this.pendingNewGame.ucsdSheets == undefined
+            ) {
+                this.pendingNewGame.ucsdSheets = {
+                    firstTeamPlayersFromRosters: undefined,
+                    playersFromRosters: undefined,
+                    rostersUrl: undefined,
+                    secondTeamPlayersFromRosters: undefined,
+                };
+            }
         }
     }
 
     public setPendingNewGameCycles(cycles: Cycle[]): void {
-        if (this.pendingNewGame?.type === PendingGameType.Manual) {
-            this.pendingNewGame.cycles = cycles;
+        if (this.pendingNewGame == undefined) {
+            return;
+        }
+
+        if (this.pendingNewGame.type === PendingGameType.Manual) {
+            this.pendingNewGame.manual.cycles = cycles;
+        } else if (this.pendingNewGame.type === PendingGameType.QBJRegistration) {
+            this.pendingNewGame.registration.cycles = cycles;
         }
     }
 
@@ -285,10 +342,11 @@ export class UIState {
         }
 
         if (this.pendingNewGame.type === PendingGameType.QBJRegistration) {
-            this.pendingNewGame.players = players;
+            const registration: IPendingQBJRegistrationNewGameState = this.pendingNewGame.registration;
+            registration.players = players;
 
-            this.pendingNewGame.firstTeamPlayers = [];
-            this.pendingNewGame.secondTeamPlayers = [];
+            registration.firstTeamPlayers = [];
+            registration.secondTeamPlayers = [];
 
             if (players.length < 2) {
                 return;
@@ -298,16 +356,16 @@ export class UIState {
             const secondTeam: string = players.find((player) => player.teamName !== firstTeam)?.teamName ?? firstTeam;
             if (firstTeam === secondTeam) {
                 // Handle the unapproved case of one team only gracefully by having both teams refer to the same one
-                this.pendingNewGame.firstTeamPlayers = players;
-                this.pendingNewGame.secondTeamPlayers = players;
+                registration.firstTeamPlayers = players;
+                registration.secondTeamPlayers = players;
                 return;
             }
 
             for (const player of players) {
                 if (player.teamName === firstTeam) {
-                    this.pendingNewGame.firstTeamPlayers.push(player);
+                    registration.firstTeamPlayers.push(player);
                 } else if (player.teamName === secondTeam) {
-                    this.pendingNewGame.secondTeamPlayers.push(player);
+                    registration.secondTeamPlayers.push(player);
                 }
             }
 
@@ -315,9 +373,13 @@ export class UIState {
         }
 
         if (this.pendingNewGame.type !== PendingGameType.Manual) {
-            this.pendingNewGame.playersFromRosters = players;
-            this.pendingNewGame.firstTeamPlayersFromRosters = [];
-            this.pendingNewGame.secondTeamPlayersFromRosters = [];
+            const sheetsState: IPendingFromSheetsNewGameState =
+                this.pendingNewGame.type === PendingGameType.TJSheets
+                    ? this.pendingNewGame.tjSheets
+                    : this.pendingNewGame.ucsdSheets;
+            sheetsState.playersFromRosters = players;
+            sheetsState.firstTeamPlayersFromRosters = [];
+            sheetsState.secondTeamPlayersFromRosters = [];
         }
     }
 
@@ -326,11 +388,10 @@ export class UIState {
             return;
         }
 
-        if (
-            this.pendingNewGame.type !== PendingGameType.Manual &&
-            this.pendingNewGame.type !== PendingGameType.QBJRegistration
-        ) {
-            this.pendingNewGame.rostersUrl = url;
+        if (this.pendingNewGame.type === PendingGameType.TJSheets) {
+            this.pendingNewGame.tjSheets.rostersUrl = url;
+        } else if (this.pendingNewGame.type === PendingGameType.UCSDSheets) {
+            this.pendingNewGame.ucsdSheets.rostersUrl = url;
         }
     }
 
@@ -341,12 +402,16 @@ export class UIState {
 
         switch (this.pendingNewGame.type) {
             case PendingGameType.TJSheets:
+                this.pendingNewGame.tjSheets.firstTeamPlayersFromRosters = players;
+                break;
             case PendingGameType.UCSDSheets:
-                this.pendingNewGame.firstTeamPlayersFromRosters = players;
+                this.pendingNewGame.ucsdSheets.firstTeamPlayersFromRosters = players;
                 break;
             case PendingGameType.Manual:
+                this.pendingNewGame.manual.firstTeamPlayers = players;
+                break;
             case PendingGameType.QBJRegistration:
-                this.pendingNewGame.firstTeamPlayers = players;
+                this.pendingNewGame.registration.firstTeamPlayers = players;
                 break;
             default:
                 assertNever(this.pendingNewGame);
@@ -360,12 +425,16 @@ export class UIState {
 
         switch (this.pendingNewGame.type) {
             case PendingGameType.TJSheets:
+                this.pendingNewGame.tjSheets.secondTeamPlayersFromRosters = players;
+                break;
             case PendingGameType.UCSDSheets:
-                this.pendingNewGame.secondTeamPlayersFromRosters = players;
+                this.pendingNewGame.ucsdSheets.secondTeamPlayersFromRosters = players;
                 break;
             case PendingGameType.Manual:
+                this.pendingNewGame.manual.secondTeamPlayers = players;
+                break;
             case PendingGameType.QBJRegistration:
-                this.pendingNewGame.secondTeamPlayers = players;
+                this.pendingNewGame.registration.secondTeamPlayers = players;
                 break;
             default:
                 assertNever(this.pendingNewGame);
@@ -524,15 +593,10 @@ export class UIState {
 
             switch (this.pendingNewGame.type) {
                 case PendingGameType.Manual:
-                    this.pendingNewGame.cycles = undefined;
-                    this.pendingNewGame.firstTeamPlayers = [];
-                    this.pendingNewGame.secondTeamPlayers = [];
+                    this.pendingNewGame.manual.cycles = undefined;
                     break;
                 case PendingGameType.QBJRegistration:
-                    this.pendingNewGame.cycles = undefined;
-                    this.pendingNewGame.players = [];
-                    this.pendingNewGame.firstTeamPlayers = [];
-                    this.pendingNewGame.secondTeamPlayers = [];
+                    this.pendingNewGame.registration.cycles = undefined;
                     break;
                 case undefined:
                 case PendingGameType.TJSheets:

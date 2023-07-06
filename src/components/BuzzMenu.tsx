@@ -11,7 +11,7 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { ContextualMenu, ContextualMenuItemType, IContextualMenuItem } from "@fluentui/react/lib/ContextualMenu";
 
-import * as CompareUtils from "../state/CompareUtils";
+import * as PlayerUtils from "../state/PlayerUtils";
 import { Player } from "../state/TeamState";
 import { Cycle } from "../state/Cycle";
 import { Tossup } from "../state/PacketState";
@@ -69,13 +69,13 @@ function getPlayerMenuItems(props: IBuzzMenuProps, theme: Theme | undefined, tea
         const topLevelKey = `Team_${teamName}_Player_${index}`;
         const isCorrectChecked: boolean =
             props.cycle.correctBuzz != undefined &&
-            CompareUtils.playersEqual(props.cycle.correctBuzz.marker.player, player) &&
+            PlayerUtils.playersEqual(props.cycle.correctBuzz.marker.player, player) &&
             props.cycle.correctBuzz.marker.position === props.wordIndex;
         const isWrongChecked: boolean =
             props.cycle.wrongBuzzes != undefined &&
             props.cycle.wrongBuzzes.findIndex(
                 (buzz) =>
-                    CompareUtils.playersEqual(buzz.marker.player, player) && buzz.marker.position === props.wordIndex
+                    PlayerUtils.playersEqual(buzz.marker.player, player) && buzz.marker.position === props.wordIndex
             ) >= 0;
         const isProtestChecked: boolean =
             props.cycle.tossupProtests?.findIndex((protest) => protest.position === props.wordIndex) != undefined;

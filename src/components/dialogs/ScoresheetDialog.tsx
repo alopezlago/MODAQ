@@ -1,8 +1,8 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
 
-import * as CompareUtils from "../../state/CompareUtils";
 import * as FormattedTextParser from "../../parser/FormattedTextParser";
+import * as PlayerUtils from "../../state/PlayerUtils";
 import { Cycle } from "../../state/Cycle";
 import { AppState } from "../../state/AppState";
 import {
@@ -285,7 +285,7 @@ function renderPlayerCell(
 ): JSX.Element {
     // if this is too inefficient (because we check all players for the correct buzz), move to using a map. This means
     // we need existing cells that we can overwrite. From testing, this seems to be fine.
-    if (cycle.correctBuzz && CompareUtils.playersEqual(cycle.correctBuzz.marker.player, player)) {
+    if (cycle.correctBuzz && PlayerUtils.playersEqual(cycle.correctBuzz.marker.player, player)) {
         const correctPoints: number = cycle.correctBuzz.marker.points;
         const answer = getUnformattedAnswer(game, game.packet.tossups[cycle.correctBuzz.tossupIndex].answer);
 
@@ -306,7 +306,7 @@ function renderPlayerCell(
         );
     } else if (cycle.wrongBuzzes) {
         const wrongBuzz: ITossupAnswerEvent | undefined = cycle.wrongBuzzes.find((buzz) =>
-            CompareUtils.playersEqual(buzz.marker.player, player)
+            PlayerUtils.playersEqual(buzz.marker.player, player)
         );
         if (wrongBuzz) {
             const wrongPoints: number = wrongBuzz.marker.points;

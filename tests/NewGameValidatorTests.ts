@@ -71,118 +71,146 @@ describe("NewGameValidatorTests", () => {
 
         it("No players in first team", () => {
             assertNewGameIsInvalid({
-                firstTeamPlayers: [],
-                secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
+                manual: {
+                    firstTeamPlayers: [],
+                    secondTeamPlayers: [new Player("b", "2", true)],
+                },
             });
         });
         it("No players in second team", () => {
             assertNewGameIsInvalid({
-                firstTeamPlayers: [new Player("a", "1", true)],
-                secondTeamPlayers: [],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
+                manual: {
+                    firstTeamPlayers: [new Player("a", "1", true)],
+                    secondTeamPlayers: [],
+                },
             });
         });
         it("Only empty names in first team", () => {
             assertNewGameIsInvalid({
-                firstTeamPlayers: [new Player("", "1", true)],
-                secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
+                manual: {
+                    firstTeamPlayers: [new Player("", "1", true)],
+                    secondTeamPlayers: [new Player("b", "2", true)],
+                },
             });
         });
         it("Only empty names in second team", () => {
             assertNewGameIsInvalid({
-                firstTeamPlayers: [new Player("a", "1", true)],
-                secondTeamPlayers: [new Player("", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
+                manual: {
+                    firstTeamPlayers: [new Player("a", "1", true)],
+                    secondTeamPlayers: [new Player("", "2", true)],
+                },
             });
         });
         it("Same player names in first team", () => {
             assertNewGameIsInvalid({
-                firstTeamPlayers: [new Player("a", "1", true), new Player("aa", "1", true), new Player("a", "1", true)],
-                secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
+                manual: {
+                    firstTeamPlayers: [
+                        new Player("a", "1", true),
+                        new Player("aa", "1", true),
+                        new Player("a", "1", true),
+                    ],
+                    secondTeamPlayers: [new Player("b", "2", true)],
+                },
             });
         });
         it("Same player names in second team", () => {
             assertNewGameIsInvalid({
-                firstTeamPlayers: [new Player("a", "1", true)],
-                secondTeamPlayers: [
-                    new Player("b", "2", true),
-                    new Player("bb", "2", true),
-                    new Player("b", "2", true),
-                ],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
+                manual: {
+                    firstTeamPlayers: [new Player("a", "1", true)],
+                    secondTeamPlayers: [
+                        new Player("b", "2", true),
+                        new Player("bb", "2", true),
+                        new Player("b", "2", true),
+                    ],
+                },
             });
         });
         it("No starters in first team", () => {
             assertNewGameIsInvalid({
-                firstTeamPlayers: [new Player("a", "1", false)],
-                secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
+                manual: {
+                    firstTeamPlayers: [new Player("a", "1", false)],
+                    secondTeamPlayers: [new Player("b", "2", true)],
+                },
             });
         });
         it("No starters in second team", () => {
             assertNewGameIsInvalid({
-                firstTeamPlayers: [new Player("a", "1", true)],
-                secondTeamPlayers: [new Player("b", "2", false)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
+                manual: {
+                    firstTeamPlayers: [new Player("a", "1", true)],
+                    secondTeamPlayers: [new Player("b", "2", false)],
+                },
             });
         });
         it("No tossups in packet", () => {
             assertNewGameIsInvalid({
-                firstTeamPlayers: [new Player("a", "1", true)],
-                secondTeamPlayers: [new Player("b", "2", true)],
                 packet: new PacketState(),
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
+                manual: {
+                    firstTeamPlayers: [new Player("a", "1", true)],
+                    secondTeamPlayers: [new Player("b", "2", true)],
+                },
             });
         });
         it("Empty cycles array", () => {
             assertNewGameIsInvalid({
-                cycles: [],
-                firstTeamPlayers: [new Player("a", "1", true)],
-                secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
+                manual: {
+                    cycles: [],
+                    firstTeamPlayers: [new Player("a", "1", true)],
+                    secondTeamPlayers: [new Player("b", "2", true)],
+                },
             });
         });
         it("Valid game (Manual)", () => {
             const newGame: IPendingNewGame = {
-                firstTeamPlayers: [new Player("a", "1", true)],
-                secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
+                manual: {
+                    firstTeamPlayers: [new Player("a", "1", true)],
+                    secondTeamPlayers: [new Player("b", "2", true)],
+                },
             };
             const result: boolean = NewGameValidator.isValid(newGame);
             expect(result).to.be.true;
         });
         it("Valid game (Manual with cycles)", () => {
             const newGame: IPendingNewGame = {
-                cycles: defaultPacket.tossups.map(() => new Cycle()),
-                firstTeamPlayers: [new Player("a", "1", true)],
-                secondTeamPlayers: [new Player("b", "2", true)],
                 packet: defaultPacket,
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
+                manual: {
+                    cycles: defaultPacket.tossups.map(() => new Cycle()),
+                    firstTeamPlayers: [new Player("a", "1", true)],
+                    secondTeamPlayers: [new Player("b", "2", true)],
+                },
             };
             const result: boolean = NewGameValidator.isValid(newGame);
             expect(result).to.be.true;
