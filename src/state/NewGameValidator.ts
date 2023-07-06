@@ -82,7 +82,7 @@ function atLeastOneStarter(players: Player[]): boolean {
 function atLeastOneCycleIfCyclesExist(pendingNewGame: IPendingNewGame): boolean {
     return (
         pendingNewGame.type !== PendingGameType.Manual ||
-        pendingNewGame.cycles == undefined ||
-        pendingNewGame.cycles.length > 0
+        pendingNewGame.manual.cycles == undefined ||
+        pendingNewGame.manual.cycles.length > 0
     );
 }

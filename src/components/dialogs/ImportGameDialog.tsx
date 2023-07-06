@@ -294,7 +294,7 @@ function onSubmit(appState: AppState): void {
     game.addPlayers(firstTeamPlayers.filter((player) => player.name !== ""));
     game.addPlayers(secondTeamPlayers.filter((player) => player.name !== ""));
     game.loadPacket(pendingNewGame.packet);
-    game.setCycles(pendingNewGame.cycles ?? []);
+    game.setCycles(pendingNewGame.manual.cycles ?? []);
 
     // If we've just started a new game, start at the beginning
     uiState.setCycleIndex(0);

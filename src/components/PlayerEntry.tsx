@@ -2,7 +2,7 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import { Checkbox, ICheckboxStyles } from "@fluentui/react/lib/Checkbox";
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
-import { FocusZone, FocusZoneDirection, ILabelStyles, Label, mergeStyleSets } from "@fluentui/react";
+import { ILabelStyles, Label, mergeStyleSets } from "@fluentui/react";
 
 import { Player } from "../state/TeamState";
 import { CancelButton } from "./CancelButton";
@@ -27,7 +27,7 @@ const starterCheckboxStyle: Partial<ICheckboxStyles> = {
     },
 };
 
-export const PlayerEntry = observer(function PlayerEntry(props: IPlayerEntryProps) {
+export const PlayerEntry = observer(function PlayerEntry(props: React.PropsWithChildren<IPlayerEntryProps>) {
     const classes: IPlayerEntryClassNames = getClassNames();
 
     const starterChangeHandler = React.useCallback(
@@ -69,17 +69,22 @@ export const PlayerEntry = observer(function PlayerEntry(props: IPlayerEntryProp
         playerName = <Label styles={playerNameLabelStyle}>{props.player.name}</Label>;
     }
 
+    const checkbox = props.canSetStarter !== false && (
+        <Checkbox
+            label="Starter"
+            onChange={starterChangeHandler}
+            styles={starterCheckboxStyle}
+            checked={props.player.isStarter}
+        />
+    );
+
     return (
-        <FocusZone as="div" direction={FocusZoneDirection.horizontal} className={classes.playerEntryContainer}>
+        <div className={classes.playerEntryContainer}>
             {playerName}
-            <Checkbox
-                label="Starter"
-                onChange={starterChangeHandler}
-                styles={starterCheckboxStyle}
-                checked={props.player.isStarter}
-            />
+            {checkbox}
             {cancelButtonOrSpacer}
-        </FocusZone>
+            {props.children}
+        </div>
     );
 });
 
@@ -97,10 +102,11 @@ interface IEditablePlayerEntryProps extends IBasePlayerEntryProps {
 }
 
 interface IReadonlyPlayerEntryProps extends IBasePlayerEntryProps {
-    readonly: true;
+    isNameReadonly: true;
 }
 
 interface IBasePlayerEntryProps {
+    canSetStarter?: boolean;
     player: Player;
 }
 

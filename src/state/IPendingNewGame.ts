@@ -3,13 +3,36 @@ import { IGameFormat } from "./IGameFormat";
 import { PacketState } from "./PacketState";
 import { Player } from "./TeamState";
 
-export type IPendingNewGame = IPendingManualNewGame | IPendingFromSheetsNewGame | IPendingQBJRegistrationNewGame;
+export type IPendingNewGame =
+    | IPendingManualNewGame
+    | IPendingFromTJSheetsNewGame
+    | IPendingFromUCSDSheetsNewGame
+    | IPendingQBJRegistrationNewGame;
 
 export interface IPendingManualNewGame extends IBasePendingNewGame {
+    manual: IPendingManualNewGameState;
+    type: PendingGameType.Manual;
+}
+
+export interface IPendingFromTJSheetsNewGame extends IBasePendingNewGame {
+    tjSheets: IPendingFromSheetsNewGameState;
+    type: PendingGameType.TJSheets;
+}
+
+export interface IPendingFromUCSDSheetsNewGame extends IBasePendingNewGame {
+    ucsdSheets: IPendingFromSheetsNewGameState;
+    type: PendingGameType.UCSDSheets;
+}
+
+export interface IPendingQBJRegistrationNewGame extends IBasePendingNewGame {
+    registration: IPendingQBJRegistrationNewGameState;
+    type: PendingGameType.QBJRegistration;
+}
+
+export interface IPendingManualNewGameState {
     firstTeamPlayers: Player[];
     secondTeamPlayers: Player[];
     cycles?: Cycle[];
-    type: PendingGameType.Manual;
 }
 
 export const enum PendingGameType {
@@ -19,23 +42,22 @@ export const enum PendingGameType {
     QBJRegistration,
 }
 
-export interface IPendingFromSheetsNewGame extends IBasePendingNewGame {
+export interface IPendingFromSheetsNewGameState {
     rostersUrl: string | undefined;
     playersFromRosters: Player[] | undefined;
     firstTeamPlayersFromRosters: Player[] | undefined;
     secondTeamPlayersFromRosters: Player[] | undefined;
-    type: PendingGameType.TJSheets | PendingGameType.UCSDSheets;
 }
 
-export interface IPendingQBJRegistrationNewGame extends IBasePendingNewGame {
+export interface IPendingQBJRegistrationNewGameState {
     players: Player[];
     firstTeamPlayers: Player[] | undefined;
     secondTeamPlayers: Player[] | undefined;
     cycles?: Cycle[];
-    type: PendingGameType.QBJRegistration;
 }
 
 interface IBasePendingNewGame {
     packet: PacketState;
     gameFormat: IGameFormat;
+    type: PendingGameType;
 }

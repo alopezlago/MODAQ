@@ -4,7 +4,7 @@ import * as GameFormats from "src/state/GameFormats";
 import * as Sheets from "src/sheets/Sheets";
 import { ISheetsApi, ISheetsBatchGetResponse, ISheetsGetResponse } from "src/sheets/ISheetsApi";
 import { AppState } from "src/state/AppState";
-import { IPendingFromSheetsNewGame, IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
+import { IPendingFromSheetsNewGameState, IPendingNewGame, PendingGameType } from "src/state/IPendingNewGame";
 import { ExportState, LoadingState, SheetType } from "src/state/SheetState";
 import { IStatus } from "src/IStatus";
 import { Player } from "src/state/TeamState";
@@ -1298,7 +1298,7 @@ describe("SheetsTests", () => {
             sheetType: SheetType,
             expectedPendingGameType: PendingGameType,
             cells: string[][],
-            verifyPlayers: (pendingNewGame: IPendingFromSheetsNewGame, playerNamesFromRosters: string[]) => void
+            verifyPlayers: (pendingNewGame: IPendingNewGame, playerNamesFromRosters: string[]) => void
         ) => {
             const appState: AppState = createAppStateForRosters(sheetType, expectedPendingGameType);
 
@@ -1336,7 +1336,9 @@ describe("SheetsTests", () => {
             expect(appState.uiState.pendingNewGame.type).to.equal(expectedPendingGameType);
 
             const pendingNewGame: IPendingNewGame = appState.uiState.pendingNewGame;
-            const playerNamesFromRosters: string[] = (pendingNewGame.playersFromRosters ?? []).map(
+            const sheetsState: IPendingFromSheetsNewGameState =
+                pendingNewGame.type === PendingGameType.TJSheets ? pendingNewGame.tjSheets : pendingNewGame.ucsdSheets;
+            const playerNamesFromRosters: string[] = (sheetsState.playersFromRosters ?? []).map(
                 (player) => player.name
             );
 
@@ -1367,11 +1369,16 @@ describe("SheetsTests", () => {
                         expect(playerNamesFromRosters).to.contain(name);
                     }
 
+                    if (pendingNewGame.type !== PendingGameType.TJSheets) {
+                        assert.fail("Should be TJSheets");
+                        return;
+                    }
+
                     expect(
-                        pendingNewGame.firstTeamPlayersFromRosters?.map((player) => player.name) ?? []
+                        pendingNewGame.tjSheets.firstTeamPlayersFromRosters?.map((player) => player.name) ?? []
                     ).to.deep.equal(firstTeamPlayers);
                     expect(
-                        pendingNewGame.secondTeamPlayersFromRosters?.map((player) => player.name) ?? []
+                        pendingNewGame.tjSheets.secondTeamPlayersFromRosters?.map((player) => player.name) ?? []
                     ).to.deep.equal(secondTeamPlayers);
                 }
             );
@@ -1390,11 +1397,16 @@ describe("SheetsTests", () => {
                         expect(playerNamesFromRosters).to.contain(name);
                     }
 
+                    if (pendingNewGame.type !== PendingGameType.UCSDSheets) {
+                        assert.fail("Should be UCSDSheets");
+                        return;
+                    }
+
                     expect(
-                        pendingNewGame.firstTeamPlayersFromRosters?.map((player) => player.name) ?? []
+                        pendingNewGame.ucsdSheets.firstTeamPlayersFromRosters?.map((player) => player.name) ?? []
                     ).to.deep.equal(firstRow.slice(1));
                     expect(
-                        pendingNewGame.secondTeamPlayersFromRosters?.map((player) => player.name) ?? []
+                        pendingNewGame.ucsdSheets.secondTeamPlayersFromRosters?.map((player) => player.name) ?? []
                     ).to.deep.equal(secondRow.slice(1));
                 }
             );

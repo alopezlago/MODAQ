@@ -19,6 +19,7 @@ import {
 
 import * as NewGameValidator from "../../state/NewGameValidator";
 import * as PendingNewGameUtils from "../../state/PendingNewGameUtils";
+import * as PlayerUtils from "../../state/PlayerUtils";
 import * as QBJ from "../../qbj/QBJ";
 import * as Sheets from "../../sheets/Sheets";
 import { UIState } from "../../state/UIState";
@@ -27,7 +28,12 @@ import { GameState } from "../../state/GameState";
 import { PacketState } from "../../state/PacketState";
 import { ManualTeamEntry } from "../ManualTeamEntry";
 import { Player } from "../../state/TeamState";
-import { IPendingNewGame, PendingGameType } from "../../state/IPendingNewGame";
+import {
+    IPendingFromSheetsNewGameState,
+    IPendingManualNewGameState,
+    IPendingNewGame,
+    PendingGameType,
+} from "../../state/IPendingNewGame";
 import { AppState } from "../../state/AppState";
 import { FromRostersTeamEntry } from "../FromRostersTeamEntry";
 import { SheetType } from "../../state/SheetState";
@@ -210,8 +216,8 @@ const ManualNewGamePivotBody = observer(function ManualNewGamePivotBody(props: I
         }
 
         return NewGameValidator.playerTeamsUnique(
-            uiState.pendingNewGame.firstTeamPlayers,
-            uiState.pendingNewGame.secondTeamPlayers
+            uiState.pendingNewGame.manual.firstTeamPlayers,
+            uiState.pendingNewGame.manual.secondTeamPlayers
         );
     }, [uiState.pendingNewGame]);
 
@@ -220,18 +226,20 @@ const ManualNewGamePivotBody = observer(function ManualNewGamePivotBody(props: I
         return <></>;
     }
 
+    const manualState: IPendingManualNewGameState = pendingNewGame.manual;
+
     const teamNameErrorMessage = NewGameValidator.playerTeamsUnique(
-        pendingNewGame.firstTeamPlayers,
-        pendingNewGame.secondTeamPlayers
+        manualState.firstTeamPlayers,
+        manualState.secondTeamPlayers
     );
 
     return (
         <Stack>
             <div className={props.classes.teamEntriesContainer}>
                 <ManualTeamEntry
-                    defaultTeamName={pendingNewGame.firstTeamPlayers[0].teamName}
+                    defaultTeamName={manualState.firstTeamPlayers[0].teamName}
                     playerListHeight={playerListHeight}
-                    players={pendingNewGame.firstTeamPlayers}
+                    players={manualState.firstTeamPlayers}
                     teamNameErrorMessage={teamNameErrorMessage}
                     teamLabel="First team"
                     onAddPlayerClick={addPlayerHandler}
@@ -240,9 +248,9 @@ const ManualNewGamePivotBody = observer(function ManualNewGamePivotBody(props: I
                 />
                 <Separator vertical={true} />
                 <ManualTeamEntry
-                    defaultTeamName={pendingNewGame.secondTeamPlayers[0].teamName}
+                    defaultTeamName={manualState.secondTeamPlayers[0].teamName}
                     playerListHeight={playerListHeight}
-                    players={pendingNewGame.secondTeamPlayers}
+                    players={manualState.secondTeamPlayers}
                     teamNameErrorMessage={teamNameErrorMessage}
                     teamLabel="Second team"
                     onAddPlayerClick={addPlayerHandler}
@@ -275,28 +283,25 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
             return;
         }
 
-        const url: string | undefined = uiState.pendingNewGame?.rostersUrl;
-        if (url == undefined) {
-            return;
+        let url: string | undefined;
+        let sheetType: SheetType = SheetType.TJSheets;
+        switch (uiState.pendingNewGame.type) {
+            case undefined:
+            case PendingGameType.TJSheets:
+                url = uiState.pendingNewGame.tjSheets.rostersUrl;
+                sheetType = SheetType.TJSheets;
+                break;
+            case PendingGameType.UCSDSheets:
+                url = uiState.pendingNewGame.ucsdSheets.rostersUrl;
+                sheetType = SheetType.UCSDSheets;
+                break;
+            default:
+                assertNever(uiState.pendingNewGame);
         }
 
         const sheetsId: string | undefined = Sheets.getSheetsId(url);
         if (sheetsId == undefined) {
             return;
-        }
-
-        let sheetType: SheetType = SheetType.Lifsheets;
-        const pendingNewGameType: PendingGameType = uiState.pendingNewGame.type;
-        switch (pendingNewGameType) {
-            case undefined:
-            case PendingGameType.TJSheets:
-                sheetType = SheetType.TJSheets;
-                break;
-            case PendingGameType.UCSDSheets:
-                sheetType = SheetType.UCSDSheets;
-                break;
-            default:
-                assertNever(pendingNewGameType);
         }
 
         uiState.sheetsState.setSheetId(sheetsId);
@@ -314,14 +319,19 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
                 return;
             }
 
+            const sheetsState: IPendingFromSheetsNewGameState =
+                uiState.pendingNewGame.type === PendingGameType.TJSheets
+                    ? uiState.pendingNewGame.tjSheets
+                    : uiState.pendingNewGame.ucsdSheets;
+
             // If rosters exist, then so do the players, so we can do strict equality to see which team needs to be updated
-            if (oldPlayers === uiState.pendingNewGame?.firstTeamPlayersFromRosters) {
+            if (oldPlayers === sheetsState.firstTeamPlayersFromRosters) {
                 uiState.setPendingNewGameFirstTeamPlayers(
-                    uiState.pendingNewGame.playersFromRosters?.filter((player) => player.teamName === newTeamName) ?? []
+                    sheetsState.playersFromRosters?.filter((player) => player.teamName === newTeamName) ?? []
                 );
-            } else if (oldPlayers === uiState.pendingNewGame?.secondTeamPlayersFromRosters) {
+            } else if (oldPlayers === sheetsState.secondTeamPlayersFromRosters) {
                 uiState.setPendingNewGameSecondTeamPlayers(
-                    uiState.pendingNewGame.playersFromRosters?.filter((player) => player.teamName === newTeamName) ?? []
+                    sheetsState.playersFromRosters?.filter((player) => player.teamName === newTeamName) ?? []
                 );
             }
         },
@@ -337,13 +347,18 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
         return <></>;
     }
 
+    const sheetsState: IPendingFromSheetsNewGameState =
+        pendingNewGame.type === PendingGameType.TJSheets ? pendingNewGame.tjSheets : pendingNewGame.ucsdSheets;
+
     // We should only do this if we have any players from the rosters
     const teamNameErrorMessage = NewGameValidator.playerTeamsUnique(
-        pendingNewGame.firstTeamPlayersFromRosters ?? [],
-        pendingNewGame.secondTeamPlayersFromRosters ?? []
+        sheetsState.firstTeamPlayersFromRosters ?? [],
+        sheetsState.secondTeamPlayersFromRosters ?? []
     );
 
-    const playersFromRosters: Player[] = pendingNewGame.playersFromRosters ?? [];
+    const playersFromRosters: Player[] = sheetsState.playersFromRosters ?? [];
+    const firstTeamPlayersFromRosters: Player[] = sheetsState.firstTeamPlayersFromRosters ?? [];
+    const secondTeamPlayersFromRosters: Player[] = sheetsState.secondTeamPlayersFromRosters ?? [];
 
     return (
         <Stack>
@@ -352,7 +367,7 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
                     <TextField
                         styles={rostersInputStyles}
                         label="URL to room scoresheet"
-                        value={pendingNewGame.rostersUrl}
+                        value={sheetsState.rostersUrl}
                         onChange={rostersUrlChangeHandler}
                     />
                     <DefaultButton text="Load" onClick={loadHandler}></DefaultButton>
@@ -365,17 +380,47 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
                     <FromRostersTeamEntry
                         playerListHeight={playerListHeight}
                         playerPool={playersFromRosters}
-                        players={pendingNewGame.firstTeamPlayersFromRosters ?? []}
+                        players={firstTeamPlayersFromRosters}
                         teamLabel="First team"
+                        onMovePlayerBackward={(player) =>
+                            uiState.setPendingNewGameFirstTeamPlayers(
+                                PlayerUtils.movePlayerBackward(firstTeamPlayersFromRosters, player)
+                            )
+                        }
+                        onMovePlayerForward={(player) =>
+                            uiState.setPendingNewGameFirstTeamPlayers(
+                                PlayerUtils.movePlayerForward(firstTeamPlayersFromRosters, player)
+                            )
+                        }
+                        onMovePlayerToIndex={(player, index) =>
+                            uiState.setPendingNewGameFirstTeamPlayers(
+                                PlayerUtils.movePlayerToIndex(firstTeamPlayersFromRosters, player, index)
+                            )
+                        }
                         onTeamChange={teamChangeHandler}
                     />
                     <Separator vertical={true} />
                     <FromRostersTeamEntry
                         playerListHeight={playerListHeight}
                         playerPool={playersFromRosters}
-                        players={pendingNewGame.secondTeamPlayersFromRosters ?? []}
+                        players={secondTeamPlayersFromRosters}
                         teamNameErrorMessage={teamNameErrorMessage}
                         teamLabel="Second team"
+                        onMovePlayerBackward={(player) =>
+                            uiState.setPendingNewGameFirstTeamPlayers(
+                                PlayerUtils.movePlayerBackward(secondTeamPlayersFromRosters, player)
+                            )
+                        }
+                        onMovePlayerForward={(player) =>
+                            uiState.setPendingNewGameFirstTeamPlayers(
+                                PlayerUtils.movePlayerForward(secondTeamPlayersFromRosters, player)
+                            )
+                        }
+                        onMovePlayerToIndex={(player, index) =>
+                            uiState.setPendingNewGameFirstTeamPlayers(
+                                PlayerUtils.movePlayerToIndex(secondTeamPlayersFromRosters, player, index)
+                            )
+                        }
                         onTeamChange={teamChangeHandler}
                     />
                 </div>
@@ -422,13 +467,15 @@ const FromQBJRegistrationNewGameBody = observer(function FromSheetsNewGameBody(
             }
 
             // If rosters exist, then so do the players, so we can do strict equality to see which team needs to be updated
-            if (oldPlayers === uiState.pendingNewGame.firstTeamPlayers) {
+            if (oldPlayers === uiState.pendingNewGame.registration.firstTeamPlayers) {
                 uiState.setPendingNewGameFirstTeamPlayers(
-                    uiState.pendingNewGame.players.filter((player) => player.teamName === newTeamName) ?? []
+                    uiState.pendingNewGame.registration.players.filter((player) => player.teamName === newTeamName) ??
+                        []
                 );
-            } else if (oldPlayers === uiState.pendingNewGame.secondTeamPlayers) {
+            } else if (oldPlayers === uiState.pendingNewGame.registration.secondTeamPlayers) {
                 uiState.setPendingNewGameSecondTeamPlayers(
-                    uiState.pendingNewGame.players.filter((player) => player.teamName === newTeamName) ?? []
+                    uiState.pendingNewGame.registration.players.filter((player) => player.teamName === newTeamName) ??
+                        []
                 );
             }
         },
@@ -440,13 +487,13 @@ const FromQBJRegistrationNewGameBody = observer(function FromSheetsNewGameBody(
         return <></>;
     }
 
-    const firstTeamPlayers: Player[] = pendingNewGame.firstTeamPlayers ?? [];
-    const secondTeamPlayers: Player[] = pendingNewGame.secondTeamPlayers ?? [];
+    const firstTeamPlayers: Player[] = pendingNewGame.registration.firstTeamPlayers ?? [];
+    const secondTeamPlayers: Player[] = pendingNewGame.registration.secondTeamPlayers ?? [];
 
     // We should only do this if we have any players from the rosters
     const teamNameErrorMessage = NewGameValidator.playerTeamsUnique(firstTeamPlayers, secondTeamPlayers);
 
-    const playersFromRosters: Player[] = pendingNewGame.players ?? [];
+    const playersFromRosters: Player[] = pendingNewGame.registration.players ?? [];
 
     return (
         <Stack>
@@ -463,6 +510,21 @@ const FromQBJRegistrationNewGameBody = observer(function FromSheetsNewGameBody(
                         playerPool={playersFromRosters}
                         players={firstTeamPlayers}
                         teamLabel="First team"
+                        onMovePlayerBackward={(player) =>
+                            uiState.setPendingNewGameFirstTeamPlayers(
+                                PlayerUtils.movePlayerBackward(firstTeamPlayers, player)
+                            )
+                        }
+                        onMovePlayerForward={(player) =>
+                            uiState.setPendingNewGameFirstTeamPlayers(
+                                PlayerUtils.movePlayerForward(firstTeamPlayers, player)
+                            )
+                        }
+                        onMovePlayerToIndex={(player, index) =>
+                            uiState.setPendingNewGameFirstTeamPlayers(
+                                PlayerUtils.movePlayerToIndex(firstTeamPlayers, player, index)
+                            )
+                        }
                         onTeamChange={teamChangeHandler}
                     />
                     <Separator vertical={true} />
@@ -472,6 +534,21 @@ const FromQBJRegistrationNewGameBody = observer(function FromSheetsNewGameBody(
                         players={secondTeamPlayers}
                         teamNameErrorMessage={teamNameErrorMessage}
                         teamLabel="Second team"
+                        onMovePlayerBackward={(player) =>
+                            uiState.setPendingNewGameFirstTeamPlayers(
+                                PlayerUtils.movePlayerBackward(secondTeamPlayers, player)
+                            )
+                        }
+                        onMovePlayerForward={(player) =>
+                            uiState.setPendingNewGameFirstTeamPlayers(
+                                PlayerUtils.movePlayerForward(secondTeamPlayers, player)
+                            )
+                        }
+                        onMovePlayerToIndex={(player, index) =>
+                            uiState.setPendingNewGameFirstTeamPlayers(
+                                PlayerUtils.movePlayerToIndex(secondTeamPlayers, player, index)
+                            )
+                        }
                         onTeamChange={teamChangeHandler}
                     />
                 </div>
@@ -504,7 +581,7 @@ function onAddPlayer(appState: AppState, players: Player[]): void {
         const teamName: string = players[0].teamName;
         const newPlayer: Player = new Player("", teamName, players.length < 4);
 
-        if (players === uiState.pendingNewGame.firstTeamPlayers) {
+        if (players === uiState.pendingNewGame.manual.firstTeamPlayers) {
             uiState.addPlayerToFirstTeamInPendingNewGame(newPlayer);
         } else {
             uiState.addPlayerToSecondTeamInPendingNewGame(newPlayer);
@@ -516,7 +593,7 @@ function onRemovePlayer(appState: AppState, player: Player): void {
     const uiState: UIState = appState.uiState;
 
     if (uiState.pendingNewGame?.type === PendingGameType.Manual) {
-        if (player.teamName === uiState.pendingNewGame.firstTeamPlayers[0].teamName) {
+        if (player.teamName === uiState.pendingNewGame.manual.firstTeamPlayers[0].teamName) {
             uiState.removePlayerToFirstTeamInPendingNewGame(player);
         } else {
             uiState.removePlayerToSecondTeamInPendingNewGame(player);

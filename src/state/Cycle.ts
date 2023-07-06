@@ -1,8 +1,8 @@
 import { observable, action, computed, makeObservable } from "mobx";
 import { format } from "mobx-sync";
 
-import * as CompareUtils from "./CompareUtils";
 import * as Events from "./Events";
+import * as PlayerUtils from "./PlayerUtils";
 import { IBuzzMarker } from "./IBuzzMarker";
 import { IGameFormat } from "./IGameFormat";
 import { IPlayer } from "./TeamState";
@@ -321,7 +321,7 @@ export class Cycle implements ICycle {
         // There's no need to keep them in both lists.
         if (this.playerJoins != undefined) {
             const joinEvent: Events.IPlayerJoinsEvent | undefined = this.playerJoins.find((event) =>
-                CompareUtils.playersEqual(event.inPlayer, outPlayer)
+                PlayerUtils.playersEqual(event.inPlayer, outPlayer)
             );
             if (joinEvent) {
                 this.playerJoins = this.playerJoins.filter((event) => event !== joinEvent);
@@ -590,7 +590,7 @@ export class Cycle implements ICycle {
         }
 
         const oldLength: number = this.wrongBuzzes.length;
-        this.wrongBuzzes = this.wrongBuzzes.filter((buzz) => !CompareUtils.playersEqual(buzz.marker.player, player));
+        this.wrongBuzzes = this.wrongBuzzes.filter((buzz) => !PlayerUtils.playersEqual(buzz.marker.player, player));
         if (this.wrongBuzzes.length === oldLength) {
             // Nothing left, don't make any changes
             return;
@@ -639,7 +639,7 @@ export class Cycle implements ICycle {
     }
 
     private removePlayerBuzzes(player: IPlayer): void {
-        this.removeBuzzes((event) => CompareUtils.playersEqual(player, event.marker.player));
+        this.removeBuzzes((event) => PlayerUtils.playersEqual(player, event.marker.player));
 
         this.tossupProtests = this.tossupProtests?.filter((protest) => protest.teamName !== player.teamName);
 

@@ -228,13 +228,15 @@ function onRenderPlayerEntry(
 
     const required: boolean = index === 0;
     return (
-        <PlayerEntry
-            canRemove={index !== 0}
-            player={player}
-            required={required}
-            validateName={playerNameValidationHandler}
-            onRemovePlayerClick={onRemovePlayerHandler}
-        />
+        <FocusZone as="div" direction={FocusZoneDirection.horizontal}>
+            <PlayerEntry
+                canRemove={index !== 0}
+                player={player}
+                required={required}
+                validateName={playerNameValidationHandler}
+                onRemovePlayerClick={onRemovePlayerHandler}
+            />
+        </FocusZone>
     );
 }
 
