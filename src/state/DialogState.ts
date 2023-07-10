@@ -8,6 +8,7 @@ import { RenamePlayerDialogState } from "./RenamePlayerDialogState";
 import { Player } from "./TeamState";
 import { ReorderPlayersDialogState } from "./ReorderPlayersDialogState";
 import { FontDialogState } from "./FontDialogState";
+import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 
 export class DialogState {
     @ignore
@@ -17,22 +18,10 @@ export class DialogState {
     public customizeGameFormat: CustomizeGameFormatDialogState | undefined;
 
     @ignore
-    public exportToJsonDialogVisible: boolean;
-
-    @ignore
     public fontDialog: FontDialogState | undefined;
 
     @ignore
-    public helpDialogVisible: boolean;
-
-    @ignore
-    public importGameDialogVisible: boolean;
-
-    @ignore
     public messageDialog: IMessageDialogState | undefined;
-
-    @ignore
-    public newGameDialogVisible: boolean;
 
     @ignore
     public renamePlayerDialog: RenamePlayerDialogState | undefined;
@@ -41,78 +30,66 @@ export class DialogState {
     public reorderPlayersDialog: ReorderPlayersDialogState | undefined;
 
     @ignore
-    public scoresheetDialogVisisble: boolean;
+    public visibleDialog: ModalVisibilityStatus;
 
     constructor() {
         makeAutoObservable(this);
 
         this.addQuestions = undefined;
         this.customizeGameFormat = undefined;
-        this.exportToJsonDialogVisible = false;
-        this.helpDialogVisible = false;
-        this.importGameDialogVisible = false;
         this.fontDialog = undefined;
         this.messageDialog = undefined;
-        this.newGameDialogVisible = false;
         this.renamePlayerDialog = undefined;
         this.reorderPlayersDialog = undefined;
-        this.scoresheetDialogVisisble = false;
+        this.visibleDialog = ModalVisibilityStatus.None;
     }
 
     public hideAddQuestionsDialog(): void {
         this.addQuestions = undefined;
+        this.hideModalDialog();
     }
 
     public hideCustomizeGameFormatDialog(): void {
         this.customizeGameFormat = undefined;
+        this.hideModalDialog();
     }
 
-    public hideExportToJsonDialog(): void {
-        this.exportToJsonDialogVisible = false;
-    }
-
-    public hideHelpDialog(): void {
-        this.helpDialogVisible = false;
-    }
-
-    public hideImportGameDialog(): void {
-        this.importGameDialogVisible = false;
+    public hideModalDialog(): void {
+        this.visibleDialog = ModalVisibilityStatus.None;
     }
 
     public hideFontDialog(): void {
         this.fontDialog = undefined;
+        this.hideModalDialog();
     }
 
     public hideMessageDialog(): void {
         this.messageDialog = undefined;
-    }
-
-    public hideNewGameDialog(): void {
-        this.newGameDialogVisible = false;
+        this.hideModalDialog();
     }
 
     public hideRenamePlayerDialog(): void {
         this.renamePlayerDialog = undefined;
+        this.hideModalDialog();
     }
 
     public hideReorderPlayersDialog(): void {
         this.reorderPlayersDialog = undefined;
-    }
-
-    public hideScoresheetDialog(): void {
-        this.scoresheetDialogVisisble = false;
+        this.hideModalDialog();
     }
 
     public showAddQuestionsDialog(): void {
         this.addQuestions = new AddQuestionDialogState();
+        this.visibleDialog = ModalVisibilityStatus.AddQuestions;
     }
 
     public showCustomizeGameFormatDialog(gameFormat: IGameFormat): void {
         this.customizeGameFormat = new CustomizeGameFormatDialogState(gameFormat);
+        this.visibleDialog = ModalVisibilityStatus.CustomizeGameFormat;
     }
 
     public showExportToJsonDialog(): void {
-        this.exportToJsonDialogVisible = true;
+        this.visibleDialog = ModalVisibilityStatus.ExportToJson;
     }
 
     public showFontDialog(
@@ -127,26 +104,29 @@ export class DialogState {
             existingTextColor,
             existingPronunciationGuideColor
         );
+        this.visibleDialog = ModalVisibilityStatus.Font;
     }
 
     public showHelpDialog(): void {
-        this.helpDialogVisible = true;
+        this.visibleDialog = ModalVisibilityStatus.Help;
     }
 
     public showImportGameDialog(): void {
-        this.importGameDialogVisible = true;
+        this.visibleDialog = ModalVisibilityStatus.ImportGame;
     }
 
     public showRenamePlayerDialog(player: Player): void {
         this.renamePlayerDialog = new RenamePlayerDialogState(player);
+        this.visibleDialog = ModalVisibilityStatus.RenamePlayer;
     }
 
     public showReorderPlayersDialog(players: Player[]): void {
         this.reorderPlayersDialog = new ReorderPlayersDialogState(players);
+        this.visibleDialog = ModalVisibilityStatus.ReorderPlayers;
     }
 
     public showScoresheetDialog(): void {
-        this.scoresheetDialogVisisble = true;
+        this.visibleDialog = ModalVisibilityStatus.Scoresheet;
     }
 
     public showOKMessageDialog(title: string, message: string, onOK?: () => void): void {
@@ -156,6 +136,7 @@ export class DialogState {
             type: MessageDialogType.OK,
             onOK,
         };
+        this.visibleDialog = ModalVisibilityStatus.Message;
     }
 
     public showOKCancelMessageDialog(title: string, message: string, onOK: () => void): void {
@@ -165,6 +146,7 @@ export class DialogState {
             type: MessageDialogType.OKCancel,
             onOK,
         };
+        this.visibleDialog = ModalVisibilityStatus.Message;
     }
 
     public showYesNoCancelMessageDialog(title: string, message: string, onYes: () => void, onNo: () => void): void {
@@ -175,9 +157,10 @@ export class DialogState {
             onOK: onYes,
             onNo,
         };
+        this.visibleDialog = ModalVisibilityStatus.Message;
     }
 
     public showNewGameDialog(): void {
-        this.newGameDialogVisible = true;
+        this.visibleDialog = ModalVisibilityStatus.NewGame;
     }
 }

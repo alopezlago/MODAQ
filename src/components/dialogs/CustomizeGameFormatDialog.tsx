@@ -27,6 +27,7 @@ import { CustomizeGameFormatDialogState } from "../../state/CustomizeGameFormatD
 import { StateContext } from "../../contexts/StateContext";
 import { GameFormatPicker } from "../GameFormatPicker";
 import { SheetType } from "../../state/SheetState";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -77,7 +78,7 @@ export const CustomizeGameFormatDialog = observer(function CustomizeGameFormatDi
 
     return (
         <Dialog
-            hidden={appState.uiState.dialogState.customizeGameFormat === undefined}
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.CustomizeGameFormat}
             dialogContentProps={content}
             modalProps={modalProps}
             onDismiss={cancelHandler}

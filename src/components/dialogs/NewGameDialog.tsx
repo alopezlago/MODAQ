@@ -41,6 +41,7 @@ import { GameFormatPicker } from "../GameFormatPicker";
 import { StateContext } from "../../contexts/StateContext";
 import { IGameFormat } from "../../state/IGameFormat";
 import { FilePicker } from "../FilePicker";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const playerListHeight = "20vh";
 
@@ -92,12 +93,12 @@ export const NewGameDialog = observer(function NewGameDialog(): JSX.Element {
 
     return (
         <Dialog
-            hidden={!appState.uiState.dialogState.newGameDialogVisible}
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.NewGame}
             dialogContentProps={content}
             modalProps={modalProps}
             onDismiss={cancelHandler}
         >
-            {appState.uiState.dialogState.newGameDialogVisible && <NewGameDialogBody />}
+            {appState.uiState.dialogState.visibleDialog === ModalVisibilityStatus.NewGame && <NewGameDialogBody />}
             <DialogFooter>
                 <PrimaryButton text="Start" onClick={submitHandler} />
                 <DefaultButton text="Cancel" onClick={cancelHandler} />
@@ -660,7 +661,7 @@ function onCancel(appState: AppState): void {
 }
 
 function hideDialog(appState: AppState): void {
-    appState.uiState.dialogState.hideNewGameDialog();
+    appState.uiState.dialogState.hideModalDialog();
     appState.uiState.resetPendingNewGame();
 }
 interface INewGamePivotItemProps {

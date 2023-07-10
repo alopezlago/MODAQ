@@ -15,6 +15,7 @@ import {
 import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
 import { IMessageDialogState, MessageDialogType } from "../../state/IMessageDialogState";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const modalProps: IModalProps = {
     isBlocking: false,
@@ -22,11 +23,6 @@ const modalProps: IModalProps = {
         moveMenuItemText: "Move",
         closeMenuItemText: "Close",
         menu: ContextualMenu,
-    },
-    styles: {
-        main: {
-            top: "25vh",
-        },
     },
     topOffsetFixed: true,
 };
@@ -79,7 +75,7 @@ export const MessageDialog = observer(function MessageDialog(): JSX.Element {
 
     return (
         <Dialog
-            hidden={messageDialog == undefined}
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.Message}
             dialogContentProps={dialogContent}
             modalProps={modalProps}
             maxWidth="30vw"

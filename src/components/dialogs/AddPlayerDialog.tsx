@@ -18,6 +18,7 @@ import * as AddPlayerDialogController from "../../components/dialogs/AddPlayerDi
 import { IPlayer } from "../../state/TeamState";
 import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -39,11 +40,6 @@ const modalProps: IModalProps = {
         closeMenuItemText: "Close",
         menu: ContextualMenu,
     },
-    styles: {
-        main: {
-            top: "25vh",
-        },
-    },
     topOffsetFixed: true,
 };
 
@@ -53,7 +49,7 @@ export const AddPlayerDialog = observer(function AddPlayerDialog(): JSX.Element 
 
     return (
         <Dialog
-            hidden={appState.uiState.pendingNewPlayer === undefined}
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.AddPlayer}
             dialogContentProps={content}
             modalProps={modalProps}
             onDismiss={AddPlayerDialogController.hideDialog}

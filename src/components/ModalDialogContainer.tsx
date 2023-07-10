@@ -14,9 +14,16 @@ import { MessageDialog } from "./dialogs/MessageDialog";
 import { RenamePlayerDialog } from "./dialogs/RenamePlayerDialog";
 import { ReorderPlayerDialog } from "./dialogs/ReorderPlayerDialog";
 import { ScoresheetDialog } from "./dialogs/ScoresheetDialog";
+import { StateContext } from "../contexts/StateContext";
+import { AppState } from "../state/AppState";
+import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
 
 export const ModalDialogContainer = observer(function ModalDialogContainer() {
     // The Protest dialogs aren't here because they require extra information
+    const appState: AppState = React.useContext(StateContext);
+    if (appState.uiState.dialogState.visibleDialog === ModalVisibilityStatus.None) {
+        return <></>;
+    }
 
     return (
         <>
