@@ -142,6 +142,15 @@ export function changeOvertimeBonuses(appState: AppState, checked?: boolean): vo
     customizeGameFormatState?.updateGameFormat({ overtimeIncludesBonuses: checked });
 }
 
+export function changePairTossupsBonuses(appState: AppState, checked?: boolean): void {
+    const customizeGameFormatState: CustomizeGameFormatDialogState = getState(appState);
+    if (checked == undefined) {
+        return;
+    }
+
+    customizeGameFormatState?.updateGameFormat({ pairTossupsBonuses: checked });
+}
+
 export function resetGameFormat(appState: AppState, gameFormat: IGameFormat): void {
     appState.uiState.dialogState.customizeGameFormat?.updateGameFormat(gameFormat);
 }
