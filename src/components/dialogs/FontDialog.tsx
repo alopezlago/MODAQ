@@ -23,6 +23,7 @@ import * as FontDialogController from "./FontDialogController";
 import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
 import { FontDialogState } from "../../state/FontDialogState";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -43,11 +44,6 @@ const modalProps: IModalProps = {
         moveMenuItemText: "Move",
         closeMenuItemText: "Close",
         menu: ContextualMenu,
-    },
-    styles: {
-        main: {
-            top: "25vh",
-        },
     },
     topOffsetFixed: true,
 };
@@ -81,7 +77,7 @@ export const FontDialog = observer(function FontDialog(): JSX.Element {
 
     return (
         <Dialog
-            hidden={appState.uiState.dialogState.fontDialog == undefined}
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.Font}
             dialogContentProps={content}
             modalProps={modalProps}
             maxWidth="40vw"

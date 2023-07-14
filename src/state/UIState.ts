@@ -20,6 +20,7 @@ import { DialogState } from "./DialogState";
 import { IGameFormat } from "./IGameFormat";
 import { BuzzMenuState } from "./BuzzMenuState";
 import { ICustomExport } from "./CustomExport";
+import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 
 // TODO: Look into breaking this up into individual UI component states. Lots of pendingX fields, which could be in
 // their own (see CustomizeGameFormatDialogState)
@@ -244,6 +245,7 @@ export class UIState {
 
     public createPendingNewPlayer(teamName: string): void {
         this.pendingNewPlayer = new Player("", teamName, /* isStarter */ false);
+        this.dialogState.visibleDialog = ModalVisibilityStatus.AddPlayer;
     }
 
     public createPendingSheet(): void {
@@ -251,6 +253,7 @@ export class UIState {
             roundNumber: this.sheetsState.roundNumber ?? 1,
             sheetId: this.sheetsState.sheetId ?? "",
         };
+        this.dialogState.visibleDialog = ModalVisibilityStatus.ExportToSheets;
     }
 
     public removePlayerToFirstTeamInPendingNewGame(player: Player): void {
@@ -508,6 +511,7 @@ export class UIState {
             reason: "",
             teamName,
         };
+        this.dialogState.visibleDialog = ModalVisibilityStatus.BonusProtest;
     }
 
     public setPendingTossupProtest(teamName: string, questionIndex: number, position: number): void {
@@ -518,6 +522,7 @@ export class UIState {
             reason: "",
             teamName,
         };
+        this.dialogState.visibleDialog = ModalVisibilityStatus.TossupProtest;
     }
 
     public setPronunciationGuideColor(color: string | undefined): void {
@@ -582,6 +587,7 @@ export class UIState {
 
     public resetPendingBonusProtest(): void {
         this.pendingBonusProtestEvent = undefined;
+        this.dialogState.visibleDialog = ModalVisibilityStatus.None;
     }
 
     public resetPendingNewGame(): void {
@@ -611,14 +617,17 @@ export class UIState {
 
     public resetPendingNewPlayer(): void {
         this.pendingNewPlayer = undefined;
+        this.dialogState.visibleDialog = ModalVisibilityStatus.None;
     }
 
     public resetPendingSheet(): void {
         this.pendingSheet = undefined;
+        this.dialogState.visibleDialog = ModalVisibilityStatus.None;
     }
 
     public resetPendingTossupProtest(): void {
         this.pendingTossupProtestEvent = undefined;
+        this.dialogState.visibleDialog = ModalVisibilityStatus.None;
     }
 
     public resetSheetsId(): void {

@@ -28,6 +28,7 @@ import { Bonus, PacketState, Tossup } from "../../state/PacketState";
 import { Cycle, ICycle } from "../../state/Cycle";
 import { IPendingNewGame, PendingGameType } from "../../state/IPendingNewGame";
 import { StateContext } from "../../contexts/StateContext";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -49,11 +50,6 @@ const modalProps: IModalProps = {
         closeMenuItemText: "Close",
         menu: ContextualMenu,
     },
-    styles: {
-        main: {
-            top: "25vh",
-        },
-    },
     topOffsetFixed: true,
 };
 
@@ -66,7 +62,7 @@ export const ImportGameDialog = observer(function ImportGameDialog(): JSX.Elemen
 
     return (
         <Dialog
-            hidden={!appState.uiState.dialogState.importGameDialogVisible}
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.ImportGame}
             dialogContentProps={content}
             modalProps={modalProps}
             onDismiss={cancelHandler}
@@ -258,7 +254,7 @@ function onLoad(event: ProgressEvent<FileReader>, appState: AppState): void {
 }
 
 function hideDialog(appState: AppState): void {
-    appState.uiState.dialogState.hideImportGameDialog();
+    appState.uiState.dialogState.hideModalDialog();
     appState.uiState.resetPendingNewGame();
 }
 

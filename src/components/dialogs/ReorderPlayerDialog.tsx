@@ -23,6 +23,7 @@ import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
 import { ReorderPlayersDialogState } from "../../state/ReorderPlayersDialogState";
 import { PlayerRoster } from "../PlayerRoster";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -44,11 +45,6 @@ const modalProps: IModalProps = {
         closeMenuItemText: "Close",
         menu: ContextualMenu,
     },
-    styles: {
-        main: {
-            top: "25vh",
-        },
-    },
     topOffsetFixed: true,
 };
 
@@ -60,7 +56,7 @@ export const ReorderPlayerDialog = observer(function ReorderPlayerDialog(): JSX.
 
     return (
         <Dialog
-            hidden={appState.uiState.dialogState.reorderPlayersDialog === undefined}
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.ReorderPlayers}
             dialogContentProps={content}
             modalProps={modalProps}
             onDismiss={ReorderPlayersDialogController.hideDialog}

@@ -17,6 +17,7 @@ import { AppState } from "../../state/AppState";
 import { GameState } from "../../state/GameState";
 import { StateContext } from "../../contexts/StateContext";
 import { RoundSelector } from "../RoundSelector";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -40,7 +41,6 @@ const modalProps: IModalProps = {
     },
     styles: {
         main: {
-            top: "25vh",
             // To have max width respected normally, we'd need to pass in an IDialogStyleProps, but it ridiculously
             // requires you to pass in an entire theme to modify the max width. We could also use a modal, but that
             // requires building much of what Dialogs offer easily (close buttons, footer for buttons)
@@ -77,7 +77,7 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
 
     return (
         <Dialog
-            hidden={!appState.uiState.dialogState.exportToJsonDialogVisible}
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.ExportToJson}
             dialogContentProps={content}
             modalProps={modalProps}
             maxWidth="40vw"
@@ -110,5 +110,5 @@ function exportGame(appState: AppState): void {
 }
 
 function hideDialog(appState: AppState) {
-    appState.uiState.dialogState.hideExportToJsonDialog();
+    appState.uiState.dialogState.hideModalDialog();
 }

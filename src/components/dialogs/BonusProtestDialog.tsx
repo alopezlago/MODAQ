@@ -8,6 +8,7 @@ import { Cycle } from "../../state/Cycle";
 import { IBonusProtestEvent } from "../../state/Events";
 import { Bonus } from "../../state/PacketState";
 import { AppState } from "../../state/AppState";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 export const BonusProtestDialog = observer(function BonusProtestDialog(props: IBonusProtestDialogProps): JSX.Element {
     const submitHandler = React.useCallback(() => BonusProtestDialogController.commit(props.cycle), [props]);
@@ -35,7 +36,7 @@ export const BonusProtestDialog = observer(function BonusProtestDialog(props: IB
         <ProtestDialogBase
             appState={props.appState}
             givenAnswer={protestEvent.givenAnswer}
-            hidden={props.appState.uiState.pendingBonusProtestEvent == undefined}
+            hidden={props.appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.BonusProtest}
             hideDialog={BonusProtestDialogController.cancel}
             onSubmit={submitHandler}
             reason={protestEvent.reason}

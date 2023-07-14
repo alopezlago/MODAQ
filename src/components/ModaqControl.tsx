@@ -192,24 +192,23 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
 }
 
 function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
-    if (event.shiftKey) {
-        switch (event.key) {
-            case "N":
-                if (appState.uiState.cycleIndex + 1 < appState.game.playableCycles.length) {
-                    appState.uiState.nextCycle();
-                }
-                event.preventDefault();
-                event.stopPropagation();
+    switch (event.key.toUpperCase()) {
+        case "N":
+            if (appState.uiState.cycleIndex + 1 < appState.game.playableCycles.length) {
+                appState.uiState.nextCycle();
+            }
+            event.preventDefault();
+            event.stopPropagation();
 
-                break;
-            case "P":
-                appState.uiState.previousCycle();
-                event.preventDefault();
-                event.stopPropagation();
-                break;
-            default:
-                break;
-        }
+            break;
+        case "P":
+        case "B":
+            appState.uiState.previousCycle();
+            event.preventDefault();
+            event.stopPropagation();
+            break;
+        default:
+            break;
     }
 }
 

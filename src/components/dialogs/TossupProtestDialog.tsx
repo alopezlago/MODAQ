@@ -6,6 +6,7 @@ import { ProtestDialogBase } from "./ProtestDialogBase";
 import { UIState } from "../../state/UIState";
 import { Cycle } from "../../state/Cycle";
 import { AppState } from "../../state/AppState";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 export const TossupProtestDialog = observer(function TossupProtestDialog(
     props: ITossupProtestDialogProps
@@ -23,7 +24,7 @@ export const TossupProtestDialog = observer(function TossupProtestDialog(
             appState={props.appState}
             autoFocusOnGivenAnswer={true}
             givenAnswer={uiState.pendingTossupProtestEvent.givenAnswer}
-            hidden={uiState.pendingTossupProtestEvent == undefined}
+            hidden={uiState.dialogState.visibleDialog !== ModalVisibilityStatus.TossupProtest}
             hideDialog={TossupProtestDialogController.cancel}
             onSubmit={submitHandler}
             reason={uiState.pendingTossupProtestEvent.reason}

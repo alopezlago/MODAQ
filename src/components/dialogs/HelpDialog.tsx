@@ -15,6 +15,7 @@ import {
 } from "@fluentui/react";
 import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -36,11 +37,6 @@ const modalProps: IModalProps = {
         closeMenuItemText: "Close",
         menu: ContextualMenu,
     },
-    styles: {
-        main: {
-            top: "25vh",
-        },
-    },
     topOffsetFixed: true,
 };
 
@@ -50,7 +46,7 @@ export const HelpDialog = observer(function HelpDialog(): JSX.Element {
 
     return (
         <Dialog
-            hidden={!appState.uiState.dialogState.helpDialogVisible}
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.Help}
             dialogContentProps={content}
             modalProps={modalProps}
             maxWidth="30vw"
@@ -84,5 +80,5 @@ const HelpDialogBody = observer(function HelpDialogBody(): JSX.Element {
 
 // This is simple enough where we don't really need a controller for testing
 function hideDialog(appState: AppState): void {
-    appState.uiState.dialogState.hideHelpDialog();
+    appState.uiState.dialogState.hideModalDialog();
 }

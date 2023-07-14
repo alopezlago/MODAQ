@@ -14,6 +14,7 @@ export const ACFGameFormat: IGameFormat = {
     regulationTossupCount: 20,
     timeoutsAllowed: 1,
     pronunciationGuideMarkers: ["(", ")"],
+    pairTossupsBonuses: false,
     version: currentVersion,
 };
 
@@ -27,6 +28,7 @@ export const PACEGameFormat: IGameFormat = {
     regulationTossupCount: 20,
     timeoutsAllowed: 1,
     pronunciationGuideMarkers: ["(", ")"],
+    pairTossupsBonuses: false,
     version: currentVersion,
 };
 
@@ -45,6 +47,7 @@ export const UndefinedGameFormat: IGameFormat = {
     regulationTossupCount: 999,
     timeoutsAllowed: 999,
     pronunciationGuideMarkers: ["(", ")"],
+    pairTossupsBonuses: false,
     version: currentVersion,
 };
 

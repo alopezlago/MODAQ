@@ -56,7 +56,7 @@ export const CycleChooser = observer(function CycleChooser() {
     const previousButton: JSX.Element = (
         <TooltipHost
             aria-describedby={previousButtonTooltipId}
-            content="Previous (Shift+P)"
+            content="Previous (B or P)"
             id={previousButtonTooltipId}
         >
             <DefaultButton
@@ -86,7 +86,7 @@ export const CycleChooser = observer(function CycleChooser() {
             </PrimaryButton>
         );
     } else {
-        nextButtonTooltip = "Next (Shift+N)";
+        nextButtonTooltip = "Next (N)";
         nextButton = (
             <DefaultButton
                 aria-describedby={nextButtonTooltip}

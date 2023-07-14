@@ -167,6 +167,7 @@ describe("CustomizeGameFormatControllerTests", () => {
             CustomizeGameFormatController.changeMinimumQuestionsInOvertime(appState, "10");
             CustomizeGameFormatController.changeNegValue(appState, "-10");
             CustomizeGameFormatController.changeOvertimeBonuses(appState, true);
+            CustomizeGameFormatController.changePairTossupsBonuses(appState, true);
             CustomizeGameFormatController.changePowerMarkers(appState, "<*>");
             CustomizeGameFormatController.changePowerValues(appState, "25");
             CustomizeGameFormatController.changePronunciationGuideMarkers(appState, "[,]");
@@ -182,6 +183,7 @@ describe("CustomizeGameFormatControllerTests", () => {
                 minimumOvertimeQuestionCount: 10,
                 negValue: -10,
                 overtimeIncludesBonuses: true,
+                pairTossupsBonuses: true,
                 powers: [{ marker: "<*>", points: 25 }],
                 regulationTossupCount: 15,
                 pronunciationGuideMarkers: ["[", "]"],

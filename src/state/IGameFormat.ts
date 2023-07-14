@@ -10,6 +10,7 @@ export interface IGameFormat {
     overtimeIncludesBonuses: boolean;
     bonusesBounceBack: boolean;
     negValue: number;
+    pairTossupsBonuses: boolean;
 
     // Both of these are deprecated
     pointsForPowers?: number[];

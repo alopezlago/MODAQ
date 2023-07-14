@@ -329,6 +329,20 @@ export class GameState {
     }
 
     public getBonusIndex(cycleIndex: number): number {
+        if (this.gameFormat.pairTossupsBonuses) {
+            // Same as the cycle index plus thrown out questions
+            let thrownOutBonusesCount = 0;
+            for (let i = 0; i <= cycleIndex; i++) {
+                const cycle: Cycle = this.cycles[i];
+                if (cycle.thrownOutBonuses !== undefined) {
+                    thrownOutBonusesCount += cycle.thrownOutBonuses.length;
+                }
+            }
+
+            const index = cycleIndex + thrownOutBonusesCount;
+            return index >= this.packet.bonuses.length ? -1 : index;
+        }
+
         const previousCycleIndex: number = cycleIndex - 1;
         let usedBonusesCount = 0;
         for (let i = 0; i <= cycleIndex; i++) {

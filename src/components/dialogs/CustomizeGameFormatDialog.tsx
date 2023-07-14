@@ -27,6 +27,7 @@ import { CustomizeGameFormatDialogState } from "../../state/CustomizeGameFormatD
 import { StateContext } from "../../contexts/StateContext";
 import { GameFormatPicker } from "../GameFormatPicker";
 import { SheetType } from "../../state/SheetState";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -51,7 +52,6 @@ const modalProps: IModalProps = {
     },
     styles: {
         main: {
-            top: "10vh",
             // To have max width respected normally, we'd need to pass in an IDialogStyleProps, but it ridiculously
             // requires you to pass in an entire theme to modify the max width. We could also use a modal, but that
             // requires building much of what Dialogs offer easily (close buttons, footer for buttons)
@@ -77,7 +77,7 @@ export const CustomizeGameFormatDialog = observer(function CustomizeGameFormatDi
 
     return (
         <Dialog
-            hidden={appState.uiState.dialogState.customizeGameFormat === undefined}
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.CustomizeGameFormat}
             dialogContentProps={content}
             modalProps={modalProps}
             onDismiss={cancelHandler}
@@ -284,6 +284,12 @@ const BonusSettings = observer(function BonusSettings(props: ISettingProps): JSX
         [appState]
     );
 
+    const pairTossupsBonusesChangeHandler = React.useCallback(
+        (ev?: React.FormEvent<HTMLInputElement | HTMLElement>, checked?: boolean) =>
+            CustomizeGameFormatDialogController.changePairTossupsBonuses(appState, checked),
+        [appState]
+    );
+
     return (
         <Stack tokens={settingsStackTokens}>
             <StackItem>
@@ -298,6 +304,13 @@ const BonusSettings = observer(function BonusSettings(props: ISettingProps): JSX
                     label="Overtime includes bonuses"
                     checked={props.gameFormat.overtimeIncludesBonuses}
                     onChange={overtimeBonusesChangeHandler}
+                />
+            </StackItem>
+            <StackItem>
+                <Checkbox
+                    label="Pair tossups with bonuses"
+                    checked={props.gameFormat.pairTossupsBonuses}
+                    onChange={pairTossupsBonusesChangeHandler}
                 />
             </StackItem>
         </Stack>

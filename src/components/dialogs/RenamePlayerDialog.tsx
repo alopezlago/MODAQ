@@ -18,6 +18,7 @@ import { Player } from "../../state/TeamState";
 import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
 import { RenamePlayerDialogState } from "../../state/RenamePlayerDialogState";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -39,11 +40,6 @@ const modalProps: IModalProps = {
         closeMenuItemText: "Close",
         menu: ContextualMenu,
     },
-    styles: {
-        main: {
-            top: "25vh",
-        },
-    },
     topOffsetFixed: true,
 };
 
@@ -52,7 +48,7 @@ export const RenamePlayerDialog = observer(function RenamePlayerDialog(): JSX.El
 
     return (
         <Dialog
-            hidden={appState.uiState.dialogState.renamePlayerDialog === undefined}
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.RenamePlayer}
             dialogContentProps={content}
             modalProps={modalProps}
             onDismiss={RenamePlayerDialogController.hideDialog}

@@ -24,6 +24,7 @@ import { StateContext } from "../../contexts/StateContext";
 import { GameState } from "../../state/GameState";
 import { Player } from "../../state/TeamState";
 import { ITossupAnswerEvent } from "../../state/Events";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -51,11 +52,11 @@ const modalProps: IModalProps = {
 // Based on the scoresheet created by Ryan Rosenberg, like the one here: https://quizbowlstats.com/games/95741
 export const ScoresheetDialog = observer(function ScoresheetDialog(): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
-    const closeDialog = React.useCallback(() => appState.uiState.dialogState.hideScoresheetDialog(), [appState]);
+    const closeDialog = React.useCallback(() => appState.uiState.dialogState.hideModalDialog(), [appState]);
 
     return (
         <Dialog
-            hidden={!appState.uiState.dialogState.scoresheetDialogVisisble}
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.Scoresheet}
             maxWidth="100vw"
             dialogContentProps={content}
             modalProps={modalProps}

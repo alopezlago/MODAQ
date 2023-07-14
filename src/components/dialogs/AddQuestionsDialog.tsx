@@ -15,6 +15,7 @@ import * as AddQuestionsDialogController from "./AddQuestionsDialogController";
 import { AppState } from "../../state/AppState";
 import { PacketLoader } from "../PacketLoader";
 import { StateContext } from "../../contexts/StateContext";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -36,11 +37,6 @@ const modalProps: IModalProps = {
         closeMenuItemText: "Close",
         menu: ContextualMenu,
     },
-    styles: {
-        main: {
-            top: "25vh",
-        },
-    },
     topOffsetFixed: true,
 };
 
@@ -49,7 +45,7 @@ export const AddQuestionsDialog = observer(function AddQuestionsDialog(): JSX.El
     const appState: AppState = React.useContext(StateContext);
     return (
         <Dialog
-            hidden={appState.uiState.dialogState.addQuestions === undefined}
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.AddQuestions}
             dialogContentProps={content}
             modalProps={modalProps}
             onDismiss={AddQuestionsDialogController.cancel}

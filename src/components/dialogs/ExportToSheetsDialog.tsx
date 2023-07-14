@@ -27,6 +27,7 @@ import { ExportState, SheetType } from "../../state/SheetState";
 import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
 import { RoundSelector } from "../RoundSelector";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -49,11 +50,6 @@ const modalProps: IModalProps = {
         menu: ContextualMenu,
     },
     topOffsetFixed: true,
-    styles: {
-        main: {
-            top: "25vh",
-        },
-    },
 };
 
 const warningIconStyles: IIconStyles = {
@@ -115,7 +111,7 @@ export const ExportToSheetsDialog = observer(function ExportToSheetsDialog(): JS
 
     return (
         <Dialog
-            hidden={uiState.pendingSheet == undefined}
+            hidden={uiState.dialogState.visibleDialog !== ModalVisibilityStatus.ExportToSheets}
             dialogContentProps={content}
             modalProps={modalProps}
             maxWidth="40vw"
