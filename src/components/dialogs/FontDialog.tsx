@@ -50,7 +50,7 @@ const modalProps: IModalProps = {
 
 const defaultFont = "Segoe UI";
 
-const fonts: string[] = getAvailableFonts([
+const knownFonts: string[] = [
     "Arial",
     "Century Schoolbook L",
     "Consolas",
@@ -65,7 +65,7 @@ const fonts: string[] = getAvailableFonts([
     "Tahoma",
     "Times New Roman",
     "Verdana",
-]);
+];
 
 const minimumFontSize = 12;
 const maximumFontSize = 40;
@@ -96,6 +96,8 @@ export const FontDialog = observer(function FontDialog(): JSX.Element {
 // space and users realistically won't use most of the colors
 
 const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
+    const [fonts] = React.useState(getAvailableFonts(knownFonts));
+
     const appState: AppState = React.useContext(StateContext);
     const dialogState: FontDialogState | undefined = appState.uiState.dialogState.fontDialog;
     if (dialogState == undefined) {
