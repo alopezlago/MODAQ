@@ -408,17 +408,17 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
                         teamNameErrorMessage={teamNameErrorMessage}
                         teamLabel="Second team"
                         onMovePlayerBackward={(player) =>
-                            uiState.setPendingNewGameFirstTeamPlayers(
+                            uiState.setPendingNewGameSecondTeamPlayers(
                                 PlayerUtils.movePlayerBackward(secondTeamPlayersFromRosters, player)
                             )
                         }
                         onMovePlayerForward={(player) =>
-                            uiState.setPendingNewGameFirstTeamPlayers(
+                            uiState.setPendingNewGameSecondTeamPlayers(
                                 PlayerUtils.movePlayerForward(secondTeamPlayersFromRosters, player)
                             )
                         }
                         onMovePlayerToIndex={(player, index) =>
-                            uiState.setPendingNewGameFirstTeamPlayers(
+                            uiState.setPendingNewGameSecondTeamPlayers(
                                 PlayerUtils.movePlayerToIndex(secondTeamPlayersFromRosters, player, index)
                             )
                         }
@@ -536,17 +536,17 @@ const FromQBJRegistrationNewGameBody = observer(function FromSheetsNewGameBody(
                         teamNameErrorMessage={teamNameErrorMessage}
                         teamLabel="Second team"
                         onMovePlayerBackward={(player) =>
-                            uiState.setPendingNewGameFirstTeamPlayers(
+                            uiState.setPendingNewGameSecondTeamPlayers(
                                 PlayerUtils.movePlayerBackward(secondTeamPlayers, player)
                             )
                         }
                         onMovePlayerForward={(player) =>
-                            uiState.setPendingNewGameFirstTeamPlayers(
+                            uiState.setPendingNewGameSecondTeamPlayers(
                                 PlayerUtils.movePlayerForward(secondTeamPlayers, player)
                             )
                         }
                         onMovePlayerToIndex={(player, index) =>
-                            uiState.setPendingNewGameFirstTeamPlayers(
+                            uiState.setPendingNewGameSecondTeamPlayers(
                                 PlayerUtils.movePlayerToIndex(secondTeamPlayers, player, index)
                             )
                         }
