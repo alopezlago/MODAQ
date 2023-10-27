@@ -358,7 +358,7 @@ describe("GameStateTests", () => {
 
 function createDefaultGame(pairTossupsBonuses?: boolean): GameState {
     const game: GameState = new GameState();
-    game.addPlayers(players);
+    game.addNewPlayers(players);
     game.loadPacket(defaultPacket);
 
     if (pairTossupsBonuses) {

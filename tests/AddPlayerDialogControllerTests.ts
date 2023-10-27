@@ -21,7 +21,7 @@ function initializeApp(): AppState {
         new Player("Faye", defaultTeamNames[0], true),
         new Player("Saul", defaultTeamNames[1], true),
     ];
-    gameState.addPlayers(defaultExistingPlayers);
+    gameState.addNewPlayers(defaultExistingPlayers);
 
     AppState.resetInstance();
     const appState: AppState = AppState.instance;

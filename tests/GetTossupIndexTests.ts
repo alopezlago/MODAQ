@@ -57,7 +57,7 @@ describe("GameStateTests", () => {
 
 function createDefaultGame(): GameState {
     const game: GameState = new GameState();
-    game.addPlayers(players);
+    game.addNewPlayers(players);
     game.loadPacket(defaultPacket);
     return game;
 }

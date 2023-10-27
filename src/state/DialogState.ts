@@ -46,12 +46,16 @@ export class DialogState {
 
     public hideAddQuestionsDialog(): void {
         this.addQuestions = undefined;
-        this.hideModalDialog();
+        if (this.visibleDialog === ModalVisibilityStatus.AddQuestions) {
+            this.hideModalDialog();
+        }
     }
 
     public hideCustomizeGameFormatDialog(): void {
         this.customizeGameFormat = undefined;
-        this.hideModalDialog();
+        if (this.visibleDialog === ModalVisibilityStatus.CustomizeGameFormat) {
+            this.hideModalDialog();
+        }
     }
 
     public hideModalDialog(): void {
@@ -60,22 +64,30 @@ export class DialogState {
 
     public hideFontDialog(): void {
         this.fontDialog = undefined;
-        this.hideModalDialog();
+        if (this.visibleDialog === ModalVisibilityStatus.Font) {
+            this.hideModalDialog();
+        }
     }
 
     public hideMessageDialog(): void {
         this.messageDialog = undefined;
-        this.hideModalDialog();
+        if (this.visibleDialog === ModalVisibilityStatus.Message) {
+            this.hideModalDialog();
+        }
     }
 
     public hideRenamePlayerDialog(): void {
         this.renamePlayerDialog = undefined;
-        this.hideModalDialog();
+        if (this.visibleDialog === ModalVisibilityStatus.RenamePlayer) {
+            this.hideModalDialog();
+        }
     }
 
     public hideReorderPlayersDialog(): void {
         this.reorderPlayersDialog = undefined;
-        this.hideModalDialog();
+        if (this.visibleDialog === ModalVisibilityStatus.ReorderPlayers) {
+            this.hideModalDialog();
+        }
     }
 
     public showAddQuestionsDialog(): void {
@@ -155,7 +167,7 @@ export class DialogState {
             message,
             type: MessageDialogType.YesNocCancel,
             onOK: onYes,
-            onNo,
+            onNo: onNo,
         };
         this.visibleDialog = ModalVisibilityStatus.Message;
     }

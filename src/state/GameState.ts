@@ -2,6 +2,7 @@ import { computed, observable, action, makeObservable, when } from "mobx";
 import { format } from "mobx-sync";
 
 import * as GameFormats from "./GameFormats";
+import * as PlayerUtils from "./PlayerUtils";
 import { PacketState, Bonus, Tossup } from "./PacketState";
 import { IPlayer, Player } from "./TeamState";
 import { Cycle, ICycle } from "./Cycle";
@@ -53,8 +54,9 @@ export class GameState {
             finalScore: computed,
             playableCycles: computed,
             scores: computed,
-            addPlayer: action,
-            addPlayers: action,
+            addInactivePlayer: action,
+            addNewPlayer: action,
+            addNewPlayers: action,
             clear: action,
             loadPacket: action,
             setCycles: action,
@@ -238,11 +240,105 @@ export class GameState {
         ];
     }
 
-    public addPlayer(player: Player): void {
+    public addInactivePlayer(player: Player, cycleIndex: number): void {
+        for (let i = cycleIndex; i >= 0; i--) {
+            const cycle: Cycle = this.cycles[i];
+
+            if (
+                cycle.playerJoins &&
+                cycle.playerJoins.some((joinEvent) => PlayerUtils.playersEqual(player, joinEvent.inPlayer))
+            ) {
+                // We have a current or earlier join event with no leave events. Adding a player now is a no-op.
+                return;
+            }
+
+            if (cycle.subs) {
+                if (cycle.subs.some((subEvent) => PlayerUtils.playersEqual(player, subEvent.inPlayer))) {
+                    // We have a current or earlier join event with no leave events. Adding a player now is a no-op.
+                    return;
+                } else if (cycle.subs.some((subEvent) => PlayerUtils.playersEqual(player, subEvent.outPlayer))) {
+                    // Need to test subbing someone out and also having them join. Very strange set of events.
+                    break;
+                }
+            }
+
+            if (
+                cycle.playerLeaves &&
+                cycle.playerLeaves.some((leaveEvent) => PlayerUtils.playersEqual(player, leaveEvent.outPlayer))
+            ) {
+                // If it's the same cycle as the current one, remove the playerLeaves event, since this has priority
+                // as we're explicitly adding it afterwards
+                if (i == cycleIndex) {
+                    const leaveEvent: IPlayerLeavesEvent | undefined = cycle.playerLeaves.find((leaveEvent) =>
+                        PlayerUtils.playersEqual(player, leaveEvent.outPlayer)
+                    );
+
+                    if (leaveEvent != undefined) {
+                        cycle.removePlayerLeaves(leaveEvent);
+                    }
+                }
+
+                break;
+            }
+        }
+
+        for (let i = cycleIndex + 1; i < this.cycles.length; i++) {
+            const cycle: Cycle = this.cycles[i];
+
+            if (
+                cycle.playerLeaves &&
+                cycle.playerLeaves.some((leaveEvent) => PlayerUtils.playersEqual(player, leaveEvent.outPlayer))
+            ) {
+                break;
+            } else if (
+                cycle.subs &&
+                cycle.subs.some((subEvent) => PlayerUtils.playersEqual(player, subEvent.outPlayer))
+            ) {
+                break;
+            }
+
+            if (cycle.subs) {
+                if (cycle.subs.some((subEvent) => PlayerUtils.playersEqual(player, subEvent.inPlayer))) {
+                    // We're adding the player earlier, and there's no leave event. Remove that event and then add the new
+                    // one
+                    const subEvent: IPlayerJoinsEvent | undefined = cycle.subs.find(
+                        (joinEvent) => !PlayerUtils.playersEqual(player, joinEvent.inPlayer)
+                    );
+                    if (subEvent) {
+                        cycle.removePlayerJoins(subEvent);
+                    }
+
+                    break;
+                } else if (cycle.subs.some((subEvent) => PlayerUtils.playersEqual(player, subEvent.outPlayer))) {
+                    break;
+                }
+            }
+
+            if (
+                cycle.playerJoins &&
+                cycle.playerJoins.some((joinEvent) => PlayerUtils.playersEqual(player, joinEvent.inPlayer))
+            ) {
+                // We're adding the player earlier, and there's no leave event. Remove that event and then add the new
+                // one
+                const joinEvent: IPlayerJoinsEvent | undefined = cycle.playerJoins.find((joinEvent) =>
+                    PlayerUtils.playersEqual(player, joinEvent.inPlayer)
+                );
+                if (joinEvent) {
+                    cycle.removePlayerJoins(joinEvent);
+                }
+
+                break;
+            }
+        }
+
+        this.cycles[cycleIndex].addPlayerJoins(player);
+    }
+
+    public addNewPlayer(player: Player): void {
         this.players.push(player);
     }
 
-    public addPlayers(players: Player[]): void {
+    public addNewPlayers(players: Player[]): void {
         this.players.push(...players);
     }
 

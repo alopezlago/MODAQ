@@ -630,8 +630,8 @@ function onSubmit(appState: AppState): void {
     // We need to set the game's packet, players, etc. to the values in the uiState
     const game: GameState = appState.game;
     game.clear();
-    game.addPlayers(firstTeamPlayers.filter((player) => player.name !== ""));
-    game.addPlayers(secondTeamPlayers.filter((player) => player.name !== ""));
+    game.addNewPlayers(firstTeamPlayers.filter((player) => player.name !== ""));
+    game.addNewPlayers(secondTeamPlayers.filter((player) => player.name !== ""));
     game.loadPacket(pendingNewGame.packet);
 
     game.setGameFormat(pendingNewGame.gameFormat);

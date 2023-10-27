@@ -11,7 +11,7 @@ describe("TossupQuestionControllerTests", () => {
         it("Throw out Tossup", () => {
             AppState.resetInstance();
             const appState: AppState = AppState.instance;
-            appState.game.addPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
+            appState.game.addNewPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
 
             const packet: PacketState = new PacketState();
             packet.setTossups([

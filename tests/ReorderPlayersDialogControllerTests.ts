@@ -40,7 +40,7 @@ function initializeApp(players?: Player[]): { appState: AppState; players: Playe
     gameState.loadPacket(defaultPacket);
 
     players = players ?? defaultExistingPlayers;
-    gameState.addPlayers(players);
+    gameState.addNewPlayers(players);
 
     AppState.resetInstance();
     const appState: AppState = AppState.instance;

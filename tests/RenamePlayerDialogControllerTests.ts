@@ -33,7 +33,7 @@ function initializeApp(player: Player | undefined = undefined): { appState: AppS
     gameState.loadPacket(defaultPacket);
 
     const players: Player[] = createDefaultExistingPlayers();
-    gameState.addPlayers(players);
+    gameState.addNewPlayers(players);
 
     if (player == undefined) {
         player = players[0];
@@ -191,14 +191,14 @@ describe("RenamePlayerDialogControllerTests", () => {
             gameState.loadPacket(defaultPacket);
 
             const players: Player[] = createDefaultExistingPlayers();
-            gameState.addPlayers(players);
+            gameState.addNewPlayers(players);
 
             AppState.resetInstance();
             const appState: AppState = AppState.instance;
             appState.game = gameState;
 
             const originalPlayer: Player = new Player("Arty", defaultTeamNames[0], false);
-            gameState.addPlayer(originalPlayer);
+            gameState.addNewPlayer(originalPlayer);
             gameState.cycles[1].addPlayerJoins(originalPlayer);
             gameState.cycles[2].addSwapSubstitution(players[players.length - 1], originalPlayer);
 
