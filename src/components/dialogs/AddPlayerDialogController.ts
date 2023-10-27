@@ -18,7 +18,7 @@ export function addPlayer(): void {
         throw new Error("Tried adding a player with no new player");
     }
 
-    game.addPlayer(newPlayer);
+    game.addNewPlayer(newPlayer);
 
     // TODO: Only do this if the number of active players is less than the maximum number of active players
     game.cycles[uiState.cycleIndex].addPlayerJoins(newPlayer);

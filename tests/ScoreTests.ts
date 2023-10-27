@@ -28,7 +28,7 @@ describe("GameStateTests", () => {
         it("Game with more than two teams", () => {
             const game: GameState = new GameState();
             const thirdPlayer: Player = new Player("Charlie", "C", /* isStarter */ true);
-            game.addPlayers(players.concat(thirdPlayer));
+            game.addNewPlayers(players.concat(thirdPlayer));
             game.loadPacket(defaultPacket);
             game.setGameFormat(GameFormats.StandardPowersMACFGameFormat);
             expect(game.scores[0]).to.deep.equal([0, 0, 0]);
@@ -203,7 +203,7 @@ describe("GameStateTests", () => {
 
 function createDefaultGame(): GameState {
     const game: GameState = new GameState();
-    game.addPlayers(players);
+    game.addNewPlayers(players);
     game.loadPacket(defaultPacket);
     game.setGameFormat(GameFormats.StandardPowersMACFGameFormat);
     return game;

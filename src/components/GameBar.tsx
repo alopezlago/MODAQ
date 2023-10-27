@@ -427,21 +427,19 @@ function getPlayerManagementSubMenuItems(
     for (const teamName of teamNames) {
         const players: Player[] = game.getPlayers(teamName);
         const activePlayers: Set<Player> = game.getActivePlayers(teamName, uiState.cycleIndex);
-
-        // Potential issue: if we have an "add player" sub, they shouldn't appear before they were added?
         const subs: Player[] = players.filter((player) => !activePlayers.has(player));
 
         const activePlayerMenuItems: ICommandBarItemProps[] = [];
-        for (const activePlayer of activePlayers) {
-            const subMenuItems: ICommandBarItemProps[] = subs.map((player) => {
+        for (const player of players) {
+            const subMenuItems: ICommandBarItemProps[] = subs.map((p) => {
                 const subItemData: ISubMenuItemData = {
                     appState,
-                    activePlayer,
-                    player,
+                    activePlayer: player,
+                    player: p,
                 };
                 return {
-                    key: `sub_${teamName}_${player.name}`,
-                    text: player.name,
+                    key: `sub_${teamName}_${p.name}`,
+                    text: p.name,
                     data: subItemData,
                     onClick: onSwapPlayerClick,
                 };
@@ -457,30 +455,49 @@ function getPlayerManagementSubMenuItems(
                 },
             };
 
-            const removeItemData: ISubMenuItemData = {
+            const changeActivityItemData: ISubMenuItemData = {
                 appState,
-                activePlayer,
+                activePlayer: player,
             };
-            const removeItem: ICommandBarItemProps = {
-                key: `remove_${teamName}_${activePlayer.name}`,
-                text: "Remove",
-                data: removeItemData,
-                onClick: onRemovePlayerClick,
-                // TODO: should this be styled in a different color?
-            };
+
+            // For active players, remove. For inactive players, join
+            const isActivePlayer: boolean = activePlayers.has(player);
+            let changeActivityItem: ICommandBarItemProps;
+            if (isActivePlayer) {
+                changeActivityItem = {
+                    key: `remove_${teamName}_${player.name}`,
+                    text: "Remove",
+                    data: changeActivityItemData,
+                    onClick: onRemovePlayerClick,
+                    // TODO: should this be styled in a different color?
+                };
+            } else {
+                changeActivityItem = {
+                    key: `add_${teamName}_${player.name}`,
+                    text: "Add",
+                    data: changeActivityItemData,
+                    onClick: onAddInactivePlayerClick,
+                    // TODO: should this be styled in a different color?
+                };
+            }
+
             const renameItem: ICommandBarItemProps = {
-                key: `rename_${teamName}_${activePlayer.name}`,
+                key: `rename_${teamName}_${player.name}`,
                 text: "Rename",
-                data: removeItemData,
+                data: changeActivityItemData,
                 onClick: onRenamePlayerClick,
                 // TODO: should this be styled in a different color?
             };
 
+            const items: ICommandBarItemProps[] = isActivePlayer
+                ? [subMenuSectionItem, changeActivityItem, renameItem]
+                : [changeActivityItem, renameItem];
+
             activePlayerMenuItems.push({
-                key: `active_${teamName}_${activePlayer.name}`,
-                text: activePlayer.name,
+                key: `active_${teamName}_${player.name}`,
+                text: player.name,
                 subMenuProps: {
-                    items: [subMenuSectionItem, removeItem, renameItem],
+                    items,
                 },
             });
         }
@@ -508,10 +525,20 @@ function getPlayerManagementSubMenuItems(
         // We should disable this if there are no subs available
     };
 
+    // Couple possible approaches
+    // - Submenu for Add Player, where it's Add New Player and then all the subs
+    // - Add all players to the sub/remove submenu, but the subs action item is just "join"/"rename"
+    //     - You can get some weird behavior with joins/subs in the same event. May need to disable it if they have an
+    //       existing action (sub vs join)
+    //     - Should there be a color code for active players?
+
     const addPlayerItem: ICommandBarItemProps = {
         key: "addNewPlayer",
         text: "Add player...",
         onClick: addPlayerHandler,
+        // subMenuProps: {
+        //     items: addPlayerMenus,
+        // },
         disabled: appState.game.cycles.length === 0,
     };
 
@@ -632,6 +659,20 @@ function getProtestSubMenuItems(
             items: [protestTossupItems, protestBonusItem],
         },
     };
+}
+
+function onAddInactivePlayerClick(
+    ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
+    item?: IContextualMenuItem
+): void {
+    if (item == undefined) {
+        return;
+    } else if (!isSubMenuItemData(item.data)) {
+        return;
+    }
+
+    const appState: AppState = item.data.appState;
+    appState.game.addInactivePlayer(item.data.activePlayer, appState.uiState.cycleIndex);
 }
 
 function onProtestTossupClick(

@@ -38,7 +38,7 @@ function createMockApi(mocks: Partial<ISheetsApi>): ISheetsApi {
 function createAppStateForExport(sheetType: SheetType = SheetType.Lifsheets): AppState {
     const appState: AppState = new AppState();
 
-    appState.game.addPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
+    appState.game.addNewPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
 
     const packet: PacketState = new PacketState();
     packet.setTossups([new Tossup("This tossup has five words.", "A")]);
@@ -769,7 +769,7 @@ describe("SheetsTests", () => {
 
             const starter: Player = findPlayerOnTeam(appState, "Alpha");
             const sub = new Player("Adam", "Alpha", /* isStarter */ false);
-            appState.game.addPlayer(sub);
+            appState.game.addNewPlayer(sub);
 
             const packet: PacketState = new PacketState();
             const tossups: Tossup[] = [];
@@ -824,7 +824,7 @@ describe("SheetsTests", () => {
 
             const starter: Player = findPlayerOnTeam(appState, "Beta");
             const sub = new Player("Barbara", "Beta", /* isStarter */ false);
-            appState.game.addPlayer(sub);
+            appState.game.addNewPlayer(sub);
 
             const packet: PacketState = new PacketState();
             const tossups: Tossup[] = [];
@@ -951,7 +951,7 @@ describe("SheetsTests", () => {
         const moreThanTwoTeamsTest = async (sheetType: SheetType) => {
             const appState: AppState = createAppStateForExport(sheetType);
 
-            appState.game.addPlayer(new Player("Gail", "Gamma", true));
+            appState.game.addNewPlayer(new Player("Gail", "Gamma", true));
 
             await verifyExportToSheetsError(
                 appState,
@@ -976,7 +976,7 @@ describe("SheetsTests", () => {
             const alphaPlayersCount: number = appState.game.players.filter((player) => player.teamName === "Alpha")
                 .length;
             for (let i = 0; i < 6 - alphaPlayersCount; i++) {
-                appState.game.addPlayer(new Player(`New${i}`, "Alpha", false));
+                appState.game.addNewPlayer(new Player(`New${i}`, "Alpha", false));
             }
 
             await Sheets.exportToSheet(appState, defaultMockSheetsApi);
@@ -1003,7 +1003,7 @@ describe("SheetsTests", () => {
             const alphaPlayersCount: number = appState.game.players.filter((player) => player.teamName === "Alpha")
                 .length;
             for (let i = 0; i < 7 - alphaPlayersCount; i++) {
-                appState.game.addPlayer(new Player(`New${i}`, "Alpha", false));
+                appState.game.addNewPlayer(new Player(`New${i}`, "Alpha", false));
             }
 
             await verifyExportToSheetsError(

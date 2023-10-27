@@ -56,7 +56,7 @@ function verifyBuzz(buzz: QBJ.IMatchQuestionBuzz, player: Player, position: numb
 function verifyQBJ(updateGame: (game: GameState) => void, verifyMatch: (match: IMatch, game: GameState) => void): void {
     const game: GameState = new GameState();
     game.loadPacket(defaultPacket);
-    game.addPlayers(players);
+    game.addNewPlayers(players);
     updateGame(game);
 
     const qbj: string = QBJ.toQBJString(game);
@@ -848,7 +848,7 @@ describe("QBJTests", () => {
             verifyQBJ(
                 (game) => {
                     game.clear();
-                    game.addPlayers(players);
+                    game.addNewPlayers(players);
 
                     const packet: PacketState = new PacketState();
                     packet.setTossups([
@@ -937,7 +937,7 @@ describe("QBJTests", () => {
         it("Packet name in packets field", () => {
             const game: GameState = new GameState();
             game.loadPacket(defaultPacket);
-            game.addPlayers(players);
+            game.addNewPlayers(players);
 
             const qbj: string = QBJ.toQBJString(game, "Packet_17.docx");
             expect(qbj).to.not.be.undefined;
@@ -947,7 +947,7 @@ describe("QBJTests", () => {
         it("Round number in _round field", () => {
             const game: GameState = new GameState();
             game.loadPacket(defaultPacket);
-            game.addPlayers(players);
+            game.addNewPlayers(players);
 
             const qbj: string = QBJ.toQBJString(game, "Packet_The_U.docx", 5);
             expect(qbj).to.not.be.undefined;

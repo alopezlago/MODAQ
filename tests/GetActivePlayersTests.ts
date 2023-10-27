@@ -28,7 +28,7 @@ describe("GameStateTests", () => {
         it("All starters no subs", () => {
             const game: GameState = new GameState();
             game.setCycles([new Cycle(), new Cycle()]);
-            game.addPlayers(allStarters);
+            game.addNewPlayers(allStarters);
 
             allPlayersInSet(game.getActivePlayers(firstTeamName, 0), firstTeamStarters);
             allPlayersInSet(game.getActivePlayers(secondTeamName, 0), secondTeamStarters);
@@ -40,7 +40,7 @@ describe("GameStateTests", () => {
         it("Some non-starters no subs", () => {
             const game: GameState = new GameState();
             game.setCycles([new Cycle(), new Cycle()]);
-            game.addPlayers(allPlayers);
+            game.addNewPlayers(allPlayers);
 
             expect(game.getPlayers(firstTeamName)).to.deep.equal(
                 allPlayers.filter((player) => player.teamName === firstTeamName)
@@ -59,7 +59,7 @@ describe("GameStateTests", () => {
         it("Some non-starters, all subbed", () => {
             const game: GameState = new GameState();
             game.setCycles([new Cycle(), new Cycle(), new Cycle()]);
-            game.addPlayers(allPlayers);
+            game.addNewPlayers(allPlayers);
 
             const lastCycleIndex: number = game.cycles.length - 1;
             const subCycleIndex = 1;
@@ -88,7 +88,7 @@ describe("GameStateTests", () => {
         it("New player joins", () => {
             const game: GameState = new GameState();
             game.setCycles([new Cycle(), new Cycle(), new Cycle()]);
-            game.addPlayers(allPlayers);
+            game.addNewPlayers(allPlayers);
 
             const lastCycleIndex: number = game.cycles.length - 1;
             const joinCycleIndex = 1;
@@ -96,7 +96,7 @@ describe("GameStateTests", () => {
             const newFirstTeamPlayer = new Player("Antonio", firstTeamName, /* isStarter */ false);
             const newSecondTeamPlayer = new Player("Belle", secondTeamName, /* isStarter */ false);
 
-            game.addPlayers([newFirstTeamPlayer, newSecondTeamPlayer]);
+            game.addNewPlayers([newFirstTeamPlayer, newSecondTeamPlayer]);
             game.cycles[joinCycleIndex].addPlayerJoins(newFirstTeamPlayer);
             game.cycles[joinCycleIndex].addPlayerJoins(newSecondTeamPlayer);
 
@@ -121,7 +121,7 @@ describe("GameStateTests", () => {
         it("Player leaves", () => {
             const game: GameState = new GameState();
             game.setCycles([new Cycle(), new Cycle(), new Cycle()]);
-            game.addPlayers(allPlayers);
+            game.addNewPlayers(allPlayers);
 
             const lastCycleIndex: number = game.cycles.length - 1;
             const joinCycleIndex = 1;
@@ -154,7 +154,7 @@ describe("GameStateTests", () => {
         it("Subbed in then subbed out", () => {
             const game: GameState = new GameState();
             game.setCycles([new Cycle(), new Cycle(), new Cycle()]);
-            game.addPlayers(allPlayers);
+            game.addNewPlayers(allPlayers);
 
             const lastCycleIndex: number = game.cycles.length - 1;
             const subCycleIndex: number = lastCycleIndex - 1;

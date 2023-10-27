@@ -23,7 +23,7 @@ function initializeApp(buzzerProtests = true): AppState {
     const gameState: GameState = new GameState();
     gameState.loadPacket(defaultPacket);
 
-    gameState.addPlayers(defaultExistingPlayers);
+    gameState.addNewPlayers(defaultExistingPlayers);
 
     AppState.resetInstance();
     const appState: AppState = AppState.instance;
