@@ -6,13 +6,8 @@ import * as PlayerUtils from "../../state/PlayerUtils";
 import { Cycle } from "../../state/Cycle";
 import { AppState } from "../../state/AppState";
 import {
-    Dialog,
     DialogFooter,
     PrimaryButton,
-    ContextualMenu,
-    DialogType,
-    IDialogContentProps,
-    IModalProps,
     Stack,
     StackItem,
     ITheme,
@@ -25,29 +20,7 @@ import { GameState } from "../../state/GameState";
 import { Player } from "../../state/TeamState";
 import { ITossupAnswerEvent } from "../../state/Events";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
-
-const content: IDialogContentProps = {
-    type: DialogType.normal,
-    title: "Scoresheet",
-    closeButtonAriaLabel: "Close",
-    showCloseButton: true,
-    styles: {
-        innerContent: {
-            display: "flex",
-            flexDirection: "column",
-        },
-    },
-};
-
-const modalProps: IModalProps = {
-    isBlocking: false,
-    dragOptions: {
-        moveMenuItemText: "Move",
-        closeMenuItemText: "Close",
-        menu: ContextualMenu,
-    },
-    topOffsetFixed: true,
-};
+import { ModalDialog } from "./ModalDialog";
 
 // Based on the scoresheet created by Ryan Rosenberg, like the one here: https://quizbowlstats.com/games/95741
 export const ScoresheetDialog = observer(function ScoresheetDialog(): JSX.Element {
@@ -55,18 +28,17 @@ export const ScoresheetDialog = observer(function ScoresheetDialog(): JSX.Elemen
     const closeDialog = React.useCallback(() => appState.uiState.dialogState.hideModalDialog(), [appState]);
 
     return (
-        <Dialog
-            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.Scoresheet}
+        <ModalDialog
+            title="Scoresheet"
+            visibilityStatus={ModalVisibilityStatus.Scoresheet}
             maxWidth="100vw"
-            dialogContentProps={content}
-            modalProps={modalProps}
             onDismiss={closeDialog}
         >
             <ScoresheetDialogBody appState={appState} />
             <DialogFooter>
                 <PrimaryButton text="Close" onClick={closeDialog} />
             </DialogFooter>
-        </Dialog>
+        </ModalDialog>
     );
 });
 

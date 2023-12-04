@@ -1,54 +1,19 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import {
-    Dialog,
-    DialogFooter,
-    PrimaryButton,
-    ContextualMenu,
-    DialogType,
-    IDialogContentProps,
-    IModalProps,
-    Label,
-    Link,
-    Stack,
-    StackItem,
-} from "@fluentui/react";
+import { DialogFooter, PrimaryButton, Label, Link, Stack, StackItem } from "@fluentui/react";
 import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
-
-const content: IDialogContentProps = {
-    type: DialogType.normal,
-    title: "Help",
-    closeButtonAriaLabel: "Close",
-    showCloseButton: true,
-    styles: {
-        innerContent: {
-            display: "flex",
-            flexDirection: "column",
-        },
-    },
-};
-
-const modalProps: IModalProps = {
-    isBlocking: false,
-    dragOptions: {
-        moveMenuItemText: "Move",
-        closeMenuItemText: "Close",
-        menu: ContextualMenu,
-    },
-    topOffsetFixed: true,
-};
+import { ModalDialog } from "./ModalDialog";
 
 export const HelpDialog = observer(function HelpDialog(): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
     const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
 
     return (
-        <Dialog
-            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.Help}
-            dialogContentProps={content}
-            modalProps={modalProps}
+        <ModalDialog
+            title="Help"
+            visibilityStatus={ModalVisibilityStatus.Help}
             maxWidth="30vw"
             onDismiss={closeHandler}
         >
@@ -56,7 +21,7 @@ export const HelpDialog = observer(function HelpDialog(): JSX.Element {
             <DialogFooter>
                 <PrimaryButton text="Close" onClick={closeHandler} />
             </DialogFooter>
-        </Dialog>
+        </ModalDialog>
     );
 });
 

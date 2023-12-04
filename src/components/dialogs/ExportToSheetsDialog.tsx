@@ -2,11 +2,6 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import {
     TextField,
-    IDialogContentProps,
-    DialogType,
-    IModalProps,
-    ContextualMenu,
-    Dialog,
     DialogFooter,
     PrimaryButton,
     DefaultButton,
@@ -28,29 +23,7 @@ import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
 import { RoundSelector } from "../RoundSelector";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
-
-const content: IDialogContentProps = {
-    type: DialogType.normal,
-    title: "Export to Sheets",
-    closeButtonAriaLabel: "Close",
-    showCloseButton: true,
-    styles: {
-        innerContent: {
-            display: "flex",
-            flexDirection: "column",
-        },
-    },
-};
-
-const modalProps: IModalProps = {
-    isBlocking: false,
-    dragOptions: {
-        moveMenuItemText: "Move",
-        closeMenuItemText: "Close",
-        menu: ContextualMenu,
-    },
-    topOffsetFixed: true,
-};
+import { ModalDialog } from "./ModalDialog";
 
 const warningIconStyles: IIconStyles = {
     root: {
@@ -110,16 +83,15 @@ export const ExportToSheetsDialog = observer(function ExportToSheetsDialog(): JS
     }
 
     return (
-        <Dialog
-            hidden={uiState.dialogState.visibleDialog !== ModalVisibilityStatus.ExportToSheets}
-            dialogContentProps={content}
-            modalProps={modalProps}
+        <ModalDialog
+            title="Export to Sheets"
+            visibilityStatus={ModalVisibilityStatus.ExportToSheets}
             maxWidth="40vw"
             onDismiss={cancelHandler}
         >
             <ExportSettingsDialogBody />
             {footer}
-        </Dialog>
+        </ModalDialog>
     );
 });
 

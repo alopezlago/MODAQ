@@ -48,7 +48,7 @@ function initializeApp(player: Player | undefined = undefined): { appState: AppS
 
 function getRenamePlayerDialogState(appState: AppState): RenamePlayerDialogState {
     if (appState.uiState.dialogState.renamePlayerDialog == undefined) {
-        assert.fail("PendingNewPlayer should not be undefined");
+        assert.fail("RenamePlayerDialog should not be undefined");
     }
 
     return appState.uiState.dialogState.renamePlayerDialog;
@@ -168,8 +168,8 @@ describe("RenamePlayerDialogControllerTests", () => {
             expect(correctBuzz.marker.player.name).to.equal(name);
             expect(correctBuzz.marker.player.teamName).to.equal(originalPlayer.teamName);
 
-            const secondCycle = appState.game.cycles[2];
-            const playerLeaves: IPlayerLeavesEvent[] | undefined = secondCycle.playerLeaves;
+            const thirdCycle = appState.game.cycles[2];
+            const playerLeaves: IPlayerLeavesEvent[] | undefined = thirdCycle.playerLeaves;
             if (playerLeaves === undefined) {
                 assert.fail("Expected playerLeaves event in the third cycle");
             }

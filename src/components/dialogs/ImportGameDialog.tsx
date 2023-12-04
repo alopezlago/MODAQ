@@ -1,15 +1,10 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 import {
-    Dialog,
     DialogFooter,
     PrimaryButton,
     DefaultButton,
     Label,
-    ContextualMenu,
-    DialogType,
-    IDialogContentProps,
-    IModalProps,
     Stack,
     ILabelStyles,
     StackItem,
@@ -29,29 +24,7 @@ import { Cycle, ICycle } from "../../state/Cycle";
 import { IPendingNewGame, PendingGameType } from "../../state/IPendingNewGame";
 import { StateContext } from "../../contexts/StateContext";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
-
-const content: IDialogContentProps = {
-    type: DialogType.normal,
-    title: "Import Game",
-    closeButtonAriaLabel: "Close",
-    showCloseButton: true,
-    styles: {
-        innerContent: {
-            display: "flex",
-            flexDirection: "column",
-        },
-    },
-};
-
-const modalProps: IModalProps = {
-    isBlocking: false,
-    dragOptions: {
-        moveMenuItemText: "Move",
-        closeMenuItemText: "Close",
-        menu: ContextualMenu,
-    },
-    topOffsetFixed: true,
-};
+import { ModalDialog } from "./ModalDialog";
 
 const stackTokens: IStackTokens = { childrenGap: 10 };
 
@@ -61,18 +34,13 @@ export const ImportGameDialog = observer(function ImportGameDialog(): JSX.Elemen
     const submitHandler = React.useCallback(() => onSubmit(appState), [appState]);
 
     return (
-        <Dialog
-            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.ImportGame}
-            dialogContentProps={content}
-            modalProps={modalProps}
-            onDismiss={cancelHandler}
-        >
+        <ModalDialog title="Import Game" visibilityStatus={ModalVisibilityStatus.ImportGame} onDismiss={cancelHandler}>
             <ImportGameDialogBody />
             <DialogFooter>
                 <PrimaryButton text="Import Game" onClick={submitHandler} />
                 <DefaultButton text="Cancel" onClick={cancelHandler} />
             </DialogFooter>
-        </Dialog>
+        </ModalDialog>
     );
 });
 

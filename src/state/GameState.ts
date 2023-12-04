@@ -18,6 +18,7 @@ import { IGameFormat } from "./IGameFormat";
 export class GameState {
     public packet: PacketState;
 
+    @format((deserializedArray: IPlayer[]) => deserializedArray.map((p) => new Player(p.name, p.teamName, p.isStarter)))
     public players: Player[];
 
     // In general we should prefer playableCycles, but if it's used for updating cycles directly, then
@@ -238,6 +239,12 @@ export class GameState {
             [this.finalScore[0] + swings[0].for, this.finalScore[1] - swings[1].against],
             [this.finalScore[0] - swings[0].against, this.finalScore[1] + swings[1].for],
         ];
+    }
+
+    private static updateTeamNameIfNeeded(object: { teamName: string }, oldName: string, newName: string): void {
+        if (object.teamName === oldName) {
+            object.teamName = newName;
+        }
     }
 
     public addInactivePlayer(player: Player, cycleIndex: number): void {
@@ -603,6 +610,99 @@ export class GameState {
                     } else if (sub.outPlayer.name === oldPlayerName && sub.outPlayer.teamName === playerTeam) {
                         sub.outPlayer.name = newPlayerName;
                     }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    public tryUpdateTeamName(oldTeamName: string, newTeamName: string): boolean {
+        newTeamName = newTeamName.trim();
+        if (newTeamName === "") {
+            return false;
+        }
+
+        // If the names are the same, no update is needed
+        if (oldTeamName === newTeamName) {
+            return true;
+        }
+
+        // Need to make sure we won't have two teams that have the new name
+        for (const teamName of this.teamNames) {
+            if (teamName === newTeamName) {
+                return false;
+            }
+        }
+
+        // Update all player team names matching this
+        for (const player of this.players) {
+            if (player.teamName === oldTeamName) {
+                player.setTeamName(newTeamName);
+            }
+        }
+
+        // Update all cycles that use this team name. Follow the guidance from tryUpdatePlayerName
+        // If we need this to be more performant, we should be able to get away with updating the name just once,
+        // but we do it everywhere here in case we use a copy (.e.g. like {...player}). Mobx may block this sometimes
+        for (const cycle of this.cycles) {
+            if (cycle.correctBuzz != undefined) {
+                GameState.updateTeamNameIfNeeded(cycle.correctBuzz.marker.player, oldTeamName, newTeamName);
+            }
+
+            if (cycle.wrongBuzzes != undefined) {
+                for (const wrongBuzz of cycle.wrongBuzzes) {
+                    GameState.updateTeamNameIfNeeded(wrongBuzz.marker.player, oldTeamName, newTeamName);
+                }
+            }
+
+            if (cycle.bonusAnswer != undefined) {
+                if (cycle.bonusAnswer.receivingTeamName === oldTeamName) {
+                    cycle.bonusAnswer.receivingTeamName = newTeamName;
+                }
+
+                if (cycle.bonusAnswer.parts != undefined) {
+                    for (const part of cycle.bonusAnswer.parts) {
+                        GameState.updateTeamNameIfNeeded(part, oldTeamName, newTeamName);
+                    }
+                }
+            }
+
+            if (cycle.timeouts) {
+                for (const timeout of cycle.timeouts) {
+                    GameState.updateTeamNameIfNeeded(timeout, oldTeamName, newTeamName);
+                }
+            }
+
+            if (cycle.playerJoins != undefined) {
+                for (const join of cycle.playerJoins) {
+                    GameState.updateTeamNameIfNeeded(join.inPlayer, oldTeamName, newTeamName);
+                }
+            }
+
+            if (cycle.playerLeaves != undefined) {
+                for (const leave of cycle.playerLeaves) {
+                    GameState.updateTeamNameIfNeeded(leave.outPlayer, oldTeamName, newTeamName);
+                }
+            }
+
+            if (cycle.subs != undefined) {
+                // Could be in or out player
+                for (const sub of cycle.subs) {
+                    GameState.updateTeamNameIfNeeded(sub.inPlayer, oldTeamName, newTeamName);
+                    GameState.updateTeamNameIfNeeded(sub.outPlayer, oldTeamName, newTeamName);
+                }
+            }
+
+            if (cycle.tossupProtests != undefined) {
+                for (const protest of cycle.tossupProtests) {
+                    GameState.updateTeamNameIfNeeded(protest, oldTeamName, newTeamName);
+                }
+            }
+
+            if (cycle.bonusProtests != undefined) {
+                for (const protest of cycle.bonusProtests) {
+                    GameState.updateTeamNameIfNeeded(protest, oldTeamName, newTeamName);
                 }
             }
         }

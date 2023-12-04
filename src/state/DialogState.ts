@@ -9,6 +9,7 @@ import { Player } from "./TeamState";
 import { ReorderPlayersDialogState } from "./ReorderPlayersDialogState";
 import { FontDialogState } from "./FontDialogState";
 import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
+import { RenameTeamDialogState } from "./RenameTeamDialogState";
 
 export class DialogState {
     @ignore
@@ -27,6 +28,9 @@ export class DialogState {
     public renamePlayerDialog: RenamePlayerDialogState | undefined;
 
     @ignore
+    public renameTeamDialog: RenameTeamDialogState | undefined;
+
+    @ignore
     public reorderPlayersDialog: ReorderPlayersDialogState | undefined;
 
     @ignore
@@ -40,6 +44,7 @@ export class DialogState {
         this.fontDialog = undefined;
         this.messageDialog = undefined;
         this.renamePlayerDialog = undefined;
+        this.renameTeamDialog = undefined;
         this.reorderPlayersDialog = undefined;
         this.visibleDialog = ModalVisibilityStatus.None;
     }
@@ -79,6 +84,13 @@ export class DialogState {
     public hideRenamePlayerDialog(): void {
         this.renamePlayerDialog = undefined;
         if (this.visibleDialog === ModalVisibilityStatus.RenamePlayer) {
+            this.hideModalDialog();
+        }
+    }
+
+    public hideRenameTeamDialog(): void {
+        this.renameTeamDialog = undefined;
+        if (this.visibleDialog === ModalVisibilityStatus.RenameTeam) {
             this.hideModalDialog();
         }
     }
@@ -130,6 +142,11 @@ export class DialogState {
     public showRenamePlayerDialog(player: Player): void {
         this.renamePlayerDialog = new RenamePlayerDialogState(player);
         this.visibleDialog = ModalVisibilityStatus.RenamePlayer;
+    }
+
+    public showRenameTeamDialog(initialTeamName: string): void {
+        this.renameTeamDialog = new RenameTeamDialogState(initialTeamName);
+        this.visibleDialog = ModalVisibilityStatus.RenameTeam;
     }
 
     public showReorderPlayersDialog(players: Player[]): void {

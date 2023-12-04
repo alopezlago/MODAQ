@@ -1,14 +1,9 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 import {
-    Dialog,
     DialogFooter,
     PrimaryButton,
     DefaultButton,
-    ContextualMenu,
-    DialogType,
-    IDialogContentProps,
-    IModalProps,
     SpinButton,
     Dropdown,
     IDropdownOption,
@@ -24,29 +19,7 @@ import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
 import { FontDialogState } from "../../state/FontDialogState";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
-
-const content: IDialogContentProps = {
-    type: DialogType.normal,
-    title: "Font",
-    closeButtonAriaLabel: "Close",
-    showCloseButton: true,
-    styles: {
-        innerContent: {
-            display: "flex",
-            flexDirection: "column",
-        },
-    },
-};
-
-const modalProps: IModalProps = {
-    isBlocking: false,
-    dragOptions: {
-        moveMenuItemText: "Move",
-        closeMenuItemText: "Close",
-        menu: ContextualMenu,
-    },
-    topOffsetFixed: true,
-};
+import { ModalDialog } from "./ModalDialog";
 
 const defaultFont = "Segoe UI";
 
@@ -73,13 +46,10 @@ const maximumFontSize = 40;
 const stackTokens: Partial<IStackTokens> = { childrenGap: 10 };
 
 export const FontDialog = observer(function FontDialog(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
-
     return (
-        <Dialog
-            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.Font}
-            dialogContentProps={content}
-            modalProps={modalProps}
+        <ModalDialog
+            title="Font"
+            visibilityStatus={ModalVisibilityStatus.Font}
             maxWidth="40vw"
             onDismiss={FontDialogController.cancel}
         >
@@ -88,7 +58,7 @@ export const FontDialog = observer(function FontDialog(): JSX.Element {
                 <PrimaryButton text="OK" onClick={FontDialogController.update} />
                 <DefaultButton text="Cancel" onClick={FontDialogController.cancel} />
             </DialogFooter>
-        </Dialog>
+        </ModalDialog>
     );
 });
 
@@ -154,6 +124,11 @@ const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
             key: "burgundy",
             text: "Burgundy",
             data: "#770077",
+        },
+        {
+            key: "black",
+            text: "Black",
+            data: "#000000",
         },
         {
             key: "darkGray",

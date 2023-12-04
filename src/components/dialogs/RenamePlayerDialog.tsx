@@ -1,17 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import {
-    TextField,
-    IDialogContentProps,
-    DialogType,
-    IModalProps,
-    ContextualMenu,
-    Dialog,
-    DialogFooter,
-    PrimaryButton,
-    DefaultButton,
-    Label,
-} from "@fluentui/react";
+import { TextField, DialogFooter, PrimaryButton, DefaultButton, Label } from "@fluentui/react";
 
 import * as RenamePlayerDialogController from "../../components/dialogs/RenamePlayerDialogController";
 import { Player } from "../../state/TeamState";
@@ -19,38 +8,13 @@ import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
 import { RenamePlayerDialogState } from "../../state/RenamePlayerDialogState";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
-
-const content: IDialogContentProps = {
-    type: DialogType.normal,
-    title: "Rename Player",
-    closeButtonAriaLabel: "Close",
-    showCloseButton: true,
-    styles: {
-        innerContent: {
-            display: "flex",
-            flexDirection: "column",
-        },
-    },
-};
-
-const modalProps: IModalProps = {
-    isBlocking: false,
-    dragOptions: {
-        moveMenuItemText: "Move",
-        closeMenuItemText: "Close",
-        menu: ContextualMenu,
-    },
-    topOffsetFixed: true,
-};
+import { ModalDialog } from "./ModalDialog";
 
 export const RenamePlayerDialog = observer(function RenamePlayerDialog(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
-
     return (
-        <Dialog
-            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.RenamePlayer}
-            dialogContentProps={content}
-            modalProps={modalProps}
+        <ModalDialog
+            title="Rename Player"
+            visibilityStatus={ModalVisibilityStatus.RenamePlayer}
             onDismiss={RenamePlayerDialogController.hideDialog}
         >
             <RenamePlayerDialogBody />
@@ -58,7 +22,7 @@ export const RenamePlayerDialog = observer(function RenamePlayerDialog(): JSX.El
                 <PrimaryButton text="OK" onClick={RenamePlayerDialogController.renamePlayer} />
                 <DefaultButton text="Cancel" onClick={RenamePlayerDialogController.hideDialog} />
             </DialogFooter>
-        </Dialog>
+        </ModalDialog>
     );
 });
 

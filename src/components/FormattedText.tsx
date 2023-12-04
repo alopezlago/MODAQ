@@ -72,6 +72,7 @@ const useStyles = memoizeFunction(
         mergeStyleSets({
             text: {
                 display: "inline",
+                textDecorationSkipInk: "none",
             },
             pronunciationGuide: {
                 // Don't override the color if it's disabled; the container has that responsibility
