@@ -24,10 +24,10 @@ export const TossupProtestDialog = observer(function TossupProtestDialog(
             appState={props.appState}
             autoFocusOnGivenAnswer={true}
             givenAnswer={uiState.pendingTossupProtestEvent.givenAnswer}
-            hidden={uiState.dialogState.visibleDialog !== ModalVisibilityStatus.TossupProtest}
             hideDialog={TossupProtestDialogController.cancel}
             onSubmit={submitHandler}
             reason={uiState.pendingTossupProtestEvent.reason}
+            visibilityStatus={ModalVisibilityStatus.TossupProtest}
         />
     );
 });

@@ -3,11 +3,6 @@ import { observer } from "mobx-react-lite";
 import {
     Dropdown,
     IDropdownOption,
-    IDialogContentProps,
-    DialogType,
-    IModalProps,
-    ContextualMenu,
-    Dialog,
     DialogFooter,
     PrimaryButton,
     DefaultButton,
@@ -24,41 +19,16 @@ import { StateContext } from "../../contexts/StateContext";
 import { ReorderPlayersDialogState } from "../../state/ReorderPlayersDialogState";
 import { PlayerRoster } from "../PlayerRoster";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
-
-const content: IDialogContentProps = {
-    type: DialogType.normal,
-    title: "Reorder Players",
-    closeButtonAriaLabel: "Close",
-    showCloseButton: true,
-    styles: {
-        innerContent: {
-            display: "flex",
-            flexDirection: "column",
-        },
-    },
-};
-
-const modalProps: IModalProps = {
-    isBlocking: false,
-    dragOptions: {
-        moveMenuItemText: "Move",
-        closeMenuItemText: "Close",
-        menu: ContextualMenu,
-    },
-    topOffsetFixed: true,
-};
+import { ModalDialog } from "./ModalDialog";
 
 const dialogBodyTokens: IStackTokens = { childrenGap: 10 };
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const ReorderPlayerDialog = observer(function ReorderPlayerDialog(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
-
     return (
-        <Dialog
-            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.ReorderPlayers}
-            dialogContentProps={content}
-            modalProps={modalProps}
+        <ModalDialog
+            title="Reorder Players"
+            visibilityStatus={ModalVisibilityStatus.ReorderPlayers}
             onDismiss={ReorderPlayersDialogController.hideDialog}
         >
             <ReorderPlayerDialogBody />
@@ -66,7 +36,7 @@ export const ReorderPlayerDialog = observer(function ReorderPlayerDialog(): JSX.
                 <PrimaryButton text="OK" onClick={ReorderPlayersDialogController.submit} />
                 <DefaultButton text="Cancel" onClick={ReorderPlayersDialogController.hideDialog} />
             </DialogFooter>
-        </Dialog>
+        </ModalDialog>
     );
 });
 

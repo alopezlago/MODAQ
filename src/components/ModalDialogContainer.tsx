@@ -17,6 +17,7 @@ import { ScoresheetDialog } from "./dialogs/ScoresheetDialog";
 import { StateContext } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
+import { RenameTeamDialog } from "./dialogs/RenameTeamDialog";
 
 export const ModalDialogContainer = observer(function ModalDialogContainer() {
     // The Protest dialogs aren't here because they require extra information
@@ -38,6 +39,7 @@ export const ModalDialogContainer = observer(function ModalDialogContainer() {
             <MessageDialog />
             <NewGameDialog />
             <RenamePlayerDialog />
+            <RenameTeamDialog />
             <ReorderPlayerDialog />
             <ScoresheetDialog />
         </>

@@ -1,29 +1,12 @@
 import * as React from "react";
-import { Dialog, DialogFooter, IDialogContentProps, DialogType } from "@fluentui/react/lib/Dialog";
-import { IModalProps } from "@fluentui/react/lib/Modal";
-import { ContextualMenu } from "@fluentui/react/lib/ContextualMenu";
+import { DialogFooter } from "@fluentui/react/lib/Dialog";
 import { PrimaryButton, DefaultButton } from "@fluentui/react/lib/Button";
 import { observer } from "mobx-react-lite";
 
 import { TextField } from "@fluentui/react/lib/TextField";
 import { AppState } from "../../state/AppState";
-
-const content: IDialogContentProps = {
-    type: DialogType.normal,
-    title: "Add Protest",
-    closeButtonAriaLabel: "Close",
-    showCloseButton: true,
-};
-
-const modalProps: IModalProps = {
-    isBlocking: false,
-    dragOptions: {
-        moveMenuItemText: "Move",
-        closeMenuItemText: "Close",
-        menu: ContextualMenu,
-    },
-    topOffsetFixed: true,
-};
+import { ModalDialog } from "./ModalDialog";
+import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 export const ProtestDialogBase = observer(function ProtestDialogBase(
     props: React.PropsWithChildren<IProtestDialogBaseProps>
@@ -42,7 +25,7 @@ export const ProtestDialogBase = observer(function ProtestDialogBase(
     const cancelHandler = React.useCallback(() => onCancel(props), [props]);
 
     return (
-        <Dialog hidden={props.hidden} dialogContentProps={content} modalProps={modalProps} onDismiss={cancelHandler}>
+        <ModalDialog title="Add Protest" visibilityStatus={props.visibilityStatus} onDismiss={cancelHandler}>
             {props.children}
             <TextField
                 label="Given answer"
@@ -61,7 +44,7 @@ export const ProtestDialogBase = observer(function ProtestDialogBase(
                 <PrimaryButton text="OK" onClick={submitHandler} />
                 <DefaultButton text="Cancel" onClick={cancelHandler} />
             </DialogFooter>
-        </Dialog>
+        </ModalDialog>
     );
 });
 
@@ -78,7 +61,7 @@ export interface IProtestDialogBaseProps {
     appState: AppState;
     autoFocusOnGivenAnswer?: boolean;
     givenAnswer: string | undefined;
-    hidden: boolean;
+    visibilityStatus: ModalVisibilityStatus;
     reason: string;
 
     hideDialog: () => void;

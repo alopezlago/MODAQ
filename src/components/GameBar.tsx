@@ -95,6 +95,14 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         uiState.dialogState.showReorderPlayersDialog(game.players);
     }, [uiState, game]);
 
+    const renameTeamHandler = React.useCallback(() => {
+        if (game.players.length === 0) {
+            return;
+        }
+
+        uiState.dialogState.showRenameTeamDialog(game.players[0].teamName);
+    }, [uiState, game]);
+
     const items: ICommandBarItemProps[] = appState.uiState.hideNewGame
         ? []
         : [
@@ -147,6 +155,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         addPlayerHandler,
         protestBonusHandler,
         reorderPlayersHandler,
+        renameTeamHandler,
         addQuestionsHandler
     );
     items.push({
@@ -219,6 +228,7 @@ function getActionSubMenuItems(
     addPlayerHandler: () => void,
     protestBonusHandler: () => void,
     reorderPlayersHandler: () => void,
+    renameTeamHandler: () => void,
     addQuestionsHandler: () => void
 ): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
@@ -230,7 +240,8 @@ function getActionSubMenuItems(
         game,
         uiState,
         addPlayerHandler,
-        reorderPlayersHandler
+        reorderPlayersHandler,
+        renameTeamHandler
     );
     items.push(playerManagementSection);
 
@@ -420,10 +431,11 @@ function getPlayerManagementSubMenuItems(
     game: GameState,
     uiState: UIState,
     addPlayerHandler: () => void,
-    reorderPlayersHandler: () => void
+    reorderPlayersHandler: () => void,
+    renameTeamHandler: () => void
 ): ICommandBarItemProps {
     const teamNames: string[] = game.teamNames;
-    const swapActivePlayerMenus: ICommandBarItemProps[] = [];
+    const playerActionsMenus: ICommandBarItemProps[] = [];
     for (const teamName of teamNames) {
         const players: Player[] = game.getPlayers(teamName);
         const activePlayers: Set<Player> = game.getActivePlayers(teamName, uiState.cycleIndex);
@@ -502,7 +514,7 @@ function getPlayerManagementSubMenuItems(
             });
         }
 
-        swapActivePlayerMenus.push({
+        playerActionsMenus.push({
             key: `active_${teamName}`,
             itemType: ContextualMenuItemType.Section,
             sectionProps: {
@@ -514,13 +526,13 @@ function getPlayerManagementSubMenuItems(
     }
 
     // TODO: This should be under a section for player management (add player, subs)
-    const swapPlayerItem: ICommandBarItemProps = {
-        key: "swapPlayer",
-        text: "Substitute/Remove",
+    const playerActionsItem: ICommandBarItemProps = {
+        key: "player",
+        text: "Player",
         subMenuProps: {
-            items: swapActivePlayerMenus,
+            items: playerActionsMenus,
         },
-        disabled: swapActivePlayerMenus.length === 0,
+        disabled: playerActionsMenus.length === 0,
         // This needs its own submenu, with all the starters, then all the possible subs
         // We should disable this if there are no subs available
     };
@@ -549,13 +561,20 @@ function getPlayerManagementSubMenuItems(
         disabled: appState.game.cycles.length === 0,
     };
 
+    const renameTeamItem: ICommandBarItemProps = {
+        key: "renameTeam",
+        text: "Rename team...",
+        onClick: renameTeamHandler,
+        disabled: appState.game.cycles.length === 0,
+    };
+
     return {
-        key: "playerManagement",
+        key: "teamManagement",
         itemType: ContextualMenuItemType.Section,
         sectionProps: {
             bottomDivider: true,
-            title: "Player Management",
-            items: [swapPlayerItem, addPlayerItem, reorderPlayersItem],
+            title: "Team Management",
+            items: [playerActionsItem, addPlayerItem, reorderPlayersItem, renameTeamItem],
         },
     };
 }
@@ -766,7 +785,7 @@ function onSwapPlayerClick(
 
     const additionalHint: string =
         Math.abs(cycleIndex - halftimeIndex) <= 1
-            ? ` If you want to substitue a player at halftime, do it on question ${Math.floor(halftimeIndex + 1)}.`
+            ? ` If you want to substitute a player at halftime, do it on question ${Math.floor(halftimeIndex + 1)}.`
             : "";
     item.data.appState.uiState.dialogState.showOKCancelMessageDialog(
         "Substitute Player",

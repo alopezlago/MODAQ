@@ -3,9 +3,6 @@ import { observer } from "mobx-react-lite";
 import {
     IDialogContentProps,
     DialogType,
-    IModalProps,
-    ContextualMenu,
-    Dialog,
     DialogFooter,
     PrimaryButton,
     DefaultButton,
@@ -28,6 +25,7 @@ import { StateContext } from "../../contexts/StateContext";
 import { GameFormatPicker } from "../GameFormatPicker";
 import { SheetType } from "../../state/SheetState";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
+import { ModalDialog } from "./ModalDialog";
 
 const content: IDialogContentProps = {
     type: DialogType.normal,
@@ -41,24 +39,6 @@ const content: IDialogContentProps = {
             marginBottom: 30,
         },
     },
-};
-
-const modalProps: IModalProps = {
-    isBlocking: false,
-    dragOptions: {
-        moveMenuItemText: "Move",
-        closeMenuItemText: "Close",
-        menu: ContextualMenu,
-    },
-    styles: {
-        main: {
-            // To have max width respected normally, we'd need to pass in an IDialogStyleProps, but it ridiculously
-            // requires you to pass in an entire theme to modify the max width. We could also use a modal, but that
-            // requires building much of what Dialogs offer easily (close buttons, footer for buttons)
-            minWidth: "30vw !important",
-        },
-    },
-    topOffsetFixed: true,
 };
 
 const pivotStyles: Partial<IPivotStyles> = {
@@ -76,10 +56,10 @@ export const CustomizeGameFormatDialog = observer(function CustomizeGameFormatDi
     const cancelHandler = React.useCallback(() => CustomizeGameFormatDialogController.cancel(appState), [appState]);
 
     return (
-        <Dialog
-            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.CustomizeGameFormat}
+        <ModalDialog
+            title="Customize Game Format"
+            visibilityStatus={ModalVisibilityStatus.CustomizeGameFormat}
             dialogContentProps={content}
-            modalProps={modalProps}
             onDismiss={cancelHandler}
         >
             <CustomizeGameFormatDialogBody />
@@ -87,7 +67,7 @@ export const CustomizeGameFormatDialog = observer(function CustomizeGameFormatDi
                 <PrimaryButton text="Save" onClick={submitHandler} />
                 <DefaultButton text="Cancel" onClick={cancelHandler} />
             </DialogFooter>
-        </Dialog>
+        </ModalDialog>
     );
 });
 

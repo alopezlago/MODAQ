@@ -1,57 +1,20 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import {
-    Dropdown,
-    TextField,
-    IDropdownOption,
-    IDialogContentProps,
-    DialogType,
-    IModalProps,
-    ContextualMenu,
-    Dialog,
-    DialogFooter,
-    PrimaryButton,
-    DefaultButton,
-} from "@fluentui/react";
+import { Dropdown, TextField, IDropdownOption, DialogFooter, PrimaryButton, DefaultButton } from "@fluentui/react";
 
 import * as AddPlayerDialogController from "../../components/dialogs/AddPlayerDialogController";
 import { IPlayer } from "../../state/TeamState";
 import { AppState } from "../../state/AppState";
 import { StateContext } from "../../contexts/StateContext";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
-
-const content: IDialogContentProps = {
-    type: DialogType.normal,
-    title: "Add Player",
-    closeButtonAriaLabel: "Close",
-    showCloseButton: true,
-    styles: {
-        innerContent: {
-            display: "flex",
-            flexDirection: "column",
-        },
-    },
-};
-
-const modalProps: IModalProps = {
-    isBlocking: false,
-    dragOptions: {
-        moveMenuItemText: "Move",
-        closeMenuItemText: "Close",
-        menu: ContextualMenu,
-    },
-    topOffsetFixed: true,
-};
+import { ModalDialog } from "./ModalDialog";
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const AddPlayerDialog = observer(function AddPlayerDialog(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
-
     return (
-        <Dialog
-            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.AddPlayer}
-            dialogContentProps={content}
-            modalProps={modalProps}
+        <ModalDialog
+            title="Add Player"
+            visibilityStatus={ModalVisibilityStatus.AddPlayer}
             onDismiss={AddPlayerDialogController.hideDialog}
         >
             <AddPlayerDialogBody />
@@ -59,7 +22,7 @@ export const AddPlayerDialog = observer(function AddPlayerDialog(): JSX.Element 
                 <PrimaryButton text="Add" onClick={AddPlayerDialogController.addPlayer} />
                 <DefaultButton text="Cancel" onClick={AddPlayerDialogController.hideDialog} />
             </DialogFooter>
-        </Dialog>
+        </ModalDialog>
     );
 });
 

@@ -36,10 +36,10 @@ export const BonusProtestDialog = observer(function BonusProtestDialog(props: IB
         <ProtestDialogBase
             appState={props.appState}
             givenAnswer={protestEvent.givenAnswer}
-            hidden={props.appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.BonusProtest}
             hideDialog={BonusProtestDialogController.cancel}
             onSubmit={submitHandler}
             reason={protestEvent.reason}
+            visibilityStatus={ModalVisibilityStatus.BonusProtest}
         >
             {children}
         </ProtestDialogBase>
