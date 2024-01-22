@@ -7,6 +7,7 @@ import { GameState } from "src/state/GameState";
 import { Bonus, PacketState, Tossup } from "src/state/PacketState";
 import { Player } from "src/state/TeamState";
 import { IGameFormat } from "src/state/IGameFormat";
+import { IResult } from "src/IResult";
 
 const firstTeamPlayers: Player[] = [
     new Player("Alice", "A", /* isStarter */ true),
@@ -957,8 +958,19 @@ describe("QBJTests", () => {
     });
     describe("parseRegistration", () => {
         function verifyRegistration(tournament: ITournament, verify: (players: Player[]) => void) {
-            verify(QBJ.parseRegistration(JSON.stringify(tournament)));
-            verify(QBJ.parseRegistration(JSON.stringify(tournament.registrations)));
+            const firstResult: IResult<Player[]> = QBJ.parseRegistration(JSON.stringify(tournament));
+            if (!firstResult.success) {
+                assert.fail("First result should've succeeded");
+            }
+
+            verify(firstResult.value);
+
+            const secondResult: IResult<Player[]> = QBJ.parseRegistration(JSON.stringify(tournament.registrations));
+            if (!secondResult.success) {
+                assert.fail("Second result should've succeeded");
+            }
+
+            verify(secondResult.value);
         }
 
         it("Parse single registration", () => {
@@ -1119,6 +1131,137 @@ describe("QBJTests", () => {
                 expect(lastPlayer.teamName).to.equal(teamName);
                 expect(lastPlayer.isStarter).to.be.false;
             });
+        });
+        it("Registration fails from missing team name", () => {
+            const tournament: any = {
+                name: "Tournament",
+                registrations: [
+                    {
+                        name: "My tournament",
+                        teams: [
+                            {
+                                players: [
+                                    {
+                                        name: "Alice",
+                                    },
+                                    {
+                                        name: "Alan",
+                                    },
+                                    {
+                                        name: "Alexandra",
+                                    },
+                                    {
+                                        name: "Arthur",
+                                    },
+                                    {
+                                        name: "Anna",
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            const json: string = JSON.stringify(tournament);
+            expect(QBJ.parseRegistration(json).success).to.be.false;
+        });
+        it("Registration fails from missing player name", () => {
+            const tournament: any = {
+                name: "Tournament",
+                registrations: [
+                    {
+                        name: "My tournament",
+                        teams: [
+                            {
+                                name: "Washington",
+                                players: [
+                                    {},
+                                    {
+                                        name: "Alexandra",
+                                    },
+                                    {
+                                        name: "Arthur",
+                                    },
+                                    {
+                                        name: "Anna",
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            const json: string = JSON.stringify(tournament);
+            expect(QBJ.parseRegistration(json).success).to.be.false;
+        });
+        it("Registration fails from missing registrations field", () => {
+            const tournament: any = {
+                name: "Tournament",
+            };
+
+            const json: string = JSON.stringify(tournament);
+            expect(QBJ.parseRegistration(json).success).to.be.false;
+        });
+        it("Registration fails from wrongly typed registrations field", () => {
+            const tournament: any = {
+                name: "Tournament",
+                registrations: "I'm a string",
+            };
+
+            const json: string = JSON.stringify(tournament);
+            expect(QBJ.parseRegistration(json).success).to.be.false;
+        });
+        it("Registration fails from having no teams field", () => {
+            const tournament: any = {
+                name: "Tournament",
+                registrations: [
+                    {
+                        name: "My tournament",
+                    },
+                ],
+            };
+
+            const json: string = JSON.stringify(tournament);
+            expect(QBJ.parseRegistration(json).success).to.be.false;
+        });
+        it("Registration fails from having no teams", () => {
+            const tournament: any = {
+                name: "Tournament",
+                registrations: [
+                    {
+                        name: "My tournament",
+                        teams: [],
+                    },
+                ],
+            };
+
+            const json: string = JSON.stringify(tournament);
+            expect(QBJ.parseRegistration(json).success).to.be.false;
+        });
+        it("Registration fails from having a team with no players", () => {
+            const tournament: any = {
+                name: "Tournament",
+                registrations: [
+                    {
+                        name: "My tournament",
+                        teams: [
+                            {
+                                name: "Washington",
+                                players: [],
+                            },
+                            {
+                                name: "Boise St.",
+                                players: [{ name: "Zach" }],
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            const json: string = JSON.stringify(tournament);
+            expect(QBJ.parseRegistration(json).success).to.be.false;
         });
     });
 });

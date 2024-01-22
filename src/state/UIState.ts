@@ -62,6 +62,9 @@ export class UIState {
     @ignore
     public exportRoundNumber: number;
 
+    // Default should be to always show bonuses. This setting didn't exist before, so use hide instead of show
+    public hideBonusOnDeadTossup: boolean;
+
     @ignore
     public hideNewGame: boolean;
 
@@ -131,6 +134,7 @@ export class UIState {
         this.customExportIntervalId = undefined;
         this.customExportStatus = undefined;
         this.exportRoundNumber = 1;
+        this.hideBonusOnDeadTossup = false;
         this.hideNewGame = false;
 
         // Default to Fabric UI's default font (Segoe UI), then Times New Roman
@@ -175,6 +179,14 @@ export class UIState {
 
     public clearPacketStatus(): void {
         this.packetParseStatus = undefined;
+    }
+
+    public clearPendingNewGameRegistrationStatus(): void {
+        if (this.pendingNewGame?.type !== PendingGameType.QBJRegistration) {
+            return;
+        }
+
+        this.pendingNewGame.registration.errorMessage = undefined;
     }
 
     public createPendingNewGame(): void {
@@ -337,6 +349,14 @@ export class UIState {
         }
 
         this.pendingNewGame.gameFormat = gameFormat;
+    }
+
+    public setPendingNewGameRegistrationErrorMessage(message: string): void {
+        if (this.pendingNewGame?.type !== PendingGameType.QBJRegistration) {
+            return;
+        }
+
+        this.pendingNewGame.registration.errorMessage = message;
     }
 
     public setPendingNewGameRosters(players: Player[]): void {
@@ -565,6 +585,10 @@ export class UIState {
         this.isEventLogHidden = !this.isEventLogHidden;
     }
 
+    public toggleHideBonusOnDeadTossup(): void {
+        this.hideBonusOnDeadTossup = !this.hideBonusOnDeadTossup;
+    }
+
     public toggleScoreVerticality(): void {
         this.isScoreVertical = !this.isScoreVertical;
     }
@@ -603,6 +627,7 @@ export class UIState {
                     break;
                 case PendingGameType.QBJRegistration:
                     this.pendingNewGame.registration.cycles = undefined;
+                    this.clearPendingNewGameRegistrationStatus();
                     break;
                 case undefined:
                 case PendingGameType.TJSheets:

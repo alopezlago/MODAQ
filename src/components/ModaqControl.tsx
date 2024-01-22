@@ -153,24 +153,60 @@ export interface IModaqControlProps {
      * If `true`, applies theming to the body, so the background in dark mode will be black evne outside of MODAQ
      */
     applyStylingToRoot?: boolean;
+
+    /**
+     * The version that appears when clicking on Help.
+     */
     buildVersion?: string;
+
+    /**
+     * If defined, this adds another way for game results to get exported. The provided callback will be given the game
+     * at the time of export.
+     */
     customExport?: ICustomExport;
+
+    /**
+     * The format of the current game, such as if powers are supported, if tossups are paired with bonuses, etc.
+     */
     gameFormat?: IGameFormat;
+
+    /**
+     * Needed if you want to support exporting to Google Sheets. This is the client ID of your Google application that
+     * connects to the spreadsheet.
+     */
     googleClientId?: string;
+
+    /**
+     * When `true`, the New Game button in the menu is hidden.
+     */
     hideNewGame?: boolean;
 
-    // This should only be set once
+    /**
+     * The packet for the current game. This should only be set once.
+     */
     packet?: IPacket;
 
-    // This should only be set once
+    /**
+     * The players in the current game. This should only be set once.
+     */
     players?: IPlayer[];
 
-    // This can only be set on the first render
+    /**
+     * Determines if this control should save state locally so that the same packet, players, and cycle appear when the
+     * page is refreshed. This can only be set on the first render.
+     */
     persistState?: boolean;
 
-    // This can only be set on the first render
+    /**
+     * If `persistState` is true, then this is the name of the store in localStorge. This can only be set on the first
+     * render.
+     */
     storeName?: string | undefined;
 
+    /**
+     * The URL to a Yet Another Packet Parser (YAPP) compatible service, which parses docx files. If this value isn't
+     * defined, then packets must be in a JSON format.
+     */
     yappServiceUrl?: string;
 }
 

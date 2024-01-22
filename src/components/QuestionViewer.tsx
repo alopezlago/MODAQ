@@ -58,7 +58,7 @@ export const QuestionViewer = observer(function QuestionViewer() {
         uiState.cycleIndex >= game.gameFormat.regulationTossupCount
     ) {
         bonus = <div>No bonuses during overtime.</div>;
-    } else {
+    } else if (!uiState.hideBonusOnDeadTossup || cycle.correctBuzz != undefined) {
         bonus = (
             <BonusQuestion
                 appState={appState}

@@ -15,6 +15,7 @@ import {
     Label,
     ITextFieldStyles,
     assertNever,
+    ThemeContext,
 } from "@fluentui/react";
 
 import * as NewGameValidator from "../../state/NewGameValidator";
@@ -42,6 +43,7 @@ import { StateContext } from "../../contexts/StateContext";
 import { IGameFormat } from "../../state/IGameFormat";
 import { FilePicker } from "../FilePicker";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
+import { IResult } from "../../IResult";
 
 const playerListHeight = "20vh";
 
@@ -430,7 +432,7 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
     );
 });
 
-const FromQBJRegistrationNewGameBody = observer(function FromSheetsNewGameBody(
+const FromQBJRegistrationNewGameBody = observer(function FromQBJRegistrationNewGameBody(
     props: INewGamePivotItemProps
 ): JSX.Element {
     const uiState: UIState = props.appState.uiState;
@@ -450,10 +452,18 @@ const FromQBJRegistrationNewGameBody = observer(function FromSheetsNewGameBody(
                 return;
             }
 
-            file.text().then((value) => {
-                const players: Player[] = QBJ.parseRegistration(value);
-                uiState.setPendingNewGameRosters(players);
-            });
+            uiState.clearPendingNewGameRegistrationStatus();
+
+            file.text()
+                .then((value) => {
+                    const playersResult: IResult<Player[]> = QBJ.parseRegistration(value);
+                    if (playersResult.success) {
+                        uiState.setPendingNewGameRosters(playersResult.value);
+                    } else {
+                        uiState.setPendingNewGameRegistrationErrorMessage(playersResult.message);
+                    }
+                })
+                .catch((reason) => uiState.setPendingNewGameRegistrationErrorMessage(reason.toString()));
         },
         [uiState]
     );
@@ -495,66 +505,72 @@ const FromQBJRegistrationNewGameBody = observer(function FromSheetsNewGameBody(
     const teamNameErrorMessage = NewGameValidator.playerTeamsUnique(firstTeamPlayers, secondTeamPlayers);
 
     const playersFromRosters: Player[] = pendingNewGame.registration.players ?? [];
+    const registrationErrorMessage: string | undefined = pendingNewGame.registration.errorMessage;
 
     return (
-        <Stack>
-            <StackItem>
-                <div className={props.classes.loadContainer}>
-                    <FilePicker buttonText="Load Roster..." onChange={loadHandler} />
-                </div>
-            </StackItem>
-            <Separator />
-            <StackItem>
-                <div className={props.classes.teamEntriesContainer}>
-                    <FromRostersTeamEntry
-                        playerListHeight={playerListHeight}
-                        playerPool={playersFromRosters}
-                        players={firstTeamPlayers}
-                        teamLabel="First team"
-                        onMovePlayerBackward={(player) =>
-                            uiState.setPendingNewGameFirstTeamPlayers(
-                                PlayerUtils.movePlayerBackward(firstTeamPlayers, player)
-                            )
-                        }
-                        onMovePlayerForward={(player) =>
-                            uiState.setPendingNewGameFirstTeamPlayers(
-                                PlayerUtils.movePlayerForward(firstTeamPlayers, player)
-                            )
-                        }
-                        onMovePlayerToIndex={(player, index) =>
-                            uiState.setPendingNewGameFirstTeamPlayers(
-                                PlayerUtils.movePlayerToIndex(firstTeamPlayers, player, index)
-                            )
-                        }
-                        onTeamChange={teamChangeHandler}
-                    />
-                    <Separator vertical={true} />
-                    <FromRostersTeamEntry
-                        playerListHeight={playerListHeight}
-                        playerPool={playersFromRosters}
-                        players={secondTeamPlayers}
-                        teamNameErrorMessage={teamNameErrorMessage}
-                        teamLabel="Second team"
-                        onMovePlayerBackward={(player) =>
-                            uiState.setPendingNewGameSecondTeamPlayers(
-                                PlayerUtils.movePlayerBackward(secondTeamPlayers, player)
-                            )
-                        }
-                        onMovePlayerForward={(player) =>
-                            uiState.setPendingNewGameSecondTeamPlayers(
-                                PlayerUtils.movePlayerForward(secondTeamPlayers, player)
-                            )
-                        }
-                        onMovePlayerToIndex={(player, index) =>
-                            uiState.setPendingNewGameSecondTeamPlayers(
-                                PlayerUtils.movePlayerToIndex(secondTeamPlayers, player, index)
-                            )
-                        }
-                        onTeamChange={teamChangeHandler}
-                    />
-                </div>
-            </StackItem>
-        </Stack>
+        <ThemeContext.Consumer>
+            {(theme) => (
+                <Stack>
+                    <StackItem>
+                        <div className={props.classes.loadContainer}>
+                            <FilePicker buttonText="Load Roster..." onChange={loadHandler} />
+                        </div>
+                        <Label styles={{ root: { color: theme?.palette.red } }}>{registrationErrorMessage}</Label>
+                    </StackItem>
+                    <Separator />
+                    <StackItem>
+                        <div className={props.classes.teamEntriesContainer}>
+                            <FromRostersTeamEntry
+                                playerListHeight={playerListHeight}
+                                playerPool={playersFromRosters}
+                                players={firstTeamPlayers}
+                                teamLabel="First team"
+                                onMovePlayerBackward={(player) =>
+                                    uiState.setPendingNewGameFirstTeamPlayers(
+                                        PlayerUtils.movePlayerBackward(firstTeamPlayers, player)
+                                    )
+                                }
+                                onMovePlayerForward={(player) =>
+                                    uiState.setPendingNewGameFirstTeamPlayers(
+                                        PlayerUtils.movePlayerForward(firstTeamPlayers, player)
+                                    )
+                                }
+                                onMovePlayerToIndex={(player, index) =>
+                                    uiState.setPendingNewGameFirstTeamPlayers(
+                                        PlayerUtils.movePlayerToIndex(firstTeamPlayers, player, index)
+                                    )
+                                }
+                                onTeamChange={teamChangeHandler}
+                            />
+                            <Separator vertical={true} />
+                            <FromRostersTeamEntry
+                                playerListHeight={playerListHeight}
+                                playerPool={playersFromRosters}
+                                players={secondTeamPlayers}
+                                teamNameErrorMessage={teamNameErrorMessage}
+                                teamLabel="Second team"
+                                onMovePlayerBackward={(player) =>
+                                    uiState.setPendingNewGameSecondTeamPlayers(
+                                        PlayerUtils.movePlayerBackward(secondTeamPlayers, player)
+                                    )
+                                }
+                                onMovePlayerForward={(player) =>
+                                    uiState.setPendingNewGameSecondTeamPlayers(
+                                        PlayerUtils.movePlayerForward(secondTeamPlayers, player)
+                                    )
+                                }
+                                onMovePlayerToIndex={(player, index) =>
+                                    uiState.setPendingNewGameSecondTeamPlayers(
+                                        PlayerUtils.movePlayerToIndex(secondTeamPlayers, player, index)
+                                    )
+                                }
+                                onTeamChange={teamChangeHandler}
+                            />
+                        </div>
+                    </StackItem>
+                </Stack>
+            )}
+        </ThemeContext.Consumer>
     );
 });
 

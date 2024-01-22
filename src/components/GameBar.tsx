@@ -365,6 +365,13 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             checked: !appState.uiState.isEventLogHidden,
             onClick: () => appState.uiState.toggleEventLogVisibility(),
         },
+        {
+            key: "showBonusAlways",
+            text: "Always show bonus",
+            canCheck: true,
+            checked: !appState.uiState.hideBonusOnDeadTossup,
+            onClick: () => appState.uiState.toggleHideBonusOnDeadTossup(),
+        },
     ];
 
     if (appState.uiState.customExportOptions?.customExportInterval != undefined) {
