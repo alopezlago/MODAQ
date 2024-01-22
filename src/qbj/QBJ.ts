@@ -2,8 +2,9 @@ import { Player } from "../state/TeamState";
 import { Cycle } from "../state/Cycle";
 import { IBonusAnswerPart, ITossupAnswerEvent } from "../state/Events";
 import { GameState } from "../state/GameState";
+import { IResult } from "../IResult";
 
-export function parseRegistration(json: string): Player[] {
+export function parseRegistration(json: string): IResult<Player[]> {
     // Either it's a JSON object with "name" or a JSON array
     const parsedInput: IRegistration[] | ITournament = JSON.parse(json);
     let registrations: IRegistration[];
@@ -13,11 +14,49 @@ export function parseRegistration(json: string): Player[] {
         registrations = parsedInput;
     }
 
+    if (!Array.isArray(registrations)) {
+        return {
+            success: false,
+            message: "No list of registrations found in the file.",
+        };
+    }
+
     const teamCounts: Map<string, number> = new Map<string, number>();
     const players: Player[] = [];
     for (const registration of registrations) {
+        if (registration.teams == undefined || !Array.isArray(registration.teams)) {
+            return {
+                success: false,
+                message: "Registration is missing a teams field.",
+            };
+        }
+
         for (const team of registration.teams) {
+            if (team.name == undefined) {
+                return {
+                    success: false,
+                    message: `Registration is either missing a team name or has a null value for the team name.`,
+                };
+            } else if (team.players == undefined) {
+                return {
+                    success: false,
+                    message: `Registration is missing a players field for team '${team.name}'.`,
+                };
+            } else if (!Array.isArray(team.players) || team.players.length === 0) {
+                return {
+                    success: false,
+                    message: `Registration has an empty or incorrect players field for team '${team.name}'.`,
+                };
+            }
+
             for (const player of team.players) {
+                if (player.name == undefined) {
+                    return {
+                        success: false,
+                        message: `Registration has a player with no name on team '${team.name}'.`,
+                    };
+                }
+
                 let playerCount = teamCounts.get(team.name);
                 if (playerCount == undefined) {
                     playerCount = 0;
@@ -26,13 +65,20 @@ export function parseRegistration(json: string): Player[] {
                 playerCount++;
                 teamCounts.set(team.name, playerCount);
 
-                // TODO: This should be determined by the format
+                // TODO: The isStarter value should be determined by the format
                 players.push(new Player(player.name, team.name, playerCount <= 4));
             }
         }
     }
 
-    return players;
+    if (players.length === 0) {
+        return {
+            success: false,
+            message: "Registration has no players",
+        };
+    }
+
+    return { success: true, value: players };
 }
 
 // Needed for the type guard

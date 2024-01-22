@@ -38,26 +38,57 @@ export function convertGameToExportFields(game: GameState): IExportFields {
 export type ICustomExport = ICustomRawExport | ICustomQBJExport;
 
 export interface IExportFields {
+    /**
+     * The cycles for the current game. Each element represents a tossup/bonus cycle in the game, and stores all events
+     * that occurred in that cycle.
+     */
     cycles: ICycle[];
+
+    /**
+     * The players in the current game. This has players from every team. Team order isn't guaranteed.
+     */
     players: IPlayer[];
+
+    /**
+     * The packet used in the current game
+     */
     packet: IPacket;
 }
 
 export interface IExportContext {
+    /**
+     * How the export was created. It could be exported from the export menu item, from the export prompt when saving
+     * a new game, from the export prompt when clicking on Next on the last tossup, or from a timer event.
+     */
     source: ExportSource;
 }
 
 interface ICustomRawExport extends IBaseCustomExport {
+    /**
+     * Callback for exporting the game
+     * @param fields All the fields needed to represent the current game
+     * @param context The context for the export, such as how the export was started
+     * @returns An `IStatus` indicating if the export was successful
+     */
     onExport: (fields: IExportFields, context?: IExportContext) => Promise<IStatus>;
     type: "Raw";
 }
 
 interface ICustomQBJExport extends IBaseCustomExport {
+    /**
+     * Callback for exporting the game
+     * @param qbj QBJ Match of the current game
+     * @param context The context for the export, such as how the export was started
+     * @returns An `IStatus` indicating if the export was successful
+     */
     onExport: (qbj: IMatch, context?: IExportContext) => Promise<IStatus>;
     type: "QBJ";
 }
 
 interface IBaseCustomExport {
+    /**
+     * Label text of the export button in the menu
+     */
     label: string;
 
     /**

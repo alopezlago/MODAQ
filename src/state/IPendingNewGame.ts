@@ -54,6 +54,7 @@ export interface IPendingQBJRegistrationNewGameState {
     firstTeamPlayers: Player[] | undefined;
     secondTeamPlayers: Player[] | undefined;
     cycles?: Cycle[];
+    errorMessage?: string;
 }
 
 interface IBasePendingNewGame {
