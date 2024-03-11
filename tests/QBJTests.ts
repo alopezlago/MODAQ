@@ -1132,6 +1132,9 @@ describe("QBJTests", () => {
                 expect(lastPlayer.isStarter).to.be.false;
             });
         });
+
+        // These tests are for malformed ITournament instances, so they won't match the type
+        /* eslint-disable @typescript-eslint/no-explicit-any */
         it("Registration fails from missing team name", () => {
             const tournament: any = {
                 name: "Tournament",
@@ -1264,4 +1267,5 @@ describe("QBJTests", () => {
             expect(QBJ.parseRegistration(json).success).to.be.false;
         });
     });
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 });

@@ -5,4 +5,6 @@ export interface IFormattedText {
     pronunciation?: boolean;
     required?: boolean;
     underlined?: boolean;
+    subscripted?: boolean;
+    superscripted?: boolean;
 }

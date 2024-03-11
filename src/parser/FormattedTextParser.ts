@@ -10,6 +10,8 @@ export function parseFormattedText(text: string, pronunciationGuideMarkers?: [st
     let bolded = false;
     let emphasized = false;
     let underlined = false;
+    let subscripted = false;
+    let superscripted = false;
     let pronunciation = false;
     let startIndex = 0;
 
@@ -17,12 +19,12 @@ export function parseFormattedText(text: string, pronunciationGuideMarkers?: [st
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/matchAll
     const matchIterator: IterableIterator<RegExpMatchArray> =
         pronunciationGuideMarkers == undefined
-            ? text.matchAll(/<\/?em>|<\/?req>|<\/?b>|<\/?u>/gi)
+            ? text.matchAll(/<\/?em>|<\/?req>|<\/?b>|<\/?u>|<\/?sub>|<\/?sup>/gi)
             : text.matchAll(
                   new RegExp(
-                      `<\\/?em>|<\\/?req>|<\\/?b>|<\\/?u>|${escapeRegExp(pronunciationGuideMarkers[0])}|${escapeRegExp(
-                          pronunciationGuideMarkers[1]
-                      )}`,
+                      `<\\/?em>|<\\/?req>|<\\/?b>|<\\/?u>|<\\/?sub>|<\\/?sup>|${escapeRegExp(
+                          pronunciationGuideMarkers[0]
+                      )}|${escapeRegExp(pronunciationGuideMarkers[1])}`,
                       "gi"
                   )
               );
@@ -42,6 +44,8 @@ export function parseFormattedText(text: string, pronunciationGuideMarkers?: [st
                 bolded,
                 emphasized,
                 underlined,
+                subscripted,
+                superscripted,
                 pronunciation,
             };
             result.push(formattedSlice);
@@ -77,6 +81,18 @@ export function parseFormattedText(text: string, pronunciationGuideMarkers?: [st
             case "</u>":
                 underlined = false;
                 break;
+            case "<sub>":
+                subscripted = true;
+                break;
+            case "</sub>":
+                subscripted = false;
+                break;
+            case "<sup>":
+                superscripted = true;
+                break;
+            case "</sup>":
+                superscripted = false;
+                break;
             default:
                 if (pronunciationGuideMarkers) {
                     if (tag === pronunciationGuideMarkers[0].toLowerCase()) {
@@ -106,6 +122,8 @@ export function parseFormattedText(text: string, pronunciationGuideMarkers?: [st
             bolded,
             emphasized,
             underlined,
+            subscripted,
+            superscripted,
             pronunciation,
         });
     }
@@ -150,6 +168,8 @@ export function splitFormattedTextIntoWords(
                 bolded: value.bolded,
                 emphasized: value.emphasized,
                 underlined: value.underlined,
+                subscripted: value.subscripted,
+                superscripted: value.superscripted,
                 pronunciation: value.pronunciation,
             });
             splitFormattedText.push(previousWord);
@@ -167,6 +187,8 @@ export function splitFormattedTextIntoWords(
                     bolded: value.bolded,
                     emphasized: value.emphasized,
                     underlined: value.underlined,
+                    subscripted: value.subscripted,
+                    superscripted: value.superscripted,
                     pronunciation: value.pronunciation,
                 };
                 splitFormattedText.push([formattedWord]);
@@ -180,6 +202,8 @@ export function splitFormattedTextIntoWords(
                 bolded: value.bolded,
                 emphasized: value.emphasized,
                 underlined: value.underlined,
+                subscripted: value.subscripted,
+                superscripted: value.superscripted,
                 pronunciation: value.pronunciation,
             });
         }

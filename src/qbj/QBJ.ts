@@ -288,8 +288,8 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
 
         // We have to track tu/bonus question numbers
         const matchQuestion: IMatchQuestion = {
-            buzzes: [],
             question_number: i + 1,
+            buzzes: [],
             tossup_question: {
                 parts: 1,
                 type: "tossup",
