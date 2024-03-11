@@ -15,6 +15,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
             ]);
@@ -29,6 +31,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: true,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
             ]);
@@ -43,6 +47,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: true,
                     emphasized: false,
                     underlined: true,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
             ]);
@@ -57,6 +63,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: true,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
             ]);
@@ -71,6 +79,40 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: true,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("All subscripted", () => {
+            const expectedText = "This text is all subscripted.";
+            const textToFormat = `<sub>${expectedText}</sub>`;
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat);
+            expect(result).to.deep.equal([
+                {
+                    text: expectedText,
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: true,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("All superscripted", () => {
+            const expectedText = "This text is all superscripted.";
+            const textToFormat = `<sup>${expectedText}</sup>`;
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat);
+            expect(result).to.deep.equal([
+                {
+                    text: expectedText,
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: true,
                     pronunciation: false,
                 },
             ]);
@@ -87,6 +129,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
                 {
@@ -94,6 +138,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: true,
                 },
                 {
@@ -101,6 +147,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
             ]);
@@ -117,6 +165,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: true,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
                 {
@@ -124,6 +174,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: true,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: true,
                 },
                 {
@@ -131,6 +183,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
             ]);
@@ -144,6 +198,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
                 {
@@ -151,6 +207,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: true,
                 },
                 {
@@ -158,6 +216,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
             ]);
@@ -171,6 +231,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
             ]);
@@ -184,6 +246,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
                 {
@@ -191,6 +255,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: true,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
                 {
@@ -198,6 +264,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
                 {
@@ -205,6 +273,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: true,
                     emphasized: false,
                     underlined: true,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
                 {
@@ -212,6 +282,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
             ]);
@@ -225,6 +297,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
                 {
@@ -232,6 +306,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: true,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
                 {
@@ -239,6 +315,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: true,
                     emphasized: true,
                     underlined: true,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
                 {
@@ -246,6 +324,8 @@ describe("FormattedTextParserTests", () => {
                     bolded: false,
                     emphasized: false,
                     underlined: false,
+                    subscripted: false,
+                    superscripted: false,
                     pronunciation: false,
                 },
             ]);
@@ -262,6 +342,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ];
@@ -280,6 +362,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ];
@@ -298,6 +382,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ];
@@ -316,6 +402,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: true,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ];
@@ -334,6 +422,48 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: false,
                         underlined: true,
+                        subscripted: false,
+                        superscripted: false,
+                        pronunciation: false,
+                    },
+                ];
+            });
+
+            expect(result).to.deep.equal(expected);
+        });
+        it("All subscripted", () => {
+            const expectedText = "This text is all subscripted.";
+            const textToFormat = `<sub>${expectedText}</sub>`;
+            const result: IFormattedText[][] = FormattedTextParser.splitFormattedTextIntoWords(textToFormat);
+            const expected: IFormattedText[][] = expectedText.split(/\s+/g).map((word) => {
+                return [
+                    {
+                        text: word,
+                        bolded: false,
+                        emphasized: false,
+                        underlined: false,
+                        subscripted: true,
+                        superscripted: false,
+                        pronunciation: false,
+                    },
+                ];
+            });
+
+            expect(result).to.deep.equal(expected);
+        });
+        it("All superscripted", () => {
+            const expectedText = "This text is all superscripted.";
+            const textToFormat = `<sup>${expectedText}</sup>`;
+            const result: IFormattedText[][] = FormattedTextParser.splitFormattedTextIntoWords(textToFormat);
+            const expected: IFormattedText[][] = expectedText.split(/\s+/g).map((word) => {
+                return [
+                    {
+                        text: word,
+                        bolded: false,
+                        emphasized: false,
+                        underlined: false,
+                        subscripted: false,
+                        superscripted: true,
                         pronunciation: false,
                     },
                 ];
@@ -354,6 +484,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: index === 5,
                     },
                 ];
@@ -371,6 +503,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -380,6 +514,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -389,6 +525,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -398,6 +536,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -407,6 +547,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -416,6 +558,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: false,
                         underlined: true,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -425,6 +569,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: false,
                         underlined: true,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -434,6 +580,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -449,6 +597,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -458,6 +608,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -467,6 +619,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -476,6 +630,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: true,
                         underlined: true,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -485,6 +641,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -494,6 +652,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -503,6 +663,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -518,6 +680,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -527,6 +691,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -536,6 +702,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -545,6 +713,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: true,
                         underlined: true,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -554,6 +724,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -563,6 +735,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -572,6 +746,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -587,6 +763,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -596,6 +774,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -605,6 +785,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                     {
@@ -612,6 +794,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -621,6 +805,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -630,6 +816,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -639,6 +827,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],
@@ -654,6 +844,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                     {
@@ -661,6 +853,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: false,
                         underlined: true,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                     {
@@ -668,6 +862,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                     {
@@ -675,6 +871,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: true,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                     {
@@ -682,6 +880,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: true,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                     {
@@ -689,6 +889,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                     {
@@ -696,6 +898,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: true,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                     {
@@ -703,6 +907,8 @@ describe("FormattedTextParserTests", () => {
                         bolded: false,
                         emphasized: false,
                         underlined: false,
+                        subscripted: false,
+                        superscripted: false,
                         pronunciation: false,
                     },
                 ],

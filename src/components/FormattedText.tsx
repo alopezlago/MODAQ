@@ -35,6 +35,14 @@ const FormattedSegment = observer(function FormattedSegment(props: IFormattedSeg
         element = <u>{element}</u>;
     }
 
+    if (props.segment.subscripted) {
+        element = <sub>{element}</sub>;
+    }
+
+    if (props.segment.superscripted) {
+        element = <sup>{element}</sup>;
+    }
+
     // Obsolete, but here for back-compat with YAPP versions before 0.2.4
     if (props.segment.required) {
         element = (
