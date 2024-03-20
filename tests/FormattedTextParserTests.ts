@@ -119,10 +119,9 @@ describe("FormattedTextParserTests", () => {
         });
         it("Pronunciation guide", () => {
             const textToFormat = "This text is mine (mein).";
-            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(
-                textToFormat,
-                GameFormats.ACFGameFormat.pronunciationGuideMarkers
-            );
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
+                pronunciationGuideMarkers: GameFormats.ACFGameFormat.pronunciationGuideMarkers,
+            });
             expect(result).to.deep.equal([
                 {
                     text: "This text is mine ",
@@ -155,10 +154,9 @@ describe("FormattedTextParserTests", () => {
         });
         it("Bolded pronunciation guide", () => {
             const textToFormat = "<b>Solano Lopez (LOW-pez)</b> was in this war.";
-            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(
-                textToFormat,
-                GameFormats.ACFGameFormat.pronunciationGuideMarkers
-            );
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
+                pronunciationGuideMarkers: GameFormats.ACFGameFormat.pronunciationGuideMarkers,
+            });
             expect(result).to.deep.equal([
                 {
                     text: "Solano Lopez ",
@@ -191,7 +189,9 @@ describe("FormattedTextParserTests", () => {
         });
         it("Non-parentheses pronunciation guide", () => {
             const textToFormat = "This text is mine [mein].";
-            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, ["[", "]"]);
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
+                pronunciationGuideMarkers: ["[", "]"],
+            });
             expect(result).to.deep.equal([
                 {
                     text: "This text is mine ",
@@ -224,10 +224,313 @@ describe("FormattedTextParserTests", () => {
         });
         it("Different pronunciation guide", () => {
             const textToFormat = "This text is mine (mein).";
-            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, ["[", "]"]);
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
+                pronunciationGuideMarkers: ["[", "]"],
+            });
             expect(result).to.deep.equal([
                 {
                     text: "This text is mine (mein).",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("Special quotes in text with normal quotes in pronunciation guide", () => {
+            const textToFormat = "This text is mine (“mein”).";
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
+                pronunciationGuideMarkers: ['("', '")'],
+            });
+            expect(result).to.deep.equal([
+                {
+                    text: "This text is mine ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+                {
+                    text: "(“mein”)",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: true,
+                },
+                {
+                    text: ".",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("Normal quotes in text with special quotes in pronunciation guide", () => {
+            const textToFormat = 'This text is mine ("mein").';
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
+                pronunciationGuideMarkers: ["(“", "”)"],
+            });
+            expect(result).to.deep.equal([
+                {
+                    text: "This text is mine ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+                {
+                    text: '("mein")',
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: true,
+                },
+                {
+                    text: ".",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("Mixed quotes in text (special, normal) in pronunciation guide", () => {
+            const textToFormat = 'This text is mine (“mein").';
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
+                pronunciationGuideMarkers: ["(“", "”)"],
+            });
+            expect(result).to.deep.equal([
+                {
+                    text: "This text is mine ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+                {
+                    text: '(“mein")',
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: true,
+                },
+                {
+                    text: ".",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("Mixed quotes in text (normal, special) in pronunciation guide", () => {
+            const textToFormat = 'This text is mine ("mein”).';
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
+                pronunciationGuideMarkers: ["(“", "”)"],
+            });
+            expect(result).to.deep.equal([
+                {
+                    text: "This text is mine ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+                {
+                    text: '("mein”)',
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: true,
+                },
+                {
+                    text: ".",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("Special quotes in wrong order in pronunciation guide", () => {
+            const textToFormat = "This text is mine (”mein“).";
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
+                pronunciationGuideMarkers: ['("', '")'],
+            });
+            expect(result).to.deep.equal([
+                {
+                    text: "This text is mine (”mein“).",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("Case insensitive normal quotes in text with special quotes in pronunciation guide", () => {
+            const textToFormat = 'This text is mine (a"mein"a).';
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
+                pronunciationGuideMarkers: ["(A“", "”A)"],
+            });
+            expect(result).to.deep.equal([
+                {
+                    text: "This text is mine ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+                {
+                    text: '(a"mein"a)',
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: true,
+                },
+                {
+                    text: ".",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("Default reader directives", () => {
+            const textToFormat =
+                "This (Emphasize) equation is proportional to (read slowly) a minus x, plus (pause) 1.";
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
+                pronunciationGuideMarkers: ["[", "]"],
+                // readerDirectives: ["(emphasize)", "(read slowly)", "(pause)"],
+            });
+            expect(result).to.deep.equal([
+                {
+                    text: "This ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+                {
+                    text: "(Emphasize)",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: true,
+                },
+                {
+                    text: " equation is proportional to ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+                {
+                    text: "(read slowly)",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: true,
+                },
+                {
+                    text: " a minus x, plus ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+                {
+                    text: "(pause)",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: true,
+                },
+                {
+                    text: " 1.",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("Explicit reader directives", () => {
+            const textToFormat = "This (Emphasize) equation is proportional to (slowly) a minus x, plus (pause) 1.";
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
+                pronunciationGuideMarkers: ["[", "]"],
+                readerDirectives: ["(slowly)"],
+            });
+            expect(result).to.deep.equal([
+                {
+                    text: "This (Emphasize) equation is proportional to ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+                {
+                    text: "(slowly)",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: true,
+                },
+                {
+                    text: " a minus x, plus (pause) 1.",
                     bolded: false,
                     emphasized: false,
                     underlined: false,
@@ -473,10 +776,9 @@ describe("FormattedTextParserTests", () => {
         });
         it("Pronunciation", () => {
             const textToFormat = "There is a pronunciation guide (GUY-de) in this question.";
-            const result: IFormattedText[][] = FormattedTextParser.splitFormattedTextIntoWords(
-                textToFormat,
-                GameFormats.ACFGameFormat.pronunciationGuideMarkers
-            );
+            const result: IFormattedText[][] = FormattedTextParser.splitFormattedTextIntoWords(textToFormat, {
+                pronunciationGuideMarkers: GameFormats.ACFGameFormat.pronunciationGuideMarkers,
+            });
             const expected: IFormattedText[][] = textToFormat.split(/\s+/g).map((word, index) => {
                 return [
                     {

@@ -3,6 +3,14 @@ import { IGameFormat as gameFormat } from "./src/state/IGameFormat";
 import { IBonus as bonus, IPacket as packet, ITossup as tossup } from "./src/state/IPacket";
 import { IPlayer as player } from "./src/state/TeamState";
 import { ModaqControl as control, IModaqControlProps as controlProps } from "./src/components/ModaqControl";
+import {
+    IFormattingOptions as iFormattingOptions,
+    parseFormattedText as ftpParseFormattedText,
+    splitFormattedTextIntoWords as ftpSplitFormattedTextIntoWords,
+    defaultPronunciationGuideMarkers as ftpDefaultPronunciationGuideMarkers,
+    defaultReaderDirectives as ftpDefaultReaderDirectives,
+} from "src/parser/FormattedTextParser";
+import { IFormattedText as iFormattedText } from "src/parser/IFormattedText";
 
 export const ModaqControl = control;
 
@@ -18,4 +26,16 @@ export type IPlayer = player;
 
 export type IGameFormat = gameFormat;
 
+export type IFormattingOptions = iFormattingOptions;
+
+export type IFormattedText = iFormattedText;
+
 export const GameFormats = gameFormats;
+
+export const defaultPronunciationGuideMarkers = ftpDefaultPronunciationGuideMarkers;
+
+export const defaultReaderDirectives = ftpDefaultReaderDirectives;
+
+export const parseFormattedText = ftpParseFormattedText;
+
+export const splitFormattedTextIntoWords = ftpSplitFormattedTextIntoWords;

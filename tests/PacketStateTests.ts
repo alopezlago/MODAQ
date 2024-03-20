@@ -58,6 +58,37 @@ describe("PacketStateTests", () => {
             expect(formattedWord.underlined).to.be.false;
             expect(formattedWord.pronunciation).to.be.true;
         });
+        it("formattedQuestionText has power marker", () => {
+            const tossup: Tossup = new Tossup("The power marker (*) is here.", "Answer");
+            const formattedText: IFormattedText[][] = tossup.getWords(powersGameFormat).map((word) => word.word);
+            expect(formattedText.length).to.be.greaterThan(1);
+            expect(formattedText[3].length).to.equal(1);
+            const formattedWord: IFormattedText = formattedText[3][0];
+            expect(formattedWord.text).to.equal("(*)");
+            expect(formattedWord.bolded).to.be.false;
+            expect(formattedWord.emphasized).to.be.false;
+            expect(formattedWord.underlined).to.be.false;
+            expect(formattedWord.pronunciation).to.be.false;
+        });
+        it("formattedQuestionText has power marker with punctuation after it", () => {
+            const tossup: Tossup = new Tossup("The power marker (*), I think.", "Answer");
+            const formattedText: IFormattedText[][] = tossup.getWords(powersGameFormat).map((word) => word.word);
+            expect(formattedText.length).to.be.greaterThan(1);
+            expect(formattedText[3].length).to.equal(2);
+            const formattedFirstPart: IFormattedText = formattedText[3][0];
+            expect(formattedFirstPart.text).to.equal("(*)");
+            expect(formattedFirstPart.bolded).to.be.false;
+            expect(formattedFirstPart.emphasized).to.be.false;
+            expect(formattedFirstPart.underlined).to.be.false;
+            expect(formattedFirstPart.pronunciation).to.be.false;
+
+            const formattedSecondWord: IFormattedText = formattedText[3][1];
+            expect(formattedSecondWord.text).to.equal(",");
+            expect(formattedSecondWord.bolded).to.be.false;
+            expect(formattedSecondWord.emphasized).to.be.false;
+            expect(formattedSecondWord.underlined).to.be.false;
+            expect(formattedSecondWord.pronunciation).to.be.false;
+        });
     });
 
     // Need tests for getBonusWords?
@@ -245,6 +276,14 @@ describe("PacketStateTests", () => {
             const tossup: Tossup = new Tossup("This is my (*) question", "Answer");
             const points: number = tossup.getPointsAtPosition(superpowersGameFormat, 2);
             expect(points).to.equal(15);
+        });
+        it("In power with punctuation after power marker", () => {
+            const tossup: Tossup = new Tossup("This is my (*), question", "Answer");
+            const points: number = tossup.getPointsAtPosition(powersGameFormat, 2);
+            expect(points).to.equal(15);
+
+            const pointsAfter: number = tossup.getPointsAtPosition(powersGameFormat, 3);
+            expect(pointsAfter).to.equal(10);
         });
 
         // Tossups include a special character to mark the end of the question, which is after the last word in the

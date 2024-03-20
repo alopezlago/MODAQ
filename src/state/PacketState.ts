@@ -76,7 +76,9 @@ export class Tossup implements IQuestion {
         let powerMarkerIndex = 0;
         for (let i = 0; i < format.powers.length; i++) {
             const powerMarker: string = format.powers[i].marker.trim();
-            const currentPowerMarkerIndex = words.indexOf(powerMarker, powerMarkerIndex);
+            const currentPowerMarkerIndex = words.findIndex(
+                (value, index) => index >= powerMarkerIndex && value.startsWith(powerMarker)
+            );
             if (currentPowerMarkerIndex === -1) {
                 continue;
             }
@@ -129,7 +131,7 @@ export class Tossup implements IQuestion {
             let canBuzzOn = true;
             let index: number = wordIndex;
             const trimmedText: string = fullText.trim();
-            const powerMarkerIndex: number = format.powers.findIndex((power) => power.marker === trimmedText);
+            const powerMarkerIndex: number = format.powers.findIndex((power) => trimmedText.startsWith(power.marker));
             if (isLastWord) {
                 // Last word should always be the terminal character, which can't be a power or in a pronunciation guide
                 wordIndex++;
@@ -173,9 +175,9 @@ export class Tossup implements IQuestion {
 
     private formattedQuestionText(format: IGameFormat): IFormattedText[][] {
         // Include the ■ to give an end of question marker
-        return FormattedTextParser.splitFormattedTextIntoWords(this.question, format.pronunciationGuideMarkers).concat([
-            [{ text: "■END■", bolded: true, emphasized: false, required: false, pronunciation: false }],
-        ]);
+        return FormattedTextParser.splitFormattedTextIntoWords(this.question, {
+            pronunciationGuideMarkers: format.pronunciationGuideMarkers,
+        }).concat([[{ text: "■END■", bolded: true, emphasized: false, required: false, pronunciation: false }]]);
     }
 }
 
@@ -197,7 +199,9 @@ export class Bonus {
 }
 
 export function getBonusWords(text: string, format: IGameFormat): IFormattedText[] {
-    return FormattedTextParser.parseFormattedText(text, format.pronunciationGuideMarkers);
+    return FormattedTextParser.parseFormattedText(text, {
+        pronunciationGuideMarkers: format.pronunciationGuideMarkers,
+    });
 }
 
 export type ITossupWord = IBuzzableTossupWord | INonbuzzableTossupWord;
