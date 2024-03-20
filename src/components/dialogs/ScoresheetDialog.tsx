@@ -162,7 +162,9 @@ function getUnformattedAnswer(game: GameState, answer: string): string {
         answer = answer.substring(0, alternateIndex).trim();
     }
 
-    const text = FormattedTextParser.parseFormattedText(answer, game.gameFormat.pronunciationGuideMarkers)
+    const text = FormattedTextParser.parseFormattedText(answer, {
+        pronunciationGuideMarkers: game.gameFormat.pronunciationGuideMarkers,
+    })
         .map((line) => line.text)
         .join("");
 

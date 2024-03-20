@@ -9,10 +9,9 @@ import { AppState } from "../state/AppState";
 
 export const Answer = observer(function Answer(props: IAnswerProps): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
-    const formattedText: IFormattedText[] = FormattedTextParser.parseFormattedText(
-        props.text.trimLeft(),
-        appState.game.gameFormat.pronunciationGuideMarkers
-    );
+    const formattedText: IFormattedText[] = FormattedTextParser.parseFormattedText(props.text.trimLeft(), {
+        pronunciationGuideMarkers: appState.game.gameFormat.pronunciationGuideMarkers,
+    });
 
     return (
         <div>
