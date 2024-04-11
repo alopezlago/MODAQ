@@ -9,6 +9,7 @@ import {
 } from "@fluentui/react";
 
 import * as BonusQuestionController from "./BonusQuestionController";
+import * as ReorderTeamsDialogController from "./dialogs/ReorderTeamsDialogController";
 import * as TossupQuestionController from "./TossupQuestionController";
 import { GameState } from "../state/GameState";
 import { UIState } from "../state/UIState";
@@ -95,6 +96,14 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         uiState.dialogState.showReorderPlayersDialog(game.players);
     }, [uiState, game]);
 
+    const reorderTeamsHandler = React.useCallback(() => {
+        uiState.dialogState.showOKCancelMessageDialog(
+            "Reorder teams",
+            "Swap the order of teams?",
+            ReorderTeamsDialogController.submit
+        );
+    }, [uiState]);
+
     const renameTeamHandler = React.useCallback(() => {
         if (game.players.length === 0) {
             return;
@@ -155,6 +164,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         addPlayerHandler,
         protestBonusHandler,
         reorderPlayersHandler,
+        reorderTeamsHandler,
         renameTeamHandler,
         addQuestionsHandler
     );
@@ -228,6 +238,7 @@ function getActionSubMenuItems(
     addPlayerHandler: () => void,
     protestBonusHandler: () => void,
     reorderPlayersHandler: () => void,
+    reorderTeamsHandler: () => void,
     renameTeamHandler: () => void,
     addQuestionsHandler: () => void
 ): ICommandBarItemProps[] {
@@ -241,6 +252,7 @@ function getActionSubMenuItems(
         uiState,
         addPlayerHandler,
         reorderPlayersHandler,
+        reorderTeamsHandler,
         renameTeamHandler
     );
     items.push(playerManagementSection);
@@ -439,6 +451,7 @@ function getPlayerManagementSubMenuItems(
     uiState: UIState,
     addPlayerHandler: () => void,
     reorderPlayersHandler: () => void,
+    reorderTeamsHandler: () => void,
     renameTeamHandler: () => void
 ): ICommandBarItemProps {
     const teamNames: string[] = game.teamNames;
@@ -551,28 +564,34 @@ function getPlayerManagementSubMenuItems(
     //       existing action (sub vs join)
     //     - Should there be a color code for active players?
 
+    const gameMenuItemsDisabled: boolean = appState.game.cycles.length === 0;
+
     const addPlayerItem: ICommandBarItemProps = {
         key: "addNewPlayer",
         text: "Add player...",
         onClick: addPlayerHandler,
-        // subMenuProps: {
-        //     items: addPlayerMenus,
-        // },
-        disabled: appState.game.cycles.length === 0,
+        disabled: gameMenuItemsDisabled,
     };
 
     const reorderPlayersItem: ICommandBarItemProps = {
         key: "reorderPlayers",
         text: "Reorder players...",
         onClick: reorderPlayersHandler,
-        disabled: appState.game.cycles.length === 0,
+        disabled: gameMenuItemsDisabled,
+    };
+
+    const reorderTeamsItem: ICommandBarItemProps = {
+        key: "reorderTeams",
+        text: "Reorder teams...",
+        onClick: reorderTeamsHandler,
+        disabled: gameMenuItemsDisabled,
     };
 
     const renameTeamItem: ICommandBarItemProps = {
         key: "renameTeam",
         text: "Rename team...",
         onClick: renameTeamHandler,
-        disabled: appState.game.cycles.length === 0,
+        disabled: gameMenuItemsDisabled,
     };
 
     return {
@@ -581,7 +600,7 @@ function getPlayerManagementSubMenuItems(
         sectionProps: {
             bottomDivider: true,
             title: "Team Management",
-            items: [playerActionsItem, addPlayerItem, reorderPlayersItem, renameTeamItem],
+            items: [playerActionsItem, addPlayerItem, reorderPlayersItem, reorderTeamsItem, renameTeamItem],
         },
     };
 }

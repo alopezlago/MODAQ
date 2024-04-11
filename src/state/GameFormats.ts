@@ -2,7 +2,7 @@ import { IGameFormat, IPowerMarker } from "./IGameFormat";
 
 // We can't rely on a currentVersion we fill in, so these have to be manually tracked if there are breaking changes
 
-const currentVersion = "2021-07-11";
+const currentVersion = "2024-03-20";
 
 export const ACFGameFormat: IGameFormat = {
     bonusesBounceBack: false,
@@ -13,7 +13,7 @@ export const ACFGameFormat: IGameFormat = {
     powers: [],
     regulationTossupCount: 20,
     timeoutsAllowed: 1,
-    pronunciationGuideMarkers: ["(", ")"],
+    pronunciationGuideMarkers: ['("', '")'],
     pairTossupsBonuses: false,
     version: currentVersion,
 };
@@ -27,7 +27,7 @@ export const PACEGameFormat: IGameFormat = {
     powers: [{ marker: "(*)", points: 20 }],
     regulationTossupCount: 20,
     timeoutsAllowed: 1,
-    pronunciationGuideMarkers: ["(", ")"],
+    pronunciationGuideMarkers: ['("', '")'],
     pairTossupsBonuses: false,
     version: currentVersion,
 };
@@ -46,7 +46,7 @@ export const UndefinedGameFormat: IGameFormat = {
     powers: [{ marker: "(*)", points: 15 }],
     regulationTossupCount: 999,
     timeoutsAllowed: 999,
-    pronunciationGuideMarkers: ["(", ")"],
+    pronunciationGuideMarkers: ['("', '")'],
     pairTossupsBonuses: false,
     version: currentVersion,
 };

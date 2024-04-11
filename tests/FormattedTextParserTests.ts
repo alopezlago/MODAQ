@@ -118,7 +118,7 @@ describe("FormattedTextParserTests", () => {
             ]);
         });
         it("Pronunciation guide", () => {
-            const textToFormat = "This text is mine (mein).";
+            const textToFormat = 'This text is mine ("mein").';
             const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
                 pronunciationGuideMarkers: GameFormats.ACFGameFormat.pronunciationGuideMarkers,
             });
@@ -133,7 +133,7 @@ describe("FormattedTextParserTests", () => {
                     pronunciation: false,
                 },
                 {
-                    text: "(mein)",
+                    text: '("mein")',
                     bolded: false,
                     emphasized: false,
                     underlined: false,
@@ -153,7 +153,7 @@ describe("FormattedTextParserTests", () => {
             ]);
         });
         it("Bolded pronunciation guide", () => {
-            const textToFormat = "<b>Solano Lopez (LOW-pez)</b> was in this war.";
+            const textToFormat = '<b>Solano Lopez ("LOW-pez")</b> was in this war.';
             const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
                 pronunciationGuideMarkers: GameFormats.ACFGameFormat.pronunciationGuideMarkers,
             });
@@ -168,7 +168,7 @@ describe("FormattedTextParserTests", () => {
                     pronunciation: false,
                 },
                 {
-                    text: "(LOW-pez)",
+                    text: '("LOW-pez")',
                     bolded: true,
                     emphasized: false,
                     underlined: false,
@@ -223,13 +223,13 @@ describe("FormattedTextParserTests", () => {
             ]);
         });
         it("Different pronunciation guide", () => {
-            const textToFormat = "This text is mine (mein).";
+            const textToFormat = 'This text is mine ("mein").';
             const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
                 pronunciationGuideMarkers: ["[", "]"],
             });
             expect(result).to.deep.equal([
                 {
-                    text: "This text is mine (mein).",
+                    text: 'This text is mine ("mein").',
                     bolded: false,
                     emphasized: false,
                     underlined: false,
@@ -775,7 +775,7 @@ describe("FormattedTextParserTests", () => {
             expect(result).to.deep.equal(expected);
         });
         it("Pronunciation", () => {
-            const textToFormat = "There is a pronunciation guide (GUY-de) in this question.";
+            const textToFormat = 'There is a pronunciation guide ("GUY-de") in this question.';
             const result: IFormattedText[][] = FormattedTextParser.splitFormattedTextIntoWords(textToFormat, {
                 pronunciationGuideMarkers: GameFormats.ACFGameFormat.pronunciationGuideMarkers,
             });
