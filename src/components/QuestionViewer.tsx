@@ -121,6 +121,7 @@ const getClassNames = memoizeFunction(
                 padding: "5px 10px",
                 fontSize,
                 color: fontColor,
+                lineHeight: "1.4",
             },
             separator: {
                 borderTop: "1px dotted black",
