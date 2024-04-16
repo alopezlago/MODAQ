@@ -9,8 +9,8 @@ import {
     splitFormattedTextIntoWords as ftpSplitFormattedTextIntoWords,
     defaultPronunciationGuideMarkers as ftpDefaultPronunciationGuideMarkers,
     defaultReaderDirectives as ftpDefaultReaderDirectives,
-} from "src/parser/FormattedTextParser";
-import { IFormattedText as iFormattedText } from "src/parser/IFormattedText";
+} from "./src/parser/FormattedTextParser";
+import { IFormattedText as iFormattedText } from "./src/parser/IFormattedText";
 
 export const ModaqControl = control;
 
