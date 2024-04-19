@@ -8,7 +8,14 @@ export const defaultPronunciationGuideMarkers: [string, string] = ["(", ")"];
 /**
  * Default reader directives used if none are passed into `IFormattingOptions`
  */
-export const defaultReaderDirectives: string[] = ["(emphasize)", "(pause)", "(read slowly)"];
+export const defaultReaderDirectives: string[] = [
+    "(emphasize)",
+    "(pause)",
+    "(read slowly)",
+    "[emphasize]",
+    "[pause]",
+    "[read slowly]",
+];
 
 /**
  * Options for how to parse and format text
