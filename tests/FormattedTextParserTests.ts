@@ -431,12 +431,11 @@ describe("FormattedTextParserTests", () => {
                 },
             ]);
         });
-        it("Default reader directives", () => {
+        it("Default reader directives (parentheses)", () => {
             const textToFormat =
                 "This (Emphasize) equation is proportional to (read slowly) a minus x, plus (pause) 1.";
             const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
                 pronunciationGuideMarkers: ["[", "]"],
-                // readerDirectives: ["(emphasize)", "(read slowly)", "(pause)"],
             });
             expect(result).to.deep.equal([
                 {
@@ -486,6 +485,78 @@ describe("FormattedTextParserTests", () => {
                 },
                 {
                     text: "(pause)",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: true,
+                },
+                {
+                    text: " 1.",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+            ]);
+        });
+        it("Default reader directives (square brackets)", () => {
+            const textToFormat =
+                "This [Emphasize] equation is proportional to [read Slowly] a minus x, plus [pause] 1.";
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(textToFormat, {
+                pronunciationGuideMarkers: ["(", ")"],
+            });
+            expect(result).to.deep.equal([
+                {
+                    text: "This ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+                {
+                    text: "[Emphasize]",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: true,
+                },
+                {
+                    text: " equation is proportional to ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+                {
+                    text: "[read Slowly]",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: true,
+                },
+                {
+                    text: " a minus x, plus ",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+                {
+                    text: "[pause]",
                     bolded: false,
                     emphasized: false,
                     underlined: false,
