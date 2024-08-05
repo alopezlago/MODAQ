@@ -127,4 +127,8 @@ export class AppState {
         }, interval);
         this.uiState.setCustomExportIntervalId(newIntervalId);
     }
+
+    public setGame(game: GameState): void {
+        this.game = game;
+    }
 }

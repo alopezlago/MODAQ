@@ -8,6 +8,7 @@ export const enum ModalVisibilityStatus {
     ExportToSheets,
     Font,
     Help,
+    ImportFromQBJ,
     ImportGame,
     Message,
     NewGame,

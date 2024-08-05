@@ -183,6 +183,19 @@ describe("GameStateTests", () => {
             allPlayersInSet(game.getActivePlayers(firstTeamName, lastCycleIndex), firstTeamStarters);
             allPlayersInSet(game.getActivePlayers(secondTeamName, lastCycleIndex), secondTeamStarters);
         });
+        it("Subbed in player in same position as subbed out", () => {
+            const game: GameState = new GameState();
+            game.setCycles([new Cycle(), new Cycle(), new Cycle()]);
+            game.addNewPlayers(allPlayers);
+
+            game.cycles[1].addSwapSubstitution(firstTeamSub, firstTeamStarter);
+            const secondCycleActivePlayers: Set<Player> = game.getActivePlayers(firstTeamName, 1);
+            expect([...secondCycleActivePlayers]).to.deep.equal([firstTeamSub, anotherFirstTeamStarter]);
+
+            game.cycles[2].addSwapSubstitution(firstTeamStarter, anotherFirstTeamStarter);
+            const thirdCycleActivePlayers: Set<Player> = game.getActivePlayers(firstTeamName, 2);
+            expect([...thirdCycleActivePlayers]).to.deep.equal([firstTeamSub, firstTeamStarter]);
+        });
         // Should have some strange ones, like same person leaving and joining. May be a reason to move away from type
         // and move to implicit ordering (join before leave, swap in-between)
     });

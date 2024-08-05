@@ -80,6 +80,42 @@ describe("CycleTests", () => {
             expect(cycle.wrongBuzzes).to.exist;
             expect(cycle.wrongBuzzes?.length).to.equal(0);
         });
+        it("Correct buzz change for same team keeps bonus", () => {
+            const cycle: Cycle = new Cycle();
+            const player: Player = new Player("Alice", "Alpha", /* isStarter */ true);
+            const otherPlayer: Player = new Player("Anna", "Alpha", /* isStarter */ true);
+
+            const marker: IBuzzMarker = {
+                player,
+                position: 10,
+                points: 10,
+            };
+            cycle.addCorrectBuzz(marker, 0, GameFormats.UndefinedGameFormat, 0, 3);
+            cycle.setBonusPartAnswer(1, "Alpha", 10);
+
+            expect(cycle.correctBuzz).to.exist;
+            expect(cycle.correctBuzz?.tossupIndex).to.equal(0);
+            expect(cycle.correctBuzz?.marker).to.deep.equal(marker);
+
+            if (cycle.bonusAnswer == undefined) {
+                assert.fail("bonus answer was null");
+            }
+
+            expect(cycle.bonusAnswer.parts.map((part) => part.points)).to.deep.equal([0, 10, 0]);
+
+            const newMarker: IBuzzMarker = {
+                player: otherPlayer,
+                position: 11,
+                points: 10,
+            };
+            cycle.addCorrectBuzz(newMarker, 0, GameFormats.UndefinedGameFormat, 0, 3);
+
+            if (cycle.bonusAnswer == undefined) {
+                assert.fail("bonus answer was nul after fixing the buzz");
+            }
+
+            expect(cycle.bonusAnswer.parts.map((part) => part.points)).to.deep.equal([0, 10, 0]);
+        });
         it("Correct buzz changes wrong buzz and other buzz to neg", () => {
             const cycle: Cycle = new Cycle();
             const player: Player = new Player("Alice", "Alpha", /* isStarter */ true);

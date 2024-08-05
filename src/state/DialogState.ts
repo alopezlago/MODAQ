@@ -1,7 +1,7 @@
 import { makeAutoObservable } from "mobx";
 import { ignore } from "mobx-sync";
 import { AddQuestionDialogState } from "./AddQuestionsDialogState";
-import { CustomizeGameFormatDialogState } from "./CustomizeGameFormatDialogState";
+import { CustomizeGameFormatState } from "./CustomizeGameFormatState";
 import { IGameFormat } from "./IGameFormat";
 import { IMessageDialogState, MessageDialogType } from "./IMessageDialogState";
 import { RenamePlayerDialogState } from "./RenamePlayerDialogState";
@@ -10,16 +10,20 @@ import { ReorderPlayersDialogState } from "./ReorderPlayersDialogState";
 import { FontDialogState } from "./FontDialogState";
 import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 import { RenameTeamDialogState } from "./RenameTeamDialogState";
+import { ImportFromQBJDialogState } from "./ImportFromQBJDialogState";
 
 export class DialogState {
     @ignore
     public addQuestions: AddQuestionDialogState | undefined;
 
     @ignore
-    public customizeGameFormat: CustomizeGameFormatDialogState | undefined;
+    public customizeGameFormat: CustomizeGameFormatState | undefined;
 
     @ignore
     public fontDialog: FontDialogState | undefined;
+
+    @ignore
+    public importFromQBJDialog: ImportFromQBJDialogState | undefined;
 
     @ignore
     public messageDialog: IMessageDialogState | undefined;
@@ -42,6 +46,7 @@ export class DialogState {
         this.addQuestions = undefined;
         this.customizeGameFormat = undefined;
         this.fontDialog = undefined;
+        this.importFromQBJDialog = undefined;
         this.messageDialog = undefined;
         this.renamePlayerDialog = undefined;
         this.renameTeamDialog = undefined;
@@ -70,6 +75,13 @@ export class DialogState {
     public hideFontDialog(): void {
         this.fontDialog = undefined;
         if (this.visibleDialog === ModalVisibilityStatus.Font) {
+            this.hideModalDialog();
+        }
+    }
+
+    public hideImportFromQBJDialog(): void {
+        this.importFromQBJDialog = undefined;
+        if (this.visibleDialog === ModalVisibilityStatus.ImportFromQBJ) {
             this.hideModalDialog();
         }
     }
@@ -108,7 +120,7 @@ export class DialogState {
     }
 
     public showCustomizeGameFormatDialog(gameFormat: IGameFormat): void {
-        this.customizeGameFormat = new CustomizeGameFormatDialogState(gameFormat);
+        this.customizeGameFormat = new CustomizeGameFormatState(gameFormat);
         this.visibleDialog = ModalVisibilityStatus.CustomizeGameFormat;
     }
 
@@ -137,6 +149,11 @@ export class DialogState {
 
     public showImportGameDialog(): void {
         this.visibleDialog = ModalVisibilityStatus.ImportGame;
+    }
+
+    public showImportFromQBJDialog(): void {
+        this.importFromQBJDialog = new ImportFromQBJDialogState();
+        this.visibleDialog = ModalVisibilityStatus.ImportFromQBJ;
     }
 
     public showRenamePlayerDialog(player: Player): void {

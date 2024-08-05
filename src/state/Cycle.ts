@@ -208,7 +208,16 @@ export class Cycle implements ICycle {
         bonusIndex: number | undefined,
         partsCount: number | undefined
     ): void {
+        // If the previous correct buzz was from the same team, then their bonus should still stand, so restore it when
+        // we remove all of the previous buzzes and the events they would've caused
+        const bonusAnswer: Events.IBonusAnswerEvent | undefined =
+            this.correctBuzz?.marker.player.teamName === marker.player.teamName ? this.bonusAnswer : undefined;
+
         this.removeTeamsBuzzes(marker.player.teamName, tossupIndex);
+
+        if (bonusAnswer) {
+            this.bonusAnswer = bonusAnswer;
+        }
 
         this.correctBuzz = {
             tossupIndex,

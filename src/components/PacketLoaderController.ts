@@ -1,9 +1,11 @@
 import * as he from "he";
 
 import { AppState } from "../state/AppState";
-import { IPacket } from "../state/IPacket";
+import { IBonus, IPacket, ITossup } from "../state/IPacket";
 import { Bonus, BonusPart, PacketState, Tossup } from "../state/PacketState";
 import { UIState } from "../state/UIState";
+
+const minExpectedQuestionLength = 100;
 
 export function loadPacket(parsedPacket: IPacket): PacketState | undefined {
     const appState: AppState = AppState.instance;
@@ -25,17 +27,23 @@ export function loadPacket(parsedPacket: IPacket): PacketState | undefined {
                 tossup.metadata ? he.decode(tossup.metadata) : tossup.metadata
             )
     );
-    let bonuses: Bonus[] = [];
+    const bonuses: Bonus[] = [];
 
     if (parsedPacket.bonuses) {
-        bonuses = parsedPacket.bonuses.map((bonus, index) => {
+        for (let i = 0; i < parsedPacket.bonuses.length; i++) {
+            const bonus: IBonus = parsedPacket.bonuses[i];
+
             if (bonus.answers.length !== bonus.parts.length || bonus.answers.length !== bonus.values.length) {
-                const errorMessage = `Error loading packet: Unequal number of parts, answers, and values for bonus ${index}. Answers #: ${bonus.answers.length}, Parts #: ${bonus.parts.length}, Values #: ${bonus.values.length}`;
+                const errorMessage = `Error loading packet: Unequal number of parts, answers, and values for bonus ${
+                    i + 1
+                }. Answers #: ${bonus.answers.length}, Parts #: ${bonus.parts.length}, Values #: ${
+                    bonus.values.length
+                }`;
                 uiState.setPacketStatus({
                     isError: true,
                     status: errorMessage,
                 });
-                throw errorMessage;
+                return;
             }
 
             const parts: BonusPart[] = [];
@@ -48,12 +56,10 @@ export function loadPacket(parsedPacket: IPacket): PacketState | undefined {
                 });
             }
 
-            return new Bonus(
-                he.decode(bonus.leadin),
-                parts,
-                bonus.metadata ? he.decode(bonus.metadata) : bonus.metadata
+            bonuses.push(
+                new Bonus(he.decode(bonus.leadin), parts, bonus.metadata ? he.decode(bonus.metadata) : bonus.metadata)
             );
-        });
+        }
     }
 
     const packet = new PacketState();
@@ -61,10 +67,65 @@ export function loadPacket(parsedPacket: IPacket): PacketState | undefined {
     packet.setBonuses(bonuses);
 
     const packetName: string = uiState.packetFilename != undefined ? `"${uiState.packetFilename}"` : "";
-    uiState.setPacketStatus({
-        isError: false,
-        status: `Packet ${packetName} loaded. ${tossups.length} tossup(s), ${bonuses.length} bonus(es).`,
-    });
+    uiState.setPacketStatus(
+        {
+            isError: false,
+            status: `Packet ${packetName} loaded. ${tossups.length} tossup(s), ${bonuses.length} bonus(es).`,
+        },
+        findWarnings(packet)
+    );
 
     return packet;
+}
+
+function findWarnings(packet: PacketState): string[] {
+    const warnings: string[] = [];
+
+    // Unexpected number of bonus parts
+    const maxPartsCount: Map<number, number> = new Map<number, number>();
+    for (const bonus of packet.bonuses) {
+        const partsCount: number = bonus.parts.length;
+        maxPartsCount.set(partsCount, 1 + (maxPartsCount.get(partsCount) ?? 0));
+    }
+
+    if (maxPartsCount.size > 1) {
+        let maxCountCount = 0;
+        let maxCountCandidate = 3;
+        for (const candidate of maxPartsCount.keys()) {
+            const candidateCount: number = maxPartsCount.get(candidate) ?? 0;
+            if (candidateCount > maxCountCount) {
+                maxCountCount = candidateCount;
+                maxCountCandidate = candidate;
+            }
+        }
+
+        const badBonusNumbers: number[] = [];
+        for (let i = 0; i < packet.bonuses.length; i++) {
+            const bonus: Bonus = packet.bonuses[i];
+            if (bonus.parts.length != maxCountCandidate) {
+                badBonusNumbers.push(i + 1);
+            }
+        }
+
+        if (badBonusNumbers.length > 0) {
+            warnings.push(
+                `Bonuses that aren't ${maxCountCandidate} parts long found at bonus(es) ${badBonusNumbers.join(", ")}.`
+            );
+        }
+    }
+
+    // Unexpectedly short question
+    const shortQuestionNumbers: number[] = [];
+    for (let i = 0; i < packet.tossups.length; i++) {
+        const tossup: ITossup = packet.tossups[i];
+        if (tossup.question.length < minExpectedQuestionLength) {
+            shortQuestionNumbers.push(i + 1);
+        }
+    }
+
+    if (shortQuestionNumbers.length > 0) {
+        warnings.push(`Suspiciously short questions found at tossup(s) ${shortQuestionNumbers.join(", ")}.`);
+    }
+
+    return warnings;
 }

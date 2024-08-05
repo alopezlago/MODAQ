@@ -21,6 +21,7 @@ import { IGameFormat } from "./IGameFormat";
 import { BuzzMenuState } from "./BuzzMenuState";
 import { ICustomExport } from "./CustomExport";
 import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
+import { IPacketParseStatus } from "./IPacketParseStatus";
 
 // TODO: Look into breaking this up into individual UI component states. Lots of pendingX fields, which could be in
 // their own (see CustomizeGameFormatDialogState)
@@ -74,7 +75,7 @@ export class UIState {
     public packetFilename: string | undefined;
 
     @ignore
-    public packetParseStatus: IStatus | undefined;
+    public packetParseStatus: IPacketParseStatus | undefined;
 
     @ignore
     public pendingBonusProtestEvent?: IBonusProtestEvent;
@@ -519,8 +520,11 @@ export class UIState {
         this.packetFilename = name;
     }
 
-    public setPacketStatus(packetStatus: IStatus): void {
-        this.packetParseStatus = packetStatus;
+    public setPacketStatus(packetStatus: IStatus, warnings?: string[]): void {
+        this.packetParseStatus = {
+            status: packetStatus,
+            warnings: warnings ?? [],
+        };
     }
 
     public setPendingBonusProtest(teamName: string, questionIndex: number, part: number): void {

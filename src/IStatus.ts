@@ -1,3 +1,4 @@
+// TODO: Merge with IResult
 export type IStatus = ISuccessStatus | IFailureStatus;
 
 export interface ISuccessStatus {

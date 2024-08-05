@@ -399,7 +399,7 @@ export class GameState {
         }
 
         const players: Player[] = this.getPlayers(teamName);
-        const activePlayers: Set<Player> = new Set<Player>(players.filter((player) => player.isStarter));
+        const activePlayers: Player[] = players.filter((player) => player.isStarter);
 
         // We should just have starters at the beginning. Then swap out new players, based on substitutions up to the
         // cycleIndex.
@@ -416,14 +416,16 @@ export class GameState {
             const teamLeaves: IPlayerLeavesEvent[] =
                 leaves?.filter((leave) => leave.outPlayer.teamName === teamName) ?? [];
             for (const leave of teamLeaves) {
-                const outPlayer: Player | undefined = players.find((player) => player.name === leave.outPlayer.name);
-                if (outPlayer == undefined) {
+                const outPlayerIndex: number = activePlayers.findIndex(
+                    (player) => player.name === leave.outPlayer.name
+                );
+                if (outPlayerIndex === -1) {
                     throw new Error(
                         `Tried to take out ${leave.outPlayer.name} from the game, who isn't on team ${teamName}`
                     );
                 }
 
-                activePlayers.delete(outPlayer);
+                activePlayers.splice(outPlayerIndex, 1);
             }
 
             const teamJoins: IPlayerJoinsEvent[] = joins?.filter((join) => join.inPlayer.teamName === teamName) ?? [];
@@ -433,30 +435,31 @@ export class GameState {
                     throw new Error(`Tried to add ${join.inPlayer.name}, who isn't on team ${teamName}`);
                 }
 
-                activePlayers.add(inPlayer);
+                activePlayers.push(inPlayer);
             }
 
             const teamSubs: ISubstitutionEvent[] = subs?.filter((sub) => sub.inPlayer.teamName === teamName) ?? [];
             for (const sub of teamSubs) {
-                const inPlayer = players.find((player) => player.name === sub.inPlayer.name);
-                const outPlayer = players.find((player) => player.name === sub.outPlayer.name);
+                const inPlayer: Player | undefined = players.find((player) => player.name === sub.inPlayer.name);
+                const outPlayerIndex: number = activePlayers.findIndex((player) => player.name === sub.outPlayer.name);
 
                 if (inPlayer == undefined) {
                     throw new Error(
                         `Tried to substitute in player ${sub.inPlayer.name}, who isn't on team ${teamName}`
                     );
-                } else if (outPlayer == undefined) {
+                } else if (outPlayerIndex === -1) {
                     throw new Error(
                         `Tried to substitute out player ${sub.outPlayer.name}, who isn't on team ${teamName}`
                     );
                 }
 
-                activePlayers.add(inPlayer);
-                activePlayers.delete(outPlayer);
+                activePlayers[outPlayerIndex] = inPlayer;
             }
         }
 
-        return activePlayers;
+        // Adding and removing players switches the order, but we want to obey the player order people have
+
+        return new Set<Player>(activePlayers);
     }
 
     // TODO: Make this return a set?
