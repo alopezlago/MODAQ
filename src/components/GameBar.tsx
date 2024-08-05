@@ -63,6 +63,9 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         uiState.createPendingNewGame();
         uiState.dialogState.showImportGameDialog();
     }, [uiState]);
+    const importFromQBJHandler = React.useCallback(() => {
+        uiState.dialogState.showImportFromQBJDialog();
+    }, [uiState]);
 
     const protestBonusHandler = React.useCallback(() => {
         // Issue: pending protest needs existing index. Need to update it to include the part number
@@ -129,8 +132,14 @@ export const GameBar = observer(function GameBar(): JSX.Element {
                               onClick: newGameHandler,
                           },
                           {
+                              key: "importQBJ",
+                              text: "Import from QBJ...",
+                              iconProps: { iconName: "Download" },
+                              onClick: importFromQBJHandler,
+                          },
+                          {
                               key: "importGame",
-                              text: "Import game...",
+                              text: "Import raw game...",
                               iconProps: { iconName: "Download" },
                               onClick: importGameHandler,
                           },

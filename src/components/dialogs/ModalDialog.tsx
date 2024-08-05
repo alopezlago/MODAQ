@@ -22,6 +22,7 @@ export const ModalDialog = observer(function ModalDialog(
     const appState: AppState = React.useContext(StateContext);
 
     const content: IDialogContentProps = {
+        ...props.dialogContentProps,
         type: DialogType.normal,
         title: props.title,
         closeButtonAriaLabel: "Close",

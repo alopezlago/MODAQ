@@ -1,7 +1,7 @@
 import { makeAutoObservable } from "mobx";
 import { IGameFormat } from "./IGameFormat";
 
-export class CustomizeGameFormatDialogState {
+export class CustomizeGameFormatState {
     public gameFormat: IGameFormat;
 
     // Based on the UI, we have to store powerMarkers/powerValues separately. This is a bit of a leaky abstraction

@@ -1,13 +1,13 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { Label, ILabelStyles, ThemeContext } from "@fluentui/react";
 
 import * as PacketLoaderController from "../components/PacketLoaderController";
 import { UIState } from "../state/UIState";
 import { PacketState } from "../state/PacketState";
 import { AppState } from "../state/AppState";
-import { FilePicker } from "./FilePicker";
 import { IPacket } from "../state/IPacket";
+import { FilePickerWithStatus } from "./FilePickerWithStatus";
+import { Label, Stack, StackItem } from "@fluentui/react";
 
 export const PacketLoader = observer(function PacketLoader(props: IPacketLoaderProps): JSX.Element | null {
     const onLoadHandler = React.useCallback((ev: ProgressEvent<FileReader>) => onLoad(ev, props), [props]);
@@ -18,41 +18,32 @@ export const PacketLoader = observer(function PacketLoader(props: IPacketLoaderP
         [props, onLoadHandler]
     );
 
-    // Some state needs to exist outside of the theme function, otherwise mobx isn't smart enough to know it's changed
-    const status: string | undefined = props.appState.uiState.packetParseStatus?.status;
+    if (props.appState.uiState.yappServiceUrl == undefined) {
+        return null;
+    }
+
+    const warnings: JSX.Element[] = (props.appState.uiState.packetParseStatus?.warnings ?? []).map((warning) => (
+        <StackItem key={warning}>
+            <Label>Warning: {warning}</Label>
+        </StackItem>
+    ));
 
     return (
-        <ThemeContext.Consumer>
-            {(theme) => {
-                const statusStyles: ILabelStyles = {
-                    root: {
-                        color:
-                            props.appState.uiState.packetParseStatus?.isError ?? false
-                                ? theme
-                                    ? theme.palette.red
-                                    : "rgb(128, 0, 0)"
-                                : undefined,
-                    },
-                };
-
-                if (props.appState.uiState.yappServiceUrl == undefined) {
-                    return null;
-                }
-
-                return (
-                    <div>
-                        <FilePicker
-                            accept="application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                            buttonText="Load..."
-                            label="Packet"
-                            required={true}
-                            onChange={uploadHandler}
-                        />
-                        <Label styles={statusStyles}>{status}</Label>
-                    </div>
-                );
-            }}
-        </ThemeContext.Consumer>
+        <div>
+            <Stack>
+                <StackItem>
+                    <FilePickerWithStatus
+                        accept="application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        buttonText="Load..."
+                        label="Packet"
+                        required={true}
+                        status={props.appState.uiState.packetParseStatus?.status}
+                        onChange={uploadHandler}
+                    />
+                </StackItem>
+                {warnings}
+            </Stack>
+        </div>
     );
 });
 
@@ -152,7 +143,17 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
         status: "Loading packet...",
     });
 
-    const parsedPacket: IPacket = JSON.parse(json) as IPacket;
+    let parsedPacket: IPacket;
+    try {
+        parsedPacket = JSON.parse(json) as IPacket;
+    } catch (e) {
+        uiState.setPacketStatus({
+            isError: true,
+            status: `Error loading packet: packet is in an invalid format. Error: '${(e as Error).message}'`,
+        });
+        return;
+    }
+
     const packet: PacketState | undefined = PacketLoaderController.loadPacket(parsedPacket);
     if (packet == undefined) {
         return;

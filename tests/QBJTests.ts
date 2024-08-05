@@ -8,6 +8,7 @@ import { Bonus, PacketState, Tossup } from "src/state/PacketState";
 import { Player } from "src/state/TeamState";
 import { IGameFormat } from "src/state/IGameFormat";
 import { IResult } from "src/IResult";
+import { Cycle } from "src/state/Cycle";
 
 const firstTeamPlayers: Player[] = [
     new Player("Alice", "A", /* isStarter */ true),
@@ -47,6 +48,14 @@ defaultPacket.setBonuses([
     ]),
 ]);
 
+function createDefaultMatch(): IMatch {
+    const game: GameState = new GameState();
+    game.loadPacket(defaultPacket);
+    game.setPlayers(players);
+    game.setGameFormat(GameFormats.ACFGameFormat);
+    return QBJ.toQBJ(game, "Packet", 1);
+}
+
 function verifyBuzz(buzz: QBJ.IMatchQuestionBuzz, player: Player, position: number, points: number): void {
     expect(buzz.buzz_position.word_index).to.equal(position);
     expect(buzz.team.name).to.equal(player.teamName);
@@ -54,7 +63,19 @@ function verifyBuzz(buzz: QBJ.IMatchQuestionBuzz, player: Player, position: numb
     expect(buzz.result.value).to.equal(points);
 }
 
-function verifyQBJ(updateGame: (game: GameState) => void, verifyMatch: (match: IMatch, game: GameState) => void): void {
+function verifyFromQBJ(match: IMatch, verifyGame: (game: GameState) => void): void {
+    const result: IResult<GameState> = QBJ.fromQBJ(match, defaultPacket, GameFormats.ACFGameFormat);
+    if (!result.success) {
+        assert.fail(`Failed to parse the QBJ file into a game. Error: '${result.message}'`);
+    }
+
+    verifyGame(result.value);
+}
+
+function verifyToQBJ(
+    updateGame: (game: GameState) => void,
+    verifyMatch: (match: IMatch, game: GameState) => void
+): void {
     const game: GameState = new GameState();
     game.loadPacket(defaultPacket);
     game.addNewPlayers(players);
@@ -66,10 +87,511 @@ function verifyQBJ(updateGame: (game: GameState) => void, verifyMatch: (match: I
     verifyMatch(match, game);
 }
 
+function verifyFromQBJRoundtrip(game: GameState): void {
+    const qbj: IMatch = QBJ.toQBJ(game, "Packet", 1);
+    const roundtrippedGameResult: IResult<GameState> = QBJ.fromQBJ(qbj, game.packet, game.gameFormat);
+
+    if (!roundtrippedGameResult.success) {
+        assert.fail(`Failed to parse the QBJ. Error: '${roundtrippedGameResult.message}'`);
+    }
+
+    const roundtrippedGame: GameState = roundtrippedGameResult.value;
+    expect(roundtrippedGame).to.not.be.undefined;
+    expect(roundtrippedGame.players).to.deep.equal(game.players);
+    expect(roundtrippedGame.packet).to.deep.equal(game.packet);
+
+    // We can't use deep equal aganist cycles because protests aren't preserved. So compare individual fields
+    expect(roundtrippedGame.cycles.length).to.equal(game.cycles.length, "Cycle lengths don't match");
+    for (let i = 0; i < game.cycles.length; i++) {
+        const expectedCycle: Cycle = game.cycles[i];
+        const roundtrippedCycle: Cycle = roundtrippedGame.cycles[i];
+
+        expect(roundtrippedCycle.bonusAnswer).to.deep.equal(
+            expectedCycle.bonusAnswer,
+            `Bonus answer mismatch at index ${i}`
+        );
+        expect(roundtrippedCycle.correctBuzz).to.deep.equal(
+            expectedCycle.correctBuzz,
+            `Correct buzz mismatch at index ${i}`
+        );
+
+        expect(roundtrippedCycle.thrownOutBonuses).to.deep.equal(
+            expectedCycle.thrownOutBonuses,
+            `Thrown out bonuses mismatch at index ${i}`
+        );
+        expect(roundtrippedCycle.thrownOutTossups).to.deep.equal(
+            expectedCycle.thrownOutTossups,
+            `Thrown out tossups mismatch at index ${i}`
+        );
+
+        // Player order for subs and join/leave differ, so just make sure that the names are in each others sets
+        for (const teamName of game.teamNames) {
+            const roundtrippedActivePlayers: Set<Player> = roundtrippedGame.getActivePlayers(teamName, i);
+            const originalActivePlayers: Set<Player> = game.getActivePlayers(teamName, i);
+            expect(roundtrippedActivePlayers.size).to.equal(
+                originalActivePlayers.size,
+                `Active players size different at index ${i}`
+            );
+
+            for (const player of originalActivePlayers.values()) {
+                expect(
+                    roundtrippedActivePlayers.has(player),
+                    `Player '${player.name}' of team '${player.teamName}' not found in roundtripped players at index ${i}`
+                );
+            }
+        }
+    }
+}
+
 describe("QBJTests", () => {
-    describe("ToQBJ", () => {
+    describe("fromQBJ", () => {
         it("No buzz game", () => {
-            verifyQBJ(
+            const firstTeamPlayers: QBJ.IPlayer[] = [{ name: "Alice" }, { name: "Andy" }];
+            const secondTeamPlayers: QBJ.IPlayer[] = [{ name: "Bob" }];
+
+            const match: IMatch = {
+                match_questions: [
+                    {
+                        buzzes: [],
+                        question_number: 1,
+                        tossup_question: { question_number: 1, type: "tossup", parts: 1 },
+                    },
+                ],
+                match_teams: [
+                    {
+                        bonus_points: 0,
+                        team: {
+                            name: "Alpha",
+                            players: firstTeamPlayers,
+                        },
+                        lineups: [{ first_question: 0, players: firstTeamPlayers }],
+                        match_players: firstTeamPlayers.map<QBJ.IMatchPlayer>((player) => {
+                            return { player, answer_counts: [], tossups_heard: defaultPacket.tossups.length };
+                        }),
+                    },
+                    {
+                        bonus_points: 0,
+                        team: {
+                            name: "Beta",
+                            players: secondTeamPlayers,
+                        },
+                        lineups: [{ first_question: 0, players: secondTeamPlayers }],
+                        match_players: secondTeamPlayers.map<QBJ.IMatchPlayer>((player) => {
+                            return { player, answer_counts: [], tossups_heard: defaultPacket.tossups.length };
+                        }),
+                    },
+                ],
+                tossups_read: 2,
+            };
+
+            verifyFromQBJ(match, (game) => {
+                expect(game.finalScore).to.deep.equal([0, 0]);
+                expect(game.cycles.length).to.equal(defaultPacket.tossups.length);
+                for (let i = 0; i < defaultPacket.tossups.length; i++) {
+                    if (game.cycles[i].correctBuzz != undefined) {
+                        assert.fail("Correct buzz found at index " + i);
+                    }
+                }
+            });
+        });
+
+        it("Game->QBJ->Game round trip", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            // Add a variety of events
+            // - Team 1 negs on question 1, team 2 gets it, gets the second and third bonus parts. Bonus protest 1st one, tossup protest 1st one
+            // - Leave/join for team 1. TU 2 is thrown out. TU is answered by team 1
+            // - Team 1 gets first part of bonus
+            // - Sub for team 2. The sub gets TU 3
+            // - Bonus 3 is thrown out. Parts 1 gotten.
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addWrongBuzz(
+                { player: firstTeamPlayers[0], points: -5, position: 0, isLastWord: false },
+                0,
+                GameFormats.ACFGameFormat
+            );
+            firstCycle.addCorrectBuzz(
+                { player: secondTeamPlayer, points: 10, position: 1 },
+                0,
+                GameFormats.ACFGameFormat,
+                0,
+                3
+            );
+            firstCycle.setBonusPartAnswer(1, secondTeamPlayer.teamName, 10);
+            firstCycle.setBonusPartAnswer(2, secondTeamPlayer.teamName, 10);
+            firstCycle.addBonusProtest(0, 0, "Right", "Reason", secondTeamPlayer.teamName);
+
+            const secondCycle: Cycle = game.cycles[1];
+            secondCycle.addThrownOutTossup(1);
+            secondCycle.addCorrectBuzz(
+                {
+                    player: firstTeamPlayers[1],
+                    points: 10,
+                    position: 1,
+                },
+                2,
+                GameFormats.ACFGameFormat,
+                1,
+                3
+            );
+            secondCycle.setBonusPartAnswer(0, firstTeamPlayers[0].teamName, 10);
+
+            const thirdCycle: Cycle = game.cycles[2];
+
+            const newPlayer: Player = new Player("Brenda", secondTeamPlayer.teamName, /* isStarter */ false);
+            game.addNewPlayer(newPlayer);
+            thirdCycle.addPlayerJoins(newPlayer);
+            thirdCycle.addPlayerLeaves(secondTeamPlayer);
+            thirdCycle.addCorrectBuzz(
+                { player: newPlayer, points: 10, position: 0 },
+                3,
+                GameFormats.ACFGameFormat,
+                2,
+                3
+            );
+            thirdCycle.addThrownOutBonus(2);
+            thirdCycle.setBonusPartAnswer(0, secondTeamPlayer.teamName, 10);
+
+            verifyFromQBJRoundtrip(game);
+        });
+        it("Roundtrip game with multiple thrown out tossups", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addThrownOutTossup(0);
+            firstCycle.addThrownOutTossup(1);
+            firstCycle;
+            firstCycle.addWrongBuzz(
+                { player: firstTeamPlayers[0], points: -5, position: 0, isLastWord: false },
+                2,
+                GameFormats.ACFGameFormat
+            );
+            firstCycle.addCorrectBuzz(
+                { player: secondTeamPlayer, points: 10, position: 1 },
+                2,
+                GameFormats.ACFGameFormat,
+                0,
+                3
+            );
+            firstCycle.setBonusPartAnswer(0, secondTeamPlayer.teamName, 10);
+
+            verifyFromQBJRoundtrip(game);
+        });
+        it("Roundtrip game with multiple thrown out bonuses", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addCorrectBuzz(
+                { player: secondTeamPlayer, points: 10, position: 1 },
+                0,
+                GameFormats.ACFGameFormat,
+                0,
+                3
+            );
+            firstCycle.addThrownOutBonus(0);
+            firstCycle.addThrownOutBonus(1);
+            firstCycle.setBonusPartAnswer(2, secondTeamPlayer.teamName, 10);
+
+            verifyFromQBJRoundtrip(game);
+        });
+        it("Invalid QBJ - undefined and empty match_players", () => {
+            const match: IMatch = createDefaultMatch();
+            if (match.match_teams) {
+                match.match_teams[1].match_players = (undefined as unknown) as QBJ.IMatchPlayer[];
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+
+            match.match_teams[1].match_players = [] as QBJ.IMatchPlayer[];
+
+            const secondResult: IResult<GameState> = QBJ.fromQBJ(match, defaultPacket, GameFormats.ACFGameFormat);
+            expect(secondResult.success).to.be.false;
+        });
+        it("Invalid QBJ - less than 2 teams", () => {
+            const match: IMatch = createDefaultMatch();
+            match.match_teams = [
+                {
+                    bonus_points: 0,
+                    team: {
+                        name: "Alpha",
+                        players: firstTeamPlayers,
+                    },
+                    lineups: [{ first_question: 0, players: firstTeamPlayers }],
+                    match_players: firstTeamPlayers.map<QBJ.IMatchPlayer>((player) => {
+                        return { player, answer_counts: [], tossups_heard: defaultPacket.tossups.length };
+                    }),
+                },
+            ];
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+        });
+        it("Invalid QBJ - more than 2 teams", () => {
+            const match: IMatch = createDefaultMatch();
+            match.match_teams = ["Alpha", "Beta", "Gamma"].map((teamName) => {
+                return {
+                    bonus_points: 0,
+                    team: {
+                        name: teamName,
+                        players: firstTeamPlayers,
+                    },
+                    lineups: [{ first_question: 0, players: firstTeamPlayers }],
+                    match_players: firstTeamPlayers.map<QBJ.IMatchPlayer>((player) => {
+                        return { player, answer_counts: [], tossups_heard: defaultPacket.tossups.length };
+                    }),
+                };
+            });
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+        });
+        it("Invalid QBJ - undefined and empty lineup", () => {
+            const match: IMatch = createDefaultMatch();
+
+            if (match.match_teams) {
+                match.match_teams[0].lineups = (undefined as unknown) as QBJ.ILineup[];
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+
+            match.match_teams[0].lineups = [];
+
+            const secondResult: IResult<GameState> = QBJ.fromQBJ(match, defaultPacket, GameFormats.ACFGameFormat);
+            expect(secondResult.success).to.be.false;
+        });
+        it("Invalid QBJ - undefined and empty match questoins", () => {
+            const match: IMatch = createDefaultMatch();
+
+            if (match.match_questions) {
+                match.match_questions = (undefined as unknown) as QBJ.IMatchQuestion[];
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+
+            match.match_questions = [];
+
+            const secondResult: IResult<GameState> = QBJ.fromQBJ(match, defaultPacket, GameFormats.ACFGameFormat);
+            expect(secondResult.success).to.be.false;
+        });
+        it("Invalid QBJ - negative bonus points", () => {
+            const match: IMatch = createDefaultMatch();
+
+            if (match.match_teams) {
+                match.match_teams[0].bonus_points = -5;
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+        });
+        it("Invalid QBJ - same team name", () => {
+            const match: IMatch = createDefaultMatch();
+            const name = "Same";
+
+            if (match.match_teams) {
+                match.match_teams[0].team.name = name;
+                match.match_teams[1].team.name = name;
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+        });
+        it("Invalid QBJ - empty player name", () => {
+            const match: IMatch = createDefaultMatch();
+
+            if (match.match_teams) {
+                match.match_teams[0].match_players[0].player.name = "";
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+        });
+        it("Invalid QBJ - duplicate player name", () => {
+            const match: IMatch = createDefaultMatch();
+            const name = "Same";
+
+            if (match.match_teams) {
+                match.match_teams[0].match_players[0].player.name = name;
+                match.match_teams[0].match_players[1].player.name = name;
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+        });
+        it("Invalid QBJ - buzz by undefined player", () => {
+            const match: IMatch = createDefaultMatch();
+
+            if (match.match_questions) {
+                match.match_questions[0].buzzes = [
+                    {
+                        buzz_position: { word_index: 0 },
+                        team: match.match_teams[0].team,
+                        player: (undefined as unknown) as QBJ.IPlayer,
+                        result: { value: -5 },
+                    },
+                ];
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+        });
+        it("Invalid QBJ - buzz by unknown player", () => {
+            const match: IMatch = createDefaultMatch();
+
+            if (match.match_questions) {
+                const player: QBJ.IPlayer = { ...match.match_teams[0].match_players[0].player };
+                player.name = "Some other guy";
+
+                match.match_questions[0].buzzes = [
+                    {
+                        buzz_position: { word_index: 0 },
+                        team: match.match_teams[0].team,
+                        player,
+                        result: { value: -5 },
+                    },
+                ];
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+        });
+        it("Invalid QBJ - lineups at invalid time", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            const newPlayer: Player = new Player("Arthur", game.teamNames[0], /* isStarter */ false);
+
+            game.cycles[1].addSwapSubstitution(newPlayer, firstTeamPlayers[0]);
+
+            const match: QBJ.IMatch = QBJ.toQBJ(game, "Packet", 1);
+
+            if (match.match_teams) {
+                match.match_teams[0].lineups[0].first_question = -1;
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+
+            match.match_teams[0].lineups[0].first_question = game.packet.tossups.length + 1;
+            const secondResult: IResult<GameState> = QBJ.fromQBJ(
+                match as IMatch,
+                defaultPacket,
+                GameFormats.ACFGameFormat
+            );
+            expect(secondResult.success).to.be.false;
+        });
+        it("Invalid QBJ - lineups in wrong order", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            const newPlayer: Player = new Player("Arthur", game.teamNames[0], /* isStarter */ false);
+
+            game.cycles[1].addSwapSubstitution(newPlayer, firstTeamPlayers[0]);
+
+            const match: QBJ.IMatch = QBJ.toQBJ(game, "Packet", 1);
+
+            if (match.match_teams) {
+                match.match_teams[0].lineups[0].first_question = 2;
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+        });
+        it("Invalid QBJ - buzz at invalid time", () => {
+            const match: IMatch = createDefaultMatch();
+
+            if (match.match_questions) {
+                match.match_questions[0].buzzes = [
+                    {
+                        buzz_position: { word_index: -1 },
+                        team: match.match_teams[0].team,
+                        player: match.match_teams[0].match_players[0].player,
+                        result: { value: -5 },
+                    },
+                ];
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+
+            match.match_questions[0].buzzes = [
+                {
+                    buzz_position: {
+                        word_index: defaultPacket.tossups[0].getWords(GameFormats.ACFGameFormat).length + 1,
+                    },
+                    team: match.match_teams[0].team,
+                    player: match.match_teams[0].match_players[0].player,
+                    result: { value: -5 },
+                },
+            ];
+
+            const secondResult: IResult<GameState> = QBJ.fromQBJ(
+                match as IMatch,
+                defaultPacket,
+                GameFormats.ACFGameFormat
+            );
+            expect(secondResult.success).to.be.false;
+        });
+        it("Invalid QBJ - tossup answered during thrown out tossup", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            const match: QBJ.IMatch = QBJ.toQBJ(game, "Packet", 1);
+
+            if (match.match_questions) {
+                match.match_questions[0].buzzes = [
+                    {
+                        buzz_position: { word_index: 0 },
+                        team: match.match_teams[0].team,
+                        player: match.match_teams[0].match_players[0].player,
+                        result: { value: 10 },
+                    },
+                ];
+                match.match_questions[0].tossup_question.question_number = 2;
+
+                match.match_questions[1].buzzes = [
+                    {
+                        buzz_position: { word_index: 1 },
+                        team: match.match_teams[0].team,
+                        player: match.match_teams[0].match_players[0].player,
+                        result: { value: 10 },
+                    },
+                ];
+                match.match_questions[1].tossup_question.question_number = 1;
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+        });
+        it("Invalid QBJ - undefined passed in", () => {
+            const result: IResult<GameState> = QBJ.fromQBJ(
+                (undefined as unknown) as IMatch,
+                defaultPacket,
+                GameFormats.ACFGameFormat
+            );
+            expect(result.success).to.be.false;
+        });
+    });
+    describe("toQBJ", () => {
+        it("No buzz game", () => {
+            verifyToQBJ(
                 // eslint-disable-next-line @typescript-eslint/no-empty-function
                 () => {},
                 (match) => {
@@ -100,7 +622,7 @@ describe("QBJTests", () => {
             );
         });
         it("Four buzzes (-5, 0, 10, 15)", () => {
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
                     game.setGameFormat(GameFormats.StandardPowersMACFGameFormat);
 
@@ -172,7 +694,7 @@ describe("QBJTests", () => {
             );
         });
         it("Bonuses (0, 10, 30)", () => {
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
                     // 0 on the bonus
                     game.cycles[0].addCorrectBuzz(
@@ -259,7 +781,7 @@ describe("QBJTests", () => {
             );
         });
         it("Bonus bouncebacks", () => {
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
                     game.setGameFormat({ ...game.gameFormat, bonusesBounceBack: true });
 
@@ -331,7 +853,7 @@ describe("QBJTests", () => {
             );
         });
         it("Sub-in player", () => {
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
                     game.cycles[1].addSwapSubstitution(firstTeamPlayers[2], firstTeamPlayers[0]);
 
@@ -384,7 +906,7 @@ describe("QBJTests", () => {
             );
         });
         it("Player leaves", () => {
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
                     game.cycles[2].addPlayerLeaves(firstTeamPlayers[0]);
                 },
@@ -420,11 +942,15 @@ describe("QBJTests", () => {
         it("Player joins", () => {
             const newPlayerName = "Bianca";
 
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
-                    game.cycles[3].addPlayerJoins(
-                        new Player(newPlayerName, secondTeamPlayer.teamName, /* isStarter */ false)
+                    const newPlayer: Player = new Player(
+                        newPlayerName,
+                        secondTeamPlayer.teamName,
+                        /* isStarter */ false
                     );
+                    game.addNewPlayer(newPlayer);
+                    game.cycles[3].addPlayerJoins(newPlayer);
                 },
                 (match) => {
                     expect(match.tossups_read).to.equal(4);
@@ -456,7 +982,7 @@ describe("QBJTests", () => {
             );
         });
         it("Player stats", () => {
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
                     game.setGameFormat(GameFormats.StandardPowersMACFGameFormat);
 
@@ -604,7 +1130,7 @@ describe("QBJTests", () => {
             const secondProtestReason = "Second protest";
             const secondProtestAnswer = "Second answer";
 
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
                     game.cycles[0].addWrongBuzz(
                         {
@@ -667,7 +1193,7 @@ describe("QBJTests", () => {
             const secondProtestReason = "Second protest";
             const secondProtestAnswer = "Second answer";
 
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
                     game.cycles[0].addCorrectBuzz(
                         {
@@ -731,7 +1257,7 @@ describe("QBJTests", () => {
             );
         });
         it("Thrown out tossup", () => {
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
                     game.cycles[0].addThrownOutTossup(0);
                     game.cycles[0].addCorrectBuzz(
@@ -771,7 +1297,7 @@ describe("QBJTests", () => {
             );
         });
         it("Thrown out bonus", () => {
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
                     game.cycles[0].addCorrectBuzz(
                         {
@@ -816,7 +1342,7 @@ describe("QBJTests", () => {
             );
         });
         it("Only exports up to the final question", () => {
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
                     const newGameFormat: IGameFormat = { ...GameFormats.UndefinedGameFormat, regulationTossupCount: 1 };
                     game.setGameFormat(newGameFormat);
@@ -846,7 +1372,7 @@ describe("QBJTests", () => {
             );
         });
         it("Buzz value changes when game format does", () => {
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
                     game.clear();
                     game.addNewPlayers(players);
@@ -900,7 +1426,7 @@ describe("QBJTests", () => {
             );
         });
         it("Neg and no penalty on same word", () => {
-            verifyQBJ(
+            verifyToQBJ(
                 (game) => {
                     game.cycles[0].addWrongBuzz(
                         {
