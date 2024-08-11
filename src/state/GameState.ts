@@ -238,10 +238,11 @@ export class GameState {
                         }
 
                         const bonusIndex: number = this.getBonusIndex(i);
-                        const potentialBonusPoints = this.packet.bonuses[bonusIndex].parts.reduce(
-                            (previous, current) => current.value + previous,
-                            0
-                        );
+                        const potentialBonusPoints =
+                            this.packet.bonuses[bonusIndex]?.parts.reduce(
+                                (previous, current) => current.value + previous,
+                                0
+                            ) ?? 0;
 
                         // Need to remove the neg (subtract) and add what the correct value would be
                         swings[tossupTeamIndex].for +=

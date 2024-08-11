@@ -301,6 +301,52 @@ describe("GameStateTests", () => {
             );
             expect(game.protestsMatter).to.be.true;
         });
+        it("Tossup-only game, protest matters", () => {
+            const game: GameState = new GameState();
+            game.addNewPlayers(players);
+            const packet: PacketState = new PacketState();
+            packet.setTossups(defaultPacket.tossups);
+            game.loadPacket(packet);
+
+            game.setGameFormat({ ...game.gameFormat, negValue: -5 });
+            game.cycles[0].addWrongBuzz(
+                { player: firstTeamPlayer, points: 0, position: 2, isLastWord: false },
+                0,
+                game.gameFormat
+            );
+            game.cycles[0].addTossupProtest(firstTeamPlayer.teamName, 0, 2, "My answer", "My reason");
+            expect(game.protestsMatter).to.be.true;
+        });
+        it("Tossup-only game, protest doesn't matter", () => {
+            const game: GameState = new GameState();
+            game.addNewPlayers(players);
+            const packet: PacketState = new PacketState();
+            packet.setTossups(defaultPacket.tossups);
+            game.loadPacket(packet);
+
+            game.setGameFormat({ ...game.gameFormat, negValue: -5 });
+            game.cycles[0].addWrongBuzz(
+                { player: firstTeamPlayer, points: 0, position: 2, isLastWord: false },
+                0,
+                game.gameFormat
+            );
+            game.cycles[0].addTossupProtest(firstTeamPlayer.teamName, 0, 2, "My answer", "My reason");
+
+            game.cycles[1].addCorrectBuzz(
+                {
+                    player: firstTeamPlayer,
+                    points: 10,
+                    position: 1,
+                    isLastWord: false,
+                },
+                1,
+                game.gameFormat,
+                0,
+                0
+            );
+
+            expect(game.protestsMatter).to.be.false;
+        });
     });
 });
 
