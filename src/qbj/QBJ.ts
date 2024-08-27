@@ -9,11 +9,23 @@ import { IGameFormat } from "../state/IGameFormat";
 import { IBuzzMarker } from "../state/IBuzzMarker";
 
 export function parseRegistration(json: string): IResult<Player[]> {
-    // Either it's a JSON object with "name" or a JSON array
-    const parsedInput: IRegistration[] | ITournament = JSON.parse(json);
+    // Either it's a serialized tournament with an objects and version field, a JSON object with "name" or a JSON array
+    const parsedInput: IRegistration[] | ITournament | ISerializedTournament = JSON.parse(json);
     let registrations: IRegistration[];
     if (isTournament(parsedInput)) {
         registrations = parsedInput.registrations;
+    } else if (isSerializedTournament(parsedInput)) {
+        const serializedTournament: ISerializedTournamentObject | undefined = parsedInput.objects.find((object) =>
+            isTournament(object)
+        );
+        if (serializedTournament == undefined) {
+            return {
+                success: false,
+                message: "Objects doesn't have a valid Tournament in it.",
+            };
+        }
+
+        registrations = serializedTournament.registrations;
     } else {
         registrations = parsedInput;
     }
@@ -87,8 +99,30 @@ export function parseRegistration(json: string): IResult<Player[]> {
 
 // Needed for the type guard
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isSerializedTournament(parsedJson: any): parsedJson is ISerializedTournament {
+    if (parsedJson.version == undefined || parsedJson.objects == undefined) {
+        return false;
+    }
+
+    // Needed for the type guard
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const objects: any[] = parsedJson.objects;
+
+    if (!Array.isArray(objects)) {
+        return false;
+    }
+
+    return objects.some((object) => object.type === "Tournament" && isTournament(object));
+}
+
+// Needed for the type guard
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isTournament(registrations: any): registrations is ITournament {
-    return registrations.name != undefined && registrations.registrations != undefined;
+    return (
+        registrations.name != undefined &&
+        registrations.registrations != undefined &&
+        Array.isArray(registrations.registrations)
+    );
 }
 
 export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameFormat): IResult<GameState> {
@@ -921,6 +955,14 @@ export interface IMatchQuestionBonusPart {
     controlled_points: number;
     bounceback_points?: number;
 }
+
+// Follow https://schema.quizbowl.technology/serialization/
+export interface ISerializedTournament {
+    version: string;
+    objects: ISerializedTournamentObject[];
+}
+
+export type ISerializedTournamentObject = ITournament & { type: "Tournament" };
 
 // Follow https://schema.quizbowl.technology/tournament
 export interface ITournament {

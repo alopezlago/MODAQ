@@ -1613,6 +1613,57 @@ describe("QBJTests", () => {
                 expect(fifthPlayer.isStarter).to.be.true;
             });
         });
+
+        it("Parse serialized registration", () => {
+            const teamName = "Washington A";
+            const tournament: QBJ.ISerializedTournament = {
+                version: "2.1.1",
+                objects: [
+                    {
+                        type: "Tournament",
+                        name: "My Tournament",
+                        registrations: [
+                            {
+                                name: "Washington",
+                                teams: [
+                                    {
+                                        name: teamName,
+                                        players: [
+                                            {
+                                                name: "Alice",
+                                            },
+                                            {
+                                                name: "Bob",
+                                            },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            const playersResult: IResult<Player[]> = QBJ.parseRegistration(JSON.stringify(tournament));
+            if (!playersResult.success) {
+                assert.fail("First result should've succeeded");
+            }
+
+            const players: Player[] = playersResult.value;
+
+            expect(players.length).to.equal(2);
+
+            const firstPlayer: Player = players[0];
+            expect(firstPlayer.name).to.equal("Alice");
+            expect(firstPlayer.teamName).to.equal(teamName);
+            expect(firstPlayer.isStarter).to.be.true;
+
+            const secondPlayer: Player = players[1];
+            expect(secondPlayer.name).to.equal("Bob");
+            expect(secondPlayer.teamName).to.equal(teamName);
+            expect(secondPlayer.isStarter).to.be.true;
+        });
+
         it("Fifth player in registered team isn't a starter", () => {
             const teamName = "Washington A";
             const tournament: ITournament = {
