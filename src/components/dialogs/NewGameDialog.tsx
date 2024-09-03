@@ -16,6 +16,8 @@ import {
     ITextFieldStyles,
     assertNever,
     ThemeContext,
+    Link,
+    IStackItemStyles,
 } from "@fluentui/react";
 
 import * as NewGameValidator from "../../state/NewGameValidator";
@@ -87,6 +89,8 @@ const modalProps: IModalProps = {
 };
 
 const rostersInputStyles: Partial<ITextFieldStyles> = { root: { marginRight: 10, width: "75%" } };
+
+const rosterFileLinkStyles: IStackItemStyles = { root: { marginBottom: 10 } };
 
 export const NewGameDialog = observer(function NewGameDialog(): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
@@ -438,17 +442,11 @@ const FromQBJRegistrationNewGameBody = observer(function FromQBJRegistrationNewG
     const uiState: UIState = props.appState.uiState;
 
     const loadHandler = React.useCallback(
-        (event: React.ChangeEvent<HTMLInputElement>, fileList: FileList | null | undefined) => {
+        (event: React.ChangeEvent<HTMLInputElement>, file: File) => {
             if (
-                fileList == undefined ||
                 uiState.pendingNewGame == undefined ||
                 uiState.pendingNewGame.type !== PendingGameType.QBJRegistration
             ) {
-                return;
-            }
-
-            const file: File | null = fileList.item(0);
-            if (file === null) {
                 return;
             }
 
@@ -511,6 +509,11 @@ const FromQBJRegistrationNewGameBody = observer(function FromQBJRegistrationNewG
         <ThemeContext.Consumer>
             {(theme) => (
                 <Stack>
+                    <StackItem styles={rosterFileLinkStyles}>
+                        <Link href="https://www.quizbowlreader.com/createTournamentFile.html" target="_blank">
+                            Create registration file
+                        </Link>
+                    </StackItem>
                     <StackItem>
                         <div className={props.classes.loadContainer}>
                             <FilePicker buttonText="Load Roster..." onChange={loadHandler} />

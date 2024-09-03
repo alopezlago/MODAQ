@@ -51,16 +51,7 @@ export function onPivotChange(pivotKey: ImportFromQBJPivotKey): void {
     AppState.instance.uiState.dialogState.importFromQBJDialog?.setPivotKey(pivotKey);
 }
 
-export function onQBJFileChange(fileList: FileList | null | undefined): void {
-    if (fileList == undefined) {
-        return;
-    }
-
-    const file: File | undefined = fileList[0];
-    if (file == undefined) {
-        return;
-    }
-
+export function onQBJFileChange(file: File): void {
     const fileReader = new FileReader();
     fileReader.onload = onLoadQBJ;
 

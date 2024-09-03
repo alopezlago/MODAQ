@@ -28,8 +28,10 @@ import { ModalDialogContainer } from "./ModalDialogContainer";
 import { IGameFormat } from "../state/IGameFormat";
 import { IPacket } from "../state/IPacket";
 import { IPlayer, Player } from "../state/TeamState";
-import { PacketState } from "../state/PacketState";
+import { Bonus, PacketState } from "../state/PacketState";
 import { ICustomExport } from "../state/CustomExport";
+import { Cycle } from "../state/Cycle";
+import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
 
 // Initialize Fluent UI icons when this is loaded, before the first render
 initializeIcons();
@@ -228,6 +230,11 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
 }
 
 function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
+    // Disable shortcuts if there's a modal dialog open
+    if (appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None) {
+        return;
+    }
+
     switch (event.key.toUpperCase()) {
         case "N":
             if (appState.uiState.cycleIndex + 1 < appState.game.playableCycles.length) {
@@ -237,9 +244,55 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
             event.stopPropagation();
 
             break;
+
         case "P":
         case "B":
             appState.uiState.previousCycle();
+            event.preventDefault();
+            event.stopPropagation();
+            break;
+
+        case "1":
+        case "2":
+        case "3":
+        case "4":
+        case "5":
+            // This shortcut is only supported when bouncebacks are disabled. We could add support for it later and just
+            // toggle through all the fields, but the logic is slightly more complicated and very few formats use
+            // bouncebacks.
+            if (appState.game.gameFormat.bonusesBounceBack) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                return;
+            }
+
+            // If there are bonuses and they are active, toggle the bonus part. We have to do some defensive checks to
+            // make sure that we can update the bonus
+            const cycleIndex: number = appState.uiState.cycleIndex;
+            const cycle: Cycle = appState.game.cycles[cycleIndex];
+            const bonus: Bonus | undefined = appState.game.getBonus(cycleIndex);
+            if (cycle.correctBuzz == undefined || bonus == undefined) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                return;
+            }
+
+            // We know event.key is a number here, so we don't need to check for NaN
+            const partIndex: number = Number(event.key) - 1;
+            if (bonus.parts.length <= partIndex) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                return;
+            }
+
+            const teamName: string = cycle.correctBuzz.marker.player.teamName;
+            const currentPoints: number | undefined = cycle.bonusAnswer?.parts[partIndex].points ?? 0;
+
+            cycle.setBonusPartAnswer(partIndex, teamName, currentPoints > 0 ? 0 : bonus.parts[partIndex].value);
+
             event.preventDefault();
             event.stopPropagation();
             break;

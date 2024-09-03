@@ -53,8 +53,7 @@ const ImportGameDialogBody = observer(function ImportGameDialogBody(): JSX.Eleme
         [appState]
     );
     const changeHandler = React.useCallback(
-        (event: React.ChangeEvent<HTMLInputElement>, fileList: FileList | null | undefined) =>
-            onFilePickerChange(appState, fileList, loadHandler),
+        (event: React.ChangeEvent<HTMLInputElement>, file: File) => onFilePickerChange(appState, file, loadHandler),
         [appState, loadHandler]
     );
 
@@ -92,15 +91,9 @@ const ImportGameDialogBody = observer(function ImportGameDialogBody(): JSX.Eleme
 
 function onFilePickerChange(
     appState: AppState,
-    fileList: FileList | null | undefined,
+    file: File,
     onLoadHandler: (ev: ProgressEvent<FileReader>) => void
 ): void {
-    if (fileList == undefined) {
-        return;
-    }
-
-    const file: File = fileList[0];
-
     const fileReader = new FileReader();
     fileReader.onload = onLoadHandler;
 
