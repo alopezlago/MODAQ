@@ -12,8 +12,8 @@ import { Label, Stack, StackItem } from "@fluentui/react";
 export const PacketLoader = observer(function PacketLoader(props: IPacketLoaderProps): JSX.Element | null {
     const onLoadHandler = React.useCallback((ev: ProgressEvent<FileReader>) => onLoad(ev, props), [props]);
     const uploadHandler = React.useCallback(
-        (event: React.ChangeEvent<HTMLInputElement>, files: FileList | undefined | null) => {
-            onChange(props, files, onLoadHandler, event);
+        (event: React.ChangeEvent<HTMLInputElement>, file: File) => {
+            onChange(props, file, onLoadHandler, event);
         },
         [props, onLoadHandler]
     );
@@ -49,22 +49,17 @@ export const PacketLoader = observer(function PacketLoader(props: IPacketLoaderP
 
 function onChange(
     props: IPacketLoaderProps,
-    files: FileList | undefined | null,
+    file: File,
     onLoadHandler: (ev: ProgressEvent<FileReader>) => void,
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement> | React.DragEvent
 ): void {
     event.preventDefault();
     props.appState.uiState.clearPacketStatus();
-
-    if (files == undefined || files.length === 0) {
-        return;
-    }
 
     const fileReader = new FileReader();
     fileReader.onload = onLoadHandler;
 
     // docx files should be read as a binaray, while json should be read as text
-    const file: File = files[0];
     props.appState.uiState.setPacketFilename(file.name);
 
     if (file.type === "application/json" || file.type === "text/plain") {

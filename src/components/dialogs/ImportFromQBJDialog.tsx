@@ -124,6 +124,6 @@ function onPivotLinkClick(item: PivotItem | undefined): void {
     ImportFromQBJDialogController.onPivotChange(pivotKey);
 }
 
-function onQBJFileChange(event: React.ChangeEvent<HTMLInputElement>, fileList: FileList | null | undefined): void {
-    ImportFromQBJDialogController.onQBJFileChange(fileList);
+function onQBJFileChange(event: React.ChangeEvent<HTMLInputElement>, file: File): void {
+    ImportFromQBJDialogController.onQBJFileChange(file);
 }
