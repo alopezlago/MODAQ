@@ -11,6 +11,10 @@ const labelStyles: ILabelStyles = {
     },
 };
 
+const scoreCellStyle: React.CSSProperties = {
+    paddingLeft: 5,
+};
+
 export const Scoreboard = observer(function Scoreboard() {
     const appState: AppState = React.useContext(StateContext);
     const classes: IScoreboardStyle = getClassNames();
@@ -20,13 +24,20 @@ export const Scoreboard = observer(function Scoreboard() {
     let label: JSX.Element | undefined;
     if (appState.uiState.isScoreVertical) {
         label = (
-            <div>
-                {teamNames.map((teamName, index) => (
-                    <Label styles={labelStyles} key={teamName}>
-                        {teamName}: {scores[index]}
-                    </Label>
-                ))}
-            </div>
+            <table>
+                <tbody>
+                    {teamNames.map((teamName, index) => (
+                        <tr key={teamName}>
+                            <td>
+                                <Label styles={labelStyles}>{teamName}</Label>
+                            </td>
+                            <td style={scoreCellStyle}>
+                                <Label styles={labelStyles}>{scores[index]}</Label>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         );
     } else {
         label = (
