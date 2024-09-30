@@ -10,9 +10,11 @@ export const defaultPronunciationGuideMarkers: [string, string] = ["(", ")"];
  */
 export const defaultReaderDirectives: string[] = [
     "(emphasize)",
+    "(emphasise)",
     "(pause)",
     "(read slowly)",
     "[emphasize]",
+    "[emphasise]",
     "[pause]",
     "[read slowly]",
 ];

@@ -1,4 +1,5 @@
 import { defineConfig, splitVendorChunkPlugin } from "vite";
+import mkcert from "vite-plugin-mkcert";
 import react from "@vitejs/plugin-react";
 
 // https://vitejs.dev/config/
@@ -9,9 +10,20 @@ export default defineConfig(({ mode }) => {
     return {
         build: {
             assetsDir: "out",
-               sourcemap: true,
+            sourcemap: true,
+            rollupOptions: {
+                output: {
+                    manualChunks(id: string): string | void {
+                        if (id.includes("react") || id.includes("mobx") || id === "he") {
+                            return "vendor";
+                        }
+
+                        return;
+                    },
+                },
+            },
         },
-        plugins: [react(), splitVendorChunkPlugin()],
+        plugins: [react(), mkcert(), splitVendorChunkPlugin()],
         define: {
             __BUILD_VERSION__: JSON.stringify(`${mode.startsWith("production") ? "" : "dev_"}${version}`),
         },
