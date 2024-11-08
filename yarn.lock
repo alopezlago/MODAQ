@@ -774,10 +774,10 @@
   dependencies:
     "@maxim_mazurok/gapi.client.discovery-v1" latest
 
-"@types/gapi.client.sheets@^4.0.20201030":
-  version "4.0.20201030"
-  resolved "https://registry.yarnpkg.com/@types/gapi.client.sheets/-/gapi.client.sheets-4.0.20201030.tgz#792160242b06441962de017f33c58b3413832a0a"
-  integrity sha512-U6sBNFNbIV8Z18jKDpK3m5ehyHXbAJKfT3kM84hb57/tkcWvfXFu84xg4PFKHHxTSUlL0arF1ikesNdM3hRrjw==
+"@types/gapi.client.sheets@^4.0.20201031":
+  version "4.0.20201031"
+  resolved "https://registry.yarnpkg.com/@types/gapi.client.sheets/-/gapi.client.sheets-4.0.20201031.tgz#2d11a6805385c4bcfc9d147ab5eb288a87547953"
+  integrity sha512-1Aiu11rNNoyPDHW6v8TVcSmlDN+MkxSuafwiawaK5YqZ+uYA+O63vjUvkK+3qNduSLh7D9qBJc/8GGwgN6gsTw==
   dependencies:
     "@maxim_mazurok/gapi.client.sheets-v4" latest
 
@@ -786,15 +786,15 @@
   resolved "https://registry.npmjs.org/@types/gapi.client/-/gapi.client-1.0.3.tgz"
   integrity sha512-XhJ45zhedkqXln75Y0XZAFmHFHNu6zCGe9EyPiu5a20Q7XnsEENR3dnUqbYvp7w9e6vjXW+uKGqb3z/ezZijDg==
 
-"@types/gapi.client@^1.0.5":
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/@types/gapi.client/-/gapi.client-1.0.5.tgz#a6eb97e664fe51656c5b52258bd0afef28c76308"
-  integrity sha512-OTpbBMuzfC4lkvaomxqskI/iWRGW3zOZbDXZLNSyiuswTiSSGgILRLkg0POuZ4EgzEdaYaTlXpnXiCp07ri/Yw==
+"@types/gapi.client@^1.0.8":
+  version "1.0.8"
+  resolved "https://registry.yarnpkg.com/@types/gapi.client/-/gapi.client-1.0.8.tgz#8e02c57493b014521f2fa3359166c01dc2861cd7"
+  integrity sha512-qJQUmmumbYym3Amax0S8CVzuSngcXsC1fJdwRS2zeW5lM63zXkw4wJFP+bG0jzgi0R6EsJKoHnGNVTDbOyG1ng==
 
-"@types/google.accounts@^0.0.2":
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/@types/google.accounts/-/google.accounts-0.0.2.tgz#4e03bd249fe490f004f4f8d6423343fc51f5614a"
-  integrity sha512-wmnbDIiGZNr3dJ+NCGiWme78rhsf5gn1YJM6uRjf3FCb8lrRptybQeAnHQ+GDfKSo+z2hRxhS32VRDXJEAvCmg==
+"@types/google.accounts@^0.0.15":
+  version "0.0.15"
+  resolved "https://registry.yarnpkg.com/@types/google.accounts/-/google.accounts-0.0.15.tgz#88c6ceba6ecd8f54ae42891393d2fff0fcdb4ee2"
+  integrity sha512-NiydIuJzwdpnWNqTPOeDzGXhzz46Ll6T4rN3YWSm9Zfx/8ZfbwFbzyPSw1Tkz4uE3gQiU+fRj4KvBVUuHmk+KQ==
 
 "@types/he@^1.1.2":
   version "1.1.2"

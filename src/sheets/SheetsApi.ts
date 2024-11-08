@@ -7,12 +7,18 @@ const timedOutMessage = "Timed out signing into Google Sheets";
 
 export const SheetsApi: ISheetsApi = {
     initializeIfNeeded: async (uiState: UIState): Promise<void> => {
-        if (
-            uiState.sheetsState.apiInitialized === LoadingState.Loading ||
-            uiState.sheetsState.apiInitialized === LoadingState.Loaded
+        // If it's loaded and the token has expired, prompt again
+        if (uiState.sheetsState.apiInitialized === LoadingState.Loading) {
+            return;
+        } else if (
+            uiState.sheetsState.apiInitialized === LoadingState.Loaded &&
+            uiState.sheetsState.expiresAt != undefined &&
+            uiState.sheetsState.expiresAt > Date.now()
         ) {
             return;
         }
+
+        const initialState: LoadingState = uiState.sheetsState.apiInitialized;
 
         // Bit of a hacky wait to wait until the callback is done
         // Need to follow this approach: https://developers.google.com/identity/oauth2/web/guides/migration-to-gis#gapi-asyncawait
@@ -20,16 +26,18 @@ export const SheetsApi: ISheetsApi = {
 
         const promise: Promise<void> = new Promise<void>(async (resolve, reject) => {
             try {
-                // Load gapi first, then load the GIS client
-                await new Promise<void>((resolve) => {
-                    gapi.load("client", resolve);
-                });
+                // Load gapi first, then load the GIS client. Only load gapi stuff the first time we're through, however.
+                if (initialState === LoadingState.Unloaded) {
+                    await new Promise<void>((resolve) => {
+                        gapi.load("client", resolve);
+                    });
 
-                // Typings issue, init isn't listed as a method
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                await (gapi.client as any).init({});
+                    // Typings issue, init isn't listed as a method
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    await (gapi.client as any).init({});
 
-                await gapi.client.load("https://sheets.googleapis.com/$discovery/rest?version=v4");
+                    await gapi.client.load("https://sheets.googleapis.com/$discovery/rest?version=v4");
+                }
 
                 const clientId: string | undefined = uiState.sheetsState.clientId;
                 if (clientId == undefined) {
@@ -53,8 +61,13 @@ export const SheetsApi: ISheetsApi = {
                     }
                 }, 2 * 60 * 1000);
 
+                // If the user already signed in, don't make them pick the account again
+                const prompt: "none" | "select_account" =
+                    initialState === LoadingState.Loaded ? "none" : "select_account";
+
                 const tokenClient = google.accounts.oauth2.initTokenClient({
                     client_id: clientId,
+                    prompt,
                     scope: "https://www.googleapis.com/auth/spreadsheets",
                     callback: (tokenResponse) => {
                         clearTimeout(cancelSignIn);
@@ -65,8 +78,16 @@ export const SheetsApi: ISheetsApi = {
                             return;
                         }
 
+                        const expiresAt: number = Date.now() + parseInt(tokenResponse.expires_in) * 1000;
+                        uiState.sheetsState.setExpiresAt(expiresAt);
                         uiState.sheetsState.setSheetsApiInitialized(LoadingState.Loaded);
                         resolve();
+                    },
+                    error_callback: (error) => {
+                        clearTimeout(cancelSignIn);
+                        uiState.sheetsState.setSheetsApiInitialized(LoadingState.Error);
+                        reject(error.message);
+                        return;
                     },
                 });
 
