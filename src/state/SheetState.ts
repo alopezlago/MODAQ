@@ -5,9 +5,12 @@ import { IStatus } from "../IStatus";
 
 export class SheetState {
     @ignore
-    apiInitialized: LoadingState;
+    public apiInitialized: LoadingState;
 
     public clientId: string | undefined;
+
+    @ignore
+    public expiresAt: number | undefined;
 
     @ignore
     public exportStatus: IStatus | undefined;
@@ -35,6 +38,7 @@ export class SheetState {
 
         this.apiInitialized = LoadingState.Unloaded;
         this.clientId = undefined;
+        this.expiresAt = undefined;
         this.exportStatus = undefined;
         this.exportState = undefined;
         this.rosterLoadStatus = undefined;
@@ -42,6 +46,10 @@ export class SheetState {
         this.roundNumber = undefined;
         this.sheetId = undefined;
         this.sheetType = undefined;
+    }
+
+    public clearExpiresAt(): void {
+        this.expiresAt = undefined;
     }
 
     public clearExportStatus(): void {
@@ -59,6 +67,10 @@ export class SheetState {
 
     public setClientId(clientId: string | undefined): void {
         this.clientId = clientId;
+    }
+
+    public setExpiresAt(expiresAt: number): void {
+        this.expiresAt = expiresAt;
     }
 
     public setExportStatus(status: IStatus, state: ExportState | undefined = undefined): void {

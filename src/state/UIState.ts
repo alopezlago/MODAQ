@@ -202,7 +202,7 @@ export class UIState {
             this.pendingNewGame = {
                 packet: new PacketState(),
                 type: PendingGameType.Manual,
-                gameFormat: GameFormats.ACFGameFormat,
+                gameFormat: GameFormats.StandardPowersMACFGameFormat,
                 manual: {
                     firstTeamPlayers,
                     secondTeamPlayers,

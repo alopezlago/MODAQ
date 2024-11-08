@@ -1,6 +1,6 @@
 {
     "name": "modaq",
-    "version": "1.33.1",
+    "version": "1.33.2",
     "description": "Quiz Bowl Reader using TypeScript, React, and MobX",
     "repository": {
         "type": "git",
@@ -21,9 +21,9 @@
     "devDependencies": {
         "@babel/core": "^7.25.2",
         "@types/chai": "^4.2.15",
-        "@types/google.accounts": "^0.0.2",
-        "@types/gapi.client.sheets": "^4.0.20201030",
-        "@types/gapi.client": "^1.0.5",
+        "@types/google.accounts": "^0.0.15",
+        "@types/gapi.client.sheets": "^4.0.20201031",
+        "@types/gapi.client": "^1.0.8",
         "@types/he": "^1.1.2",
         "@types/mocha": "^8.2.1",
         "@types/react": "^17.0.3",
