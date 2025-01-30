@@ -47,7 +47,7 @@
         "vite-plugin-mkcert": "^1.17.6"
     },
     "dependencies": {
-        "@fluentui/react": "^8.64.2",
+        "@fluentui/react": "^8.122.9",
         "he": "^1.2.0",
         "mobx": "^6.5.0",
         "mobx-react-lite": "^3.3.0",
