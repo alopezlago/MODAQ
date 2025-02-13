@@ -1,6 +1,6 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { IStackTokens, Label, mergeStyleSets, Stack, StackItem, Text } from "@fluentui/react";
+import { IStackTokens, mergeStyleSets, Stack, StackItem } from "@fluentui/react";
 
 import { QuestionViewerContainer } from "./QuestionViewerContainer";
 import { Scoreboard } from "./Scoreboard";
