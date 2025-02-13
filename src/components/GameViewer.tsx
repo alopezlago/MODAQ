@@ -10,6 +10,7 @@ import { AppState } from "../state/AppState";
 import { StateContext } from "../contexts/StateContext";
 import { Clock } from "./Clock";
 import { ExportStatus } from "./ExportStatus";
+import { PacketNameLabel } from "./PacketNameLabel";
 
 const scoreboardAndQuestionViewerTokens: IStackTokens = { childrenGap: 20 };
 
@@ -25,7 +26,9 @@ export const GameViewer = observer(function GameViewer() {
 
     // Include an empty div to keep the scoreboard centered
     const showClock: boolean = gameExists && !appState.uiState.isClockHidden;
+    const showPacketName: boolean = gameExists && !appState.uiState.isPacketNameHidden;
     const clock = showClock ? <Clock className={classes.clock} /> : undefined;
+    const packetName = showPacketName ? <PacketNameLabel /> : undefined;
     const clockSpaceFiller = showClock ? <div></div> : undefined;
 
     // TODO: See if we should convert the game viewer section into a StackItem. It's using a grid now, so it might
@@ -49,6 +52,7 @@ export const GameViewer = observer(function GameViewer() {
                         <StackItem>
                             <QuestionViewerContainer />
                         </StackItem>
+                        <StackItem>{packetName}</StackItem>
                         <StackItem>
                             <ExportStatus />
                         </StackItem>

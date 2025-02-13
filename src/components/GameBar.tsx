@@ -387,6 +387,13 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             onClick: () => appState.uiState.toggleEventLogVisibility(),
         },
         {
+            key: "showPacketName",
+            text: "Packet Name",
+            canCheck: true,
+            checked: !appState.uiState.isPacketNameHidden,
+            onClick: () => appState.uiState.togglePacketNameVisibility(),
+        },
+        {
             key: "showBonusAlways",
             text: "Always show bonus",
             canCheck: true,
