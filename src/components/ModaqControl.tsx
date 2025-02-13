@@ -189,6 +189,11 @@ export interface IModaqControlProps {
     packet?: IPacket;
 
     /**
+     * The name of the packet.
+     */
+    packetName?: string;
+
+    /**
      * The players in the current game. This should only be set once.
      */
     players?: IPlayer[];
@@ -335,6 +340,14 @@ function update(appState: AppState, props: IModaqControlProps): void {
 
     if (props.hideNewGame !== appState.uiState.hideNewGame) {
         appState.uiState.setHideNewGame(props.hideNewGame == true);
+    }
+
+    if (props.packetName !== appState.uiState.packetFilename) {
+        if (props.packetName != undefined) {
+            appState.uiState.setPacketFilename(props.packetName);
+        } else {
+            appState.uiState.resetPacketFilename();
+        }
     }
 }
 

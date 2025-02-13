@@ -101,6 +101,9 @@ export class UIState {
     // Default should be to show the export status. This setting didn't exist before, so use hide instead of show
     public isCustomExportStatusHidden: boolean;
 
+    // Default should be to show the packet name. This setting didn't exist before, so use hide instead of show
+    public isPacketNameHidden: boolean;
+
     // Default should be to have it horizontal.
     public isScoreVertical: boolean;
 
@@ -143,6 +146,7 @@ export class UIState {
 
         this.isClockHidden = false;
         this.isEventLogHidden = false;
+        this.isPacketNameHidden = false;
         this.isCustomExportStatusHidden = false;
         this.isScoreVertical = false;
         this.importGameStatus = undefined;
@@ -591,6 +595,10 @@ export class UIState {
 
     public toggleHideBonusOnDeadTossup(): void {
         this.hideBonusOnDeadTossup = !this.hideBonusOnDeadTossup;
+    }
+
+    public togglePacketNameVisibility(): void {
+        this.isPacketNameHidden = !this.isPacketNameHidden;
     }
 
     public toggleScoreVerticality(): void {
