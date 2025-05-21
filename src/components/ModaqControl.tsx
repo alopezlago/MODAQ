@@ -36,6 +36,9 @@ import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
 // Initialize Fluent UI icons when this is loaded, before the first render
 initializeIcons();
 
+// We may want to make this customizable, but for now set it to 5 days
+const minAgeToPromptForReset = 5 * 1000 * 60 * 60 * 24; // 5 days in ms
+
 const lightModePalette: Partial<IPalette> = {
     themePrimary: "#0078d4",
     themeLighterAlt: "#eff6fc",
@@ -221,7 +224,21 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
     if (props.persistState) {
         configure({ enforceActions: "observed", computedRequiresReaction: true });
         const trunk = new AsyncTrunk(appState, { storage: localStorage, storageKey: props.storeName, delay: 200 });
-        trunk.init(appState);
+        trunk.init(appState).then(() => {
+            // Need to check if game is old and prompt the user if they want to restart the game.
+            // Date subtraction gives you the number of milliseconds
+            const lastUpdate: number | undefined = appState.game.lastUpdate?.getTime();
+            if (lastUpdate != undefined && Date.now() - lastUpdate > minAgeToPromptForReset) {
+                appState.uiState.dialogState.showOKCancelMessageDialog(
+                    "Start new game?",
+                    "The loaded game is over 5 days old. Do you want to start a new game instead?",
+                    () => {
+                        appState.uiState.createPendingNewGame();
+                        appState.uiState.dialogState.showNewGameDialog();
+                    }
+                );
+            }
+        });
     }
 
     // We have to add the listener at the document layer, otherwise the event isn't picked up if the user clicks on
