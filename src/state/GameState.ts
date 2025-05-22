@@ -42,12 +42,16 @@ export class GameState {
 
     public hasUpdates: boolean;
 
+    @format((deserializedDate: string) => new Date(deserializedDate))
+    public lastUpdate: Date | undefined;
+
     constructor() {
         makeObservable(this, {
             cycles: observable,
             teamNames: computed,
             gameFormat: observable,
             hasUpdates: observable,
+            lastUpdate: observable,
             markUpdateComplete: action,
             packet: observable,
             players: observable,
@@ -546,6 +550,7 @@ export class GameState {
     }
 
     public markUpdateNeeded(): void {
+        this.lastUpdate = new Date(Date.now());
         this.hasUpdates = true;
     }
 
@@ -567,7 +572,7 @@ export class GameState {
             cycle.removeNewPlayerEvents(player);
         }
 
-        this.hasUpdates = true;
+        this.markUpdateNeeded();
     }
 
     public setCycles(cycles: Cycle[]): void {
@@ -575,13 +580,13 @@ export class GameState {
     }
 
     public setGameFormat(gameFormat: IGameFormat): void {
-        this.hasUpdates = true;
         this.gameFormat = gameFormat;
+        this.markUpdateNeeded();
     }
 
     public setPlayers(players: Player[]): void {
-        this.hasUpdates = true;
         this.players = players;
+        this.markUpdateNeeded();
     }
 
     public tryUpdatePlayerName(playerTeam: string, oldPlayerName: string, newPlayerName: string): boolean {
