@@ -47,7 +47,7 @@ import { FilePicker } from "../FilePicker";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { IResult } from "../../IResult";
 
-const playerListHeight = "20vh";
+const playerListHeight = "25vh";
 
 const enum PivotKey {
     Manual = "M",
@@ -82,7 +82,9 @@ const modalProps: IModalProps = {
             // To have max width respected normally, we'd need to pass in an IDialogStyleProps, but it ridiculously
             // requires you to pass in an entire theme to modify the max width. We could also use a modal, but that
             // requires building much of what Dialogs offer easily (close buttons, footer for buttons)
-            maxWidth: "80% !important",
+            minWidth: "60% !important",
+            maxWidth: "90% !important",
+            maxHeight: "95% !important",
             top: "5vh",
         },
     },
@@ -707,7 +709,6 @@ const getClassNames = (): INewGameDialogBodyClassNames =>
             gridTemplateColumns: "5fr 1fr 5fr",
             marginBottom: 20,
             minHeight: "25vh",
-            width: "50vw",
         },
         teamNameInput: {
             marginBottom: "10px",
