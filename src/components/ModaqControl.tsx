@@ -228,7 +228,7 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
             // Need to check if game is old and prompt the user if they want to restart the game.
             // Date subtraction gives you the number of milliseconds
             const lastUpdate: number | undefined = appState.game.lastUpdate?.getTime();
-            if (lastUpdate != undefined && Date.now() - lastUpdate > minAgeToPromptForReset) {
+            if (lastUpdate && Date.now() - lastUpdate > minAgeToPromptForReset) {
                 appState.uiState.dialogState.showOKCancelMessageDialog(
                     "Start new game?",
                     "The loaded game is over 5 days old. Do you want to start a new game instead?",

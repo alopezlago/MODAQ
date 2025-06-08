@@ -164,6 +164,7 @@ export const PlayerRoster = observer(function PlayerRoster(props: IPlayerRosterP
             items={props.players}
             onRenderItemColumn={renderPlayerRow}
             selectionMode={SelectionMode.single}
+            compact={true}
         ></DetailsList>
     );
 });
