@@ -28,7 +28,7 @@ import { ModalDialogContainer } from "./ModalDialogContainer";
 import { IGameFormat } from "../state/IGameFormat";
 import { IPacket } from "../state/IPacket";
 import { IPlayer, Player } from "../state/TeamState";
-import { Bonus, PacketState } from "../state/PacketState";
+import { Bonus, ITossupWord, PacketState, Tossup } from "../state/PacketState";
 import { ICustomExport } from "../state/CustomExport";
 import { Cycle } from "../state/Cycle";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
@@ -258,6 +258,33 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
     }
 
     switch (event.key.toUpperCase()) {
+        case "E":
+            // Go to the end of a tossup and open up the buzz menu.
+            const tossup: Tossup | undefined = appState.game.getTossup(appState.uiState.cycleIndex);
+            if (tossup) {
+                // Issue is that this removes parens, so we don't have all the info we need
+                const words: ITossupWord[] = tossup.getWords(appState.game.gameFormat);
+                const index: number = words.filter((word) => word.canBuzzOn).length - 1;
+
+                appState.uiState.setSelectedWordIndex(index);
+                appState.uiState.showBuzzMenu(/* clearSelectedWordOnClose */ false);
+
+                // An alternate approach, if we want to keep keyboard focus there. For now users would probably just
+                // keep pressing E, and this way looks uglier (flash of focus, keeps focus after the buzzer is selected)
+                // This requires adding the class "word" to the span in QuestionWord.tsx
+                // // const index: number = words.length - 1;
+                // // const wordElement = document.getElementsByClassName("word").item(index) as HTMLSpanElement;
+                // // if (wordElement) {
+                // //     wordElement.focus();
+                // //     wordElement.click();
+                // // }
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            break;
+
         case "N":
             if (appState.uiState.cycleIndex + 1 < appState.game.playableCycles.length) {
                 appState.uiState.nextCycle();
