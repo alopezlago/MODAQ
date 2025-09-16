@@ -191,7 +191,7 @@ const NewGameDialogBody = observer(function NewGameDialogBody(): JSX.Element {
                 </PivotItem>
             </Pivot>
             <Separator />
-            <PacketLoader appState={appState} onLoad={packetLoadHandler} />
+            <PacketLoader appState={appState} onLoad={packetLoadHandler} updateFilename />
             <Separator />
             <GameFormatPicker
                 gameFormat={uiState.pendingNewGame.gameFormat}

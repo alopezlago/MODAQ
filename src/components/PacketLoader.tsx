@@ -59,7 +59,7 @@ function onChange(
     const fileReader = new FileReader();
     fileReader.onload = onLoadHandler;
 
-    // docx files should be read as a binaray, while json should be read as text
+    // docx files should be read as a binary, while json should be read as text
     props.appState.uiState.setPacketFilename(file.name);
 
     if (file.type === "application/json" || file.type === "text/plain") {
@@ -149,7 +149,10 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
         return;
     }
 
-    const packet: PacketState | undefined = PacketLoaderController.loadPacket(parsedPacket);
+    const existingPacketName: string | undefined = props.updateFilename
+        ? uiState.packetFilename
+        : props.appState.game.packet.name;
+    const packet: PacketState | undefined = PacketLoaderController.loadPacket(parsedPacket, existingPacketName);
     if (packet == undefined) {
         return;
     }
@@ -159,6 +162,7 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
 
 export interface IPacketLoaderProps {
     appState: AppState;
+    updateFilename?: boolean;
     onLoad(packet: PacketState): void;
 }
 

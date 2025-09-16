@@ -97,7 +97,11 @@ const ImportFromQBJDialogBody = observer(function ImportFromQBJDialogBody(): JSX
                         />
                     </PivotItem>
                     <PivotItem headerText="Packet" itemKey={ImportFromQBJPivotKey.Packet}>
-                        <PacketLoader appState={appState} onLoad={ImportFromQBJDialogController.loadPacket} />
+                        <PacketLoader
+                            appState={appState}
+                            onLoad={ImportFromQBJDialogController.loadPacket}
+                            updateFilename
+                        />
                     </PivotItem>
                     <PivotItem headerText="Format" itemKey={ImportFromQBJPivotKey.Format}>
                         <CustomizeGameFormatForm state={dialogState.customizeGameFormat} />

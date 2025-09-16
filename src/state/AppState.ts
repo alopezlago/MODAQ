@@ -49,7 +49,10 @@ export class AppState {
                 exportPromise = customExport.onExport(CustomExport.convertGameToExportFields(this.game), { source });
                 break;
             case "QBJ":
-                exportPromise = customExport.onExport(QBJ.toQBJ(this.game, this.uiState.packetFilename), { source });
+                exportPromise = customExport.onExport(
+                    QBJ.toQBJ(this.game, this.game.packet.name ?? this.uiState.packetFilename),
+                    { source }
+                );
                 break;
             default:
                 assertNever(customExport);

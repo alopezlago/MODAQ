@@ -1,6 +1,7 @@
 export interface IPacket {
     tossups: ITossup[];
     bonuses?: IBonus[];
+    name?: string;
 }
 
 export interface ITossup {

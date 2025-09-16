@@ -186,6 +186,7 @@ function onLoad(event: ProgressEvent<FileReader>, appState: AppState): void {
         (tossup) => new Tossup(tossup.question, tossup.answer, tossup.metadata)
     );
     packet.setTossups(tossups);
+    packet.setName(uiState.packetFilename);
 
     if (parsedGame.packet.bonuses != undefined && parsedGame.packet.bonuses.length > 0) {
         const bonuses: Bonus[] = parsedGame.packet.bonuses.map(

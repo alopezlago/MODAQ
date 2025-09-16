@@ -168,4 +168,47 @@ describe("PacketLoaderControllerTests", () => {
         expect(packet.tossups.length).to.equal(1);
         expect(packet.bonuses.length).to.equal(3);
     });
+
+    it("packet is renamed", () => {
+        const appState: AppState = initializeApp();
+        appState.uiState.setPacketFilename("uiPacketName");
+
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+            tossups: [validTossup],
+            bonuses: [],
+        });
+
+        if (packet == undefined) {
+            assert.fail("First packet was undefined");
+        }
+
+        expect(packet.name).to.equal("uiPacketName");
+
+        packet.setName("old");
+
+        const packet2: PacketState | undefined = PacketLoaderController.loadPacket(
+            {
+                tossups: [
+                    new Tossup(
+                        "His residence was Mount Vernon. He decried the concept of political parties in his farewell address. Name this first president of the Untied States.",
+                        "George Washington"
+                    ),
+                ],
+                bonuses: [],
+            },
+            packet.name
+        );
+
+        if (packet2 == undefined) {
+            assert.fail("Second packet was undefined");
+        }
+
+        expect(appState.uiState.packetParseStatus).to.not.be.undefined;
+        expect(appState.uiState.packetParseStatus?.status.isError).to.be.false;
+        expect(appState.uiState.packetParseStatus?.warnings.length).to.equal(0);
+
+        expect(packet2.tossups.length).to.equal(1);
+        expect(packet2.bonuses.length).to.equal(0);
+        expect(packet2.name).to.equal(packet.name);
+    });
 });

@@ -16,11 +16,14 @@ export class PacketState {
 
     public bonuses: Bonus[];
 
+    public name: string | undefined;
+
     constructor() {
         makeAutoObservable(this);
 
         this.tossups = [];
         this.bonuses = [];
+        this.name = undefined;
     }
 
     public setTossups(tossups: Tossup[]): void {
@@ -29,6 +32,10 @@ export class PacketState {
 
     public setBonuses(bonuses: Bonus[]): void {
         this.bonuses = bonuses;
+    }
+
+    public setName(name: string | undefined): void {
+        this.name = name;
     }
 }
 
