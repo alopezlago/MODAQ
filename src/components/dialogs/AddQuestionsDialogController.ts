@@ -18,6 +18,7 @@ export function commit(): void {
     const combinedPacket: PacketState = new PacketState();
     combinedPacket.setTossups(game.packet.tossups.concat(state.newPacket.tossups));
     combinedPacket.setBonuses(game.packet.bonuses.concat(state.newPacket.bonuses));
+    combinedPacket.setName(game.packet.name);
     game.loadPacket(combinedPacket);
 
     hideDialog();

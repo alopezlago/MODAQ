@@ -7,13 +7,16 @@ import { GameState } from "src/state/GameState";
 import { Bonus, PacketState, Tossup } from "src/state/PacketState";
 import { Player } from "src/state/TeamState";
 
+const defaultPacketName = "Default";
 const defaultPacket: PacketState = new PacketState();
 defaultPacket.setTossups([new Tossup("first q", "first a"), new Tossup("second q", "second a")]);
 defaultPacket.setBonuses([new Bonus("Leadin", [])]);
+defaultPacket.setName(defaultPacketName);
 
 const newPacket: PacketState = new PacketState();
 newPacket.setTossups([new Tossup("third q", "third a")]);
 newPacket.setBonuses([new Bonus("Leadin 2", []), new Bonus("Leadin 3", [])]);
+newPacket.setName("NewPacket");
 
 const defaultTeamNames: string[] = ["First Team", "Team2"];
 
@@ -49,6 +52,7 @@ describe("AddQuestoinsDialogControllerTests", () => {
         expect(gameState.packet).to.not.be.undefined;
         expect(gameState.packet.tossups.length).to.equal(2);
         expect(gameState.packet.bonuses.length).to.equal(1);
+        expect(gameState.packet.name).to.equal(defaultPacketName);
         expect(dialogState.newPacket).to.not.be.undefined;
         expect(dialogState.newPacket.tossups.length).to.equal(1);
         expect(dialogState.newPacket.bonuses.length).to.equal(2);
@@ -58,6 +62,7 @@ describe("AddQuestoinsDialogControllerTests", () => {
         expect(gameState.packet).to.not.be.undefined;
         expect(gameState.packet.tossups.length).to.equal(3);
         expect(gameState.packet.bonuses.length).to.equal(3);
+        expect(gameState.packet.name).to.equal(defaultPacketName);
         expect(appState.uiState.dialogState.addQuestions).to.be.undefined;
     });
 

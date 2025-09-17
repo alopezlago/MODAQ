@@ -109,7 +109,7 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
     }, [appState, props.gameFormat]);
     React.useEffect(() => {
         if (props.packet != undefined) {
-            const packet: PacketState | undefined = PacketLoaderController.loadPacket(props.packet);
+            const packet: PacketState | undefined = PacketLoaderController.loadPacket(props.packet, props.packet.name);
             if (packet) {
                 appState.game.loadPacket(packet);
             }
@@ -389,6 +389,9 @@ function update(appState: AppState, props: IModaqControlProps): void {
     if (props.packetName !== appState.uiState.packetFilename) {
         if (props.packetName != undefined) {
             appState.uiState.setPacketFilename(props.packetName);
+            if (appState.game.packet) {
+                appState.game.packet.setName(props.packetName);
+            }
         } else {
             appState.uiState.resetPacketFilename();
         }

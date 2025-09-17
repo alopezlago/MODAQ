@@ -7,7 +7,7 @@ import { UIState } from "../state/UIState";
 
 const minExpectedQuestionLength = 100;
 
-export function loadPacket(parsedPacket: IPacket): PacketState | undefined {
+export function loadPacket(parsedPacket: IPacket, existingPacketName?: string | undefined): PacketState | undefined {
     const appState: AppState = AppState.instance;
     const uiState: UIState = appState.uiState;
 
@@ -74,6 +74,13 @@ export function loadPacket(parsedPacket: IPacket): PacketState | undefined {
         },
         findWarnings(packet)
     );
+
+    // If we have an existing packet, don't overwrite the name
+    if (existingPacketName) {
+        packet.setName(existingPacketName);
+    } else if (uiState.packetFilename) {
+        packet.setName(uiState.packetFilename);
+    }
 
     return packet;
 }

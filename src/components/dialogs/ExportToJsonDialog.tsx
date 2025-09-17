@@ -69,9 +69,12 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
     const gameHref: string = URL.createObjectURL(gameJson);
     const gameFilename = `Round_${roundNumber}_${joinedTeamNames}_Game.json`;
 
-    const qbjJson: Blob = new Blob([QBJ.toQBJString(game, appState.uiState.packetFilename, roundNumber)], {
-        type: "application/json",
-    });
+    const qbjJson: Blob = new Blob(
+        [QBJ.toQBJString(game, game.packet.name ?? appState.uiState.packetFilename, roundNumber)],
+        {
+            type: "application/json",
+        }
+    );
     const qbjHref: string = URL.createObjectURL(qbjJson);
     const qbjFilename = `Round_${roundNumber}_${joinedTeamNames}.qbj`;
 
