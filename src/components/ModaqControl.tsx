@@ -457,7 +457,7 @@ class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryS
                 this.setState({ showClearPrompt: true });
             };
 
-            const gameJson: Blob = new Blob([JSON.stringify(this.props.appState.game)], {
+            const gameJson: Blob = new Blob([JSON.stringify(this.props.appState.game, null, 2)], {
                 type: "application/json",
             });
             const url = URL.createObjectURL(gameJson);

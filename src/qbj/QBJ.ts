@@ -463,7 +463,8 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
 
 // Converts games into a QBJ file that conforms to the Match interface in the QB Schema
 export function toQBJString(game: GameState, packetName?: string, round?: number): string {
-    return JSON.stringify(toQBJ(game, packetName, round));
+    // Pretty-print with a width of 2. This makes games a lot more readable, but not too much bigger than normal.
+    return JSON.stringify(toQBJ(game, packetName, round), null, 2);
 }
 
 export function toQBJ(game: GameState, packetName?: string, round?: number): IMatch {
