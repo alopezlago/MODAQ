@@ -57,15 +57,20 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
     const cancelHandler = React.useCallback(() => hideDialog(appState), [appState]);
     const exportHandler = React.useCallback(() => exportGame(appState), [appState]);
 
+    // Skip computing all the blobs if the dialog isn't visible
+    if (appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.ExportToJson) {
+        return <></>;
+    }
+
     const roundNumber: number | undefined =
         appState.uiState.exportRoundNumber ?? appState.uiState.sheetsState.roundNumber ?? 1;
     const joinedTeamNames: string = game.teamNames.join("_");
 
-    const cyclesJson: Blob = new Blob([JSON.stringify(game.cycles)], { type: "application/json" });
+    const cyclesJson: Blob = new Blob([JSON.stringify(game.cycles, null, 2)], { type: "application/json" });
     const cyclesHref: string = URL.createObjectURL(cyclesJson);
     const cyclesFilename = `Round_${roundNumber}_${joinedTeamNames}_Events.json`;
 
-    const gameJson: Blob = new Blob([JSON.stringify(game)], { type: "application/json" });
+    const gameJson: Blob = new Blob([JSON.stringify(game, null, 2)], { type: "application/json" });
     const gameHref: string = URL.createObjectURL(gameJson);
     const gameFilename = `Round_${roundNumber}_${joinedTeamNames}_Game.json`;
 
