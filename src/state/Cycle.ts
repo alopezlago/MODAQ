@@ -146,10 +146,6 @@ export class Cycle implements ICycle {
         // Sort by tossupIndex, then by position. Tie breaker: negs before no penalties, negs/no penalties before correct
         const buzzes: Events.ITossupAnswerEvent[] = this.wrongBuzzes ? [...this.wrongBuzzes] : [];
 
-        if (this.correctBuzz) {
-            buzzes.push(this.correctBuzz);
-        }
-
         // Prioritization should be
         // - Buzzes on earlier tossups
         // - Buzzes earlier in the tossup
@@ -157,19 +153,17 @@ export class Cycle implements ICycle {
         // - Negs before no penalty buzzes
         // If we decide to store the point value with the buzz, just compare the point values
         buzzes.sort((buzz, otherBuzz) => {
+            // Points are inaccurate, so don't rely on them. Trust the original ordering to let us know when buzzes happened
             if (buzz.tossupIndex < otherBuzz.tossupIndex) {
-                return -1;
-            } else if (buzz.marker.position < otherBuzz.marker.position) {
                 return -1;
             }
 
-            return buzz.tossupIndex < otherBuzz.tossupIndex ||
-                buzz.marker.position < otherBuzz.marker.position ||
-                (buzz.marker.points <= 0 && otherBuzz.marker.points > 0) ||
-                (buzz.marker.points < 0 && otherBuzz.marker.points >= 0)
-                ? -1
-                : 1;
+            return buzz.marker.position - otherBuzz.marker.position;
         });
+
+        if (this.correctBuzz) {
+            buzzes.push(this.correctBuzz);
+        }
 
         return buzzes;
     }

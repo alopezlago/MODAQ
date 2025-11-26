@@ -513,18 +513,18 @@ function getPlayerManagementSubMenuItems(
             let changeActivityItem: ICommandBarItemProps;
             if (isActivePlayer) {
                 changeActivityItem = {
-                    key: `remove_${teamName}_${player.name}`,
-                    text: "Remove",
+                    key: `leave_${teamName}_${player.name}`,
+                    text: "Leave",
                     data: changeActivityItemData,
-                    onClick: onRemovePlayerClick,
+                    onClick: onPlayerLeaveClick,
                     // TODO: should this be styled in a different color?
                 };
             } else {
                 changeActivityItem = {
-                    key: `add_${teamName}_${player.name}`,
-                    text: "Add",
+                    key: `enter_${teamName}_${player.name}`,
+                    text: "Enter",
                     data: changeActivityItemData,
-                    onClick: onAddInactivePlayerClick,
+                    onClick: onPlayerEnterClick,
                     // TODO: should this be styled in a different color?
                 };
             }
@@ -722,7 +722,7 @@ function getProtestSubMenuItems(
     };
 }
 
-function onAddInactivePlayerClick(
+function onPlayerEnterClick(
     ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
     item?: IContextualMenuItem
 ): void {
@@ -771,7 +771,7 @@ function onProtestTossupClick(
     uiState.setPendingTossupProtest(teamName, tossupIndex, item.data.buzz.marker.position);
 }
 
-function onRemovePlayerClick(
+function onPlayerLeaveClick(
     ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
     item?: IContextualMenuItem
 ): void {
@@ -784,8 +784,10 @@ function onRemovePlayerClick(
     const appState: AppState = item.data.appState;
 
     appState.uiState.dialogState.showOKCancelMessageDialog(
-        "Remove Player",
-        `Are you sure you want to remove the player "${item.data.activePlayer.name}" from team "${item.data.activePlayer.teamName}"?`,
+        "Let Player Leave",
+        `Are you sure you want to let the player "${item.data.activePlayer.name}" from team "${
+            item.data.activePlayer.teamName
+        }" leave the game before question #${appState.uiState.cycleIndex + 1}?`,
         () => appState.game.cycles[appState.uiState.cycleIndex].addPlayerLeaves(item.data.activePlayer)
     );
 }
@@ -831,8 +833,9 @@ function onSwapPlayerClick(
             : "";
     item.data.appState.uiState.dialogState.showOKCancelMessageDialog(
         "Substitute Player",
-        "You are substituting players outside of a normal time (beginning of the game, after halftime, overtime). Are you sure you want to substitute now?" +
-            additionalHint,
+        `You are substituting players outside of a normal time (beginning of the game, after halftime, overtime). Are you sure you want to substitute before question #${
+            cycleIndex + 1
+        }?` + additionalHint,
         () => game.cycles[uiState.cycleIndex].addSwapSubstitution(item.data.player, item.data.activePlayer)
     );
 }

@@ -1179,10 +1179,10 @@ describe("QBJTests", () => {
                     const lines: string[] = match.notes.split("\n");
                     expect(lines.length).to.equal(2);
                     expect(lines[0]).to.equal(
-                        `Tossup protest on question 1. Team "${firstTeamPlayers[0].teamName}" protested because of this reason: "${firstProtestReason}".`
+                        `Tossup protest on tossup #1. Team "${firstTeamPlayers[0].teamName}" protested because of this reason: "${firstProtestReason}".`
                     );
                     expect(lines[1]).to.equal(
-                        `Tossup protest on question 2. Team "${secondTeamPlayer.teamName}" protested because of this reason: "${secondProtestReason}".`
+                        `Tossup protest on tossup #2. Team "${secondTeamPlayer.teamName}" protested because of this reason: "${secondProtestReason}".`
                     );
                 }
             );
@@ -1248,10 +1248,10 @@ describe("QBJTests", () => {
                     const lines: string[] = match.notes.split("\n");
                     expect(lines.length).to.equal(2);
                     expect(lines[0]).to.equal(
-                        `Bonus protest on question 1. Team "${firstTeamPlayers[0].teamName}" protested part 1 because of this reason: "${firstProtestReason}".`
+                        `Bonus protest on bonus #1. Team "${firstTeamPlayers[0].teamName}" protested part 1 because of this reason: "${firstProtestReason}".`
                     );
                     expect(lines[1]).to.equal(
-                        `Bonus protest on question 2. Team "${secondTeamPlayer.teamName}" protested part 3 because of this reason: "${secondProtestReason}".`
+                        `Bonus protest on bonus #2. Team "${secondTeamPlayer.teamName}" protested part 3 because of this reason: "${secondProtestReason}".`
                     );
                 }
             );

@@ -722,7 +722,7 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
         if (cycle.tossupProtests) {
             for (const protest of cycle.tossupProtests) {
                 noteworthyEvents.push(
-                    `Tossup protest on question ${protest.questionIndex + 1}. Team "${
+                    `Tossup protest on tossup #${protest.questionIndex + 1}. Team "${
                         protest.teamName
                     }" protested because of this reason: "${protest.reason}".`
                 );
@@ -732,9 +732,9 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
         if (cycle.bonusProtests) {
             for (const protest of cycle.bonusProtests) {
                 noteworthyEvents.push(
-                    `Bonus protest on question ${protest.questionIndex + 1}. Team "${
-                        protest.teamName
-                    }" protested part ${protest.partIndex + 1} because of this reason: "${protest.reason}".`
+                    `Bonus protest on bonus #${protest.questionIndex + 1}. Team "${protest.teamName}" protested part ${
+                        protest.partIndex + 1
+                    } because of this reason: "${protest.reason}".`
                 );
             }
         }

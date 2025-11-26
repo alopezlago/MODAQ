@@ -12,6 +12,7 @@ import {
     ThemeContext,
 } from "@fluentui/react";
 
+import * as GameFormats from "../../state/GameFormats";
 import * as NewGameValidator from "../../state/NewGameValidator";
 import * as PendingNewGameUtils from "../../state/PendingNewGameUtils";
 import { AppState } from "../../state/AppState";
@@ -25,6 +26,7 @@ import { IPendingNewGame, PendingGameType } from "../../state/IPendingNewGame";
 import { StateContext } from "../../contexts/StateContext";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { ModalDialog } from "./ModalDialog";
+import { IGameFormat } from "../../state/IGameFormat";
 
 const stackTokens: IStackTokens = { childrenGap: 10 };
 
@@ -195,6 +197,26 @@ function onLoad(event: ProgressEvent<FileReader>, appState: AppState): void {
         packet.setBonuses(bonuses);
     }
 
+    if (parsedGame.gameFormat == undefined) {
+        uiState.setImportGameStatus({
+            isError: true,
+            status: "Unexpected error. Couldn't find the game format to use.",
+        });
+        return;
+    }
+
+    try {
+        const gameFormat: IGameFormat = GameFormats.getUpgradedFormatVersion(parsedGame.gameFormat);
+        uiState.setPendingNewGameFormat(gameFormat);
+    } catch (e) {
+        const error: Error = e as Error;
+        uiState.setImportGameStatus({
+            isError: true,
+            status: error.message,
+        });
+        return;
+    }
+
     if (uiState.pendingNewGame == undefined) {
         uiState.setImportGameStatus({
             isError: true,
@@ -249,6 +271,7 @@ function onSubmit(appState: AppState): void {
 
     // We need to set the game's packet, players, etc. to the values in the uiState
     game.clear();
+    game.setGameFormat(pendingNewGame.gameFormat);
     game.addNewPlayers(firstTeamPlayers.filter((player) => player.name !== ""));
     game.addNewPlayers(secondTeamPlayers.filter((player) => player.name !== ""));
     game.loadPacket(pendingNewGame.packet);
@@ -266,6 +289,7 @@ function setInvalidGameStatus(uiState: UIState, message: string): void {
 
 interface IGame {
     cycles: ICycle[];
+    gameFormat: IGameFormat;
     players: IPlayer[];
     packet: PacketState;
 }

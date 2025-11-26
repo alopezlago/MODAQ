@@ -22,7 +22,7 @@ export class ImportFromQBJDialogState {
         makeAutoObservable(this);
 
         // TODO: Game format should come from the constructor
-        this.customizeGameFormat = new CustomizeGameFormatState(GameFormats.ACFGameFormat);
+        this.customizeGameFormat = new CustomizeGameFormatState(GameFormats.StandardPowersMACFGameFormat);
         this.match = undefined;
         this.packet = undefined;
         this.pivotKey = ImportFromQBJPivotKey.Match;
