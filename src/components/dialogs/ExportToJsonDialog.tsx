@@ -52,10 +52,8 @@ const modalProps: IModalProps = {
 
 export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.Element {
     const appState: AppState = React.useContext(StateContext);
-    const game: GameState = appState.game;
 
     const cancelHandler = React.useCallback(() => hideDialog(appState), [appState]);
-    const exportHandler = React.useCallback(() => exportGame(appState), [appState]);
 
     // Skip computing all the blobs if the dialog isn't visible
     if (appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.ExportToJson) {
@@ -64,6 +62,36 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
 
     const roundNumber: number | undefined =
         appState.uiState.exportRoundNumber ?? appState.uiState.sheetsState.roundNumber ?? 1;
+
+    return (
+        <Dialog
+            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.ExportToJson}
+            dialogContentProps={content}
+            modalProps={modalProps}
+            maxWidth="40vw"
+            onDismiss={cancelHandler}
+        >
+            <Label>To export the whole game (packet, players, and events), click on &quot;Export game&quot;.</Label>
+            <Label>To only export the events, click on &quot;Export events&quot;.</Label>
+            <RoundSelector
+                roundNumber={roundNumber}
+                onRoundNumberChange={(newValue) => appState.uiState.setExportRoundNumber(newValue)}
+            />
+            <ExportToJsonDialogFooter roundNumber={roundNumber} />
+        </Dialog>
+    );
+});
+
+const ExportToJsonDialogFooter = observer(function ExportToJsonDialogFooter(
+    props: IExportToJsonDialogFooterProps
+): JSX.Element {
+    const appState: AppState = React.useContext(StateContext);
+    const game: GameState = appState.game;
+    const roundNumber: number | undefined = props.roundNumber;
+
+    const cancelHandler = React.useCallback(() => hideDialog(appState), [appState]);
+    const exportHandler = React.useCallback(() => exportGame(appState), [appState]);
+
     const joinedTeamNames: string = game.teamNames.join("_");
 
     const cyclesJson: Blob = new Blob([JSON.stringify(game.cycles, null, 2)], { type: "application/json" });
@@ -84,31 +112,12 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
     const qbjFilename = `Round_${roundNumber}_${joinedTeamNames}.qbj`;
 
     return (
-        <Dialog
-            hidden={appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.ExportToJson}
-            dialogContentProps={content}
-            modalProps={modalProps}
-            maxWidth="40vw"
-            onDismiss={cancelHandler}
-        >
-            <Label>To export the whole game (packet, players, and events), click on &quot;Export game&quot;.</Label>
-            <Label>To only export the events, click on &quot;Export events&quot;.</Label>
-            <RoundSelector
-                roundNumber={roundNumber}
-                onRoundNumberChange={(newValue) => appState.uiState.setExportRoundNumber(newValue)}
-            />
-            <DialogFooter>
-                <PrimaryButton text="Export game" onClick={exportHandler} href={gameHref} download={gameFilename} />
-                <PrimaryButton
-                    text="Export events"
-                    onClick={exportHandler}
-                    href={cyclesHref}
-                    download={cyclesFilename}
-                />
-                <PrimaryButton text="Export QBJ" onClick={exportHandler} href={qbjHref} download={qbjFilename} />
-                <DefaultButton text="Cancel" onClick={cancelHandler} />
-            </DialogFooter>
-        </Dialog>
+        <DialogFooter>
+            <PrimaryButton text="Export game" onClick={exportHandler} href={gameHref} download={gameFilename} />
+            <PrimaryButton text="Export events" onClick={exportHandler} href={cyclesHref} download={cyclesFilename} />
+            <PrimaryButton text="Export QBJ" onClick={exportHandler} href={qbjHref} download={qbjFilename} />
+            <DefaultButton text="Cancel" onClick={cancelHandler} />
+        </DialogFooter>
     );
 });
 
@@ -119,4 +128,8 @@ function exportGame(appState: AppState): void {
 
 function hideDialog(appState: AppState) {
     appState.uiState.dialogState.hideModalDialog();
+}
+
+interface IExportToJsonDialogFooterProps {
+    roundNumber: number | undefined;
 }

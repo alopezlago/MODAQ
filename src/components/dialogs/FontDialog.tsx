@@ -21,7 +21,7 @@ import { FontDialogState } from "../../state/FontDialogState";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { ModalDialog } from "./ModalDialog";
 
-const defaultFont = "Segoe UI";
+const defaultFont = "Times New Roman";
 
 const knownFonts: string[] = [
     "Arial",
