@@ -1,8 +1,7 @@
 import { makeAutoObservable } from "mobx";
 import { ignore } from "mobx-sync";
 
-export const DefaultFontFamily =
-    "Segoe UI, Times New Roman, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, serif";
+export const DefaultFontFamily = "Times New Roman, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, serif";
 
 export class FontDialogState {
     @ignore

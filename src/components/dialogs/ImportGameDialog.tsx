@@ -131,6 +131,10 @@ function onLoad(event: ProgressEvent<FileReader>, appState: AppState): void {
 
     uiState.createPendingNewGame();
 
+    // We'd like to keep the pending new game type in most cases when the user goes to a new game, but if we're importing a game,
+    // then it has to be manual.
+    uiState.setPendingNewGameType(PendingGameType.Manual);
+
     const playersMap: Map<string, Player[]> = new Map<string, Player[]>();
     for (const serializedPlayer of parsedGame.players) {
         if (serializedPlayer.name == undefined || serializedPlayer.name.trim() === "") {
