@@ -386,7 +386,7 @@ function update(appState: AppState, props: IModaqControlProps): void {
         appState.uiState.setHideNewGame(props.hideNewGame == true);
     }
 
-    if (props.packetName !== appState.uiState.packetFilename) {
+    if (props.packetName !== appState.uiState.packetFilename && props.packetName !== appState.game.packet.name) {
         if (props.packetName != undefined) {
             appState.uiState.setPacketFilename(props.packetName);
             if (appState.game.packet) {

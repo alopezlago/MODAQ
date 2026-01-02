@@ -66,11 +66,12 @@ export function loadPacket(parsedPacket: IPacket, existingPacketName?: string | 
     packet.setTossups(tossups);
     packet.setBonuses(bonuses);
 
-    const packetName: string = uiState.packetFilename != undefined ? `"${uiState.packetFilename}"` : "";
+    const packetName: string | undefined = parsedPacket.name ?? uiState.packetFilename;
+    const packetNameInQuotes: string = packetName != undefined ? `"${packetName}"` : "";
     uiState.setPacketStatus(
         {
             isError: false,
-            status: `Packet ${packetName} loaded. ${tossups.length} tossup(s), ${bonuses.length} bonus(es).`,
+            status: `Packet ${packetNameInQuotes} loaded. ${tossups.length} tossup(s), ${bonuses.length} bonus(es).`,
         },
         findWarnings(packet)
     );
@@ -78,8 +79,8 @@ export function loadPacket(parsedPacket: IPacket, existingPacketName?: string | 
     // If we have an existing packet, don't overwrite the name
     if (existingPacketName) {
         packet.setName(existingPacketName);
-    } else if (uiState.packetFilename) {
-        packet.setName(uiState.packetFilename);
+    } else if (packetName) {
+        packet.setName(packetName);
     }
 
     return packet;
