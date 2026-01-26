@@ -723,6 +723,11 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
             bonusNumber++;
         }
 
+        if (!cycle.correctBuzz && game.gameFormat.pairTossupsBonuses) {
+            // We move to the next bonus regardless if we're pairing tossups and bonuses
+            bonusNumber++;
+        }
+
         if (cycle.tossupProtests) {
             for (const protest of cycle.tossupProtests) {
                 noteworthyEvents.push(

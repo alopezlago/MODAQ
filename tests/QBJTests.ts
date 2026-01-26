@@ -686,10 +686,102 @@ describe("QBJTests", () => {
                     const secondCycleBuzzes: QBJ.IMatchQuestionBuzz[] = match.match_questions[1].buzzes;
                     expect(secondCycleBuzzes.length).to.equal(1);
                     verifyBuzz(secondCycleBuzzes[0], firstTeamPlayers[1], 1, 10);
+                    if (match.match_questions[1].bonus == undefined) {
+                        assert.fail("Second cycle bonus is undefined");
+                    }
+
+                    expect(match.match_questions[1].bonus.question?.question_number).to.equal(1);
 
                     const thirdCycleBuzzes: QBJ.IMatchQuestionBuzz[] = match.match_questions[2].buzzes;
                     expect(thirdCycleBuzzes.length).to.equal(1);
                     verifyBuzz(thirdCycleBuzzes[0], secondTeamPlayer, 0, 15);
+                    if (match.match_questions[2].bonus == undefined) {
+                        assert.fail("Third cycle bonus is undefined");
+                    }
+
+                    expect(match.match_questions[2].bonus.question?.question_number).to.equal(2);
+                }
+            );
+        });
+        it("Four buzzes in paired game (-5, 0, 10, 15)", () => {
+            verifyToQBJ(
+                (game) => {
+                    game.setGameFormat({ ...GameFormats.StandardPowersMACFGameFormat, pairTossupsBonuses: true });
+
+                    game.cycles[0].addWrongBuzz(
+                        {
+                            player: firstTeamPlayers[0],
+                            points: -5,
+                            position: 0,
+                            isLastWord: false,
+                        },
+                        0,
+                        game.gameFormat
+                    );
+                    game.cycles[0].addWrongBuzz(
+                        {
+                            player: secondTeamPlayer,
+                            points: 0,
+                            position: 1,
+                            isLastWord: true,
+                        },
+                        0,
+                        game.gameFormat
+                    );
+
+                    game.cycles[1].addCorrectBuzz(
+                        {
+                            player: firstTeamPlayers[1],
+                            points: 10,
+                            position: 1,
+                            isLastWord: true,
+                        },
+                        1,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+                    game.cycles[1].setBonusPartAnswer(1, firstTeamPlayers[1].teamName, 10);
+
+                    game.cycles[2].addCorrectBuzz(
+                        {
+                            player: secondTeamPlayer,
+                            points: 15,
+                            position: 0,
+                            isLastWord: false,
+                        },
+                        2,
+                        game.gameFormat,
+                        1,
+                        3
+                    );
+                },
+                (match) => {
+                    expect(match.tossups_read).to.equal(4);
+                    expect(match.match_questions.map((q) => q.question_number)).to.deep.equal([1, 2, 3, 4]);
+
+                    const firstCycleBuzzes: QBJ.IMatchQuestionBuzz[] = match.match_questions[0].buzzes;
+                    expect(firstCycleBuzzes.length).to.equal(2);
+                    verifyBuzz(firstCycleBuzzes[0], firstTeamPlayers[0], 0, -5);
+                    verifyBuzz(firstCycleBuzzes[1], secondTeamPlayer, 1, 0);
+
+                    const secondCycleBuzzes: QBJ.IMatchQuestionBuzz[] = match.match_questions[1].buzzes;
+                    expect(secondCycleBuzzes.length).to.equal(1);
+                    verifyBuzz(secondCycleBuzzes[0], firstTeamPlayers[1], 1, 10);
+                    if (match.match_questions[1].bonus == undefined) {
+                        assert.fail("Second cycle bonus is undefined");
+                    }
+
+                    expect(match.match_questions[1].bonus.question?.question_number).to.equal(2);
+
+                    const thirdCycleBuzzes: QBJ.IMatchQuestionBuzz[] = match.match_questions[2].buzzes;
+                    expect(thirdCycleBuzzes.length).to.equal(1);
+                    verifyBuzz(thirdCycleBuzzes[0], secondTeamPlayer, 0, 15);
+                    if (match.match_questions[2].bonus == undefined) {
+                        assert.fail("Third cycle bonus is undefined");
+                    }
+
+                    expect(match.match_questions[2].bonus.question?.question_number).to.equal(3);
                 }
             );
         });
@@ -1332,6 +1424,57 @@ describe("QBJTests", () => {
                         assert.fail("No bonus on the first question");
                     }
 
+                    expect(match.match_questions[0].bonus.question?.question_number).to.equal(2);
+                    expect(match.match_questions[0].bonus.parts.length).to.equal(3);
+                    expect(match.match_questions[0].bonus.parts.map((part) => part.controlled_points)).to.deep.equal([
+                        10,
+                        0,
+                        0,
+                    ]);
+                }
+            );
+        });
+        it("Thrown out bonus in paired game", () => {
+            verifyToQBJ(
+                (game) => {
+                    game.setGameFormat({ ...game.gameFormat, pairTossupsBonuses: true });
+
+                    game.cycles[0].addCorrectBuzz(
+                        {
+                            player: firstTeamPlayers[0],
+                            points: 10,
+                            position: 1,
+                            isLastWord: true,
+                        },
+                        1,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+                    game.cycles[0].addThrownOutBonus(0);
+                    game.cycles[0].setBonusPartAnswer(0, firstTeamPlayers[0].teamName, 10);
+                },
+                (match) => {
+                    expect(match.tossups_read).to.equal(4);
+                    expect(match.match_questions.map((q) => q.question_number)).to.deep.equal([1, 2, 3, 4]);
+
+                    if (match.notes == undefined) {
+                        assert.fail("match.notes should be defined.");
+                    }
+
+                    const lines: string[] = match.notes.split("\n");
+                    expect(lines.length).to.equal(1);
+                    expect(lines[0]).to.equal("Bonus thrown out on question 1");
+
+                    // TODO: We currently don't set the bonus replacement question, so we'll need to test that once we do
+
+                    if (match.match_questions[0].bonus == undefined) {
+                        assert.fail("No bonus on the first question");
+                    }
+
+                    // TODO: This behavior seems wrong for paired tossups/bonuses, but we'd have to make some special logic to force
+                    // a question to be imported if a bonus was thrown out.
+                    expect(match.match_questions[0].bonus.question?.question_number).to.equal(2);
                     expect(match.match_questions[0].bonus.parts.length).to.equal(3);
                     expect(match.match_questions[0].bonus.parts.map((part) => part.controlled_points)).to.deep.equal([
                         10,
