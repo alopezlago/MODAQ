@@ -197,6 +197,85 @@ describe("GameStateTests", () => {
 
             expect(game.scores[0]).to.deep.equal([-5, 0]);
         });
+        it("Bonus bounceback - receiving team scores, other team scores on bounced parts", () => {
+            const game: GameState = createDefaultGame();
+            game.setGameFormat({ ...game.gameFormat, bonusesBounceBack: true });
+
+            game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 15, position: 0, isLastWord: false },
+                0,
+                game.gameFormat,
+                0,
+                1
+            );
+
+            // Team A scores on parts 0 and 2, Team B scores on part 1 (bounced)
+            game.cycles[0].setBonusPartAnswer(0, firstTeamPlayer.teamName, 10);
+            game.cycles[0].setBonusPartAnswer(1, secondTeamPlayer.teamName, 10);
+            game.cycles[0].setBonusPartAnswer(2, firstTeamPlayer.teamName, 10);
+
+            expect(game.scores[0]).to.deep.equal([35, 10]);
+        });
+        it("Multiple bonus parts with different values", () => {
+            const game: GameState = createDefaultGame();
+            game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 15, position: 0, isLastWord: false },
+                0,
+                game.gameFormat,
+                0,
+                1
+            );
+
+            // Score on all parts: 10, 0, 10
+            game.cycles[0].setBonusPartAnswer(0, firstTeamPlayer.teamName, 5);
+            game.cycles[0].setBonusPartAnswer(1, firstTeamPlayer.teamName, 10);
+            game.cycles[0].setBonusPartAnswer(2, firstTeamPlayer.teamName, 20);
+
+            expect(game.scores[0]).to.deep.equal([50, 0]);
+        });
+        it("Wrong buzz revisions", () => {
+            const game: GameState = createDefaultGame();
+
+            // Cycle 0: Wrong buzz by Team A, then replace with correct buzz
+            game.cycles[0].addWrongBuzz(
+                { player: firstTeamPlayer, points: -5, position: 1, isLastWord: false },
+                0,
+                game.gameFormat
+            );
+
+            expect(game.scores[0]).to.deep.equal([-5, 0]);
+
+            // Replace Team A's buzz with a correct buzz (scores 15 for power)
+            game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 15, position: 0, isLastWord: false },
+                0,
+                game.gameFormat,
+                0,
+                1
+            );
+
+            // Team A's wrong buzz is replaced with correct buzz
+            expect(game.scores[0]).to.deep.equal([15, 0]);
+
+            // Cycle 1: Add a wrong buzz to verify cumulative scoring
+            game.cycles[1].addWrongBuzz(
+                { player: firstTeamPlayer, points: -5, position: 1, isLastWord: false },
+                0,
+                game.gameFormat
+            );
+
+            // Cumulative score: 15 - 5 = 10
+            expect(game.scores[1]).to.deep.equal([10, 0]);
+
+            // Replace Team A's buzz in cycle 1 with a different wrong buzz
+            game.cycles[1].addWrongBuzz(
+                { player: firstTeamPlayer, points: 0, position: 3, isLastWord: true },
+                0,
+                game.gameFormat
+            );
+
+            expect(game.scores[1]).to.deep.equal([10, 0]);
+        });
         // Verify neg, no penalty on all Sheets tests and QBJ
     });
 });

@@ -35,7 +35,7 @@ function createMockApi(mocks: Partial<ISheetsApi>): ISheetsApi {
     return sheetsApi;
 }
 
-function createAppStateForExport(sheetType: SheetType = SheetType.Lifsheets): AppState {
+function createAppStateForExport(sheetType: SheetType = SheetType.TJSheets): AppState {
     const appState: AppState = new AppState();
 
     appState.game.addNewPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
@@ -59,7 +59,7 @@ function createAppStateForExport(sheetType: SheetType = SheetType.Lifsheets): Ap
 }
 
 function createAppStateForRosters(
-    sheetType: SheetType = SheetType.Lifsheets,
+    sheetType: SheetType = SheetType.TJSheets,
     pendingGameType: PendingGameType = PendingGameType.TJSheets
 ): AppState {
     const appState: AppState = new AppState();
@@ -178,8 +178,6 @@ function verifyUCSDBonusCells(
 describe("SheetsTests", () => {
     describe("exportToSheet", () => {
         // TODO: Should we have a test for when a player is subbed in on the second question? Conflicts with "Out"/"In",
-        // but I don't know how Lifsheets tries to account for that
-        // TODO: Any tests with AddPlayer? Doesn't make sense with Lifsheets, where the roster exists elsewhere...
         const firstTeamNegTest = async (
             sheetType: SheetType,
             verifyCells: (ranges: gapi.client.sheets.ValueRange[], position: number) => void
@@ -202,12 +200,6 @@ describe("SheetsTests", () => {
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
         };
 
-        it("First team neg written to sheet (Lifsheets)", async () => {
-            await firstTeamNegTest(SheetType.Lifsheets, (ranges, position) => {
-                verifyCell(ranges, "B8", -5);
-                verifyCell(ranges, "AJ8", position);
-            });
-        });
         it("First team neg written to sheet (TJSheets)", async () => {
             await firstTeamNegTest(SheetType.TJSheets, (ranges) => verifyCell(ranges, "C4", -5));
         });
@@ -236,16 +228,10 @@ describe("SheetsTests", () => {
 
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
         };
-        it("Second team neg written to sheet (Lifsheets)", async () => {
-            await secondTeamNegTest(SheetType.Lifsheets, (ranges, position) => {
-                verifyCell(ranges, "R8", -5);
-                verifyCell(ranges, "AJ8", position);
-            });
-        });
         it("Second team neg written to sheet (TJSheets)", async () => {
             await secondTeamNegTest(SheetType.TJSheets, (ranges) => verifyCell(ranges, "M4", -5));
         });
-        it("Second team neg written to sheet (Lifsheets)", async () => {
+        it("Second team neg written to sheet (UCSDSheets)", async () => {
             await secondTeamNegTest(SheetType.UCSDSheets, (ranges) => verifyCell(ranges, "O4", -5));
         });
 
@@ -282,21 +268,14 @@ describe("SheetsTests", () => {
 
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
         };
-        it("First team neg written, second team no penalty not written (Lifsheets)", async () => {
-            await nonNegNotWrittenTest(SheetType.Lifsheets, (ranges, position) => {
-                verifyCell(ranges, "B8", -5);
-                verifyCell(ranges, "AJ8", position);
-                verifyNoCell(ranges, "R8");
-                verifyNoCell(ranges, "AK8");
-            });
-        });
+
         it("First team neg written, second team no penalty not written (TJSheets)", async () => {
             await nonNegNotWrittenTest(SheetType.TJSheets, (ranges) => {
                 verifyCell(ranges, "C4", -5);
                 verifyNoCell(ranges, "M4");
             });
         });
-        it("First team neg written, second team no penalty not written (Lifsheets)", async () => {
+        it("First team neg written, second team no penalty not written (UCSDSheets)", async () => {
             await nonNegNotWrittenTest(SheetType.UCSDSheets, (ranges) => {
                 verifyCell(ranges, "C4", -5);
                 verifyNoCell(ranges, "O4");
@@ -330,15 +309,7 @@ describe("SheetsTests", () => {
 
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
         };
-        it("First team correct buzz written to sheet (Lifsheets)", async () => {
-            await firstCorrectBuzzTest(SheetType.Lifsheets, (ranges, position) => {
-                verifyCell(ranges, "B8", 10);
-                verifyCell(ranges, "AJ8", position);
 
-                // Verify bonus
-                verifyCell(ranges, "H8", "110");
-            });
-        });
         it("First team correct buzz written to sheet (TJSheets)", async () => {
             await firstCorrectBuzzTest(SheetType.TJSheets, (ranges) => {
                 verifyCell(ranges, "C4", 10);
@@ -384,15 +355,6 @@ describe("SheetsTests", () => {
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
         };
 
-        it("Second team correct buzz written to sheet (Lifsheets)", async () => {
-            await secondCorrectBuzzTest(SheetType.Lifsheets, (ranges, position) => {
-                verifyCell(ranges, "R8", 10);
-                verifyCell(ranges, "AJ8", position);
-
-                // Verify bonus
-                verifyCell(ranges, "X8", "001");
-            });
-        });
         it("Second team correct buzz written to sheet (TJSheets)", async () => {
             await secondCorrectBuzzTest(SheetType.TJSheets, (ranges) => {
                 verifyCell(ranges, "M4", 10);
@@ -450,15 +412,7 @@ describe("SheetsTests", () => {
 
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
         };
-        it("First team player powers written to sheet (Lifsheets)", async () => {
-            await playerPowersTest(SheetType.Lifsheets, (ranges, position) => {
-                verifyCell(ranges, "B8", 15);
-                verifyCell(ranges, "AJ8", position);
 
-                // Verify bonus
-                verifyCell(ranges, "H8", "110");
-            });
-        });
         it("First team player powers written to sheet (TJSheets)", async () => {
             await playerPowersTest(SheetType.TJSheets, (ranges) => {
                 verifyCell(ranges, "C4", 15);
@@ -517,17 +471,6 @@ describe("SheetsTests", () => {
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, negPosition, correctPosition));
         };
 
-        it("Two buzzes in same cycle (Lifsheets)", async () => {
-            await twoBuzzesInSameCycleTest(SheetType.Lifsheets, (ranges, negPosition, correctPosition) => {
-                verifyCell(ranges, "R8", -5);
-                verifyCell(ranges, "B8", 10);
-                verifyCell(ranges, "AJ8", negPosition);
-                verifyCell(ranges, "AK8", correctPosition);
-
-                // Verify bonus
-                verifyCell(ranges, "H8", "110");
-            });
-        });
         it("Two buzzes in same cycle (TJ Sheets)", async () => {
             await twoBuzzesInSameCycleTest(SheetType.TJSheets, (ranges) => {
                 verifyCell(ranges, "M4", -5);
@@ -544,159 +487,6 @@ describe("SheetsTests", () => {
 
                 // Verify bonus
                 verifyUCSDBonusCells(ranges, "I4:K4", [true, true, false]);
-            });
-        });
-
-        it("First team tossup protest written to sheet", async () => {
-            const appState: AppState = createAppStateForExport(SheetType.Lifsheets);
-
-            const player: Player = findPlayerOnTeam(appState, "Alpha");
-            const position = 1;
-            appState.game.cycles[0].addWrongBuzz(
-                {
-                    player,
-                    position,
-                    points: -5,
-                    isLastWord: false,
-                },
-                0,
-                appState.game.gameFormat
-            );
-
-            const reason = "I was right";
-            const answer = "That answer";
-            appState.game.cycles[0].addTossupProtest("Alpha", 0, position, answer, reason);
-
-            await verifyExportToSheetSuccess(appState, (ranges) => {
-                verifyCell(ranges, "B8", -5);
-                verifyCell(ranges, "AF8", reason);
-            });
-        });
-        it("Second team tossup protest written to sheet", async () => {
-            const appState: AppState = createAppStateForExport(SheetType.Lifsheets);
-
-            const player: Player = findPlayerOnTeam(appState, "Beta");
-            const position = 1;
-            appState.game.cycles[0].addWrongBuzz(
-                {
-                    player,
-                    position,
-                    points: -5,
-                    isLastWord: false,
-                },
-                0,
-                appState.game.gameFormat
-            );
-
-            const reason = "I was surely right";
-            const answer = "The answer";
-            appState.game.cycles[0].addTossupProtest("Beta", 0, position, answer, reason);
-
-            await verifyExportToSheetSuccess(appState, (ranges) => {
-                verifyCell(ranges, "R8", -5);
-                verifyCell(ranges, "AG8", reason);
-            });
-        });
-        it("First team bonus protest written to sheet", async () => {
-            const appState: AppState = createAppStateForExport();
-
-            const player: Player = findPlayerOnTeam(appState, "Alpha");
-            const position = 1;
-            const cycle: Cycle = appState.game.cycles[0];
-            cycle.addCorrectBuzz(
-                {
-                    player,
-                    position,
-                    points: 10,
-                    isLastWord: false,
-                },
-                0,
-                appState.game.gameFormat,
-                0,
-                3
-            );
-
-            cycle.setBonusPartAnswer(0, player.teamName, 0);
-            cycle.setBonusPartAnswer(1, player.teamName, 10);
-            cycle.setBonusPartAnswer(2, player.teamName, 10);
-
-            const reason = "I was right";
-            const answer = "My answer";
-            cycle.addBonusProtest(0, 0, answer, reason, "Alpha");
-
-            await verifyExportToSheetSuccess(appState, (ranges) => {
-                verifyCell(ranges, "B8", 10);
-                verifyCell(ranges, "H8", "011");
-                verifyCell(ranges, "AH8", reason);
-            });
-        });
-        it("Second team bonus protest written to sheet", async () => {
-            const appState: AppState = createAppStateForExport(SheetType.Lifsheets);
-
-            const player: Player = findPlayerOnTeam(appState, "Beta");
-            const position = 2;
-            const cycle: Cycle = appState.game.cycles[0];
-            cycle.addCorrectBuzz(
-                {
-                    player,
-                    position,
-                    points: 10,
-                    isLastWord: false,
-                },
-                0,
-                appState.game.gameFormat,
-                0,
-                3
-            );
-
-            cycle.setBonusPartAnswer(0, player.teamName, 10);
-            cycle.setBonusPartAnswer(1, player.teamName, 0);
-            cycle.setBonusPartAnswer(2, player.teamName, 10);
-
-            const reason = "I was surely right";
-            const answer = "My certain answer";
-            cycle.addBonusProtest(0, 1, answer, reason, "Beta");
-
-            await verifyExportToSheetSuccess(appState, (ranges) => {
-                verifyCell(ranges, "R8", 10);
-                verifyCell(ranges, "X8", "101");
-                verifyCell(ranges, "AH8", reason);
-            });
-        });
-        it("Multiple bonus protests written to sheet", async () => {
-            const appState: AppState = createAppStateForExport(SheetType.Lifsheets);
-
-            const player: Player = findPlayerOnTeam(appState, "Alpha");
-            const position = 1;
-            const cycle: Cycle = appState.game.cycles[0];
-            cycle.addCorrectBuzz(
-                {
-                    player,
-                    position,
-                    points: 10,
-                    isLastWord: false,
-                },
-                0,
-                appState.game.gameFormat,
-                0,
-                3
-            );
-
-            cycle.setBonusPartAnswer(0, player.teamName, 0);
-            cycle.setBonusPartAnswer(1, player.teamName, 10);
-            cycle.setBonusPartAnswer(2, player.teamName, 0);
-
-            const firstReason = "I was right";
-            const firstAnswer = "Some answer";
-            const secondReason = "That was also right";
-            const secondAnswer = "Another answer";
-            cycle.addBonusProtest(0, 0, firstAnswer, firstReason, "Alpha");
-            cycle.addBonusProtest(0, 2, secondAnswer, secondReason, "Alpha");
-
-            await verifyExportToSheetSuccess(appState, (ranges) => {
-                verifyCell(ranges, "B8", 10);
-                verifyCell(ranges, "H8", "010");
-                verifyCell(ranges, "AH8", [firstReason, secondReason].join("\n"));
             });
         });
 
@@ -786,17 +576,6 @@ describe("SheetsTests", () => {
             await verifyExportToSheetSuccess(appState, verifyCells);
         };
 
-        it("First team subs (Lifsheets)", async () => {
-            await firstTeamSubsTest(SheetType.Lifsheets, (ranges) => {
-                // All subs should start with "Out"
-                verifyCell(ranges, "C8", "Out");
-
-                // The subbed out player should have Out in the cycle they were subbed out, and the subbed in player
-                // should have In in the previous cycle
-                verifyCell(ranges, "B10", "Out");
-                verifyCell(ranges, "C9", "In");
-            });
-        });
         it("First team subs (TJSheets)", async () => {
             await firstTeamSubsTest(SheetType.TJSheets, (ranges) => {
                 // All subs should start with "Out"
@@ -841,17 +620,6 @@ describe("SheetsTests", () => {
             await verifyExportToSheetSuccess(appState, verifyCells);
         };
 
-        it("Second team subs (Lifsheets)", async () => {
-            await secondTeamSubsTest(SheetType.Lifsheets, (ranges) => {
-                // All subs should start with "Out"
-                verifyCell(ranges, "S8", "Out");
-
-                // The subbed out player should have Out in the cycle they were subbed out, and the subbed in player
-                // should have In in the previous cycle
-                verifyCell(ranges, "R11", "Out");
-                verifyCell(ranges, "S10", "In");
-            });
-        });
         it("Second team subs (TJSheets)", async () => {
             await secondTeamSubsTest(SheetType.TJSheets, (ranges) => {
                 // All subs should start with "Out"
@@ -891,14 +659,250 @@ describe("SheetsTests", () => {
 
             await verifyExportToSheetSuccess(appState, verifyCells);
         };
-        it("Dead tossup (Lifsheets)", async () => {
-            await deadTossupTest(SheetType.Lifsheets, (ranges) => {
-                verifyCell(ranges, "Q8", 1);
-            });
-        });
+
         it("Dead tossup (TJSheets)", async () => {
             await deadTossupTest(SheetType.TJSheets, (ranges) => {
                 verifyCell(ranges, "I4", "DT");
+            });
+        });
+
+        const playerJoinsTest = async (
+            sheetType: SheetType,
+            verifyCells: (ranges: gapi.client.sheets.ValueRange[]) => void
+        ) => {
+            const appState: AppState = createAppStateForExport(sheetType);
+
+            const newPlayer = new Player("Charlie", "Alpha", /* isStarter */ false);
+            appState.game.addNewPlayer(newPlayer);
+
+            // Need a second tossup to have cycle 1
+            const packet: PacketState = new PacketState();
+            packet.setTossups([
+                new Tossup("This tossup has five words.", "A"),
+                new Tossup("This is the second tossup.", "B"),
+            ]);
+            packet.setBonuses([
+                new Bonus("Leadin", [
+                    { question: "Part 1", answer: "A1", value: 10 },
+                    { question: "Part 2", answer: "A2", value: 10 },
+                    { question: "Part 3", answer: "A3", value: 10 },
+                ]),
+            ]);
+            appState.game.loadPacket(packet);
+
+            // Player joins on cycle 2
+            appState.game.cycles[1].addPlayerJoins(newPlayer);
+
+            await verifyExportToSheetSuccess(appState, verifyCells);
+        };
+
+        it("Player joins (TJSheets)", async () => {
+            await playerJoinsTest(SheetType.TJSheets, (ranges) => {
+                // New player should be in the roster
+                verifyCell(ranges, "D3", "Charlie");
+                // Player joins on round 2
+                verifyCell(ranges, "D28", 2);
+            });
+        });
+        it("Player joins (UCSDSheets)", async () => {
+            await playerJoinsTest(SheetType.UCSDSheets, (ranges) => {
+                // New player should appear in roster - Charlie is at D3 (second player)
+                verifyCell(ranges, "D3", "Charlie");
+            });
+        });
+
+        const playerLeavesTest = async (
+            sheetType: SheetType,
+            verifyCells: (ranges: gapi.client.sheets.ValueRange[]) => void
+        ) => {
+            const appState: AppState = createAppStateForExport(sheetType);
+
+            const player: Player = findPlayerOnTeam(appState, "Alpha");
+
+            // Need a second tossup to have cycle 1
+            const packet: PacketState = new PacketState();
+            packet.setTossups([
+                new Tossup("This tossup has five words.", "A"),
+                new Tossup("This is the second tossup.", "B"),
+            ]);
+            packet.setBonuses([
+                new Bonus("Leadin", [
+                    { question: "Part 1", answer: "A1", value: 10 },
+                    { question: "Part 2", answer: "A2", value: 10 },
+                    { question: "Part 3", answer: "A3", value: 10 },
+                ]),
+            ]);
+            appState.game.loadPacket(packet);
+
+            // Player leaves on cycle 2
+            appState.game.cycles[1].addPlayerLeaves(player);
+
+            await verifyExportToSheetSuccess(appState, verifyCells);
+        };
+
+        it("Player leaves (TJSheets)", async () => {
+            await playerLeavesTest(SheetType.TJSheets, (ranges) => {
+                // Player leaves on round 2
+                verifyCell(ranges, "C29", 2);
+            });
+        });
+        it("Player leaves (UCSDSheets)", async () => {
+            await playerLeavesTest(SheetType.UCSDSheets, (ranges) => {
+                // Player leaves on cycle 1 after hearing 1 tossup
+                verifyCell(ranges, "C32", 1);
+            });
+        });
+
+        const bonusScoreTest = async (
+            sheetType: SheetType,
+            bonusScores: number[],
+            verifyCells: (ranges: gapi.client.sheets.ValueRange[]) => void
+        ) => {
+            const appState: AppState = createAppStateForExport(sheetType);
+
+            const player: Player = findPlayerOnTeam(appState, "Alpha");
+            const cycle = appState.game.cycles[0];
+
+            cycle.addCorrectBuzz(
+                { player, points: 10, position: 0, isLastWord: false },
+                0,
+                appState.game.gameFormat,
+                0,
+                3
+            );
+
+            for (let i = 0; i < bonusScores.length; i++) {
+                cycle.setBonusPartAnswer(i, player.teamName, bonusScores[i]);
+            }
+
+            await verifyExportToSheetSuccess(appState, verifyCells);
+        };
+
+        it("Bonus with mixed scores (first team, TJSheets)", async () => {
+            await bonusScoreTest(SheetType.TJSheets, [10, 0, 10], (ranges) => {
+                verifyCell(ranges, "I4", 20);
+            });
+        });
+        it("Bonus with mixed scores (first team, UCSDSheets)", async () => {
+            await bonusScoreTest(SheetType.UCSDSheets, [10, 0, 10], (ranges) => {
+                verifyUCSDBonusCells(ranges, "I4:K4", [true, false, true]);
+            });
+        });
+
+        const bonusSecondTeamTest = async (
+            sheetType: SheetType,
+            bonusScores: number[],
+            verifyCells: (ranges: gapi.client.sheets.ValueRange[]) => void
+        ) => {
+            const appState: AppState = createAppStateForExport(sheetType);
+
+            const player: Player = findPlayerOnTeam(appState, "Beta");
+            const cycle = appState.game.cycles[0];
+
+            cycle.addCorrectBuzz(
+                { player, points: 10, position: 0, isLastWord: false },
+                0,
+                appState.game.gameFormat,
+                0,
+                3
+            );
+
+            for (let i = 0; i < bonusScores.length; i++) {
+                cycle.setBonusPartAnswer(i, player.teamName, bonusScores[i]);
+            }
+
+            await verifyExportToSheetSuccess(appState, verifyCells);
+        };
+
+        it("Second team bonus with partial score (TJSheets)", async () => {
+            await bonusSecondTeamTest(SheetType.TJSheets, [10, 0, 0], (ranges) => {
+                verifyCell(ranges, "S4", 10);
+            });
+        });
+        it("Second team bonus with partial score (UCSDSheets)", async () => {
+            await bonusSecondTeamTest(SheetType.UCSDSheets, [10, 0, 0], (ranges) => {
+                verifyUCSDBonusCells(ranges, "U4:W4", [true, false, false]);
+            });
+        });
+
+        const tossupsHeardTest = async (
+            setupGame: (appState: AppState) => void,
+            verifyTossups: (ranges: gapi.client.sheets.ValueRange[]) => void
+        ) => {
+            const appState: AppState = createAppStateForExport(SheetType.UCSDSheets);
+
+            setupGame(appState);
+
+            await verifyExportToSheetSuccess(appState, verifyTossups);
+        };
+
+        it("Tossups heard tracking with substitutions (UCSDSheets)", async () => {
+            const appState: AppState = createAppStateForExport(SheetType.UCSDSheets);
+            const starter: Player = findPlayerOnTeam(appState, "Alpha");
+            const sub = new Player("Sub1", "Alpha", /* isStarter */ false);
+            appState.game.addNewPlayer(sub);
+
+            // Swap in cycle 0 - sub hears 1 tossup, starter hears 0
+            appState.game.cycles[0].addSwapSubstitution(sub, starter);
+
+            await verifyExportToSheetSuccess(appState, (ranges) => {
+                // Starter left before hearing any tossups
+                verifyCell(ranges, "C32", 0);
+                // Sub came in and heard 1 tossup
+                verifyCell(ranges, "D32", 1);
+            });
+        });
+
+        it("Round number parameter", async () => {
+            const appState: AppState = createAppStateForExport();
+
+            const player: Player = findPlayerOnTeam(appState, "Alpha");
+            appState.game.cycles[0].addCorrectBuzz(
+                { player, points: 10, position: 0, isLastWord: false },
+                0,
+                appState.game.gameFormat,
+                0,
+                3
+            );
+
+            appState.uiState.sheetsState.setRoundNumber(5);
+
+            let ranges: gapi.client.sheets.ValueRange[] = [];
+            const mockSheetsApi: ISheetsApi = createMockApi({
+                batchUpdate: (_uiState, valueRanges) => {
+                    ranges = valueRanges;
+                    return Promise.resolve<IStatus>({ isError: false, status: "" });
+                },
+            });
+
+            await Sheets.exportToSheet(appState, mockSheetsApi);
+
+            // Verify that the ranges reference Round 5, not Round 1
+            expect(ranges.some((r) => r.range?.includes("'Round 5'"))).to.be.true;
+        });
+
+        it("Bonus bounceback (UCSDSheets)", async () => {
+            const appState: AppState = createAppStateForExport(SheetType.UCSDSheets);
+            appState.game.setGameFormat({ ...appState.game.gameFormat, bonusesBounceBack: true });
+
+            const firstTeamPlayer: Player = findPlayerOnTeam(appState, "Alpha");
+
+            appState.game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 0, isLastWord: false },
+                0,
+                appState.game.gameFormat,
+                0,
+                3
+            );
+
+            // First team scores on all parts
+            appState.game.cycles[0].setBonusPartAnswer(0, firstTeamPlayer.teamName, 10);
+            appState.game.cycles[0].setBonusPartAnswer(1, firstTeamPlayer.teamName, 10);
+            appState.game.cycles[0].setBonusPartAnswer(2, firstTeamPlayer.teamName, 10);
+
+            await verifyExportToSheetSuccess(appState, (ranges) => {
+                // First team: all parts correct
+                verifyUCSDBonusCells(ranges, "I4:K4", [true, true, true]);
             });
         });
 
@@ -940,6 +944,23 @@ describe("SheetsTests", () => {
                 `Error from Sheets API writing the values. Error: ${status}`
             );
         });
+        it("batchGet API failure", async () => {
+            const appState: AppState = createAppStateForExport();
+
+            const mockSheetsApi: ISheetsApi = createMockApi({
+                batchGet: () =>
+                    Promise.resolve<ISheetsBatchGetResponse>({
+                        success: false,
+                        errorMessage: "Failed to fetch existing data",
+                    }),
+            });
+
+            await verifyExportToSheetsError(
+                appState,
+                mockSheetsApi,
+                "Check failed. Error from Sheets API: Failed to fetch existing data"
+            );
+        });
         it("Missing SheetsId", async () => {
             const appState: AppState = createAppStateForExport();
 
@@ -960,9 +981,6 @@ describe("SheetsTests", () => {
             );
         };
 
-        it("More than two teams (Lifsheets)", async () => {
-            await moreThanTwoTeamsTest(SheetType.Lifsheets);
-        });
         it("More than two teams (TJSheets)", async () => {
             await moreThanTwoTeamsTest(SheetType.TJSheets);
         });
@@ -987,9 +1005,6 @@ describe("SheetsTests", () => {
             expect(appState.uiState.sheetsState.exportState).to.equal(ExportState.Success);
         };
 
-        it("Six players on a team succeeds (Lifsheets)", async () => {
-            await sixPlayersOnTeamSucceedsTest(SheetType.Lifsheets);
-        });
         it("Six players on a team succeeds (TJSheets)", async () => {
             await sixPlayersOnTeamSucceedsTest(SheetType.TJSheets);
         });
@@ -1013,9 +1028,6 @@ describe("SheetsTests", () => {
             );
         };
 
-        it("Seven players on a team fails (Lifsheets)", async () => {
-            await sevenPlayersOnTeamFailsTest(SheetType.Lifsheets);
-        });
         it("Seven players on a team fails (TJSheets)", async () => {
             await sevenPlayersOnTeamFailsTest(SheetType.TJSheets);
         });
@@ -1058,13 +1070,6 @@ describe("SheetsTests", () => {
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
         };
 
-        it("Twenty-one cycles succeeds (Lifsheets)", async () => {
-            await tossupLimitCycleSucceedsTest(SheetType.Lifsheets, 21, (ranges, position) => {
-                // Verify that we do write to the last cell (the tiebreaker one)
-                verifyCell(ranges, "B28", 10);
-                verifyCell(ranges, "AJ28", position);
-            });
-        });
         it("Twenty-four cycles succeeds (TJSheets)", async () => {
             await tossupLimitCycleSucceedsTest(SheetType.TJSheets, 24, (ranges) => {
                 // Verify that we do write to the last cell (the tiebreaker one)
@@ -1098,9 +1103,6 @@ describe("SheetsTests", () => {
             );
         };
 
-        it("Twenty-two cycles fails (Lifsheets)", async () => {
-            await pastTossupLimitCycleFailsTest(SheetType.Lifsheets, 22);
-        });
         it("Twenty-five cycles fails (TJSheets)", async () => {
             await pastTossupLimitCycleFailsTest(SheetType.TJSheets, 25);
         });
@@ -1156,15 +1158,6 @@ describe("SheetsTests", () => {
             await verifyExportToSheetSuccess(appState, (ranges) => verifyCells(ranges, position));
         };
 
-        it("Only played cycles written (Lifsheets)", async () => {
-            await onlyPlayedCyclesWrittenTest(SheetType.Lifsheets, (ranges, position) => {
-                verifyCell(ranges, "B8", 10);
-                verifyCell(ranges, "AJ8", position);
-
-                expect(ranges.find((range) => range.range != undefined && range.range.indexOf("B9") >= 0)).to.be
-                    .undefined;
-            });
-        });
         it("Only played cycles written (TJSheets)", async () => {
             await onlyPlayedCyclesWrittenTest(SheetType.TJSheets, (ranges) => {
                 verifyCell(ranges, "C4", 10);
@@ -1329,7 +1322,7 @@ describe("SheetsTests", () => {
                 appState.uiState.pendingNewGame.type === PendingGameType.QBJRegistration
             ) {
                 assert.fail(
-                    `PendingNewGame type should've been Lifsheets, but was ${appState.uiState.pendingNewGame?.type}`
+                    `PendingNewGame type should've been TJSheets or UCSDSheets, but was ${appState.uiState.pendingNewGame?.type}`
                 );
             }
 
@@ -1427,9 +1420,6 @@ describe("SheetsTests", () => {
             await verifyLoadRostersError(appState, mockSheetsApi, "Not enough teams. Only found 0 team(s).");
         };
 
-        it("Zero teams (Lifsheets)", async () => {
-            await zeroTeamsTest(SheetType.Lifsheets);
-        });
         it("Zero teams (TJSheets)", async () => {
             // For this specific test,
             await zeroTeamsTest(SheetType.TJSheets);
@@ -1454,9 +1444,6 @@ describe("SheetsTests", () => {
             await verifyLoadRostersError(appState, mockSheetsApi, "Not enough teams. Only found 1 team(s).");
         };
 
-        it("Only one team (Lifsheets)", async () => {
-            await oneTeamTest(SheetType.Lifsheets, [["Alpha", "Alice", "Andrew", "Ana"]]);
-        });
         it("Only one team (TJSheets)", async () => {
             await oneTeamTest(SheetType.TJSheets, [["Alpha"], ["Alice"], ["Andrew"], ["Ana"]]);
         });
@@ -1484,17 +1471,6 @@ describe("SheetsTests", () => {
             );
         };
 
-        it("No players on a team (Lifsheets)", async () => {
-            const teamOnlyRow = ["Gamma"];
-            const rows: string[][] = [
-                ["Alpha", "Alice", "Andrew", "Ana"],
-                ["Beta", "Bob"],
-                teamOnlyRow,
-                ["Delta", "Diana"],
-            ];
-
-            await noPlayersOnTeamTest(SheetType.Lifsheets, teamOnlyRow[0], rows);
-        });
         it("No players on a team (TJSheets)", async () => {
             const rows: string[][] = [
                 ["Alpha", "Beta", "Gamma", "Delta"],
@@ -1537,12 +1513,6 @@ describe("SheetsTests", () => {
             );
         };
 
-        it("Control sheet (Lifsheets)", async () => {
-            await controlSheetTest(SheetType.Lifsheets, [
-                ["1", "", "Alpha", "Alice", "Andrew", "Ana"],
-                ["2", "", "Beta", "Bob"],
-            ]);
-        });
         it("Control sheet (UCSDSheets)", async () => {
             await controlSheetTest(SheetType.UCSDSheets, [
                 ["Team", "Player 1", "Player 2", "Player 3", "Player 4", "Player 5", "Player 6", "Division"],

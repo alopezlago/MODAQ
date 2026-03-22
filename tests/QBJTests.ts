@@ -588,6 +588,117 @@ describe("QBJTests", () => {
             );
             expect(result.success).to.be.false;
         });
+        it("Roundtrip with all bonus parts answered correctly", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addCorrectBuzz(
+                { player: firstTeamPlayers[0], points: 10, position: 1 },
+                0,
+                game.gameFormat,
+                0,
+                3
+            );
+            // All 3 parts correct
+            firstCycle.setBonusPartAnswer(0, firstTeamPlayers[0].teamName, 10);
+            firstCycle.setBonusPartAnswer(1, firstTeamPlayers[0].teamName, 10);
+            firstCycle.setBonusPartAnswer(2, firstTeamPlayers[0].teamName, 10);
+
+            verifyFromQBJRoundtrip(game);
+        });
+        it("Roundtrip with tossup protest and bonus protest on same cycle", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addCorrectBuzz(
+                { player: firstTeamPlayers[0], points: 10, position: 1 },
+                0,
+                game.gameFormat,
+                0,
+                3
+            );
+            firstCycle.setBonusPartAnswer(0, firstTeamPlayers[0].teamName, 10);
+            firstCycle.addTossupProtest(firstTeamPlayers[0].teamName, 0, 1, undefined, "Reason");
+            firstCycle.addBonusProtest(0, 1, undefined, "Different reason", firstTeamPlayers[0].teamName);
+
+            verifyFromQBJRoundtrip(game);
+        });
+        it("Roundtrip with last word marker on incorrect buzz", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addWrongBuzz(
+                { player: firstTeamPlayers[0], points: -5, position: 1, isLastWord: true },
+                0,
+                game.gameFormat
+            );
+            firstCycle.addCorrectBuzz({ player: secondTeamPlayer, points: 10, position: 1 }, 0, game.gameFormat, 0, 3);
+
+            verifyFromQBJRoundtrip(game);
+        });
+        it("Invalid QBJ - bounceback_points with bonusesBounceBack false", () => {
+            const match: IMatch = createDefaultMatch();
+
+            if (match.match_teams) {
+                match.match_teams[0].bonus_bounceback_points = 10;
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match, defaultPacket, GameFormats.ACFGameFormat);
+            // This should still succeed - bounceback_points is just ignored if bonusesBounceBack is false
+            expect(result.success).to.be.true;
+        });
+        it("Invalid QBJ - buzz position beyond tossup length", () => {
+            const match: IMatch = createDefaultMatch();
+
+            if (match.match_questions && match.match_questions[0]) {
+                match.match_questions[0].buzzes = [
+                    {
+                        buzz_position: { word_index: 999 },
+                        team: match.match_teams[0].team,
+                        player: match.match_teams[0].match_players[0].player,
+                        result: { value: -5 },
+                    },
+                ];
+            }
+
+            const result: IResult<GameState> = QBJ.fromQBJ(match, defaultPacket, GameFormats.ACFGameFormat);
+            expect(result.success).to.be.false;
+        });
+        it("Roundtrip with single tossup game", () => {
+            const game: GameState = new GameState();
+            const singleQuestionPacket: PacketState = new PacketState();
+            singleQuestionPacket.setTossups([new Tossup("only q", "only a")]);
+            singleQuestionPacket.setBonuses([
+                new Bonus("only leadin", [
+                    { question: "q1", answer: "a1", value: 10 },
+                    { question: "q2", answer: "a2", value: 10 },
+                ]),
+            ]);
+
+            game.loadPacket(singleQuestionPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addCorrectBuzz(
+                { player: firstTeamPlayers[0], points: 10, position: 1 },
+                0,
+                game.gameFormat,
+                0,
+                2
+            );
+
+            verifyFromQBJRoundtrip(game);
+        });
     });
     describe("toQBJ", () => {
         it("No buzz game", () => {
@@ -1689,6 +1800,162 @@ describe("QBJTests", () => {
             const match: IMatch = JSON.parse(qbj);
             expect(match._round).to.equal(5);
         });
+        it("Roundtrip tracks lineup changes correctly", () => {
+            verifyToQBJ(
+                (game) => {
+                    const newPlayer: Player = new Player("New Sub", firstTeamPlayers[0].teamName, false);
+                    game.addNewPlayer(newPlayer);
+
+                    // First cycle - simple buzz
+                    game.cycles[0].addCorrectBuzz(
+                        { player: firstTeamPlayers[0], points: 10, position: 1 },
+                        0,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+
+                    // Second cycle - swap the player
+                    game.cycles[1].addSwapSubstitution(newPlayer, firstTeamPlayers[0]);
+                    game.cycles[1].addCorrectBuzz(
+                        { player: newPlayer, points: 10, position: 1 },
+                        1,
+                        game.gameFormat,
+                        1,
+                        3
+                    );
+                },
+                (match) => {
+                    // Verify that we have 2 lineups for team A
+                    const teamALineups = match.match_teams[0].lineups;
+                    expect(teamALineups.length).to.equal(2);
+                    expect(teamALineups[0].first_question).to.equal(1);
+                    expect(teamALineups[1].first_question).to.equal(2);
+                }
+            );
+        });
+        it("Export tracks all players tossups heard across all cycles", () => {
+            verifyToQBJ(
+                (game) => {
+                    const newPlayer1: Player = new Player("New Player 1", firstTeamPlayers[0].teamName, false);
+                    game.addNewPlayer(newPlayer1);
+
+                    // First cycle - first player gets 2 questions
+                    game.cycles[0].addCorrectBuzz(
+                        { player: firstTeamPlayers[0], points: 10, position: 1 },
+                        0,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+
+                    game.cycles[1].addCorrectBuzz(
+                        { player: firstTeamPlayers[0], points: 10, position: 1 },
+                        1,
+                        game.gameFormat,
+                        1,
+                        3
+                    );
+
+                    // Third cycle - new player comes in for second cycle and beyond
+                    game.cycles[2].addPlayerLeaves(firstTeamPlayers[1]);
+                    game.cycles[2].addPlayerJoins(newPlayer1);
+                    game.cycles[2].addCorrectBuzz(
+                        { player: newPlayer1, points: 10, position: 1 },
+                        2,
+                        game.gameFormat,
+                        2,
+                        3
+                    );
+                },
+                (match) => {
+                    // Alice should have heard 4 questions (cycles 0, 1, 2, 3 - she's a starter)
+                    const teamAPlayers = match.match_teams[0].match_players;
+                    const aliceStatus = teamAPlayers.find((p) => p.player.name === "Alice");
+                    expect(aliceStatus?.tossups_heard).to.equal(4);
+
+                    // New Player 1 should have heard 2 questions (cycles 2, 3)
+                    const newPlayerStatus = teamAPlayers.find((p) => p.player.name === "New Player 1");
+                    expect(newPlayerStatus?.tossups_heard).to.equal(2);
+                }
+            );
+        });
+        it("Export correctly handles correct buzz without isLastWord flag", () => {
+            verifyToQBJ(
+                (game) => {
+                    game.cycles[0].addCorrectBuzz(
+                        { player: firstTeamPlayers[0], points: 10, position: 1 },
+                        0,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+                },
+                (match) => {
+                    expect(match.tossups_read).to.equal(defaultPacket.tossups.length);
+                    const firstBuzz = match.match_questions[0].buzzes[0];
+                    expect(firstBuzz.result.value).to.equal(10);
+                    expect(firstBuzz.buzz_position.word_index).to.equal(1);
+                }
+            );
+        });
+        it("Export correctly handles bounceback with multiple bonus parts", () => {
+            verifyToQBJ(
+                (game) => {
+                    game.setGameFormat({ ...GameFormats.ACFGameFormat, bonusesBounceBack: true });
+
+                    game.cycles[0].addCorrectBuzz(
+                        {
+                            player: firstTeamPlayers[0],
+                            points: 10,
+                            position: 1,
+                        },
+                        0,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+                    game.cycles[0].setBonusPartAnswer(0, firstTeamPlayers[0].teamName, 10);
+                    game.cycles[0].setBonusPartAnswer(1, secondTeamPlayer.teamName, 10);
+                    game.cycles[0].setBonusPartAnswer(2, firstTeamPlayers[0].teamName, 10);
+                },
+                (match) => {
+                    expect(match.match_teams[0].bonus_points).to.equal(20);
+                    expect(match.match_teams[0].bonus_bounceback_points).to.equal(0);
+                    expect(match.match_teams[1].bonus_points).to.equal(0);
+                    expect(match.match_teams[1].bonus_bounceback_points).to.equal(10);
+                }
+            );
+        });
+        it("Export with paired format skips bonuses on non-correct tossups", () => {
+            verifyToQBJ(
+                (game) => {
+                    const pairedFormat: IGameFormat = { ...GameFormats.ACFGameFormat, pairTossupsBonuses: true };
+                    game.setGameFormat(pairedFormat);
+
+                    // First cycle: incorrect buzz (no bonus awarded or skipped)
+                    game.cycles[0].addWrongBuzz(
+                        { player: firstTeamPlayers[0], points: -5, position: 0, isLastWord: false },
+                        0,
+                        game.gameFormat
+                    );
+
+                    // Second cycle: correct buzz
+                    game.cycles[1].addCorrectBuzz(
+                        { player: secondTeamPlayer, points: 10, position: 1 },
+                        1,
+                        game.gameFormat,
+                        1,
+                        3
+                    );
+                    game.cycles[1].setBonusPartAnswer(0, secondTeamPlayer.teamName, 10);
+                },
+                (match) => {
+                    expect(match.match_questions[0].bonus).to.be.undefined;
+                    expect(match.match_questions[1].bonus).to.not.be.undefined;
+                }
+            );
+        });
     });
     describe("parseRegistration", () => {
         function verifyRegistration(tournament: ITournament, verify: (players: Player[]) => void) {
@@ -2052,5 +2319,73 @@ describe("QBJTests", () => {
             expect(QBJ.parseRegistration(json).success).to.be.false;
         });
     });
+
+    describe("GameFormat configurations", () => {
+        it("Roundtrip with format that has negValue 0", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            const zeroNegFormat: IGameFormat = { ...GameFormats.ACFGameFormat, negValue: 0 };
+            game.setGameFormat(zeroNegFormat);
+
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addWrongBuzz(
+                { player: firstTeamPlayers[0], points: 0, position: 0, isLastWord: false },
+                0,
+                game.gameFormat
+            );
+            firstCycle.addCorrectBuzz({ player: secondTeamPlayer, points: 10, position: 1 }, 0, game.gameFormat, 0, 3);
+
+            verifyFromQBJRoundtrip(game);
+        });
+
+        it("Roundtrip with format that pairs tossups and bonuses", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            const pairedFormat: IGameFormat = { ...GameFormats.ACFGameFormat, pairTossupsBonuses: true };
+            game.setGameFormat(pairedFormat);
+
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addWrongBuzz(
+                { player: firstTeamPlayers[0], points: -5, position: 0, isLastWord: false },
+                0,
+                game.gameFormat
+            );
+
+            const secondCycle: Cycle = game.cycles[1];
+            secondCycle.addCorrectBuzz({ player: secondTeamPlayer, points: 10, position: 1 }, 1, game.gameFormat, 1, 3);
+            secondCycle.setBonusPartAnswer(0, secondTeamPlayer.teamName, 10);
+            secondCycle.addBonusProtest(1, 1, "Given", "Reason", secondTeamPlayer.teamName);
+
+            verifyFromQBJRoundtrip(game);
+        });
+
+        it("Roundtrip with overtimeIncludesBonuses format", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            const overtimeFormat: IGameFormat = {
+                ...GameFormats.ACFGameFormat,
+                overtimeIncludesBonuses: true,
+                regulationTossupCount: 1,
+            };
+            game.setGameFormat(overtimeFormat);
+
+            const overtimeCycle: Cycle = game.cycles[1];
+            const firstTeamPlayer: Player = firstTeamPlayers[0];
+            overtimeCycle.addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 1 },
+                1,
+                game.gameFormat,
+                0,
+                3
+            );
+            overtimeCycle.setBonusPartAnswer(1, firstTeamPlayer.teamName, 10);
+
+            verifyFromQBJRoundtrip(game);
+        });
+    });
+
     /* eslint-enable @typescript-eslint/no-explicit-any */
 });
