@@ -74,36 +74,6 @@ yarn build
 
 This compiles TypeScript and prepares the output.
 
-### Testing
-
-To run the tests:
-
-```bash
-npm test
-# or
-yarn test
-```
-
-Tests use Mocha and are located in the `tests/` directory.
-
-### Linting
-
-To check for linting issues:
-
-```bash
-npm run lint
-# or
-yarn lint
-```
-
-To automatically fix linting issues:
-
-```bash
-npm run lintFix
-# or
-yarn lintFix
-```
-
 ### Development Server
 
 To run the development server:
@@ -133,6 +103,36 @@ For testing via the Dev server (required for Google Sheets functionality), which
 3. Open https://localhost.quizbowlreader.com:8080/out
 
    You can accept the HTTPS certificate or create your own self-signed certificate.
+
+### Testing
+
+To run the tests:
+
+```bash
+npm test
+# or
+yarn test
+```
+
+Tests use Mocha and are located in the `tests/` directory.
+
+### Linting
+
+To check for linting issues:
+
+```bash
+npm run lint
+# or
+yarn lint
+```
+
+To automatically fix linting issues:
+
+```bash
+npm run lintFix
+# or
+yarn lintFix
+```
 
 ### Demo
 
