@@ -1,63 +1,167 @@
-# Introduction
+# MODAQ
 
-MODAQ (**MOD**erator **A**ssistant for **Q**uizbowl) is an application for assisting moderators with reading and scorekeeping quiz bowl matches. It helps track all the events that occur during the match, such as buzzes, substituions, protests, and more. It also tracks buzz point data, and can export it to TJ/UCSDSheets or a JSON file.
+**MODAQ** (**MOD**erator **A**ssistant for **Q**uizbowl) is an application for assisting moderators with reading and scorekeeping quizbowl matches. It helps track all the events that occur during the match, such as buzzes, substitutions, protests, and more. It also tracks buzz point data and can export it to a QBJ file, a JSON file, and/or TJ/UCSD Sheets.
 
 See [the wiki](https://github.com/alopezlago/MODAQ/wiki) to learn how to use the reader.
 
-# Importing MODAQ in your project
+## Importing
 
-To use MODAQ in your product as an npm package, do the following
+To use MODAQ in your project as an npm package:
 
-1. Add `modaq` as a dependency to your `package.json` file.
+1. Add `modaq` as a dependency to your `package.json` file:
 
-2. In your React file, import MODAQ with `import * as Modaq from "modaq";`, then use the control like `<Modaq.ModaqControl />`
+   ```bash
+   npm install modaq
+   ```
 
-3. If you want to use Export to a Google Sheets format, you need to supply your application's client ID, and include this in your HTML: `<script async defer src="https://apis.google.com/js/api.js"></script>`
+2. In your React file, import MODAQ with:
 
-4. If you want to use the packet parser (instead of passing in a packet parameter), you need to include a URL to YAPP
+   ```typescript
+   import * as Modaq from "modaq";
+   ```
 
-To see what each prop does, visit [this page](https://github.com/alopezlago/QuizBowlDiscordScoreTracker/wiki/ModaqControl-props).
+   Then use the control like `<Modaq.ModaqControl />`.
 
-# Getting Started
+3. If you want to export to Google Sheets format, you need to supply your application's client ID and include this in your HTML:
 
-You will need to have [npm](https://www.npmjs.com/get-npm) and [yarn](https://yarnpkg.com/getting-started/install) installed on your system.
+   ```html
+   <script async defer src="https://apis.google.com/js/api.js"></script>
+   ```
 
-To setup the project, run
+4. If you want to use the packet parser (instead of passing in a packet parameter), you need to include a URL to YAPP.
 
-`npm init`
+For details on props, visit the [ModaqControl props section of the MODAQ wiki](https://github.com/alopezlago/QuizBowlDiscordScoreTracker/wiki/ModaqControl-props).
 
-Then
+## Development
 
-`npm build`
+### Codebase Overview
 
-Then open index.html.
+See [the MODAQ Wiki](https://github.com/alopezlago/MODAQ/wiki/Codebase-Overview) for a more thorough overview of how MODAQ works internally.
 
-VS Code is recommended as an IDE, although you can use whatever editor you like. If you install VS Code, be sure to install the Prettier VS Code extension.
+### Prerequisites
 
-# Build and Test
+- [Node.js](https://nodejs.org/) (version 14 or higher)
+- [npm](https://www.npmjs.com/get-npm) or [yarn](https://yarnpkg.com/getting-started/install)
 
-To build, run
+VS Code is recommended as an IDE. If using VS Code, install the Prettier extension for code formatting.
 
-`npm build`
+### Setup
 
-To run the tests, run
+1. Download the [latest release](https://github.com/alopezlago/MODAQ/releases) or clone the repository:
 
-`npm test`
+   ```bash
+   git clone https://github.com/alopezlago/MODAQ.git
+   cd MODAQ
+   ```
 
-If you want to use the Dev Server (required for testing Google Sheets), then do the following
+2. Install dependencies:
 
--   Add this entry to your HOSTS file (in Windows, at C:\Windows\System32\drivers\etc\hosts)
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-    127.0.0.1 localhost.quizbowlreader.com
+### Building
 
--   Run `npm start`
+To build the project:
 
--   Open https://localhost.quizbowlreader.com:8080/out
+```bash
+npm run build
+# or
+yarn build
+```
 
-    -   You can either accept the HTTPS certificate, or you can create your own self-signed cert and add it to a certificate store. This PowerShell script should work in Windows, although I haven't tried this approach yet.
+This compiles TypeScript and prepares the output.
 
-    `$cert = New-SelfSignedCertificate -certstorelocation cert:\localmachine\my -dnsname localhost.quizbowlreader.com -KeyAlgorithm ECDSA_nistP256`
+### Testing
 
-# Contribute
+To run the tests:
 
-Contributions are welcomed. Please verify that `npm lint` and `npm test` succeed without warnings or failures before submitting a pull request.
+```bash
+npm test
+# or
+yarn test
+```
+
+Tests use Mocha and are located in the `tests/` directory.
+
+### Linting
+
+To check for linting issues:
+
+```bash
+npm run lint
+# or
+yarn lint
+```
+
+To automatically fix linting issues:
+
+```bash
+npm run lintFix
+# or
+yarn lintFix
+```
+
+### Development Server
+
+To run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+```
+
+For testing via the Dev server (required for Google Sheets functionality), which requires HTTPS:
+
+1. Add this entry to your hosts file (on macOS/Linux: `/etc/hosts`, on Windows: `C:\Windows\System32\drivers\etc\hosts`):
+
+   ```bash
+   127.0.0.1 localhost.quizbowlreader.com
+   ```
+
+2. Run the dev server:
+
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
+
+3. Open https://localhost.quizbowlreader.com:8080/out
+
+   You can accept the HTTPS certificate or create your own self-signed certificate.
+
+### Demo
+
+To build the demo:
+
+```bash
+npm run buildDemo
+# or
+yarn buildDemo
+```
+
+To serve the demo:
+
+```bash
+npm run serve
+# or
+yarn serve
+```
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. [Fork the repository.](https://github.com/alopezlago/MODAQ/fork)
+2. Create a feature branch.
+3. Commit your changes to the fork's feature branch.
+4. Ensure `npm run lint` and `npm test` pass without warnings or failures.
+5. Submit a [pull request](https://github.com/alopezlago/MODAQ/compare).
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
