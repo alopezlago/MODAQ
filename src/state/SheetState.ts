@@ -65,6 +65,10 @@ export class SheetState {
         this.sheetType = undefined;
     }
 
+    public getSheetTypeForExport(): SheetType {
+        return this.sheetType ?? SheetType.TJSheets;
+    }
+
     public setClientId(clientId: string | undefined): void {
         this.clientId = clientId;
     }

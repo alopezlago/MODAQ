@@ -128,7 +128,7 @@ const ExportSettingsDialogBody = observer(function ExportSettingsDialogBody(): J
         return <></>;
     }
 
-    const selectedType: number = uiState.sheetsState.sheetType ?? SheetType.TJSheets;
+    const selectedType: number = uiState.sheetsState.getSheetTypeForExport();
     const roundNumber: number = sheet.roundNumber ?? 1;
 
     let warningIconName: string | undefined;

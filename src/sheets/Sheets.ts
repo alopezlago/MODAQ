@@ -561,17 +561,18 @@ function getErrorFromSheetsResponse(e: unknown): string {
 }
 
 function getSheetsGenerator(uiState: UIState): ISheetsGenerator {
-    switch (uiState.sheetsState.sheetType) {
+    const sheetType: SheetType = uiState.sheetsState.getSheetTypeForExport();
+    switch (sheetType) {
         // Default to Lifsheets if undefined
-        case undefined:
         case SheetType.Lifsheets:
             return LifsheetsGenerator;
         case SheetType.TJSheets:
+            // TJ Sheets is now the default, so if it's not specified we should assume it's that.
             return TJSheetsGenerator;
         case SheetType.UCSDSheets:
             return UCSDSheetsGenerator;
         default:
-            assertNever(uiState.sheetsState.sheetType);
+            assertNever(sheetType);
     }
 }
 
