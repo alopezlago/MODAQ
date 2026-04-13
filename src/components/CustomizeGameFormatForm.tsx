@@ -44,6 +44,7 @@ export const CustomizeGameFormatForm = observer(function CustomizeGameFormatDial
 
     const gameFormat: IGameFormat | undefined = customizeGameFormatState.gameFormat;
     const settingsProps: ISettingProps = { appState, state: props.state, gameFormat };
+    const sheetType: SheetType = appState.uiState.sheetsState.getSheetTypeForExport();
 
     return (
         <Stack>
@@ -51,8 +52,7 @@ export const CustomizeGameFormatForm = observer(function CustomizeGameFormatDial
                 <GameFormatPicker
                     gameFormat={gameFormat}
                     exportFormatSupportsBouncebacks={
-                        appState.uiState.sheetsState.sheetType !== SheetType.UCSDSheets &&
-                        appState.uiState.sheetsState.sheetType !== SheetType.Lifsheets
+                        sheetType !== SheetType.UCSDSheets && sheetType !== SheetType.Lifsheets
                     }
                     updateGameFormat={resetGameFormat}
                 />

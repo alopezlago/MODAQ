@@ -235,6 +235,24 @@ describe("SheetsTests", () => {
             await secondTeamNegTest(SheetType.UCSDSheets, (ranges) => verifyCell(ranges, "O4", -5));
         });
 
+        it("Undefined sheet type defaults to TJSheets", async () => {
+            const appState: AppState = createAppStateForExport();
+
+            // Simulate flows (e.g. QBJ import) where sheetId is present but sheetType was never selected.
+            appState.uiState.sheetsState.clearSheetType();
+
+            await verifyExportToSheetSuccess(appState, (ranges) => {
+                verifyCell(ranges, "C2:K2", "Alpha");
+                verifyCell(ranges, "M2:U2", "Beta");
+                verifyCell(ranges, "C3", "Alice");
+                verifyCell(ranges, "M3", "Bob");
+
+                // Guard against accidental fallback to legacy Lifesheets rows.
+                expect(ranges.find((range) => range.range != undefined && range.range.indexOf("C5") >= 0)).to.be
+                    .undefined;
+            });
+        });
+
         const nonNegNotWrittenTest = async (
             sheetType: SheetType,
             verifyCells: (ranges: gapi.client.sheets.ValueRange[], position: number) => void
@@ -824,17 +842,6 @@ describe("SheetsTests", () => {
                 verifyUCSDBonusCells(ranges, "U4:W4", [true, false, false]);
             });
         });
-
-        const tossupsHeardTest = async (
-            setupGame: (appState: AppState) => void,
-            verifyTossups: (ranges: gapi.client.sheets.ValueRange[]) => void
-        ) => {
-            const appState: AppState = createAppStateForExport(SheetType.UCSDSheets);
-
-            setupGame(appState);
-
-            await verifyExportToSheetSuccess(appState, verifyTossups);
-        };
 
         it("Tossups heard tracking with substitutions (UCSDSheets)", async () => {
             const appState: AppState = createAppStateForExport(SheetType.UCSDSheets);
