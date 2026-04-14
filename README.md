@@ -41,7 +41,8 @@ See [the MODAQ Wiki](https://github.com/alopezlago/MODAQ/wiki/Codebase-Overview)
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (version 14 or higher)
-- [npm](https://www.npmjs.com/get-npm) or [yarn](https://yarnpkg.com/getting-started/install)
+- [yarn](https://yarnpkg.com/getting-started/install)
+- [npm](https://www.npmjs.com/get-npm)
 
 VS Code is recommended as an IDE. If using VS Code, install the Prettier extension for code formatting.
 
@@ -92,6 +93,8 @@ For testing via the Dev server (required for Google Sheets functionality), which
    127.0.0.1 localhost.quizbowlreader.com
    ```
 
+   - If using Chrome, you may also need to set the flag at `chrome://flags#local-network-access-check`.
+
 2. Run the dev server:
 
    ```bash
@@ -100,7 +103,7 @@ For testing via the Dev server (required for Google Sheets functionality), which
    yarn dev
    ```
 
-3. Open https://localhost.quizbowlreader.com:8080/out
+3. Open https://localhost.quizbowlreader.com:5173/out
 
    You can accept the HTTPS certificate or create your own self-signed certificate.
 
@@ -156,11 +159,11 @@ yarn serve
 
 Contributions are welcome! Please follow these steps:
 
-1. [Fork the repository.](https://github.com/alopezlago/MODAQ/fork)
-2. Create a feature branch.
-3. Commit your changes to the fork's feature branch.
-4. Ensure `npm run lint` and `npm test` pass without warnings or failures.
-5. Submit a [pull request](https://github.com/alopezlago/MODAQ/compare).
+1. [Fork the repository.](https://github.com/alopezlago/MODAQ/fork) and create a feature branch.
+   - Alternatively, you can clone this repository, and create a feature branch on this repository directly.
+2. Commit your changes to the feature branch.
+3. Ensure `npm run lint` and `npm test` pass without warnings or failures.
+4. Submit a [pull request](https://github.com/alopezlago/MODAQ/compare).
 
 ## License
 
