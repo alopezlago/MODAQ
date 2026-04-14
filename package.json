@@ -1,6 +1,6 @@
 {
     "name": "modaq",
-    "version": "1.36.7",
+    "version": "1.37.0",
     "description": "Quiz Bowl Reader using TypeScript, React, and MobX",
     "repository": {
         "type": "git",
@@ -35,6 +35,8 @@
         "copyfiles": "^2.4.1",
         "eslint": "^8.20.0",
         "eslint-config-prettier": "^8.5.0",
+        "eslint-import-resolver-typescript": "^3.10.1",
+        "eslint-plugin-import": "^2.32.0",
         "eslint-plugin-mobx": "^0.0.9",
         "eslint-plugin-react": "^7.30.1",
         "eslint-plugin-react-hooks": "^4.6.0",

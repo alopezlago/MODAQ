@@ -135,5 +135,22 @@ function findWarnings(packet: PacketState): string[] {
         warnings.push(`Suspiciously short questions found at tossup(s) ${shortQuestionNumbers.join(", ")}.`);
     }
 
+    // Format with powers where not every question has powers. We don't know the format at this point, so
+    // look for the default power marker "(*)".
+    const tossupsWithoutPowers: number[] = [];
+    let hasPowers = false;
+    for (let i = 0; i < packet.tossups.length; i++) {
+        const tossup: ITossup = packet.tossups[i];
+        if (tossup.question.includes("(*)")) {
+            hasPowers = true;
+        } else {
+            tossupsWithoutPowers.push(i + 1);
+        }
+    }
+
+    if (hasPowers && tossupsWithoutPowers.length > 0) {
+        warnings.push(`Some tossup(s) missing powers: ${tossupsWithoutPowers.join(", ")}.`);
+    }
+
     return warnings;
 }

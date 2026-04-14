@@ -169,6 +169,99 @@ describe("PacketLoaderControllerTests", () => {
         expect(packet.bonuses.length).to.equal(3);
     });
 
+    it("packet with mixed power markers warns about missing powers", () => {
+        const appState: AppState = initializeApp();
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+            tossups: [
+                new Tossup(
+                    "This tossup includes an early power mark (*) and has enough words to avoid short-question warnings entirely in this test case.",
+                    "Answer One"
+                ),
+                new Tossup(
+                    "This tossup intentionally omits the power marker but is still comfortably above the minimum expected length for a question warning.",
+                    "Answer Two"
+                ),
+                new Tossup(
+                    "This tossup also omits the marker and remains long enough to ensure only the missing-powers warning is produced for this packet.",
+                    "Answer Three"
+                ),
+            ],
+            bonuses: [],
+        });
+
+        if (packet == undefined) {
+            assert.fail("Packet was undefined");
+        }
+
+        expect(appState.uiState.packetParseStatus).to.not.be.undefined;
+        expect(appState.uiState.packetParseStatus?.status.isError).to.be.false;
+        expect(appState.uiState.packetParseStatus?.warnings.length).to.equal(1);
+        expect(appState.uiState.packetParseStatus?.warnings[0]).to.equal("Some tossup(s) missing powers: 2, 3.");
+
+        expect(packet.tossups.length).to.equal(3);
+        expect(packet.bonuses.length).to.equal(0);
+    });
+
+    it("packet with no power markers does not warn about missing powers", () => {
+        const appState: AppState = initializeApp();
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+            tossups: [
+                new Tossup(
+                    "This tossup is long enough to avoid short warnings and has no power marker because the format can legitimately omit powers.",
+                    "Answer One"
+                ),
+                new Tossup(
+                    "Another sufficiently long tossup without a marker keeps this test focused on verifying that no missing-powers warning is emitted.",
+                    "Answer Two"
+                ),
+            ],
+            bonuses: [],
+        });
+
+        if (packet == undefined) {
+            assert.fail("Packet was undefined");
+        }
+
+        expect(appState.uiState.packetParseStatus).to.not.be.undefined;
+        expect(appState.uiState.packetParseStatus?.status.isError).to.be.false;
+        expect(appState.uiState.packetParseStatus?.warnings.length).to.equal(0);
+
+        expect(packet.tossups.length).to.equal(2);
+        expect(packet.bonuses.length).to.equal(0);
+    });
+
+    it("packet with all power markers does not warn about missing powers", () => {
+        const appState: AppState = initializeApp();
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+            tossups: [
+                new Tossup(
+                    "This tossup includes the marker (*) and has enough words to avoid short-question warnings while confirming consistent power formatting.",
+                    "Answer One"
+                ),
+                new Tossup(
+                    "A second tossup also includes (*) and remains comfortably above the minimum expected length so only missing-power behavior is under test.",
+                    "Answer Two"
+                ),
+                new Tossup(
+                    "The third tossup contains (*) as well and is intentionally verbose to ensure no short tossup warnings interfere with this assertion.",
+                    "Answer Three"
+                ),
+            ],
+            bonuses: [],
+        });
+
+        if (packet == undefined) {
+            assert.fail("Packet was undefined");
+        }
+
+        expect(appState.uiState.packetParseStatus).to.not.be.undefined;
+        expect(appState.uiState.packetParseStatus?.status.isError).to.be.false;
+        expect(appState.uiState.packetParseStatus?.warnings.length).to.equal(0);
+
+        expect(packet.tossups.length).to.equal(3);
+        expect(packet.bonuses.length).to.equal(0);
+    });
+
     it("packet is renamed", () => {
         const appState: AppState = initializeApp();
         appState.uiState.setPacketFilename("uiPacketName");
