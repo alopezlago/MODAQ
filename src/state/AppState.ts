@@ -1,4 +1,4 @@
-import { assertNever } from "@fluentui/Utilities";
+import { assertNever } from "@fluentui/react";
 import { makeAutoObservable } from "mobx";
 import { IStatus } from "../IStatus";
 import { ICustomExport } from "./CustomExport";
