@@ -709,7 +709,7 @@ describe("SheetsTests", () => {
             appState.game.loadPacket(packet);
 
             // Player joins on cycle 2
-            appState.game.cycles[1].addPlayerJoins(newPlayer);
+            appState.game.cycles[1].addPlayerJoins(newPlayer, /* isInactive */ false);
 
             await verifyExportToSheetSuccess(appState, verifyCells);
         };

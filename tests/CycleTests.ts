@@ -287,7 +287,7 @@ describe("CycleTests", () => {
             updated = false;
 
             const newPlayer: IPlayer = { name: "Alvaro", teamName: "Alpha", isStarter: false };
-            cycle.addPlayerJoins(newPlayer);
+            cycle.addPlayerJoins(newPlayer, /* isInactive */ false);
             expect(updated).to.be.true;
             updated = false;
 
@@ -349,14 +349,14 @@ describe("CycleTests", () => {
             });
 
             const newPlayer: IPlayer = { name: "Alvaro", teamName: "Alpha", isStarter: false };
-            cycle.addPlayerJoins(newPlayer);
+            cycle.addPlayerJoins(newPlayer, /* isInactive */ false);
             expect(updated).to.be.true;
             updated = false;
 
             cycle.setUpdateHandler(() => {
                 return;
             });
-            cycle.addPlayerJoins(newPlayer);
+            cycle.addPlayerJoins(newPlayer, /* isInactive */ false);
             expect(updated).to.be.false;
         });
     });
@@ -366,7 +366,7 @@ describe("CycleTests", () => {
             const existingPlayer: Player = new Player("Zach", "Zeta", true);
 
             const cycle: Cycle = new Cycle();
-            cycle.addPlayerJoins(newPlayer);
+            cycle.addPlayerJoins(newPlayer, /* isInactive */ false);
             cycle.addWrongBuzz(
                 { player: existingPlayer, points: -5, position: 10 },
                 1,
@@ -418,7 +418,7 @@ describe("CycleTests", () => {
             const existingPlayer: Player = new Player("Zach", "Zeta", true);
 
             const cycle: Cycle = new Cycle();
-            cycle.addPlayerJoins(newPlayer);
+            cycle.addPlayerJoins(newPlayer, /* isInactive */ false);
             cycle.addWrongBuzz({ player: newPlayer, points: -5, position: 10 }, 1, GameFormats.UndefinedGameFormat);
             cycle.addTossupProtest(newPlayer.teamName, 1, 10, "Answer", "Reason");
 

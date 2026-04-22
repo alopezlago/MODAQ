@@ -199,7 +199,7 @@ describe("RenamePlayerDialogControllerTests", () => {
 
             const originalPlayer: Player = new Player("Arty", defaultTeamNames[0], false);
             gameState.addNewPlayer(originalPlayer);
-            gameState.cycles[1].addPlayerJoins(originalPlayer);
+            gameState.cycles[1].addPlayerJoins(originalPlayer, /* isInactive */ false);
             gameState.cycles[2].addSwapSubstitution(players[players.length - 1], originalPlayer);
 
             appState.uiState.dialogState.showRenamePlayerDialog(originalPlayer);

@@ -97,8 +97,8 @@ describe("GameStateTests", () => {
             const newSecondTeamPlayer = new Player("Belle", secondTeamName, /* isStarter */ false);
 
             game.addNewPlayers([newFirstTeamPlayer, newSecondTeamPlayer]);
-            game.cycles[joinCycleIndex].addPlayerJoins(newFirstTeamPlayer);
-            game.cycles[joinCycleIndex].addPlayerJoins(newSecondTeamPlayer);
+            game.cycles[joinCycleIndex].addPlayerJoins(newFirstTeamPlayer, /* isInactive */ false);
+            game.cycles[joinCycleIndex].addPlayerJoins(newSecondTeamPlayer, /* isInactive */ false);
 
             expect(game.getPlayers(firstTeamName)).to.deep.equal(
                 allPlayers.filter((player) => player.teamName === firstTeamName).concat(newFirstTeamPlayer)
