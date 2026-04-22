@@ -84,9 +84,6 @@ export class UIState {
     public pendingNewGame?: IPendingNewGame;
 
     @ignore
-    public pendingNewPlayer?: Player;
-
-    @ignore
     public pendingSheet?: IPendingSheet;
 
     @ignore
@@ -155,7 +152,6 @@ export class UIState {
         this.packetParseStatus = undefined;
         this.pendingBonusProtestEvent = undefined;
         this.pendingNewGame = undefined;
-        this.pendingNewPlayer = undefined;
         this.pendingSheet = undefined;
         this.pendingTossupProtestEvent = undefined;
         this.useDarkMode = false;
@@ -258,11 +254,6 @@ export class UIState {
                     assertNever(this.pendingNewGame);
             }
         }
-    }
-
-    public createPendingNewPlayer(teamName: string): void {
-        this.pendingNewPlayer = new Player("", teamName, /* isStarter */ false);
-        this.dialogState.visibleDialog = ModalVisibilityStatus.AddPlayer;
     }
 
     public createPendingSheet(): void {
@@ -652,11 +643,6 @@ export class UIState {
         }
     }
 
-    public resetPendingNewPlayer(): void {
-        this.pendingNewPlayer = undefined;
-        this.dialogState.visibleDialog = ModalVisibilityStatus.None;
-    }
-
     public resetPendingSheet(): void {
         this.pendingSheet = undefined;
         this.dialogState.visibleDialog = ModalVisibilityStatus.None;
@@ -708,22 +694,6 @@ export class UIState {
             const partIndex = typeof part === "string" ? parseInt(part, 10) : part;
             this.pendingBonusProtestEvent.partIndex = partIndex;
         }
-    }
-
-    public updatePendingNewPlayerName(name: string): void {
-        if (this.pendingNewPlayer == undefined) {
-            return;
-        }
-
-        this.pendingNewPlayer.name = name;
-    }
-
-    public updatePendingNewPlayerTeamName(teamName: string): void {
-        if (this.pendingNewPlayer == undefined) {
-            return;
-        }
-
-        this.pendingNewPlayer.teamName = teamName;
     }
 
     public updatePendingSheetRoundNumber(roundNumber: number): void {

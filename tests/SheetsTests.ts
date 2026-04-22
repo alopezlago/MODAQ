@@ -729,6 +729,48 @@ describe("SheetsTests", () => {
             });
         });
 
+        const inactivePlayerJoinsTest = async (
+            sheetType: SheetType,
+            verifyCells: (ranges: gapi.client.sheets.ValueRange[]) => void
+        ) => {
+            const appState: AppState = createAppStateForExport(sheetType);
+
+            const newPlayer = new Player("Charlie", "Alpha", /* isStarter */ false);
+            appState.game.addNewPlayer(newPlayer);
+
+            const packet: PacketState = new PacketState();
+            packet.setTossups([
+                new Tossup("This tossup has five words.", "A"),
+                new Tossup("This is the second tossup.", "B"),
+            ]);
+            packet.setBonuses([
+                new Bonus("Leadin", [
+                    { question: "Part 1", answer: "A1", value: 10 },
+                    { question: "Part 2", answer: "A2", value: 10 },
+                    { question: "Part 3", answer: "A3", value: 10 },
+                ]),
+            ]);
+            appState.game.loadPacket(packet);
+
+            appState.game.cycles[1].addPlayerJoins(newPlayer, /* isInactive */ true);
+
+            await verifyExportToSheetSuccess(appState, verifyCells);
+        };
+
+        it("Inactive player joins (TJSheets)", async () => {
+            await inactivePlayerJoinsTest(SheetType.TJSheets, (ranges) => {
+                verifyCell(ranges, "D3", "Charlie");
+                verifyNoCell(ranges, "D28");
+            });
+        });
+        it("Inactive player joins (UCSDSheets)", async () => {
+            await inactivePlayerJoinsTest(SheetType.UCSDSheets, (ranges) => {
+                verifyCell(ranges, "D3", "Charlie");
+                verifyCell(ranges, "C32", 2);
+                verifyCell(ranges, "D32", 0);
+            });
+        });
+
         const playerLeavesTest = async (
             sheetType: SheetType,
             verifyCells: (ranges: gapi.client.sheets.ValueRange[]) => void
@@ -998,8 +1040,9 @@ describe("SheetsTests", () => {
         const sixPlayersOnTeamSucceedsTest = async (sheetType: SheetType) => {
             const appState: AppState = createAppStateForExport(sheetType);
 
-            const alphaPlayersCount: number = appState.game.players.filter((player) => player.teamName === "Alpha")
-                .length;
+            const alphaPlayersCount: number = appState.game.players.filter(
+                (player) => player.teamName === "Alpha"
+            ).length;
             for (let i = 0; i < 6 - alphaPlayersCount; i++) {
                 appState.game.addNewPlayer(new Player(`New${i}`, "Alpha", false));
             }
@@ -1022,8 +1065,9 @@ describe("SheetsTests", () => {
         const sevenPlayersOnTeamFailsTest = async (sheetType: SheetType) => {
             const appState: AppState = createAppStateForExport(sheetType);
 
-            const alphaPlayersCount: number = appState.game.players.filter((player) => player.teamName === "Alpha")
-                .length;
+            const alphaPlayersCount: number = appState.game.players.filter(
+                (player) => player.teamName === "Alpha"
+            ).length;
             for (let i = 0; i < 7 - alphaPlayersCount; i++) {
                 appState.game.addNewPlayer(new Player(`New${i}`, "Alpha", false));
             }

@@ -86,7 +86,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     }, [game, uiState]);
 
     const addPlayerHandler = React.useCallback(() => {
-        uiState.createPendingNewPlayer(game.teamNames[0]);
+        uiState.dialogState.showAddPlayerDialog(game.teamNames[0]);
     }, [uiState, game]);
 
     const addQuestionsHandler = React.useCallback(() => {

@@ -243,9 +243,10 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
         const previousLineupPlayers: Set<Player> = previousLineupPlayersResult.value;
         for (let i = 1; i < matchTeam.lineups.length; i++) {
             const newLineup: ILineup = matchTeam.lineups[i];
+            const cycleIndex: number = newLineup.first_question - 1;
 
             // Verify that first_question is monotonically increasing
-            if (newLineup.first_question < 0 || newLineup.first_question >= gameState.cycles.length) {
+            if (cycleIndex < 0 || cycleIndex >= gameState.cycles.length) {
                 return {
                     success: false,
                     message: `Lineup #${i + 1} for team ${teamName} happens at an invalid time (question #${
@@ -265,7 +266,7 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
 
             lineupsQuestion = newLineup.first_question;
 
-            const cycle: Cycle = gameState.cycles[newLineup.first_question];
+            const cycle: Cycle = gameState.cycles[cycleIndex];
             const newLineupPlayersResult: IResult<Set<Player>> = getPlayerSetFromLineup(
                 newLineup,
                 matchTeam.team.name,
@@ -294,7 +295,8 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
                 (player) => !previousLineupPlayers.has(player)
             );
             for (const joinedPlayer of joinedPlayers) {
-                cycle.addPlayerJoins(joinedPlayer);
+                // QBJ lineups only care about active players, so we can assume that all joins are active.
+                cycle.addPlayerJoins(joinedPlayer, /* isInactive */ false);
             }
         }
     }
@@ -577,7 +579,9 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
             if (cycle.playerJoins) {
                 for (const join of cycle.playerJoins) {
                     const lineup: ILineup | undefined = teamLineups.get(join.inPlayer.teamName);
-                    if (lineup) {
+
+                    // Inactive players don't matter for the lineup, they can enter in later
+                    if (lineup && !join.isInactive) {
                         const newPlayer: IPlayer = { name: join.inPlayer.name };
                         const newLineup: ILineup = {
                             first_question: i + 1,

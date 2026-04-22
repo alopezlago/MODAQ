@@ -183,7 +183,7 @@ export const UCSDSheetsGenerator: ISheetsGenerator = {
                     const joiningPlayer: PlayerTossupsHeard | undefined = playerTossupsHeard.find(
                         (player) => player.player === joins.inPlayer
                     );
-                    if (joiningPlayer) {
+                    if (joiningPlayer && !joins.isInactive) {
                         joiningPlayer.isIn = true;
                     }
                 }

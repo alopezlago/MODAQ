@@ -138,6 +138,10 @@ export const LifsheetsGenerator: ISheetsGenerator = {
             return [];
         }
 
+        if (join.isInactive) {
+            return [];
+        }
+
         // In goes in the previous row, unless they were subbed in on the first tossup, in which case replace Out
         // with blank
         // See https://minkowski.space/quizbowl/manuals/scorekeeping/moderator.html#substitutions

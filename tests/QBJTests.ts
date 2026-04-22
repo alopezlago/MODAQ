@@ -257,6 +257,31 @@ describe("QBJTests", () => {
 
             verifyFromQBJRoundtrip(game);
         });
+        it("Game->QBJ->Game round trip with inactive join", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            const benchPlayer: Player = new Player("Brenda", secondTeamPlayer.teamName, /* isStarter */ false);
+            game.addNewPlayer(benchPlayer);
+            game.cycles[2].addPlayerJoins(benchPlayer, /* isInactive */ true);
+
+            verifyFromQBJRoundtrip(game);
+        });
+        it("Game->QBJ->Game round trip with inactive join then active join later", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            const benchPlayer: Player = new Player("Brenda", secondTeamPlayer.teamName, /* isStarter */ false);
+            game.addNewPlayer(benchPlayer);
+            game.cycles[1].addPlayerJoins(benchPlayer, /* isInactive */ true);
+            game.addInactivePlayer(benchPlayer, 2);
+
+            verifyFromQBJRoundtrip(game);
+        });
         it("Roundtrip game with multiple thrown out tossups", () => {
             const game: GameState = new GameState();
             game.loadPacket(defaultPacket);
@@ -306,7 +331,7 @@ describe("QBJTests", () => {
         it("Invalid QBJ - undefined and empty match_players", () => {
             const match: IMatch = createDefaultMatch();
             if (match.match_teams) {
-                match.match_teams[1].match_players = (undefined as unknown) as QBJ.IMatchPlayer[];
+                match.match_teams[1].match_players = undefined as unknown as QBJ.IMatchPlayer[];
             }
 
             const result: IResult<GameState> = QBJ.fromQBJ(match, defaultPacket, GameFormats.ACFGameFormat);
@@ -359,7 +384,7 @@ describe("QBJTests", () => {
             const match: IMatch = createDefaultMatch();
 
             if (match.match_teams) {
-                match.match_teams[0].lineups = (undefined as unknown) as QBJ.ILineup[];
+                match.match_teams[0].lineups = undefined as unknown as QBJ.ILineup[];
             }
 
             const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
@@ -374,7 +399,7 @@ describe("QBJTests", () => {
             const match: IMatch = createDefaultMatch();
 
             if (match.match_questions) {
-                match.match_questions = (undefined as unknown) as QBJ.IMatchQuestion[];
+                match.match_questions = undefined as unknown as QBJ.IMatchQuestion[];
             }
 
             const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
@@ -437,7 +462,7 @@ describe("QBJTests", () => {
                     {
                         buzz_position: { word_index: 0 },
                         team: match.match_teams[0].team,
-                        player: (undefined as unknown) as QBJ.IPlayer,
+                        player: undefined as unknown as QBJ.IPlayer,
                         result: { value: -5 },
                     },
                 ];
@@ -582,7 +607,7 @@ describe("QBJTests", () => {
         });
         it("Invalid QBJ - undefined passed in", () => {
             const result: IResult<GameState> = QBJ.fromQBJ(
-                (undefined as unknown) as IMatch,
+                undefined as unknown as IMatch,
                 defaultPacket,
                 GameFormats.ACFGameFormat
             );
@@ -1184,6 +1209,43 @@ describe("QBJTests", () => {
                 }
             );
         });
+        it("Player joins inactive", () => {
+            const newPlayerName = "Bianca";
+
+            verifyToQBJ(
+                (game) => {
+                    const newPlayer: Player = new Player(
+                        newPlayerName,
+                        secondTeamPlayer.teamName,
+                        /* isStarter */ false
+                    );
+                    game.addNewPlayer(newPlayer);
+                    game.cycles[3].addPlayerJoins(newPlayer, /* isInactive */ true);
+                },
+                (match) => {
+                    expect(match.tossups_read).to.equal(4);
+                    expect(match.match_questions.map((q) => q.question_number)).to.deep.equal([1, 2, 3, 4]);
+
+                    expect(match.match_teams.length).to.equal(2);
+                    expect(match.match_teams[1].match_players.length).to.equal(2);
+
+                    const secondTeam: QBJ.IMatchTeam = match.match_teams[1];
+                    const inSecondTeamPlayer: QBJ.IMatchPlayer = secondTeam.match_players[1];
+                    expect(inSecondTeamPlayer.player.name).to.equal(newPlayerName);
+                    expect(inSecondTeamPlayer.tossups_heard).to.equal(0);
+
+                    expect(secondTeam.lineups.length).to.equal(1);
+                    expect(secondTeam.lineups[0]).to.deep.equal({
+                        first_question: 1,
+                        players: [
+                            {
+                                name: secondTeamPlayer.name,
+                            },
+                        ],
+                    });
+                }
+            );
+        });
         it("Player stats", () => {
             verifyToQBJ(
                 (game) => {
@@ -1538,9 +1600,7 @@ describe("QBJTests", () => {
                     expect(match.match_questions[0].bonus.question?.question_number).to.equal(2);
                     expect(match.match_questions[0].bonus.parts.length).to.equal(3);
                     expect(match.match_questions[0].bonus.parts.map((part) => part.controlled_points)).to.deep.equal([
-                        10,
-                        0,
-                        0,
+                        10, 0, 0,
                     ]);
                 }
             );
@@ -1588,9 +1648,7 @@ describe("QBJTests", () => {
                     expect(match.match_questions[0].bonus.question?.question_number).to.equal(2);
                     expect(match.match_questions[0].bonus.parts.length).to.equal(3);
                     expect(match.match_questions[0].bonus.parts.map((part) => part.controlled_points)).to.deep.equal([
-                        10,
-                        0,
-                        0,
+                        10, 0, 0,
                     ]);
                 }
             );
