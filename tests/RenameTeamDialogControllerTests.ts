@@ -136,7 +136,7 @@ describe("RenameTeamDialogControllerTests", () => {
             appState.game.cycles[2].addPlayerLeaves(player);
 
             const newPlayer: Player = new Player("Avery", defaultTeamNames[0], false);
-            appState.game.cycles[2].addPlayerJoins(newPlayer);
+            appState.game.cycles[2].addPlayerJoins(newPlayer, /* isInactive */ false);
 
             appState.game.cycles[3].addSwapSubstitution(player, newPlayer);
 

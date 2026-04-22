@@ -71,14 +71,14 @@ describe("AddInactivePlayerTests", () => {
     });
     it("addInactivePlayer after they've joined before does nothing", () => {
         const appState: AppState = initializeApp();
-        appState.game.cycles[0].addPlayerJoins(defaultInactivePlayer);
+        appState.game.cycles[0].addPlayerJoins(defaultInactivePlayer, /* isInactive */ false);
         appState.game.addInactivePlayer(defaultInactivePlayer, 1);
         expect(appState.game.cycles[1].playerJoins).to.be.undefined;
         assertPlayerJoin(appState.game.cycles[0], defaultInactivePlayer);
     });
     it("addInactivePlayer before they've joined replaces joined event", () => {
         const appState: AppState = initializeApp();
-        appState.game.cycles[2].addPlayerJoins(defaultInactivePlayer);
+        appState.game.cycles[2].addPlayerJoins(defaultInactivePlayer, /* isInactive */ false);
         appState.game.addInactivePlayer(defaultInactivePlayer, 1);
         expect(appState.game.cycles[2].playerJoins).to.be.empty;
         expect(appState.game.cycles[2].playerLeaves).to.be.undefined;
@@ -88,7 +88,7 @@ describe("AddInactivePlayerTests", () => {
     });
     it("addInactivePlayer after they've joined and left adds them back", () => {
         const appState: AppState = initializeApp();
-        appState.game.cycles[0].addPlayerJoins(defaultInactivePlayer);
+        appState.game.cycles[0].addPlayerJoins(defaultInactivePlayer, /* isInactive */ false);
         appState.game.cycles[1].addPlayerLeaves(defaultInactivePlayer);
         appState.game.addInactivePlayer(defaultInactivePlayer, 2);
 
@@ -106,7 +106,7 @@ describe("AddInactivePlayerTests", () => {
         const appState: AppState = initializeApp();
         const playerToLeave: Player = defaultExistingPlayers[0];
 
-        appState.game.cycles[3].addPlayerJoins(playerToLeave);
+        appState.game.cycles[3].addPlayerJoins(playerToLeave, /* isInactive */ false);
         appState.game.cycles[2].addPlayerLeaves(playerToLeave);
         appState.game.addInactivePlayer(playerToLeave, 1);
 

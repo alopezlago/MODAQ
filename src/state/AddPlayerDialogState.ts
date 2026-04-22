@@ -2,8 +2,6 @@ import { makeAutoObservable } from "mobx";
 import { Player } from "./TeamState";
 
 export class AddPlayerDialogState {
-    public errorMessage: string | undefined;
-
     public player: Player;
 
     public isActive: boolean;
@@ -13,14 +11,6 @@ export class AddPlayerDialogState {
 
         this.player = new Player("", teamName, /* isStarter */ false);
         this.isActive = true;
-    }
-
-    public clearErrorMessage(): void {
-        this.errorMessage = undefined;
-    }
-
-    public setErrorMessage(errorMessage: string): void {
-        this.errorMessage = errorMessage;
     }
 
     public setIsActive(isActive: boolean): void {

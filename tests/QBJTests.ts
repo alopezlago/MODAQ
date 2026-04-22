@@ -243,7 +243,7 @@ describe("QBJTests", () => {
 
             const newPlayer: Player = new Player("Brenda", secondTeamPlayer.teamName, /* isStarter */ false);
             game.addNewPlayer(newPlayer);
-            thirdCycle.addPlayerJoins(newPlayer);
+            thirdCycle.addPlayerJoins(newPlayer, /* isInactive */ false);
             thirdCycle.addPlayerLeaves(secondTeamPlayer);
             thirdCycle.addCorrectBuzz(
                 { player: newPlayer, points: 10, position: 0 },
@@ -331,7 +331,7 @@ describe("QBJTests", () => {
         it("Invalid QBJ - undefined and empty match_players", () => {
             const match: IMatch = createDefaultMatch();
             if (match.match_teams) {
-                match.match_teams[1].match_players = undefined as unknown as QBJ.IMatchPlayer[];
+                match.match_teams[1].match_players = (undefined as unknown) as QBJ.IMatchPlayer[];
             }
 
             const result: IResult<GameState> = QBJ.fromQBJ(match, defaultPacket, GameFormats.ACFGameFormat);
@@ -384,7 +384,7 @@ describe("QBJTests", () => {
             const match: IMatch = createDefaultMatch();
 
             if (match.match_teams) {
-                match.match_teams[0].lineups = undefined as unknown as QBJ.ILineup[];
+                match.match_teams[0].lineups = (undefined as unknown) as QBJ.ILineup[];
             }
 
             const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
@@ -399,7 +399,7 @@ describe("QBJTests", () => {
             const match: IMatch = createDefaultMatch();
 
             if (match.match_questions) {
-                match.match_questions = undefined as unknown as QBJ.IMatchQuestion[];
+                match.match_questions = (undefined as unknown) as QBJ.IMatchQuestion[];
             }
 
             const result: IResult<GameState> = QBJ.fromQBJ(match as IMatch, defaultPacket, GameFormats.ACFGameFormat);
@@ -462,7 +462,7 @@ describe("QBJTests", () => {
                     {
                         buzz_position: { word_index: 0 },
                         team: match.match_teams[0].team,
-                        player: undefined as unknown as QBJ.IPlayer,
+                        player: (undefined as unknown) as QBJ.IPlayer,
                         result: { value: -5 },
                     },
                 ];
@@ -607,7 +607,7 @@ describe("QBJTests", () => {
         });
         it("Invalid QBJ - undefined passed in", () => {
             const result: IResult<GameState> = QBJ.fromQBJ(
-                undefined as unknown as IMatch,
+                (undefined as unknown) as IMatch,
                 defaultPacket,
                 GameFormats.ACFGameFormat
             );
@@ -1178,7 +1178,7 @@ describe("QBJTests", () => {
                         /* isStarter */ false
                     );
                     game.addNewPlayer(newPlayer);
-                    game.cycles[3].addPlayerJoins(newPlayer);
+                    game.cycles[3].addPlayerJoins(newPlayer, /* isInactive */ false);
                 },
                 (match) => {
                     expect(match.tossups_read).to.equal(4);
@@ -1600,7 +1600,9 @@ describe("QBJTests", () => {
                     expect(match.match_questions[0].bonus.question?.question_number).to.equal(2);
                     expect(match.match_questions[0].bonus.parts.length).to.equal(3);
                     expect(match.match_questions[0].bonus.parts.map((part) => part.controlled_points)).to.deep.equal([
-                        10, 0, 0,
+                        10,
+                        0,
+                        0,
                     ]);
                 }
             );
@@ -1648,7 +1650,9 @@ describe("QBJTests", () => {
                     expect(match.match_questions[0].bonus.question?.question_number).to.equal(2);
                     expect(match.match_questions[0].bonus.parts.length).to.equal(3);
                     expect(match.match_questions[0].bonus.parts.map((part) => part.controlled_points)).to.deep.equal([
-                        10, 0, 0,
+                        10,
+                        0,
+                        0,
                     ]);
                 }
             );
@@ -1917,7 +1921,7 @@ describe("QBJTests", () => {
 
                     // Third cycle - new player comes in for second cycle and beyond
                     game.cycles[2].addPlayerLeaves(firstTeamPlayers[1]);
-                    game.cycles[2].addPlayerJoins(newPlayer1);
+                    game.cycles[2].addPlayerJoins(newPlayer1, /* isInactive */ false);
                     game.cycles[2].addCorrectBuzz(
                         { player: newPlayer1, points: 10, position: 1 },
                         2,

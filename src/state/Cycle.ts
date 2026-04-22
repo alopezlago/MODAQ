@@ -307,7 +307,7 @@ export class Cycle implements ICycle {
         this.updateIfNeeded();
     }
 
-    public addPlayerJoins(inPlayer: IPlayer, isInactive?: boolean): void {
+    public addPlayerJoins(inPlayer: IPlayer, isInactive: boolean): void {
         if (this.playerJoins == undefined) {
             this.playerJoins = [];
         }
