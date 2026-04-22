@@ -118,6 +118,35 @@ describe("GameStateTests", () => {
             allPlayersInSet(game.getActivePlayers(firstTeamName, lastCycleIndex), firstTeamAfterSub);
             allPlayersInSet(game.getActivePlayers(secondTeamName, lastCycleIndex), secondTeamAfterSub);
         });
+        it("New player joins inactive", () => {
+            const game: GameState = new GameState();
+            game.setCycles([new Cycle(), new Cycle(), new Cycle()]);
+            game.addNewPlayers(allPlayers);
+
+            const lastCycleIndex: number = game.cycles.length - 1;
+            const joinCycleIndex = 1;
+
+            const newFirstTeamPlayer = new Player("Antonio", firstTeamName, /* isStarter */ false);
+            const newSecondTeamPlayer = new Player("Belle", secondTeamName, /* isStarter */ false);
+
+            game.addNewPlayers([newFirstTeamPlayer, newSecondTeamPlayer]);
+            game.cycles[joinCycleIndex].addPlayerJoins(newFirstTeamPlayer, /* isInactive */ true);
+            game.cycles[joinCycleIndex].addPlayerJoins(newSecondTeamPlayer, /* isInactive */ true);
+
+            expect(game.getPlayers(firstTeamName)).to.deep.equal(
+                allPlayers.filter((player) => player.teamName === firstTeamName).concat(newFirstTeamPlayer)
+            );
+            expect(game.getPlayers(secondTeamName)).to.deep.equal(
+                allPlayers.filter((player) => player.teamName === secondTeamName).concat(newSecondTeamPlayer)
+            );
+
+            allPlayersInSet(game.getActivePlayers(firstTeamName, 0), firstTeamStarters);
+            allPlayersInSet(game.getActivePlayers(secondTeamName, 0), secondTeamStarters);
+            allPlayersInSet(game.getActivePlayers(firstTeamName, joinCycleIndex), firstTeamStarters);
+            allPlayersInSet(game.getActivePlayers(secondTeamName, joinCycleIndex), secondTeamStarters);
+            allPlayersInSet(game.getActivePlayers(firstTeamName, lastCycleIndex), firstTeamStarters);
+            allPlayersInSet(game.getActivePlayers(secondTeamName, lastCycleIndex), secondTeamStarters);
+        });
         it("Player leaves", () => {
             const game: GameState = new GameState();
             game.setCycles([new Cycle(), new Cycle(), new Cycle()]);

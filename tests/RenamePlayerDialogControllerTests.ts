@@ -226,6 +226,36 @@ describe("RenamePlayerDialogControllerTests", () => {
             expect(subs[0].outPlayer.name).to.equal(name);
             expect(subs[0].outPlayer.teamName).to.equal(originalPlayer.teamName);
         });
+        it("renamePlayer preserves inactive join", () => {
+            const name = "Arthur";
+            const gameState: GameState = new GameState();
+            gameState.loadPacket(defaultPacket);
+
+            const players: Player[] = createDefaultExistingPlayers();
+            gameState.addNewPlayers(players);
+
+            AppState.resetInstance();
+            const appState: AppState = AppState.instance;
+            appState.game = gameState;
+
+            const originalPlayer: Player = new Player("Arty", defaultTeamNames[0], false);
+            gameState.addNewPlayer(originalPlayer);
+            gameState.cycles[1].addPlayerJoins(originalPlayer, /* isInactive */ true);
+
+            appState.uiState.dialogState.showRenamePlayerDialog(originalPlayer);
+            RenamePlayerDialogController.changeNewName(name);
+            RenamePlayerDialogController.renamePlayer();
+
+            const playerJoins: IPlayerJoinsEvent[] | undefined = gameState.cycles[1].playerJoins;
+            if (playerJoins === undefined) {
+                assert.fail("Expected join event in the second cycle");
+            }
+
+            expect(playerJoins.length).to.equal(1);
+            expect(playerJoins[0].inPlayer.name).to.equal(name);
+            expect(playerJoins[0].inPlayer.teamName).to.equal(originalPlayer.teamName);
+            expect(playerJoins[0].isInactive).to.be.true;
+        });
         it("renamePlayer fails (empty name)", () => {
             const { appState } = initializeApp();
             RenamePlayerDialogController.changeNewName(" ");

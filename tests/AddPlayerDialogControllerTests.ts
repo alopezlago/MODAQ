@@ -26,16 +26,16 @@ function initializeApp(): AppState {
     AppState.resetInstance();
     const appState: AppState = AppState.instance;
     appState.game = gameState;
-    appState.uiState.createPendingNewPlayer(defaultTeamNames[0]);
+    appState.uiState.dialogState.showAddPlayerDialog(defaultTeamNames[0]);
     return appState;
 }
 
 function getPendingNewPlayer(appState: AppState): Player {
-    if (appState.uiState.pendingNewPlayer == undefined) {
+    if (appState.uiState.dialogState.addPlayerDialog?.player == undefined) {
         assert.fail("PendingNewPlayer should not be undefined");
     }
 
-    return appState.uiState.pendingNewPlayer;
+    return appState.uiState.dialogState.addPlayerDialog?.player;
 }
 
 describe("AddPlayerDialogControllerTests", () => {
@@ -60,11 +60,17 @@ describe("AddPlayerDialogControllerTests", () => {
         expect(player.teamName).to.equal(name);
         expect(player.isStarter).to.be.false;
     });
+    it("setIsActive", () => {
+        const appState: AppState = initializeApp();
+        AddPlayerDialogController.setIsActive(false);
+
+        expect(appState.uiState.dialogState.addPlayerDialog?.isActive).to.be.false;
+    });
     it("hideDialog", () => {
         const appState: AppState = initializeApp();
         AddPlayerDialogController.hideDialog();
 
-        expect(appState.uiState.pendingNewPlayer).to.be.undefined;
+        expect(appState.uiState.dialogState.addPlayerDialog?.player).to.be.undefined;
     });
     describe("validatePlayer", () => {
         it("validatePlayer - non-empty name", () => {
@@ -102,7 +108,7 @@ describe("AddPlayerDialogControllerTests", () => {
             AddPlayerDialogController.addPlayer();
 
             // Verify - dialog hidden, player is in game, add player event in cycle
-            expect(appState.uiState.pendingNewPlayer).to.be.undefined;
+            expect(appState.uiState.dialogState.addPlayerDialog?.player).to.be.undefined;
 
             const newPlayer: Player | undefined = appState.game.players.find(
                 (player) => player.name === "Newbie" && player.teamName === defaultTeamNames[1]
@@ -120,6 +126,71 @@ describe("AddPlayerDialogControllerTests", () => {
 
             expect(playerJoins.length).to.equal(1);
             expect(playerJoins[0].inPlayer).to.equal(newPlayer);
+            expect(playerJoins[0].isInactive).to.be.false;
+            expect(appState.game.getActivePlayers(defaultTeamNames[1], 1).has(newPlayer)).to.be.true;
+        });
+        it("addPlayer succeeds with inactive join", () => {
+            const appState: AppState = initializeApp();
+            appState.uiState.setCycleIndex(1);
+            AddPlayerDialogController.changeTeamName(defaultTeamNames[1]);
+            AddPlayerDialogController.changePlayerName("Bench Player");
+            AddPlayerDialogController.setIsActive(false);
+            AddPlayerDialogController.addPlayer();
+
+            const newPlayer: Player | undefined = appState.game.players.find(
+                (player) => player.name === "Bench Player" && player.teamName === defaultTeamNames[1]
+            );
+            if (newPlayer == undefined) {
+                assert.fail(`Couldn't find new player in players: ${JSON.stringify(appState.game.players)}`);
+            }
+
+            const playerJoins: IPlayerJoinsEvent[] | undefined = appState.game.cycles[1].playerJoins;
+            if (playerJoins === undefined) {
+                assert.fail("Expected joinPlayer event in the second cycle");
+            }
+
+            expect(playerJoins.length).to.equal(1);
+            expect(playerJoins[0].inPlayer).to.equal(newPlayer);
+            expect(playerJoins[0].isInactive).to.be.true;
+            expect(appState.game.getActivePlayers(defaultTeamNames[1], 1).has(newPlayer)).to.be.false;
+        });
+        it("addPlayer inactive then enters later", () => {
+            const appState: AppState = initializeApp();
+            appState.uiState.setCycleIndex(0);
+            AddPlayerDialogController.changeTeamName(defaultTeamNames[1]);
+            AddPlayerDialogController.changePlayerName("Bench Player");
+            AddPlayerDialogController.setIsActive(false);
+            AddPlayerDialogController.addPlayer();
+
+            const newPlayer: Player | undefined = appState.game.players.find(
+                (player) => player.name === "Bench Player" && player.teamName === defaultTeamNames[1]
+            );
+            if (newPlayer == undefined) {
+                assert.fail(`Couldn't find new player in players: ${JSON.stringify(appState.game.players)}`);
+            }
+
+            const firstCycleJoins: IPlayerJoinsEvent[] | undefined = appState.game.cycles[0].playerJoins;
+            if (firstCycleJoins === undefined) {
+                assert.fail("Expected joinPlayer event in the first cycle");
+            }
+
+            expect(firstCycleJoins.length).to.equal(1);
+            expect(firstCycleJoins[0].inPlayer).to.equal(newPlayer);
+            expect(firstCycleJoins[0].isInactive).to.be.true;
+            expect(appState.game.getActivePlayers(defaultTeamNames[1], 0).has(newPlayer)).to.be.false;
+
+            appState.game.addInactivePlayer(newPlayer, 1);
+
+            const secondCycleJoins: IPlayerJoinsEvent[] | undefined = appState.game.cycles[1].playerJoins;
+            if (secondCycleJoins === undefined) {
+                assert.fail("Expected joinPlayer event in the second cycle");
+            }
+
+            expect(secondCycleJoins.length).to.equal(1);
+            expect(secondCycleJoins[0].inPlayer).to.equal(newPlayer);
+            expect(secondCycleJoins[0].isInactive).to.be.false;
+            expect(appState.game.getActivePlayers(defaultTeamNames[1], 0).has(newPlayer)).to.be.false;
+            expect(appState.game.getActivePlayers(defaultTeamNames[1], 1).has(newPlayer)).to.be.true;
         });
         it("addPlayer fails (empty name)", () => {
             const appState: AppState = initializeApp();
@@ -128,7 +199,7 @@ describe("AddPlayerDialogControllerTests", () => {
             AddPlayerDialogController.addPlayer();
 
             // Verify - dialog hidden, player is in game, add player event in cycle
-            expect(appState.uiState.pendingNewPlayer).to.not.be.undefined;
+            expect(appState.uiState.dialogState.addPlayerDialog?.player).to.not.be.undefined;
 
             const newPlayer: Player | undefined = appState.game.players.find(
                 (player) => player.name === " " && player.teamName === defaultTeamNames[1]
@@ -144,7 +215,7 @@ describe("AddPlayerDialogControllerTests", () => {
             AddPlayerDialogController.addPlayer();
 
             // Verify - dialog hidden, player is in game, add player event in cycle
-            expect(appState.uiState.pendingNewPlayer).to.not.be.undefined;
+            expect(appState.uiState.dialogState.addPlayerDialog?.player).to.not.be.undefined;
 
             const newPlayer: Player | undefined = appState.game.players.find((player) => player.name === "Newbie");
             expect(newPlayer).to.be.undefined;

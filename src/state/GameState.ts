@@ -293,12 +293,19 @@ export class GameState {
         for (let i = cycleIndex; i >= 0; i--) {
             const cycle: Cycle = this.cycles[i];
 
-            if (
-                cycle.playerJoins &&
-                cycle.playerJoins.some((joinEvent) => PlayerUtils.playersEqual(player, joinEvent.inPlayer))
-            ) {
-                // We have a current or earlier join event with no leave events. Adding a player now is a no-op.
-                return;
+            if (cycle.playerJoins) {
+                const joinEvent: IPlayerJoinsEvent | undefined = cycle.playerJoins.find((event) =>
+                    PlayerUtils.playersEqual(player, event.inPlayer)
+                );
+                if (joinEvent) {
+                    if (!joinEvent.isInactive) {
+                        // We have a current or earlier active join event with no leave events. Adding a player now is a no-op.
+                        return;
+                    } else if (i == cycleIndex) {
+                        // If the player was added to the roster as inactive this cycle, replace that event with an active join.
+                        cycle.removePlayerJoins(joinEvent);
+                    }
+                }
             }
 
             if (cycle.subs) {
@@ -363,24 +370,21 @@ export class GameState {
                 }
             }
 
-            if (
-                cycle.playerJoins &&
-                cycle.playerJoins.some((joinEvent) => PlayerUtils.playersEqual(player, joinEvent.inPlayer))
-            ) {
-                // We're adding the player earlier, and there's no leave event. Remove that event and then add the new
-                // one
-                const joinEvent: IPlayerJoinsEvent | undefined = cycle.playerJoins.find((joinEvent) =>
-                    PlayerUtils.playersEqual(player, joinEvent.inPlayer)
+            if (cycle.playerJoins) {
+                const joinEvent: IPlayerJoinsEvent | undefined = cycle.playerJoins.find((event) =>
+                    PlayerUtils.playersEqual(player, event.inPlayer)
                 );
                 if (joinEvent) {
+                    // We're adding the player earlier, and there's no leave event. Remove that event and then add the new
+                    // one. This applies to both active and inactive joins, since the player is already on the roster now.
                     cycle.removePlayerJoins(joinEvent);
-                }
 
-                break;
+                    break;
+                }
             }
         }
 
-        this.cycles[cycleIndex].addPlayerJoins(player);
+        this.cycles[cycleIndex].addPlayerJoins(player, /* isInactive */ false);
     }
 
     public addNewPlayer(player: Player): void {
@@ -440,7 +444,9 @@ export class GameState {
                     throw new Error(`Tried to add ${join.inPlayer.name}, who isn't on team ${teamName}`);
                 }
 
-                activePlayers.push(inPlayer);
+                if (!join.isInactive) {
+                    activePlayers.push(inPlayer);
+                }
             }
 
             const teamSubs: ISubstitutionEvent[] = subs?.filter((sub) => sub.inPlayer.teamName === teamName) ?? [];

@@ -11,8 +11,12 @@ import { FontDialogState } from "./FontDialogState";
 import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 import { RenameTeamDialogState } from "./RenameTeamDialogState";
 import { ImportFromQBJDialogState } from "./ImportFromQBJDialogState";
+import { AddPlayerDialogState } from "./AddPlayerDialogState";
 
 export class DialogState {
+    @ignore
+    public addPlayerDialog: AddPlayerDialogState | undefined;
+
     @ignore
     public addQuestions: AddQuestionDialogState | undefined;
 
@@ -43,6 +47,7 @@ export class DialogState {
     constructor() {
         makeAutoObservable(this);
 
+        this.addPlayerDialog = undefined;
         this.addQuestions = undefined;
         this.customizeGameFormat = undefined;
         this.fontDialog = undefined;
@@ -52,6 +57,13 @@ export class DialogState {
         this.renameTeamDialog = undefined;
         this.reorderPlayersDialog = undefined;
         this.visibleDialog = ModalVisibilityStatus.None;
+    }
+
+    public hideAddPlayerDialog(): void {
+        this.addPlayerDialog = undefined;
+        if (this.visibleDialog === ModalVisibilityStatus.AddPlayer) {
+            this.hideModalDialog();
+        }
     }
 
     public hideAddQuestionsDialog(): void {
@@ -112,6 +124,11 @@ export class DialogState {
         if (this.visibleDialog === ModalVisibilityStatus.ReorderPlayers) {
             this.hideModalDialog();
         }
+    }
+
+    public showAddPlayerDialog(teamName: string): void {
+        this.addPlayerDialog = new AddPlayerDialogState(teamName);
+        this.visibleDialog = ModalVisibilityStatus.AddPlayer;
     }
 
     public showAddQuestionsDialog(): void {

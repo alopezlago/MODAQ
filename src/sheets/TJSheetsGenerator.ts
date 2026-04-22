@@ -132,18 +132,23 @@ export const TJSheetsGenerator: ISheetsGenerator = {
         // 28 = In, 29 = Out
         // should be for round before (row - firstCycleRow + 1)
         const subRound: number = row - firstCycleRow + 1;
-        return [
+        const valueRanges: gapi.client.sheets.ValueRange[] = [
             // We need to include the player in the player list now, since TJSheets errors out if there's a
             // non-starter who never plays
             {
                 range: `'${sheetName}'!${inPlayerColumn}${playerRow}`,
                 values: [[join.inPlayer.name]],
             },
-            {
+        ];
+
+        if (!join.isInactive) {
+            valueRanges.push({
                 range: `'${sheetName}'!${inPlayerColumn}${subInRow}`,
                 values: [[subRound]],
-            },
-        ];
+            });
+        }
+
+        return valueRanges;
     },
     getValuesForPlayerLeaves: (
         leave: IPlayerLeavesEvent,

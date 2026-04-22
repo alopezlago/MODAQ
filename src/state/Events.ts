@@ -42,6 +42,9 @@ export interface IBonusProtestEvent extends IProtestEvent {
 
 export interface IPlayerJoinsEvent {
     inPlayer: IPlayer;
+
+    // Assume that undefined is false. This is because in older versions, all joins were active, so this value would be undefined..
+    isInactive?: boolean | undefined;
 }
 
 export interface IPlayerLeavesEvent {
