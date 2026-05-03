@@ -12,8 +12,6 @@ import { StatusDisplayType } from "./StatusDisplayType";
 const minimumIntervalInMs = 5000;
 
 export class AppState {
-    public static instance: AppState = new AppState();
-
     public game: GameState;
 
     public uiState: UIState;
@@ -23,11 +21,6 @@ export class AppState {
 
         this.game = new GameState();
         this.uiState = new UIState();
-    }
-
-    // Only use in tests
-    public static resetInstance(): void {
-        this.instance = new AppState();
     }
 
     // Could do a version with callbacks. There are 4 places this gets called from, and 3 use the same callback

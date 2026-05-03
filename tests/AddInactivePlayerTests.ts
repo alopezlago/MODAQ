@@ -31,8 +31,7 @@ function initializeApp(): AppState {
 
     gameState.addNewPlayers(defaultExistingPlayers);
 
-    AppState.resetInstance();
-    const appState: AppState = AppState.instance;
+    const appState: AppState = new AppState();
     appState.game = gameState;
     appState.game.addNewPlayer(defaultInactivePlayer);
     return appState;

@@ -3,12 +3,12 @@ import { observer } from "mobx-react-lite";
 import { mergeStyleSets } from "@fluentui/react";
 
 import { AppState } from "../state/AppState";
-import { StateContext } from "../contexts/StateContext";
+import { useAppState } from "../contexts/StateContext";
 
 export const PostQuestionMetadata = observer(function PostQuestionMetadata(
     props: IPostQuestionMetadataProps
 ): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
     if (!props.metadata) {
         return <></>;
     }

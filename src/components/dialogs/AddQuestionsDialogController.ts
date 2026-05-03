@@ -3,12 +3,11 @@ import { AppState } from "../../state/AppState";
 import { GameState } from "../../state/GameState";
 import { PacketState } from "../../state/PacketState";
 
-export function loadPacket(packet: PacketState): void {
-    AppState.instance.uiState.dialogState.addQuestions?.setPacket(packet);
+export function loadPacket(appState: AppState, packet: PacketState): void {
+    appState.uiState.dialogState.addQuestions?.setPacket(packet);
 }
 
-export function commit(): void {
-    const appState: AppState = AppState.instance;
+export function commit(appState: AppState): void {
     const game: GameState = appState.game;
     const state: AddQuestionDialogState | undefined = appState.uiState.dialogState.addQuestions;
     if (state == undefined) {
@@ -21,14 +20,14 @@ export function commit(): void {
     combinedPacket.setName(game.packet.name);
     game.loadPacket(combinedPacket);
 
-    hideDialog();
+    hideDialog(appState);
 }
 
-export function cancel(): void {
-    AppState.instance.uiState.clearPacketStatus();
-    hideDialog();
+export function cancel(appState: AppState): void {
+    appState.uiState.clearPacketStatus();
+    hideDialog(appState);
 }
 
-function hideDialog(): void {
-    AppState.instance.uiState.dialogState.hideAddQuestionsDialog();
+function hideDialog(appState: AppState): void {
+    appState.uiState.dialogState.hideAddQuestionsDialog();
 }

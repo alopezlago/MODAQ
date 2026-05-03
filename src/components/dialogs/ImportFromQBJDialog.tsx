@@ -17,7 +17,7 @@ import {
 import * as ImportFromQBJDialogController from "./ImportFromQBJDialogController";
 import { AppState } from "../../state/AppState";
 import { PacketLoader } from "../PacketLoader";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { ModalDialog } from "./ModalDialog";
 import { ImportFromQBJDialogState, ImportFromQBJPivotKey } from "../../state/ImportFromQBJDialogState";
@@ -51,26 +51,30 @@ const dialogContentProps: IDialogContentProps = {
 };
 
 export const ImportFromQBJDialog = observer(function ImportFromQBJDialog(): JSX.Element {
+    const appState: AppState = useAppState();
+
     return (
         <ModalDialog
             title="Import from QBJ"
             visibilityStatus={ModalVisibilityStatus.ImportFromQBJ}
-            onDismiss={ImportFromQBJDialogController.hideDialog}
+            onDismiss={() => ImportFromQBJDialogController.hideDialog(appState)}
             modalProps={modalProps}
             dialogContentProps={dialogContentProps}
         >
-            <ImportFromQBJDialogBody />
+            <ImportFromQBJDialogBody appState={appState} />
             <DialogFooter>
-                <PrimaryButton text="OK" onClick={ImportFromQBJDialogController.onSubmit} />
-                <DefaultButton text="Cancel" onClick={ImportFromQBJDialogController.hideDialog} />
+                <PrimaryButton text="OK" onClick={() => ImportFromQBJDialogController.onSubmit(appState)} />
+                <DefaultButton text="Cancel" onClick={() => ImportFromQBJDialogController.hideDialog(appState)} />
             </DialogFooter>
         </ModalDialog>
     );
 });
 
-const ImportFromQBJDialogBody = observer(function ImportFromQBJDialogBody(): JSX.Element {
+const ImportFromQBJDialogBody = observer(function ImportFromQBJDialogBody(
+    props: IImportFromQBJDialogBodyProps
+): JSX.Element {
     // Need a stack of: QBJ, packet, game format (re-use from Options, refactor if needed)
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = props.appState;
     const dialogState: ImportFromQBJDialogState | undefined = appState.uiState.dialogState.importFromQBJDialog;
 
     if (dialogState == undefined) {
@@ -85,13 +89,13 @@ const ImportFromQBJDialogBody = observer(function ImportFromQBJDialogBody(): JSX
                 <Pivot
                     aria-label="Import from QBJ Wizard"
                     selectedKey={dialogState.pivotKey}
-                    onLinkClick={onPivotLinkClick}
+                    onLinkClick={(item) => onPivotLinkClick(appState, item)}
                 >
                     <PivotItem headerText="QBJ" itemKey={ImportFromQBJPivotKey.Match}>
                         <FilePickerWithStatus
                             label="QBJ file"
                             buttonText="Load"
-                            onChange={onQBJFileChange}
+                            onChange={(event, file) => onQBJFileChange(appState, event, file)}
                             required={true}
                             status={dialogState.qbjStatus}
                         />
@@ -99,7 +103,7 @@ const ImportFromQBJDialogBody = observer(function ImportFromQBJDialogBody(): JSX
                     <PivotItem headerText="Packet" itemKey={ImportFromQBJPivotKey.Packet}>
                         <PacketLoader
                             appState={appState}
-                            onLoad={ImportFromQBJDialogController.loadPacket}
+                            onLoad={(packet) => ImportFromQBJDialogController.loadPacket(appState, packet)}
                             updateFilename
                         />
                     </PivotItem>
@@ -115,7 +119,7 @@ const ImportFromQBJDialogBody = observer(function ImportFromQBJDialogBody(): JSX
     );
 });
 
-function onPivotLinkClick(item: PivotItem | undefined): void {
+function onPivotLinkClick(appState: AppState, item: PivotItem | undefined): void {
     if (item == undefined) {
         return;
     }
@@ -125,9 +129,13 @@ function onPivotLinkClick(item: PivotItem | undefined): void {
         return;
     }
 
-    ImportFromQBJDialogController.onPivotChange(pivotKey);
+    ImportFromQBJDialogController.onPivotChange(appState, pivotKey);
 }
 
-function onQBJFileChange(event: React.ChangeEvent<HTMLInputElement>, file: File): void {
-    ImportFromQBJDialogController.onQBJFileChange(file);
+function onQBJFileChange(appState: AppState, event: React.SyntheticEvent<Element, Event>, file: File): void {
+    ImportFromQBJDialogController.onQBJFileChange(appState, file);
+}
+
+interface IImportFromQBJDialogBodyProps {
+    appState: AppState;
 }

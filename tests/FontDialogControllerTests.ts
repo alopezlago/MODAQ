@@ -5,8 +5,7 @@ import { AppState } from "src/state/AppState";
 import { DefaultFontFamily, FontDialogState } from "src/state/FontDialogState";
 
 function initializeApp(): { appState: AppState; dialogState: FontDialogState } {
-    AppState.resetInstance();
-    const appState: AppState = AppState.instance;
+    const appState: AppState = new AppState();
     appState.uiState.setQuestionFontSize(16);
     showFontDialog(appState);
 
@@ -29,68 +28,67 @@ function showFontDialog(appState: AppState): void {
 
 describe("FontDialogControllerTests", () => {
     it("changeFontFamily specific font", () => {
-        const { dialogState } = initializeApp();
+        const { appState, dialogState } = initializeApp();
 
         const newFontFamily = "Comic Sans MS";
-        FontDialogController.changeFontFamily(newFontFamily);
+        FontDialogController.changeFontFamily(appState, newFontFamily);
 
         expect(dialogState.fontFamily).to.equal(newFontFamily + ", " + DefaultFontFamily);
     });
 
     it("changeFontFamily default font", () => {
-        const { dialogState } = initializeApp();
+        const { appState, dialogState } = initializeApp();
 
-        FontDialogController.changeFontFamily(undefined);
+        FontDialogController.changeFontFamily(appState, undefined);
 
         expect(dialogState.fontFamily).to.equal(FontDialogController.defaultFont + ", " + DefaultFontFamily);
     });
 
     it("changeFontSize", () => {
-        const { dialogState } = initializeApp();
+        const { appState, dialogState } = initializeApp();
 
         const oldFontSize = dialogState.fontSize;
         const newFontSize = (oldFontSize ?? 16) + 8;
-        FontDialogController.changePendingSize(newFontSize.toString());
+        FontDialogController.changePendingSize(appState, newFontSize.toString());
 
         expect(dialogState.fontSize).to.equal(newFontSize);
     });
 
     it("changeFontSize for invalid value", () => {
-        const { dialogState } = initializeApp();
+        const { appState, dialogState } = initializeApp();
 
         const oldFontSize = dialogState.fontSize;
-        FontDialogController.changePendingSize("xyz");
+        FontDialogController.changePendingSize(appState, "xyz");
 
         expect(dialogState.fontSize).to.equal(oldFontSize);
     });
 
     it("changeTextColor", () => {
-        const { dialogState } = initializeApp();
+        const { appState, dialogState } = initializeApp();
 
         const textColor = "black";
-        FontDialogController.changeTextColor(textColor);
+        FontDialogController.changeTextColor(appState, textColor);
 
         expect(dialogState.textColor).to.equal(textColor);
     });
 
     it("changePronunciationGuideColor", () => {
-        const { dialogState } = initializeApp();
+        const { appState, dialogState } = initializeApp();
 
         const pronunciationGuideColor = "purple";
-        FontDialogController.changePronunciationGuideColor(pronunciationGuideColor);
+        FontDialogController.changePronunciationGuideColor(appState, pronunciationGuideColor);
 
         expect(dialogState.pronunciationGuideColor).to.equal(pronunciationGuideColor);
     });
 
     it("update only font size", () => {
-        AppState.resetInstance();
-        const appState: AppState = AppState.instance;
+        const appState: AppState = new AppState();
         appState.uiState.setFontFamily("Comic Sans MS");
         appState.uiState.setQuestionFontSize(16);
         showFontDialog(appState);
 
-        FontDialogController.changePendingSize("40");
-        FontDialogController.update();
+        FontDialogController.changePendingSize(appState, "40");
+        FontDialogController.update(appState);
 
         expect(appState.uiState.dialogState.fontDialog?.fontFamily).to.be.undefined;
         expect(appState.uiState.dialogState.fontDialog?.fontFamily).to.be.undefined;
@@ -99,14 +97,13 @@ describe("FontDialogControllerTests", () => {
     });
 
     it("update only font family", () => {
-        AppState.resetInstance();
-        const appState: AppState = AppState.instance;
+        const appState: AppState = new AppState();
         appState.uiState.setFontFamily("Comic Sans MS");
         appState.uiState.setQuestionFontSize(40);
         showFontDialog(appState);
 
-        FontDialogController.changeFontFamily("Arial");
-        FontDialogController.update();
+        FontDialogController.changeFontFamily(appState, "Arial");
+        FontDialogController.update(appState);
 
         expect(appState.uiState.dialogState.fontDialog?.fontFamily).to.be.undefined;
         expect(appState.uiState.dialogState.fontDialog?.fontFamily).to.be.undefined;
@@ -117,11 +114,11 @@ describe("FontDialogControllerTests", () => {
     it("update all", () => {
         const { appState } = initializeApp();
 
-        FontDialogController.changePendingSize("40");
-        FontDialogController.changeFontFamily("Comic Sans MS");
-        FontDialogController.changeTextColor("black");
-        FontDialogController.changePronunciationGuideColor("blue");
-        FontDialogController.update();
+        FontDialogController.changePendingSize(appState, "40");
+        FontDialogController.changeFontFamily(appState, "Comic Sans MS");
+        FontDialogController.changeTextColor(appState, "black");
+        FontDialogController.changePronunciationGuideColor(appState, "blue");
+        FontDialogController.update(appState);
 
         expect(appState.uiState.dialogState.fontDialog?.fontFamily).to.be.undefined;
         expect(appState.uiState.dialogState.fontDialog?.fontSize).to.be.undefined;
@@ -132,13 +129,12 @@ describe("FontDialogControllerTests", () => {
     });
 
     it("resest question text color", () => {
-        AppState.resetInstance();
-        const appState: AppState = AppState.instance;
+        const appState: AppState = new AppState();
         appState.uiState.setQuestionFontColor("black");
         showFontDialog(appState);
 
-        FontDialogController.changeTextColor(undefined);
-        FontDialogController.update();
+        FontDialogController.changeTextColor(appState, undefined);
+        FontDialogController.update(appState);
 
         expect(appState.uiState.dialogState.fontDialog?.fontFamily).to.be.undefined;
         expect(appState.uiState.dialogState.fontDialog?.fontFamily).to.be.undefined;
@@ -146,13 +142,12 @@ describe("FontDialogControllerTests", () => {
     });
 
     it("resest pronunciation guide color", () => {
-        AppState.resetInstance();
-        const appState: AppState = AppState.instance;
+        const appState: AppState = new AppState();
         appState.uiState.setPronunciationGuideColor("purple");
         showFontDialog(appState);
 
-        FontDialogController.changePronunciationGuideColor(undefined);
-        FontDialogController.update();
+        FontDialogController.changePronunciationGuideColor(appState, undefined);
+        FontDialogController.update(appState);
 
         expect(appState.uiState.dialogState.fontDialog?.fontFamily).to.be.undefined;
         expect(appState.uiState.dialogState.fontDialog?.fontFamily).to.be.undefined;
@@ -163,7 +158,7 @@ describe("FontDialogControllerTests", () => {
         const { appState, dialogState } = initializeApp();
         expect(dialogState.fontSize).to.not.be.undefined;
 
-        FontDialogController.cancel();
+        FontDialogController.cancel(appState);
 
         expect(appState.uiState.dialogState.fontDialog?.fontFamily).to.be.undefined;
         expect(appState.uiState.dialogState.fontDialog?.fontSize).to.be.undefined;

@@ -11,7 +11,16 @@ import { AppState } from "../../state/AppState";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
 export const BonusProtestDialog = observer(function BonusProtestDialog(props: IBonusProtestDialogProps): JSX.Element {
-    const submitHandler = React.useCallback(() => BonusProtestDialogController.commit(props.cycle), [props]);
+    const submitHandler = React.useCallback(() => BonusProtestDialogController.commit(props.appState, props.cycle), [
+        props.appState,
+        props.cycle,
+    ]);
+    const hideDialogHandler = (): void => BonusProtestDialogController.cancel(props.appState);
+    const partChangeHandler = (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
+        if (option?.text != undefined) {
+            BonusProtestDialogController.changePart(props.appState, option.key);
+        }
+    };
 
     const protestEvent: IBonusProtestEvent | undefined = props.appState.uiState.pendingBonusProtestEvent;
     if (protestEvent == undefined) {
@@ -30,13 +39,13 @@ export const BonusProtestDialog = observer(function BonusProtestDialog(props: IB
             };
         });
 
-    const children: JSX.Element = <Dropdown label="Part" options={partOptions} onChange={onPartChange} />;
+    const children: JSX.Element = <Dropdown label="Part" options={partOptions} onChange={partChangeHandler} />;
 
     return (
         <ProtestDialogBase
             appState={props.appState}
             givenAnswer={protestEvent.givenAnswer}
-            hideDialog={BonusProtestDialogController.cancel}
+            hideDialog={hideDialogHandler}
             onSubmit={submitHandler}
             reason={protestEvent.reason}
             visibilityStatus={ModalVisibilityStatus.BonusProtest}
@@ -45,12 +54,6 @@ export const BonusProtestDialog = observer(function BonusProtestDialog(props: IB
         </ProtestDialogBase>
     );
 });
-
-function onPartChange(ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void {
-    if (option?.text != undefined) {
-        BonusProtestDialogController.changePart(option.key);
-    }
-}
 
 export interface IBonusProtestDialogProps {
     appState: AppState;

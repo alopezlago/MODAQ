@@ -30,9 +30,7 @@ function createApp(): AppState {
     const gameState: GameState = new GameState();
     gameState.loadPacket(defaultPacket);
 
-    AppState.resetInstance();
-
-    const appState: AppState = AppState.instance;
+    const appState: AppState = new AppState();
     appState.game = gameState;
     appState.uiState.dialogState.showCustomizeGameFormatDialog(gameState.gameFormat);
 
@@ -177,7 +175,7 @@ describe("CustomizeGameFormatControllerTests", () => {
         it("submit default form works", () => {
             const appState: AppState = createApp();
             const oldGameFormat: IGameFormat = appState.game.gameFormat;
-            CustomizeGameFormatDialogController.submit();
+            CustomizeGameFormatDialogController.submit(appState);
 
             expect(appState.uiState.dialogState.customizeGameFormat).to.be.undefined;
             expect(appState.game.gameFormat).to.deep.equal(oldGameFormat);
@@ -201,7 +199,7 @@ describe("CustomizeGameFormatControllerTests", () => {
             CustomizeGameFormatFormController.changePowerValues(customizeGameFormat, "25");
             CustomizeGameFormatFormController.changePronunciationGuideMarkers(customizeGameFormat, "[,]");
             CustomizeGameFormatFormController.changeRegulationTossupCount(customizeGameFormat, "15");
-            CustomizeGameFormatDialogController.submit();
+            CustomizeGameFormatDialogController.submit(appState);
 
             expect(appState.uiState.dialogState.customizeGameFormat).to.be.undefined;
 
@@ -230,7 +228,7 @@ describe("CustomizeGameFormatControllerTests", () => {
 
             CustomizeGameFormatFormController.changePowerMarkers(customizeGameFormat, "(*),[+]");
             CustomizeGameFormatFormController.changePowerValues(customizeGameFormat, "15,20");
-            CustomizeGameFormatDialogController.submit();
+            CustomizeGameFormatDialogController.submit(appState);
 
             expect(appState.uiState.dialogState.customizeGameFormat).to.be.undefined;
             expect(appState.game.gameFormat.powers).to.deep.equal([
@@ -251,7 +249,7 @@ describe("CustomizeGameFormatControllerTests", () => {
             CustomizeGameFormatFormController.changePowerMarkers(customizeGameFormat, "(*)");
             CustomizeGameFormatFormController.changePowerValues(customizeGameFormat, "a26z");
             CustomizeGameFormatFormController.validatePowerSettings(customizeGameFormat);
-            CustomizeGameFormatDialogController.submit();
+            CustomizeGameFormatDialogController.submit(appState);
 
             expect(appState.uiState.dialogState.customizeGameFormat?.powerValuesErrorMessage).to.not.be.undefined;
             expect(appState.uiState.dialogState.customizeGameFormat).to.not.be.undefined;
@@ -269,7 +267,7 @@ describe("CustomizeGameFormatControllerTests", () => {
             CustomizeGameFormatFormController.changePowerMarkers(customizeGameFormat, "(*)");
             CustomizeGameFormatFormController.changePowerValues(customizeGameFormat, "25,20");
             CustomizeGameFormatFormController.validatePowerSettings(customizeGameFormat);
-            CustomizeGameFormatDialogController.submit();
+            CustomizeGameFormatDialogController.submit(appState);
 
             expect(appState.uiState.dialogState.customizeGameFormat?.powerMarkerErrorMessage).to.not.be.undefined;
             expect(appState.uiState.dialogState.customizeGameFormat).to.not.be.undefined;

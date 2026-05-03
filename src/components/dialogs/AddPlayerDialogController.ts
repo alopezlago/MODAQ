@@ -5,12 +5,11 @@ import { Player } from "../../state/TeamState";
 import { UIState } from "../../state/UIState";
 import { AddPlayerDialogState } from "../../state/AddPlayerDialogState";
 
-export function addPlayer(): void {
-    const appState: AppState = AppState.instance;
+export function addPlayer(appState: AppState): void {
     const game: GameState = appState.game;
     const uiState: UIState = appState.uiState;
 
-    if (validatePlayer() != undefined) {
+    if (validatePlayer(appState) != undefined) {
         return;
     }
 
@@ -27,26 +26,22 @@ export function addPlayer(): void {
     // TODO: Add the inactive status to uiState
     game.cycles[uiState.cycleIndex].addPlayerJoins(newPlayer, !dialogState.isActive);
 
-    hideDialog();
+    hideDialog(appState);
 }
 
-export function changePlayerName(newName: string): void {
-    const appState: AppState = AppState.instance;
+export function changePlayerName(appState: AppState, newName: string): void {
     appState.uiState.dialogState.addPlayerDialog?.setName(newName);
 }
 
-export function changeTeamName(teamName: string): void {
-    const appState: AppState = AppState.instance;
+export function changeTeamName(appState: AppState, teamName: string): void {
     appState.uiState.dialogState.addPlayerDialog?.setTeamName(teamName);
 }
 
-export function setIsActive(isActive: boolean): void {
-    const appState: AppState = AppState.instance;
+export function setIsActive(appState: AppState, isActive: boolean): void {
     appState.uiState.dialogState.addPlayerDialog?.setIsActive(isActive);
 }
 
-export function validatePlayer(): string | undefined {
-    const appState: AppState = AppState.instance;
+export function validatePlayer(appState: AppState): string | undefined {
     const newPlayer: Player | undefined = appState.uiState.dialogState.addPlayerDialog?.player;
     if (newPlayer == undefined) {
         throw new Error("Tried adding a player with no new player");
@@ -66,7 +61,6 @@ export function validatePlayer(): string | undefined {
     return NewGameValidator.newPlayerNameUnique(playersOnTeam, trimmedPlayerName);
 }
 
-export function hideDialog(): void {
-    const appState: AppState = AppState.instance;
+export function hideDialog(appState: AppState): void {
     appState.uiState.dialogState.hideAddPlayerDialog();
 }

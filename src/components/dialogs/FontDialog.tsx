@@ -16,7 +16,7 @@ import {
 
 import * as FontDialogController from "./FontDialogController";
 import { AppState } from "../../state/AppState";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { FontDialogState } from "../../state/FontDialogState";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { ModalDialog } from "./ModalDialog";
@@ -46,17 +46,19 @@ const maximumFontSize = 40;
 const stackTokens: Partial<IStackTokens> = { childrenGap: 10 };
 
 export const FontDialog = observer(function FontDialog(): JSX.Element {
+    const appState: AppState = useAppState();
+
     return (
         <ModalDialog
             title="Font"
             visibilityStatus={ModalVisibilityStatus.Font}
             maxWidth="40vw"
-            onDismiss={FontDialogController.cancel}
+            onDismiss={() => FontDialogController.cancel(appState)}
         >
-            <FontDialogBody />
+            <FontDialogBody appState={appState} />
             <DialogFooter>
-                <PrimaryButton text="OK" onClick={FontDialogController.update} />
-                <DefaultButton text="Cancel" onClick={FontDialogController.cancel} />
+                <PrimaryButton text="OK" onClick={() => FontDialogController.update(appState)} />
+                <DefaultButton text="Cancel" onClick={() => FontDialogController.cancel(appState)} />
             </DialogFooter>
         </ModalDialog>
     );
@@ -65,10 +67,10 @@ export const FontDialog = observer(function FontDialog(): JSX.Element {
 // If we really want flexibility for text/pronunciation guide colors we can use a ColorPicker, but it takes up a lot of
 // space and users realistically won't use most of the colors
 
-const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
+const FontDialogBody = observer(function FontDialogBody(props: IFontDialogBodyProps): JSX.Element {
     const [fonts] = React.useState(getAvailableFonts(knownFonts));
 
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = props.appState;
     const dialogState: FontDialogState | undefined = appState.uiState.dialogState.fontDialog;
     if (dialogState == undefined) {
         return <></>;
@@ -101,9 +103,9 @@ const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
             onChange={(ev, checked) => {
                 // Dark mode already uses pure white
                 if (checked === true && !appState.uiState.useDarkMode) {
-                    FontDialogController.changeTextColor("black");
+                    FontDialogController.changeTextColor(appState, "black");
                 } else {
-                    FontDialogController.changeTextColor(undefined);
+                    FontDialogController.changeTextColor(appState, undefined);
                 }
             }}
             checked={dialogState.textColor === "black"}
@@ -163,7 +165,7 @@ const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
             label="Pronunciation guide color"
             options={pronunciationGuideOptions}
             onChange={(ev, option) => {
-                FontDialogController.changePronunciationGuideColor(option?.data);
+                FontDialogController.changePronunciationGuideColor(appState, option?.data);
             }}
             onRenderItem={(props, defaultRender) => {
                 if (props == undefined || defaultRender == undefined) {
@@ -208,14 +210,14 @@ const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
                         );
                     }}
                     onChange={(event, option) => {
-                        FontDialogController.changeFontFamily(option?.text);
+                        FontDialogController.changeFontFamily(appState, option?.text);
                     }}
                 />
             </StackItem>
             <StackItem>
                 <SpinButton
                     label="Font size"
-                    onChange={changeFontSize}
+                    onChange={(event, newValue) => changeFontSize(appState, event, newValue)}
                     value={value}
                     min={minimumFontSize}
                     max={maximumFontSize}
@@ -251,15 +253,23 @@ const FontDialogBody = observer(function FontDialogBody(): JSX.Element {
     );
 });
 
-function changeFontSize(event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined): void {
+function changeFontSize(
+    appState: AppState,
+    event: React.SyntheticEvent<HTMLElement, Event>,
+    newValue?: string | undefined
+): void {
     if (newValue == undefined) {
         return;
     }
 
     const size = Number.parseInt(newValue, 10);
     if (!isNaN(size)) {
-        FontDialogController.changePendingSize(newValue);
+        FontDialogController.changePendingSize(appState, newValue);
     }
+}
+
+interface IFontDialogBodyProps {
+    appState: AppState;
 }
 
 // Returns only the fonts that don't fallback to the system default

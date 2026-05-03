@@ -26,9 +26,9 @@ import { PostQuestionMetadata } from "./PostQuestionMetadata";
 let bonusQuestionTextIdCounter = 0;
 
 export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuestionProps) {
-    const throwOutClickHandler: () => void = React.useCallback(() => {
-        BonusQuestionController.throwOutBonus(props.cycle, props.bonusIndex);
-    }, [props]);
+    const throwOutClickHandler: () => void = () => {
+        BonusQuestionController.throwOutBonus(props.appState, props.cycle, props.bonusIndex);
+    };
     const formattedLeadin: IFormattedText[] = React.useMemo(
         () =>
             PacketState.getBonusWords(`${props.bonusIndex + 1}. ${props.bonus.leadin}`, props.appState.game.gameFormat),

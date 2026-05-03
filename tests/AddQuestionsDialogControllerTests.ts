@@ -31,8 +31,7 @@ function initializeApp(): AppState {
     ];
     gameState.addNewPlayers(defaultExistingPlayers);
 
-    AppState.resetInstance();
-    const appState: AppState = AppState.instance;
+    const appState: AppState = new AppState();
     appState.game = gameState;
     appState.uiState.dialogState.showAddQuestionsDialog();
     return appState;
@@ -41,7 +40,7 @@ function initializeApp(): AppState {
 describe("AddQuestoinsDialogControllerTests", () => {
     it("loadPacket", () => {
         const appState: AppState = initializeApp();
-        AddQuestionsDialogController.loadPacket(newPacket);
+        AddQuestionsDialogController.loadPacket(appState, newPacket);
 
         const dialogState: AddQuestionDialogState | undefined = appState.uiState.dialogState.addQuestions;
         if (dialogState == undefined) {
@@ -57,7 +56,7 @@ describe("AddQuestoinsDialogControllerTests", () => {
         expect(dialogState.newPacket.tossups.length).to.equal(1);
         expect(dialogState.newPacket.bonuses.length).to.equal(2);
 
-        AddQuestionsDialogController.commit();
+        AddQuestionsDialogController.commit(appState);
 
         expect(gameState.packet).to.not.be.undefined;
         expect(gameState.packet.tossups.length).to.equal(3);
@@ -70,7 +69,7 @@ describe("AddQuestoinsDialogControllerTests", () => {
         const appState: AppState = initializeApp();
         expect(appState.uiState.dialogState.addQuestions).to.not.be.undefined;
 
-        AddQuestionsDialogController.cancel();
+        AddQuestionsDialogController.cancel(appState);
 
         expect(appState.uiState.dialogState.addQuestions).to.be.undefined;
     });

@@ -10,8 +10,7 @@ import { AppState } from "src/state/AppState";
 describe("BonusQuestionControllerTests", () => {
     describe("throwOutBonus", () => {
         it("Throw out Bonus", () => {
-            AppState.resetInstance();
-            const appState: AppState = AppState.instance;
+            const appState: AppState = new AppState();
             appState.game.addNewPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
 
             const packet: PacketState = new PacketState();
@@ -31,7 +30,7 @@ describe("BonusQuestionControllerTests", () => {
                 3
             );
 
-            BonusQuestionController.throwOutBonus(cycle, 0);
+            BonusQuestionController.throwOutBonus(appState, cycle, 0);
 
             const messageDialog = appState.uiState.dialogState.messageDialog;
             if (messageDialog == undefined || messageDialog.onOK == undefined) {

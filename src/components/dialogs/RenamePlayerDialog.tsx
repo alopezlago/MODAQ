@@ -5,29 +5,33 @@ import { TextField, DialogFooter, PrimaryButton, DefaultButton, Label } from "@f
 import * as RenamePlayerDialogController from "../../components/dialogs/RenamePlayerDialogController";
 import { Player } from "../../state/TeamState";
 import { AppState } from "../../state/AppState";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { RenamePlayerDialogState } from "../../state/RenamePlayerDialogState";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { ModalDialog } from "./ModalDialog";
 
 export const RenamePlayerDialog = observer(function RenamePlayerDialog(): JSX.Element {
+    const appState: AppState = useAppState();
+
     return (
         <ModalDialog
             title="Rename Player"
             visibilityStatus={ModalVisibilityStatus.RenamePlayer}
-            onDismiss={RenamePlayerDialogController.hideDialog}
+            onDismiss={() => RenamePlayerDialogController.hideDialog(appState)}
         >
-            <RenamePlayerDialogBody />
+            <RenamePlayerDialogBody appState={appState} />
             <DialogFooter>
-                <PrimaryButton text="OK" onClick={RenamePlayerDialogController.renamePlayer} />
-                <DefaultButton text="Cancel" onClick={RenamePlayerDialogController.hideDialog} />
+                <PrimaryButton text="OK" onClick={() => RenamePlayerDialogController.renamePlayer(appState)} />
+                <DefaultButton text="Cancel" onClick={() => RenamePlayerDialogController.hideDialog(appState)} />
             </DialogFooter>
         </ModalDialog>
     );
 });
 
-const RenamePlayerDialogBody = observer(function RenamePlayerDialogBody(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+const RenamePlayerDialogBody = observer(function RenamePlayerDialogBody(
+    props: IRenamePlayerDialogBodyProps
+): JSX.Element {
+    const appState: AppState = props.appState;
 
     const renamePlayerDialog: RenamePlayerDialogState | undefined = appState.uiState.dialogState.renamePlayerDialog;
     if (renamePlayerDialog === undefined) {
@@ -43,8 +47,8 @@ const RenamePlayerDialogBody = observer(function RenamePlayerDialogBody(): JSX.E
                 label="Name"
                 value={renamePlayerDialog.newName}
                 required={true}
-                onChange={onNameChange}
-                onGetErrorMessage={RenamePlayerDialogController.validatePlayer}
+                onChange={(ev, newValue) => onNameChange(appState, ev, newValue)}
+                onGetErrorMessage={() => RenamePlayerDialogController.validatePlayer(appState)}
                 validateOnFocusOut={true}
                 validateOnLoad={false}
             />
@@ -52,6 +56,14 @@ const RenamePlayerDialogBody = observer(function RenamePlayerDialogBody(): JSX.E
     );
 });
 
-function onNameChange(ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) {
-    RenamePlayerDialogController.changeNewName(newValue ?? "");
+function onNameChange(
+    appState: AppState,
+    ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
+    newValue?: string
+) {
+    RenamePlayerDialogController.changeNewName(appState, newValue ?? "");
+}
+
+interface IRenamePlayerDialogBodyProps {
+    appState: AppState;
 }

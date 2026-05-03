@@ -41,7 +41,7 @@ import { AppState } from "../../state/AppState";
 import { FromRostersTeamEntry } from "../FromRostersTeamEntry";
 import { SheetType } from "../../state/SheetState";
 import { GameFormatPicker } from "../GameFormatPicker";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { IGameFormat } from "../../state/IGameFormat";
 import { FilePicker } from "../FilePicker";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
@@ -95,9 +95,9 @@ const rostersInputStyles: Partial<ITextFieldStyles> = { root: { marginRight: 10,
 const rosterFileLinkStyles: IStackItemStyles = { root: { marginBottom: 10 } };
 
 export const NewGameDialog = observer(function NewGameDialog(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
-    const submitHandler = React.useCallback(() => onSubmit(appState), [appState]);
-    const cancelHandler = React.useCallback(() => onCancel(appState), [appState]);
+    const appState: AppState = useAppState();
+    const submitHandler = (): void => onSubmit(appState);
+    const cancelHandler = (): void => onCancel(appState);
 
     return (
         <Dialog
@@ -106,7 +106,9 @@ export const NewGameDialog = observer(function NewGameDialog(): JSX.Element {
             modalProps={modalProps}
             onDismiss={cancelHandler}
         >
-            {appState.uiState.dialogState.visibleDialog === ModalVisibilityStatus.NewGame && <NewGameDialogBody />}
+            {appState.uiState.dialogState.visibleDialog === ModalVisibilityStatus.NewGame && (
+                <NewGameDialogBody appState={appState} />
+            )}
             <DialogFooter>
                 <PrimaryButton text="Start" onClick={submitHandler} />
                 <DefaultButton text="Cancel" onClick={cancelHandler} />
@@ -115,8 +117,8 @@ export const NewGameDialog = observer(function NewGameDialog(): JSX.Element {
     );
 });
 
-const NewGameDialogBody = observer(function NewGameDialogBody(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+const NewGameDialogBody = observer(function NewGameDialogBody(props: INewGameDialogBodyProps): JSX.Element {
+    const appState: AppState = props.appState;
     const classes: INewGameDialogBodyClassNames = getClassNames();
     const uiState: UIState = appState.uiState;
 
@@ -160,10 +162,7 @@ const NewGameDialogBody = observer(function NewGameDialogBody(): JSX.Element {
         [uiState]
     );
 
-    const updateGameFormat = React.useCallback(
-        (gameFormat: IGameFormat) => appState.uiState.setPendingNewGameFormat(gameFormat),
-        [appState]
-    );
+    const updateGameFormat = (gameFormat: IGameFormat): void => appState.uiState.setPendingNewGameFormat(gameFormat);
 
     if (uiState.pendingNewGame == undefined) {
         return <></>;
@@ -201,6 +200,10 @@ const NewGameDialogBody = observer(function NewGameDialogBody(): JSX.Element {
         </>
     );
 });
+
+interface INewGameDialogBodyProps {
+    appState: AppState;
+}
 
 const ManualNewGamePivotBody = observer(function ManualNewGamePivotBody(props: INewGamePivotItemProps): JSX.Element {
     const uiState: UIState = props.appState.uiState;

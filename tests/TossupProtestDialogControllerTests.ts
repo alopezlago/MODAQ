@@ -25,8 +25,7 @@ function initializeApp(buzzerProtests = true): AppState {
 
     gameState.addNewPlayers(defaultExistingPlayers);
 
-    AppState.resetInstance();
-    const appState: AppState = AppState.instance;
+    const appState: AppState = new AppState();
     appState.game = gameState;
 
     const buzzer: Player = defaultExistingPlayers[0];
@@ -57,7 +56,7 @@ describe("BonusQuestionDialogControllerTests", () => {
         appState.uiState.pendingTossupProtestEvent.reason = reason;
 
         const protestCycle: Cycle = appState.game.cycles[0];
-        TossupProtestDialogController.commit(protestCycle);
+        TossupProtestDialogController.commit(appState, protestCycle);
 
         if (protestCycle.tossupProtests == undefined) {
             assert.fail("Bonus protests were undefined");
@@ -108,7 +107,7 @@ describe("BonusQuestionDialogControllerTests", () => {
         appState.uiState.pendingTossupProtestEvent.givenAnswer = secondGivenAnswer;
         appState.uiState.pendingTossupProtestEvent.reason = secondReason;
 
-        TossupProtestDialogController.commit(cycle);
+        TossupProtestDialogController.commit(appState, cycle);
 
         if (cycle.tossupProtests == undefined) {
             assert.fail("Bonus protests were undefined");
@@ -135,7 +134,7 @@ describe("BonusQuestionDialogControllerTests", () => {
         const appState: AppState = initializeApp();
         expect(appState.uiState.pendingTossupProtestEvent).to.not.be.undefined;
 
-        TossupProtestDialogController.cancel();
+        TossupProtestDialogController.cancel(appState);
 
         expect(appState.uiState.pendingTossupProtestEvent).to.be.undefined;
     });

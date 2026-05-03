@@ -25,8 +25,7 @@ function initializeApp(buzzerProtests = true): AppState {
     ];
     gameState.addNewPlayers(defaultExistingPlayers);
 
-    AppState.resetInstance();
-    const appState: AppState = AppState.instance;
+    const appState: AppState = new AppState();
     appState.game = gameState;
 
     const buzzer: Player = defaultExistingPlayers[0];
@@ -61,7 +60,7 @@ describe("BonusQuestionDialogControllerTests", () => {
         appState.uiState.pendingBonusProtestEvent.reason = reason;
 
         const protestCycle: Cycle = appState.game.cycles[0];
-        BonusProtestDialogController.commit(protestCycle);
+        BonusProtestDialogController.commit(appState, protestCycle);
 
         if (protestCycle.bonusProtests == undefined) {
             assert.fail("Bonus protests were undefined");
@@ -106,7 +105,7 @@ describe("BonusQuestionDialogControllerTests", () => {
         appState.uiState.pendingBonusProtestEvent.reason = secondReason;
 
         const protestCycle: Cycle = appState.game.cycles[0];
-        BonusProtestDialogController.commit(protestCycle);
+        BonusProtestDialogController.commit(appState, protestCycle);
 
         if (protestCycle.bonusProtests == undefined) {
             assert.fail("Bonus protests were undefined");
@@ -141,10 +140,10 @@ describe("BonusQuestionDialogControllerTests", () => {
         appState.uiState.pendingBonusProtestEvent.givenAnswer = givenAnswer;
         appState.uiState.pendingBonusProtestEvent.reason = reason;
 
-        BonusProtestDialogController.changePart(1);
+        BonusProtestDialogController.changePart(appState, 1);
 
         const protestCycle: Cycle = appState.game.cycles[0];
-        BonusProtestDialogController.commit(protestCycle);
+        BonusProtestDialogController.commit(appState, protestCycle);
 
         if (protestCycle.bonusProtests == undefined) {
             assert.fail("Bonus protests were undefined");
@@ -165,7 +164,7 @@ describe("BonusQuestionDialogControllerTests", () => {
         const appState: AppState = initializeApp();
         expect(appState.uiState.pendingBonusProtestEvent).to.not.be.undefined;
 
-        BonusProtestDialogController.cancel();
+        BonusProtestDialogController.cancel(appState);
 
         expect(appState.uiState.pendingBonusProtestEvent).to.be.undefined;
     });

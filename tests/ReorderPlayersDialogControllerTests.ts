@@ -42,8 +42,7 @@ function initializeApp(players?: Player[]): { appState: AppState; players: Playe
     players = players ?? defaultExistingPlayers;
     gameState.addNewPlayers(players);
 
-    AppState.resetInstance();
-    const appState: AppState = AppState.instance;
+    const appState: AppState = new AppState();
     appState.game = gameState;
     appState.uiState.dialogState.showReorderPlayersDialog(players);
     return { appState, players };
@@ -60,18 +59,18 @@ function getReorderPlayersDialogState(appState: AppState): ReorderPlayersDialogS
 describe("ReorderPlayersDialogControllerTests", () => {
     it("hideDialog", () => {
         const { appState } = initializeApp();
-        ReorderPlayersDialogController.hideDialog();
+        ReorderPlayersDialogController.hideDialog(appState);
 
         expect(appState.uiState.dialogState.reorderPlayersDialog).to.be.undefined;
     });
     describe("changeTeamName", () => {
         it("change to both teams", () => {
             const { appState } = initializeApp();
-            ReorderPlayersDialogController.changeTeamName(defaultTeamNames[1]);
+            ReorderPlayersDialogController.changeTeamName(appState, defaultTeamNames[1]);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.teamName).to.equal(defaultTeamNames[1]);
-            ReorderPlayersDialogController.changeTeamName(defaultTeamNames[0]);
+            ReorderPlayersDialogController.changeTeamName(appState, defaultTeamNames[0]);
             expect(dialog.teamName).to.equal(defaultTeamNames[0]);
         });
     });
@@ -80,7 +79,7 @@ describe("ReorderPlayersDialogControllerTests", () => {
         const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
         dialog.movePlayerBackward(players[0]);
 
-        ReorderPlayersDialogController.submit();
+        ReorderPlayersDialogController.submit(appState);
 
         expect(appState.uiState.dialogState.reorderPlayersDialog).to.be.undefined;
         expect(appState.game.players).to.be.deep.equal([
@@ -94,7 +93,7 @@ describe("ReorderPlayersDialogControllerTests", () => {
     describe("moveBackward", () => {
         it("Move backwards from the end is no-op", () => {
             const { appState, players } = initializeApp();
-            ReorderPlayersDialogController.moveBackward(players[players.length - 1]);
+            ReorderPlayersDialogController.moveBackward(appState, players[players.length - 1]);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players[players.length - 1]).to.equal(players[players.length - 1]);
@@ -102,7 +101,7 @@ describe("ReorderPlayersDialogControllerTests", () => {
         });
         it("Move backwards from front moves player back", () => {
             const { appState } = initializeApp();
-            ReorderPlayersDialogController.moveBackward(firstTeamPlayers[0]);
+            ReorderPlayersDialogController.moveBackward(appState, firstTeamPlayers[0]);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players[0]).to.equal(firstTeamPlayers[1]);
@@ -111,7 +110,7 @@ describe("ReorderPlayersDialogControllerTests", () => {
         });
         it("Move backwards for second team", () => {
             const { appState } = initializeApp();
-            ReorderPlayersDialogController.moveBackward(secondTeamPlayers[0]);
+            ReorderPlayersDialogController.moveBackward(appState, secondTeamPlayers[0]);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players).to.be.deep.equal([
@@ -124,7 +123,7 @@ describe("ReorderPlayersDialogControllerTests", () => {
         });
         it("Move backwards with gap swaps correctly", () => {
             const { appState } = initializeApp();
-            ReorderPlayersDialogController.moveBackward(firstTeamPlayers[1]);
+            ReorderPlayersDialogController.moveBackward(appState, firstTeamPlayers[1]);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players).to.be.deep.equal([
@@ -139,7 +138,7 @@ describe("ReorderPlayersDialogControllerTests", () => {
     describe("moveForward", () => {
         it("Move forwards from 0 is no-op", () => {
             const { appState, players } = initializeApp();
-            ReorderPlayersDialogController.moveForward(players[0]);
+            ReorderPlayersDialogController.moveForward(appState, players[0]);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players[0]).to.equal(players[0]);
@@ -147,7 +146,7 @@ describe("ReorderPlayersDialogControllerTests", () => {
         });
         it("Move forwards from 1 swaps player to front", () => {
             const { appState } = initializeApp();
-            ReorderPlayersDialogController.moveForward(firstTeamPlayers[1]);
+            ReorderPlayersDialogController.moveForward(appState, firstTeamPlayers[1]);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players[0]).to.equal(firstTeamPlayers[1]);
@@ -156,7 +155,7 @@ describe("ReorderPlayersDialogControllerTests", () => {
         });
         it("Move forwards for second team", () => {
             const { appState } = initializeApp();
-            ReorderPlayersDialogController.moveForward(secondTeamPlayers[1]);
+            ReorderPlayersDialogController.moveForward(appState, secondTeamPlayers[1]);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players).to.be.deep.equal([
@@ -169,7 +168,7 @@ describe("ReorderPlayersDialogControllerTests", () => {
         });
         it("Move forwards with gap swaps correctly", () => {
             const { appState } = initializeApp();
-            ReorderPlayersDialogController.moveForward(firstTeamPlayers[2]);
+            ReorderPlayersDialogController.moveForward(appState, firstTeamPlayers[2]);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players).to.be.deep.equal([
@@ -186,28 +185,28 @@ describe("ReorderPlayersDialogControllerTests", () => {
     describe("movePlayerToIndex", () => {
         it("movePlayerToIndex to same index is no-op", () => {
             const { appState } = initializeApp();
-            ReorderPlayersDialogController.movePlayerToIndex(firstTeamPlayers[1], 1);
+            ReorderPlayersDialogController.movePlayerToIndex(appState, firstTeamPlayers[1], 1);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players).to.be.deep.equal(defaultExistingPlayers);
         });
         it("movePlayerToIndex to negative index is no-op", () => {
             const { appState } = initializeApp();
-            ReorderPlayersDialogController.movePlayerToIndex(firstTeamPlayers[1], -1);
+            ReorderPlayersDialogController.movePlayerToIndex(appState, firstTeamPlayers[1], -1);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players).to.be.deep.equal(defaultExistingPlayers);
         });
         it("movePlayerToIndex to overly large index is no-op", () => {
             const { appState } = initializeApp();
-            ReorderPlayersDialogController.movePlayerToIndex(firstTeamPlayers[1], firstTeamPlayers.length);
+            ReorderPlayersDialogController.movePlayerToIndex(appState, firstTeamPlayers[1], firstTeamPlayers.length);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players).to.be.deep.equal(defaultExistingPlayers);
         });
         it("movePlayerToIndex next player swap", () => {
             const { appState } = initializeApp();
-            ReorderPlayersDialogController.movePlayerToIndex(firstTeamPlayers[0], 1);
+            ReorderPlayersDialogController.movePlayerToIndex(appState, firstTeamPlayers[0], 1);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players[0]).to.equal(firstTeamPlayers[1]);
@@ -216,7 +215,7 @@ describe("ReorderPlayersDialogControllerTests", () => {
         });
         it("movePlayerToIndex first to last player swap", () => {
             const { appState } = initializeApp();
-            ReorderPlayersDialogController.movePlayerToIndex(firstTeamPlayers[0], 2);
+            ReorderPlayersDialogController.movePlayerToIndex(appState, firstTeamPlayers[0], 2);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players).to.be.deep.equal([
@@ -229,7 +228,7 @@ describe("ReorderPlayersDialogControllerTests", () => {
         });
         it("movePlayerToIndex last to first player swap", () => {
             const { appState } = initializeApp();
-            ReorderPlayersDialogController.movePlayerToIndex(firstTeamPlayers[2], 0);
+            ReorderPlayersDialogController.movePlayerToIndex(appState, firstTeamPlayers[2], 0);
             const dialog: ReorderPlayersDialogState = getReorderPlayersDialogState(appState);
 
             expect(dialog.players).to.be.deep.equal([

@@ -10,8 +10,7 @@ const validTossup: Tossup = new Tossup(
 );
 
 function initializeApp(): AppState {
-    AppState.resetInstance();
-    const appState: AppState = AppState.instance;
+    const appState: AppState = new AppState();
     appState.uiState.clearPacketStatus();
 
     return appState;
@@ -20,7 +19,7 @@ function initializeApp(): AppState {
 describe("PacketLoaderControllerTests", () => {
     it("undefined tossups field", () => {
         const appState: AppState = initializeApp();
-        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
             tossups: (undefined as unknown) as Tossup[],
         });
 
@@ -31,7 +30,7 @@ describe("PacketLoaderControllerTests", () => {
 
     it("different bonus parts and answers count", () => {
         const appState: AppState = initializeApp();
-        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
             tossups: [new Tossup("Q1", "A1", "Metadata")],
             bonuses: [
                 {
@@ -50,7 +49,7 @@ describe("PacketLoaderControllerTests", () => {
 
     it("different bonus parts and values count", () => {
         const appState: AppState = initializeApp();
-        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
             tossups: [new Tossup("Q1", "A1", "Metadata")],
             bonuses: [
                 {
@@ -69,7 +68,7 @@ describe("PacketLoaderControllerTests", () => {
 
     it("valid packet", () => {
         const appState: AppState = initializeApp();
-        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
             tossups: [validTossup],
             bonuses: [
                 {
@@ -101,7 +100,7 @@ describe("PacketLoaderControllerTests", () => {
 
     it("packet with short tossup", () => {
         const appState: AppState = initializeApp();
-        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
             tossups: [new Tossup("His residence was Mount Vernon. Name", "George Washington")],
             bonuses: [
                 {
@@ -133,7 +132,7 @@ describe("PacketLoaderControllerTests", () => {
 
     it("packet with short inconsistent bonus parts", () => {
         const appState: AppState = initializeApp();
-        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
             tossups: [validTossup],
             bonuses: [
                 {
@@ -171,7 +170,7 @@ describe("PacketLoaderControllerTests", () => {
 
     it("packet with mixed power markers warns about missing powers", () => {
         const appState: AppState = initializeApp();
-        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
             tossups: [
                 new Tossup(
                     "This tossup includes an early power mark (*) and has enough words to avoid short-question warnings entirely in this test case.",
@@ -204,7 +203,7 @@ describe("PacketLoaderControllerTests", () => {
 
     it("packet with no power markers does not warn about missing powers", () => {
         const appState: AppState = initializeApp();
-        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
             tossups: [
                 new Tossup(
                     "This tossup is long enough to avoid short warnings and has no power marker because the format can legitimately omit powers.",
@@ -232,7 +231,7 @@ describe("PacketLoaderControllerTests", () => {
 
     it("packet with all power markers does not warn about missing powers", () => {
         const appState: AppState = initializeApp();
-        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
             tossups: [
                 new Tossup(
                     "This tossup includes the marker (*) and has enough words to avoid short-question warnings while confirming consistent power formatting.",
@@ -266,7 +265,7 @@ describe("PacketLoaderControllerTests", () => {
         const appState: AppState = initializeApp();
         appState.uiState.setPacketFilename("uiPacketName");
 
-        const packet: PacketState | undefined = PacketLoaderController.loadPacket({
+        const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
             tossups: [validTossup],
             bonuses: [],
         });
@@ -280,6 +279,7 @@ describe("PacketLoaderControllerTests", () => {
         packet.setName("old");
 
         const packet2: PacketState | undefined = PacketLoaderController.loadPacket(
+            appState,
             {
                 tossups: [
                     new Tossup(

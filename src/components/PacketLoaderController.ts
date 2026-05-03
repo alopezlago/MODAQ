@@ -7,8 +7,11 @@ import { UIState } from "../state/UIState";
 
 const minExpectedQuestionLength = 100;
 
-export function loadPacket(parsedPacket: IPacket, existingPacketName?: string | undefined): PacketState | undefined {
-    const appState: AppState = AppState.instance;
+export function loadPacket(
+    appState: AppState,
+    parsedPacket: IPacket,
+    existingPacketName?: string | undefined
+): PacketState | undefined {
     const uiState: UIState = appState.uiState;
 
     if (parsedPacket.tossups == undefined) {

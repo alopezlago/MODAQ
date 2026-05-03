@@ -13,35 +13,37 @@ import {
 
 import * as RenameTeamDialogController from "./RenameTeamDialogController";
 import { AppState } from "../../state/AppState";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { RenameTeamDialogState } from "../../state/RenameTeamDialogState";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { ModalDialog } from "./ModalDialog";
 
 export const RenameTeamDialog = observer(function RenameTeamDialog(): JSX.Element {
+    const appState: AppState = useAppState();
+
     return (
         <ModalDialog
             title="Rename Team"
             visibilityStatus={ModalVisibilityStatus.RenameTeam}
-            onDismiss={RenameTeamDialogController.hideDialog}
+            onDismiss={() => RenameTeamDialogController.hideDialog(appState)}
         >
-            <RenameTeamDialogBody />
+            <RenameTeamDialogBody appState={appState} />
             <DialogFooter>
-                <PrimaryButton text="OK" onClick={RenameTeamDialogController.renameTeam} />
-                <DefaultButton text="Cancel" onClick={RenameTeamDialogController.hideDialog} />
+                <PrimaryButton text="OK" onClick={() => RenameTeamDialogController.renameTeam(appState)} />
+                <DefaultButton text="Cancel" onClick={() => RenameTeamDialogController.hideDialog(appState)} />
             </DialogFooter>
         </ModalDialog>
     );
 });
 
-const RenameTeamDialogBody = observer(function RenameTeamDialogBody(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+const RenameTeamDialogBody = observer(function RenameTeamDialogBody(props: IRenameTeamDialogBodyProps): JSX.Element {
+    const appState: AppState = props.appState;
 
-    const teamChangeHandler = React.useCallback((ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
+    const teamChangeHandler = (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
         if (option?.text != undefined) {
-            RenameTeamDialogController.changeTeam(option.text);
+            RenameTeamDialogController.changeTeam(appState, option.text);
         }
-    }, []);
+    };
 
     const renameTeamDialog: RenameTeamDialogState | undefined = appState.uiState.dialogState.renameTeamDialog;
     if (renameTeamDialog === undefined) {
@@ -67,8 +69,8 @@ const RenameTeamDialogBody = observer(function RenameTeamDialogBody(): JSX.Eleme
                     label="Name"
                     value={renameTeamDialog.newName}
                     required={true}
-                    onChange={onNameChange}
-                    onGetErrorMessage={RenameTeamDialogController.validate}
+                    onChange={(ev, newValue) => onNameChange(appState, ev, newValue)}
+                    onGetErrorMessage={() => RenameTeamDialogController.validate(appState)}
                     validateOnFocusOut={true}
                     validateOnLoad={false}
                 />
@@ -77,6 +79,14 @@ const RenameTeamDialogBody = observer(function RenameTeamDialogBody(): JSX.Eleme
     );
 });
 
-function onNameChange(ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) {
-    RenameTeamDialogController.changeNewName(newValue ?? "");
+function onNameChange(
+    appState: AppState,
+    ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
+    newValue?: string
+) {
+    RenameTeamDialogController.changeNewName(appState, newValue ?? "");
+}
+
+interface IRenameTeamDialogBodyProps {
+    appState: AppState;
 }

@@ -15,7 +15,7 @@ import {
     ThemeContext,
     memoizeFunction,
 } from "@fluentui/react";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { GameState } from "../../state/GameState";
 import { Player } from "../../state/TeamState";
 import { ITossupAnswerEvent } from "../../state/Events";
@@ -24,8 +24,8 @@ import { ModalDialog } from "./ModalDialog";
 
 // Based on the scoresheet created by Ryan Rosenberg, like the one here: https://quizbowlstats.com/games/95741
 export const ScoresheetDialog = observer(function ScoresheetDialog(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
-    const closeDialog = React.useCallback(() => appState.uiState.dialogState.hideModalDialog(), [appState]);
+    const appState: AppState = useAppState();
+    const closeDialog = (): void => appState.uiState.dialogState.hideModalDialog();
 
     return (
         <ModalDialog

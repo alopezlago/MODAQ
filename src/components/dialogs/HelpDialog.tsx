@@ -2,13 +2,13 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import { DialogFooter, PrimaryButton, Label, Link, Stack, StackItem } from "@fluentui/react";
 import { AppState } from "../../state/AppState";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { ModalDialog } from "./ModalDialog";
 
 export const HelpDialog = observer(function HelpDialog(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
-    const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
+    const appState: AppState = useAppState();
+    const closeHandler = (): void => hideDialog(appState);
 
     return (
         <ModalDialog
@@ -17,7 +17,7 @@ export const HelpDialog = observer(function HelpDialog(): JSX.Element {
             maxWidth="30vw"
             onDismiss={closeHandler}
         >
-            <HelpDialogBody />
+            <HelpDialogBody appState={appState} />
             <DialogFooter>
                 <PrimaryButton text="Close" onClick={closeHandler} />
             </DialogFooter>
@@ -25,8 +25,8 @@ export const HelpDialog = observer(function HelpDialog(): JSX.Element {
     );
 });
 
-const HelpDialogBody = observer(function HelpDialogBody(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+const HelpDialogBody = observer(function HelpDialogBody(props: IHelpDialogBodyProps): JSX.Element {
+    const appState: AppState = props.appState;
     const version: string | undefined = appState.uiState.buildVersion && `Version: ${appState.uiState.buildVersion}`;
 
     return (
@@ -42,6 +42,10 @@ const HelpDialogBody = observer(function HelpDialogBody(): JSX.Element {
         </Stack>
     );
 });
+
+interface IHelpDialogBodyProps {
+    appState: AppState;
+}
 
 // This is simple enough where we don't really need a controller for testing
 function hideDialog(appState: AppState): void {

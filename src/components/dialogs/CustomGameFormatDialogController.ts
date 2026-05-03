@@ -3,13 +3,13 @@ import { AppState } from "../../state/AppState";
 import { CustomizeGameFormatState } from "../../state/CustomizeGameFormatState";
 import { GameState } from "../../state/GameState";
 
-export function cancel(): void {
-    hideDialog();
+export function cancel(appState: AppState): void {
+    hideDialog(appState);
 }
 
-export function submit(): void {
-    const game: GameState = AppState.instance.game;
-    const state: CustomizeGameFormatState | undefined = AppState.instance.uiState.dialogState.customizeGameFormat;
+export function submit(appState: AppState): void {
+    const game: GameState = appState.game;
+    const state: CustomizeGameFormatState | undefined = appState.uiState.dialogState.customizeGameFormat;
     if (state == undefined) {
         throw new Error("Tried customizing a game format with no game format");
     }
@@ -23,9 +23,9 @@ export function submit(): void {
 
     game.setGameFormat(state.gameFormat);
 
-    hideDialog();
+    hideDialog(appState);
 }
 
-function hideDialog(): void {
-    AppState.instance.uiState.dialogState.hideCustomizeGameFormatDialog();
+function hideDialog(appState: AppState): void {
+    appState.uiState.dialogState.hideCustomizeGameFormatDialog();
 }

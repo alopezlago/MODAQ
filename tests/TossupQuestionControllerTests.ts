@@ -9,8 +9,7 @@ import { AppState } from "src/state/AppState";
 describe("TossupQuestionControllerTests", () => {
     describe("throwOutTossup", () => {
         it("Throw out Tossup", () => {
-            AppState.resetInstance();
-            const appState: AppState = AppState.instance;
+            const appState: AppState = new AppState();
             appState.game.addNewPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
 
             const packet: PacketState = new PacketState();
@@ -22,7 +21,7 @@ describe("TossupQuestionControllerTests", () => {
             appState.game.loadPacket(packet);
             const cycle: Cycle = appState.game.cycles[0];
 
-            TossupQuestionController.throwOutTossup(cycle, 1);
+            TossupQuestionController.throwOutTossup(appState, cycle, 1);
 
             const messageDialog = appState.uiState.dialogState.messageDialog;
             if (messageDialog == undefined || messageDialog.onOK == undefined) {
