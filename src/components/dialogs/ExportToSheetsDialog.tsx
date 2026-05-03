@@ -20,7 +20,7 @@ import { UIState } from "../../state/UIState";
 import { IPendingSheet } from "../../state/IPendingSheet";
 import { ExportState, SheetType } from "../../state/SheetState";
 import { AppState } from "../../state/AppState";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { RoundSelector } from "../RoundSelector";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { ModalDialog } from "./ModalDialog";
@@ -48,9 +48,9 @@ const settingsStackTokens: Partial<IStackTokens> = { childrenGap: 10 };
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const ExportToSheetsDialog = observer(function ExportToSheetsDialog(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
     const uiState: UIState = appState.uiState;
-    const cancelHandler = React.useCallback(() => onClose(appState), [appState]);
+    const cancelHandler = (): void => onClose(appState);
 
     let footer: JSX.Element | undefined;
     if (
@@ -89,14 +89,16 @@ export const ExportToSheetsDialog = observer(function ExportToSheetsDialog(): JS
             maxWidth="40vw"
             onDismiss={cancelHandler}
         >
-            <ExportSettingsDialogBody />
+            <ExportSettingsDialogBody appState={appState} />
             {footer}
         </ModalDialog>
     );
 });
 
-const ExportSettingsDialogBody = observer(function ExportSettingsDialogBody(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+const ExportSettingsDialogBody = observer(function ExportSettingsDialogBody(
+    props: IExportSettingsDialogBodyProps
+): JSX.Element {
+    const appState: AppState = props.appState;
     const uiState: UIState = appState.uiState;
 
     const sheetsUrlChangeHandler = React.useCallback(
@@ -111,17 +113,14 @@ const ExportSettingsDialogBody = observer(function ExportSettingsDialogBody(): J
         [uiState]
     );
 
-    const typeChangeHandler = React.useCallback(
-        (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
-            if (option == undefined) {
-                return;
-            }
+    const typeChangeHandler = (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
+        if (option == undefined) {
+            return;
+        }
 
-            // The keys are always SheetType values
-            appState.uiState.sheetsState.setSheetType(option.key as SheetType);
-        },
-        [appState]
-    );
+        // The keys are always SheetType values
+        appState.uiState.sheetsState.setSheetType(option.key as SheetType);
+    };
 
     const sheet: IPendingSheet | undefined = uiState.pendingSheet;
     if (sheet === undefined) {
@@ -197,6 +196,10 @@ const ExportSettingsDialogBody = observer(function ExportSettingsDialogBody(): J
         </Stack>
     );
 });
+
+interface IExportSettingsDialogBodyProps {
+    appState: AppState;
+}
 
 function validateSheetsUrl(url: string): string | undefined {
     // TODO: Move to Sheets.ts?

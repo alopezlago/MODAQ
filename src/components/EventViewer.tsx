@@ -6,7 +6,7 @@ import { mergeStyleSets } from "@fluentui/react";
 import { CycleItemList } from "./cycleItems/CycleItemList";
 import { Cycle } from "../state/Cycle";
 import { AppState } from "../state/AppState";
-import { StateContext } from "../contexts/StateContext";
+import { useAppState } from "../contexts/StateContext";
 
 const numberKey = "number";
 const cycleKey = "cycle";
@@ -18,7 +18,7 @@ const cellClassName = "ms-List-cell";
 function dummyFunction() {}
 
 export const EventViewer = observer(function EventViewer(): JSX.Element | null {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
     const [lastIndex, setLastIndex] = React.useState<number>(-1);
     const containerRef: React.MutableRefObject<HTMLDivElement | null> = React.useRef(null);
 
@@ -33,16 +33,13 @@ export const EventViewer = observer(function EventViewer(): JSX.Element | null {
         [appState.uiState]
     );
 
-    const renderColumnHandler = React.useCallback(
-        (item?: Cycle, index?: number, column?: IColumn): JSX.Element => {
-            if (item === undefined || index === undefined || column === undefined) {
-                return <></>;
-            }
+    const renderColumnHandler = (item?: Cycle, index?: number, column?: IColumn): JSX.Element => {
+        if (item === undefined || index === undefined || column === undefined) {
+            return <></>;
+        }
 
-            return onRenderItemColumn(item, appState, index, column);
-        },
-        [appState]
-    );
+        return onRenderItemColumn(item, appState, index, column);
+    };
 
     const columns: IColumn[] = [
         {

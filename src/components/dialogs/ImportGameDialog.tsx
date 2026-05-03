@@ -23,7 +23,7 @@ import { IPlayer, Player } from "../../state/TeamState";
 import { Bonus, PacketState, Tossup } from "../../state/PacketState";
 import { Cycle, ICycle } from "../../state/Cycle";
 import { IPendingNewGame, PendingGameType } from "../../state/IPendingNewGame";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { ModalDialog } from "./ModalDialog";
 import { IGameFormat } from "../../state/IGameFormat";
@@ -31,13 +31,13 @@ import { IGameFormat } from "../../state/IGameFormat";
 const stackTokens: IStackTokens = { childrenGap: 10 };
 
 export const ImportGameDialog = observer(function ImportGameDialog(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
-    const cancelHandler = React.useCallback(() => hideDialog(appState), [appState]);
-    const submitHandler = React.useCallback(() => onSubmit(appState), [appState]);
+    const appState: AppState = useAppState();
+    const cancelHandler = (): void => hideDialog(appState);
+    const submitHandler = (): void => onSubmit(appState);
 
     return (
         <ModalDialog title="Import Game" visibilityStatus={ModalVisibilityStatus.ImportGame} onDismiss={cancelHandler}>
-            <ImportGameDialogBody />
+            <ImportGameDialogBody appState={appState} />
             <DialogFooter>
                 <PrimaryButton text="Import Game" onClick={submitHandler} />
                 <DefaultButton text="Cancel" onClick={cancelHandler} />
@@ -46,19 +46,13 @@ export const ImportGameDialog = observer(function ImportGameDialog(): JSX.Elemen
     );
 });
 
-const ImportGameDialogBody = observer(function ImportGameDialogBody(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
-    const loadHandler = React.useCallback(
-        (ev: ProgressEvent<FileReader>): void => {
-            onLoad(ev, appState);
-        },
-        [appState]
-    );
-    const changeHandler = React.useCallback(
-        (event: React.ChangeEvent<HTMLInputElement>, file: File) => onFilePickerChange(appState, file, loadHandler),
-        [appState, loadHandler]
-    );
-
+const ImportGameDialogBody = observer(function ImportGameDialogBody(props: IImportGameDialogBodyProps): JSX.Element {
+    const appState: AppState = props.appState;
+    const loadHandler = (ev: ProgressEvent<FileReader>): void => {
+        onLoad(ev, appState);
+    };
+    const changeHandler = (event: React.ChangeEvent<HTMLInputElement>, file: File) =>
+        onFilePickerChange(appState, file, loadHandler);
     const isImportError: boolean = appState.uiState.importGameStatus?.isError ?? false;
 
     return (
@@ -90,6 +84,10 @@ const ImportGameDialogBody = observer(function ImportGameDialogBody(): JSX.Eleme
         </ThemeContext.Consumer>
     );
 });
+
+interface IImportGameDialogBodyProps {
+    appState: AppState;
+}
 
 function onFilePickerChange(
     appState: AppState,

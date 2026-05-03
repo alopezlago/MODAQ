@@ -3,7 +3,7 @@ import { Icon, IIconStyles, ILabelStyles, Label, mergeStyleSets, Stack, StackIte
 import { observer } from "mobx-react-lite";
 
 import { AppState } from "../state/AppState";
-import { StateContext } from "../contexts/StateContext";
+import { useAppState } from "../contexts/StateContext";
 
 const labelStyles: ILabelStyles = {
     root: {
@@ -16,7 +16,7 @@ const scoreCellStyle: React.CSSProperties = {
 };
 
 export const Scoreboard = observer(function Scoreboard() {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
     const classes: IScoreboardStyle = getClassNames();
 
     const scores: number[] = appState.game.finalScore;
@@ -63,7 +63,7 @@ export const Scoreboard = observer(function Scoreboard() {
 });
 
 const ProtestIndicator = observer(function ProtestIndicator() {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
 
     return appState.game.protestsMatter ? (
         <Stack horizontal={true}>

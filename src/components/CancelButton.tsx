@@ -3,13 +3,13 @@ import { observer } from "mobx-react-lite";
 
 import { IIconProps, ITheme, memoizeFunction, mergeStyleSets, ThemeContext } from "@fluentui/react";
 import { IconButton } from "@fluentui/react/lib/Button";
-import { StateContext } from "../contexts/StateContext";
+import { useAppState } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";
 
 const deleteIconProps: IIconProps = { iconName: "Cancel" };
 
 export const CancelButton = observer(function CancelButton(props: ICancelButtonProps): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
 
     const onClick: () => void = () => {
         if (props.prompt == undefined) {

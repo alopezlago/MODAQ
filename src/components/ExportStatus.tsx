@@ -3,10 +3,10 @@ import { Text } from "@fluentui/react";
 import { observer } from "mobx-react-lite";
 
 import { AppState } from "../state/AppState";
-import { StateContext } from "../contexts/StateContext";
+import { useAppState } from "../contexts/StateContext";
 
 export const ExportStatus = observer(function ExportStatus() {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
 
     if (
         appState.uiState.isCustomExportStatusHidden ||

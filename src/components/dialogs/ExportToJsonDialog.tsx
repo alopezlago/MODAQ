@@ -15,7 +15,7 @@ import {
 import * as QBJ from "../../qbj/QBJ";
 import { AppState } from "../../state/AppState";
 import { GameState } from "../../state/GameState";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { RoundSelector } from "../RoundSelector";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 
@@ -51,9 +51,9 @@ const modalProps: IModalProps = {
 };
 
 export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
 
-    const cancelHandler = React.useCallback(() => hideDialog(appState), [appState]);
+    const cancelHandler = (): void => hideDialog(appState);
 
     // Skip computing all the blobs if the dialog isn't visible
     if (appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.ExportToJson) {
@@ -77,7 +77,7 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
                 roundNumber={roundNumber}
                 onRoundNumberChange={(newValue) => appState.uiState.setExportRoundNumber(newValue)}
             />
-            <ExportToJsonDialogFooter roundNumber={roundNumber} />
+            <ExportToJsonDialogFooter appState={appState} roundNumber={roundNumber} />
         </Dialog>
     );
 });
@@ -85,12 +85,12 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
 const ExportToJsonDialogFooter = observer(function ExportToJsonDialogFooter(
     props: IExportToJsonDialogFooterProps
 ): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = props.appState;
     const game: GameState = appState.game;
     const roundNumber: number | undefined = props.roundNumber;
 
-    const cancelHandler = React.useCallback(() => hideDialog(appState), [appState]);
-    const exportHandler = React.useCallback(() => exportGame(appState), [appState]);
+    const cancelHandler = (): void => hideDialog(appState);
+    const exportHandler = (): void => exportGame(appState);
 
     const joinedTeamNames: string = game.teamNames.join("_");
 
@@ -131,5 +131,6 @@ function hideDialog(appState: AppState) {
 }
 
 interface IExportToJsonDialogFooterProps {
+    appState: AppState;
     roundNumber: number | undefined;
 }

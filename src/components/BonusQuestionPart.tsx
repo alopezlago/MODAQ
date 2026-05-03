@@ -17,7 +17,7 @@ import { Answer } from "./Answer";
 import { FormattedText } from "./FormattedText";
 import { IFormattedText } from "../parser/IFormattedText";
 import { IGameFormat } from "../state/IGameFormat";
-import { StateContext } from "../contexts/StateContext";
+import { useAppState } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";
 
 const bouncebackCorrectnessStyles: Partial<IDropdownStyles> = {
@@ -30,7 +30,7 @@ const bouncebackCorrectnessStyles: Partial<IDropdownStyles> = {
 };
 
 export const BonusQuestionPart = observer(function BonusQuestionPart(props: IBonusQuestionPartProps) {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
     const onCheckboxChangeHandler = React.useCallback((ev, checked) => onCorrectChange(props, ev, checked), [props]);
     const onDropdownChangeHandler = React.useCallback((ev, option) => onTeamAnswerChange(props, ev, option), [props]);
 

@@ -16,7 +16,7 @@ import {
     StackItem,
 } from "@fluentui/react";
 import { AppState } from "../state/AppState";
-import { StateContext } from "../contexts/StateContext";
+import { useAppState } from "../contexts/StateContext";
 
 const separatorStyles: Partial<ISeparatorStyles> = {
     root: {
@@ -25,7 +25,7 @@ const separatorStyles: Partial<ISeparatorStyles> = {
 };
 
 export const QuestionViewer = observer(function QuestionViewer() {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
     const fontSize: number = appState.uiState.questionFontSize;
     const fontFamily: string = appState.uiState.fontFamily;
     const classes: IQuestionViewerClassNames = getClassNames(appState.uiState.questionFontColor, fontSize);

@@ -3,7 +3,7 @@ import { ContextualMenu, Dialog, DialogType, IDialogContentProps, IDialogProps, 
 import { observer } from "mobx-react-lite";
 
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { AppState } from "../../state/AppState";
 
 const modalProps: IModalProps = {
@@ -19,7 +19,7 @@ const modalProps: IModalProps = {
 export const ModalDialog = observer(function ModalDialog(
     props: React.PropsWithChildren<IModalDialogProps>
 ): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
 
     const content: IDialogContentProps = {
         ...props.dialogContentProps,

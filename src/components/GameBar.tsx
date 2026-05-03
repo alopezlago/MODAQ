@@ -18,14 +18,14 @@ import { Bonus, Tossup } from "../state/PacketState";
 import { Player } from "../state/TeamState";
 import { AppState } from "../state/AppState";
 import { ITossupAnswerEvent } from "../state/Events";
-import { StateContext } from "../contexts/StateContext";
+import { useAppState } from "../contexts/StateContext";
 import { StatusDisplayType } from "../state/StatusDisplayType";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
 export const GameBar = observer(function GameBar(): JSX.Element {
     // This should pop up the new game handler
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
     const uiState: UIState = appState.uiState;
     const game: GameState = appState.game;
 
@@ -93,19 +93,17 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         uiState.dialogState.showAddQuestionsDialog();
     }, [uiState]);
 
-    const openHelpHandler = React.useCallback(() => appState.uiState.dialogState.showHelpDialog(), [appState]);
+    const openHelpHandler = (): void => appState.uiState.dialogState.showHelpDialog();
 
     const reorderPlayersHandler = React.useCallback(() => {
         uiState.dialogState.showReorderPlayersDialog(game.players);
     }, [uiState, game]);
 
     const reorderTeamsHandler = React.useCallback(() => {
-        uiState.dialogState.showOKCancelMessageDialog(
-            "Reorder teams",
-            "Swap the order of teams?",
-            ReorderTeamsDialogController.submit
+        uiState.dialogState.showOKCancelMessageDialog("Reorder teams", "Swap the order of teams?", () =>
+            ReorderTeamsDialogController.submit(appState)
         );
-    }, [uiState]);
+    }, [appState, uiState]);
 
     const renameTeamHandler = React.useCallback(() => {
         if (game.players.length === 0) {
@@ -281,6 +279,7 @@ function getActionSubMenuItems(
                     text: "Throw out tossup",
                     onClick: () =>
                         TossupQuestionController.throwOutTossup(
+                            appState,
                             appState.game.cycles[appState.uiState.cycleIndex],
                             appState.game.getTossupIndex(appState.uiState.cycleIndex) + 1
                         ),
@@ -291,6 +290,7 @@ function getActionSubMenuItems(
                     text: "Throw out bonus",
                     onClick: () =>
                         BonusQuestionController.throwOutBonus(
+                            appState,
                             appState.game.cycles[appState.uiState.cycleIndex],
                             appState.game.getBonusIndex(appState.uiState.cycleIndex)
                         ),

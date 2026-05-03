@@ -3,8 +3,7 @@ import { AppState } from "../../state/AppState";
 import { GameState } from "../../state/GameState";
 import { ReorderPlayersDialogState } from "../../state/ReorderPlayersDialogState";
 
-export function changeTeamName(newName: string): void {
-    const appState: AppState = AppState.instance;
+export function changeTeamName(appState: AppState, newName: string): void {
     const reorderPlayersDialog: ReorderPlayersDialogState | undefined =
         appState.uiState.dialogState.reorderPlayersDialog;
     if (reorderPlayersDialog == undefined) {
@@ -14,25 +13,23 @@ export function changeTeamName(newName: string): void {
     reorderPlayersDialog.setTeamName(newName);
 }
 
-export function hideDialog(): void {
-    const appState: AppState = AppState.instance;
+export function hideDialog(appState: AppState): void {
     appState.uiState.dialogState.hideReorderPlayersDialog();
 }
 
-export function moveBackward(player: Player): void {
-    AppState.instance.uiState.dialogState.reorderPlayersDialog?.movePlayerBackward(player);
+export function moveBackward(appState: AppState, player: Player): void {
+    appState.uiState.dialogState.reorderPlayersDialog?.movePlayerBackward(player);
 }
 
-export function moveForward(player: Player): void {
-    AppState.instance.uiState.dialogState.reorderPlayersDialog?.movePlayerForward(player);
+export function moveForward(appState: AppState, player: Player): void {
+    appState.uiState.dialogState.reorderPlayersDialog?.movePlayerForward(player);
 }
 
-export function movePlayerToIndex(player: Player, index: number): void {
-    AppState.instance.uiState.dialogState.reorderPlayersDialog?.movePlayerToIndex(player, index);
+export function movePlayerToIndex(appState: AppState, player: Player, index: number): void {
+    appState.uiState.dialogState.reorderPlayersDialog?.movePlayerToIndex(player, index);
 }
 
-export function submit(): void {
-    const appState: AppState = AppState.instance;
+export function submit(appState: AppState): void {
     const game: GameState = appState.game;
     const reorderPlayersDialogState: ReorderPlayersDialogState | undefined =
         appState.uiState.dialogState.reorderPlayersDialog;
@@ -42,5 +39,5 @@ export function submit(): void {
 
     game.setPlayers(reorderPlayersDialogState.players);
 
-    hideDialog();
+    hideDialog(appState);
 }

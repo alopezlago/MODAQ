@@ -15,7 +15,7 @@ import {
 import * as ReorderPlayersDialogController from "../../components/dialogs/ReorderPlayersDialogController";
 import { Player } from "../../state/TeamState";
 import { AppState } from "../../state/AppState";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { ReorderPlayersDialogState } from "../../state/ReorderPlayersDialogState";
 import { PlayerRoster } from "../PlayerRoster";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
@@ -25,29 +25,38 @@ const dialogBodyTokens: IStackTokens = { childrenGap: 10 };
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const ReorderPlayerDialog = observer(function ReorderPlayerDialog(): JSX.Element {
+    const appState: AppState = useAppState();
+
     return (
         <ModalDialog
             title="Reorder Players"
             visibilityStatus={ModalVisibilityStatus.ReorderPlayers}
-            onDismiss={ReorderPlayersDialogController.hideDialog}
+            onDismiss={() => ReorderPlayersDialogController.hideDialog(appState)}
         >
-            <ReorderPlayerDialogBody />
+            <ReorderPlayerDialogBody appState={appState} />
             <DialogFooter>
-                <PrimaryButton text="OK" onClick={ReorderPlayersDialogController.submit} />
-                <DefaultButton text="Cancel" onClick={ReorderPlayersDialogController.hideDialog} />
+                <PrimaryButton text="OK" onClick={() => ReorderPlayersDialogController.submit(appState)} />
+                <DefaultButton text="Cancel" onClick={() => ReorderPlayersDialogController.hideDialog(appState)} />
             </DialogFooter>
         </ModalDialog>
     );
 });
 
-const ReorderPlayerDialogBody = observer(function ReorderPlayerDialogBody(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+const ReorderPlayerDialogBody = observer(function ReorderPlayerDialogBody(
+    props: IReorderPlayerDialogBodyProps
+): JSX.Element {
+    const appState: AppState = props.appState;
 
-    const teamChangeHandler = React.useCallback((ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
+    const teamChangeHandler = (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
         if (option?.text != undefined) {
-            ReorderPlayersDialogController.changeTeamName(option.text);
+            ReorderPlayersDialogController.changeTeamName(appState, option.text);
         }
-    }, []);
+    };
+
+    const moveBackwardHandler = (player: Player): void => ReorderPlayersDialogController.moveBackward(appState, player);
+    const moveForwardHandler = (player: Player): void => ReorderPlayersDialogController.moveForward(appState, player);
+    const moveToIndexHandler = (player: Player, index: number): void =>
+        ReorderPlayersDialogController.movePlayerToIndex(appState, player, index);
 
     const reorderPlayersDialog: ReorderPlayersDialogState | undefined =
         appState.uiState.dialogState.reorderPlayersDialog;
@@ -80,11 +89,15 @@ const ReorderPlayerDialogBody = observer(function ReorderPlayerDialogBody(): JSX
                 <PlayerRoster
                     canSetStarter={false}
                     players={players}
-                    onMovePlayerBackward={ReorderPlayersDialogController.moveBackward}
-                    onMovePlayerForward={ReorderPlayersDialogController.moveForward}
-                    onMovePlayerToIndex={ReorderPlayersDialogController.movePlayerToIndex}
+                    onMovePlayerBackward={moveBackwardHandler}
+                    onMovePlayerForward={moveForwardHandler}
+                    onMovePlayerToIndex={moveToIndexHandler}
                 />
             </StackItem>
         </Stack>
     );
 });
+
+interface IReorderPlayerDialogBodyProps {
+    appState: AppState;
+}

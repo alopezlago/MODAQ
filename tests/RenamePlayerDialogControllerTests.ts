@@ -39,8 +39,7 @@ function initializeApp(player: Player | undefined = undefined): { appState: AppS
         player = players[0];
     }
 
-    AppState.resetInstance();
-    const appState: AppState = AppState.instance;
+    const appState: AppState = new AppState();
     appState.game = gameState;
     appState.uiState.dialogState.showRenamePlayerDialog(player);
     return { appState, players };
@@ -58,7 +57,7 @@ describe("RenamePlayerDialogControllerTests", () => {
     it("changeNewName", () => {
         const name = "New player name";
         const { appState, players } = initializeApp();
-        RenamePlayerDialogController.changeNewName(name);
+        RenamePlayerDialogController.changeNewName(appState, name);
         const state: RenamePlayerDialogState = getRenamePlayerDialogState(appState);
 
         expect(state.newName).to.equal(name);
@@ -67,33 +66,33 @@ describe("RenamePlayerDialogControllerTests", () => {
     });
     it("hideDialog", () => {
         const { appState } = initializeApp();
-        RenamePlayerDialogController.hideDialog();
+        RenamePlayerDialogController.hideDialog(appState);
 
         expect(appState.uiState.dialogState.renamePlayerDialog).to.be.undefined;
     });
     describe("validatePlayer", () => {
         it("validatePlayer - non-empty name", () => {
-            initializeApp();
-            RenamePlayerDialogController.changeNewName(" ");
-            const errorMessage: string | undefined = RenamePlayerDialogController.validatePlayer();
+            const { appState } = initializeApp();
+            RenamePlayerDialogController.changeNewName(appState, " ");
+            const errorMessage: string | undefined = RenamePlayerDialogController.validatePlayer(appState);
             expect(errorMessage).to.not.be.undefined;
         });
         it("validatePlayer - duplicate name", () => {
-            const { players } = initializeApp();
-            RenamePlayerDialogController.changeNewName(players[1].name);
-            const errorMessage: string | undefined = RenamePlayerDialogController.validatePlayer();
+            const { appState, players } = initializeApp();
+            RenamePlayerDialogController.changeNewName(appState, players[1].name);
+            const errorMessage: string | undefined = RenamePlayerDialogController.validatePlayer(appState);
             expect(errorMessage).to.not.be.undefined;
         });
         it("validatePlayer - new name", () => {
-            initializeApp();
-            RenamePlayerDialogController.changeNewName("Newbie");
-            const errorMessage: string | undefined = RenamePlayerDialogController.validatePlayer();
+            const { appState } = initializeApp();
+            RenamePlayerDialogController.changeNewName(appState, "Newbie");
+            const errorMessage: string | undefined = RenamePlayerDialogController.validatePlayer(appState);
             expect(errorMessage).to.be.undefined;
         });
         it("validatePlayer - new name from other team", () => {
-            const { players } = initializeApp();
-            RenamePlayerDialogController.changeNewName(players[2].name);
-            const errorMessage: string | undefined = RenamePlayerDialogController.validatePlayer();
+            const { appState, players } = initializeApp();
+            RenamePlayerDialogController.changeNewName(appState, players[2].name);
+            const errorMessage: string | undefined = RenamePlayerDialogController.validatePlayer(appState);
             expect(errorMessage).to.be.undefined;
         });
     });
@@ -133,8 +132,8 @@ describe("RenamePlayerDialogControllerTests", () => {
 
             appState.game.cycles[2].addPlayerLeaves(originalPlayer);
 
-            RenamePlayerDialogController.changeNewName(name);
-            RenamePlayerDialogController.renamePlayer();
+            RenamePlayerDialogController.changeNewName(appState, name);
+            RenamePlayerDialogController.renamePlayer(appState);
 
             // Verify - dialog hidden, player is in game, add player event in cycle
             expect(appState.uiState.dialogState.renamePlayerDialog).to.be.undefined;
@@ -193,8 +192,7 @@ describe("RenamePlayerDialogControllerTests", () => {
             const players: Player[] = createDefaultExistingPlayers();
             gameState.addNewPlayers(players);
 
-            AppState.resetInstance();
-            const appState: AppState = AppState.instance;
+            const appState: AppState = new AppState();
             appState.game = gameState;
 
             const originalPlayer: Player = new Player("Arty", defaultTeamNames[0], false);
@@ -203,8 +201,8 @@ describe("RenamePlayerDialogControllerTests", () => {
             gameState.cycles[2].addSwapSubstitution(players[players.length - 1], originalPlayer);
 
             appState.uiState.dialogState.showRenamePlayerDialog(originalPlayer);
-            RenamePlayerDialogController.changeNewName(name);
-            RenamePlayerDialogController.renamePlayer();
+            RenamePlayerDialogController.changeNewName(appState, name);
+            RenamePlayerDialogController.renamePlayer(appState);
 
             expect(appState.uiState.dialogState.renamePlayerDialog).to.be.undefined;
 
@@ -234,8 +232,7 @@ describe("RenamePlayerDialogControllerTests", () => {
             const players: Player[] = createDefaultExistingPlayers();
             gameState.addNewPlayers(players);
 
-            AppState.resetInstance();
-            const appState: AppState = AppState.instance;
+            const appState: AppState = new AppState();
             appState.game = gameState;
 
             const originalPlayer: Player = new Player("Arty", defaultTeamNames[0], false);
@@ -243,8 +240,8 @@ describe("RenamePlayerDialogControllerTests", () => {
             gameState.cycles[1].addPlayerJoins(originalPlayer, /* isInactive */ true);
 
             appState.uiState.dialogState.showRenamePlayerDialog(originalPlayer);
-            RenamePlayerDialogController.changeNewName(name);
-            RenamePlayerDialogController.renamePlayer();
+            RenamePlayerDialogController.changeNewName(appState, name);
+            RenamePlayerDialogController.renamePlayer(appState);
 
             const playerJoins: IPlayerJoinsEvent[] | undefined = gameState.cycles[1].playerJoins;
             if (playerJoins === undefined) {
@@ -258,8 +255,8 @@ describe("RenamePlayerDialogControllerTests", () => {
         });
         it("renamePlayer fails (empty name)", () => {
             const { appState } = initializeApp();
-            RenamePlayerDialogController.changeNewName(" ");
-            RenamePlayerDialogController.renamePlayer();
+            RenamePlayerDialogController.changeNewName(appState, " ");
+            RenamePlayerDialogController.renamePlayer(appState);
 
             const state: RenamePlayerDialogState = getRenamePlayerDialogState(appState);
             expect(state.errorMessage).to.not.be.undefined;

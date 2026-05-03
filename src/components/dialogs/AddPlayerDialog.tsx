@@ -16,7 +16,7 @@ import {
 import * as AddPlayerDialogController from "../../components/dialogs/AddPlayerDialogController";
 import { IPlayer } from "../../state/TeamState";
 import { AppState } from "../../state/AppState";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { ModalDialog } from "./ModalDialog";
 
@@ -24,35 +24,34 @@ const dialogStackTokens: Partial<IStackTokens> = { childrenGap: 10 };
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const AddPlayerDialog = observer(function AddPlayerDialog(): JSX.Element {
+    const appState: AppState = useAppState();
+
     return (
         <ModalDialog
             title="Add Player"
             visibilityStatus={ModalVisibilityStatus.AddPlayer}
-            onDismiss={AddPlayerDialogController.hideDialog}
+            onDismiss={() => AddPlayerDialogController.hideDialog(appState)}
         >
-            <AddPlayerDialogBody />
+            <AddPlayerDialogBody appState={appState} />
             <DialogFooter>
-                <PrimaryButton text="Add" onClick={AddPlayerDialogController.addPlayer} />
-                <DefaultButton text="Cancel" onClick={AddPlayerDialogController.hideDialog} />
+                <PrimaryButton text="Add" onClick={() => AddPlayerDialogController.addPlayer(appState)} />
+                <DefaultButton text="Cancel" onClick={() => AddPlayerDialogController.hideDialog(appState)} />
             </DialogFooter>
         </ModalDialog>
     );
 });
 
-const AddPlayerDialogBody = observer(function AddPlayerDialogBody(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+const AddPlayerDialogBody = observer(function AddPlayerDialogBody(props: IAddPlayerDialogBodyProps): JSX.Element {
+    const appState: AppState = props.appState;
 
-    const teamChangeHandler = React.useCallback((ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
+    const teamChangeHandler = (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
         if (option?.text != undefined) {
-            AddPlayerDialogController.changeTeamName(option.text);
+            AddPlayerDialogController.changeTeamName(appState, option.text);
         }
-    }, []);
+    };
 
-    const nameChangeHandler = React.useCallback(
-        (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) =>
-            AddPlayerDialogController.changePlayerName(newValue ?? ""),
-        []
-    );
+    const nameChangeHandler = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void =>
+        AddPlayerDialogController.changePlayerName(appState, newValue ?? "");
 
     const addPlayerDialogState = appState.uiState.dialogState.addPlayerDialog;
     if (addPlayerDialogState === undefined) {
@@ -80,7 +79,7 @@ const AddPlayerDialogBody = observer(function AddPlayerDialogBody(): JSX.Element
                     value={newPlayer.name}
                     required={true}
                     onChange={nameChangeHandler}
-                    onGetErrorMessage={AddPlayerDialogController.validatePlayer}
+                    onGetErrorMessage={() => AddPlayerDialogController.validatePlayer(appState)}
                     validateOnFocusOut={true}
                     validateOnLoad={false}
                 />
@@ -89,9 +88,13 @@ const AddPlayerDialogBody = observer(function AddPlayerDialogBody(): JSX.Element
                 <Checkbox
                     label="Add to active players"
                     checked={addPlayerDialogState.isActive}
-                    onChange={(ev, checked) => AddPlayerDialogController.setIsActive(checked ?? false)}
+                    onChange={(ev, checked) => AddPlayerDialogController.setIsActive(appState, checked ?? false)}
                 />
             </StackItem>
         </Stack>
     );
 });
+
+interface IAddPlayerDialogBodyProps {
+    appState: AppState;
+}

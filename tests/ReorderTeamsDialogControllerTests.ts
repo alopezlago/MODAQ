@@ -37,8 +37,7 @@ function initializeApp(players?: Player[]): { appState: AppState; players: Playe
     players = players ?? defaultExistingPlayers;
     gameState.addNewPlayers(players);
 
-    AppState.resetInstance();
-    const appState: AppState = AppState.instance;
+    const appState: AppState = new AppState();
     appState.game = gameState;
     return { appState, players };
 }
@@ -47,25 +46,25 @@ describe("ReorderTeamsDialogControllerTests", () => {
     it("submit with less than 2 doesn't break", () => {
         const { appState } = initializeApp([firstTeamPlayers[0]]);
 
-        ReorderTeamsDialogController.submit();
+        ReorderTeamsDialogController.submit(appState);
         expect(appState.game.teamNames).to.be.deep.equal([defaultTeamNames[0]]);
     });
     it("submit with lonly 1 team doesn't break", () => {
         const { appState } = initializeApp([firstTeamPlayers[0], firstTeamPlayers[1]]);
 
-        ReorderTeamsDialogController.submit();
+        ReorderTeamsDialogController.submit(appState);
         expect(appState.game.teamNames).to.be.deep.equal([defaultTeamNames[0]]);
     });
     it("submit with 2", () => {
         const { appState } = initializeApp([firstTeamPlayers[0], secondTeamPlayers[0]]);
 
-        ReorderTeamsDialogController.submit();
+        ReorderTeamsDialogController.submit(appState);
         expect(appState.game.teamNames).to.be.deep.equal([defaultTeamNames[1], defaultTeamNames[0]]);
     });
     it("submit with several", () => {
         const { appState } = initializeApp();
 
-        ReorderTeamsDialogController.submit();
+        ReorderTeamsDialogController.submit(appState);
         expect(appState.game.teamNames).to.be.deep.equal([defaultTeamNames[1], defaultTeamNames[0]]);
     });
 });

@@ -7,7 +7,7 @@ import { useId } from "@fluentui/react-hooks";
 import { UIState } from "../state/UIState";
 import { AppState } from "../state/AppState";
 import { ILabelStyles, Label, TooltipHost } from "@fluentui/react";
-import { StateContext } from "../contexts/StateContext";
+import { useAppState } from "../contexts/StateContext";
 import { StatusDisplayType } from "../state/StatusDisplayType";
 
 const ReturnKeyCode = 13;
@@ -38,17 +38,15 @@ const nextButtonStyle: Partial<IButtonStyles> = {
 };
 
 export const CycleChooser = observer(function CycleChooser() {
-    const appState: AppState = React.useContext(StateContext);
-    const onPreviousClickHandler = React.useCallback(() => onPreviousClick(appState), [appState]);
-    const onNextClickHandler = React.useCallback(() => onNextClick(appState), [appState]);
+    const appState: AppState = useAppState();
+    const onPreviousClickHandler = (): void => onPreviousClick(appState);
+    const onNextClickHandler = (): void => onNextClick(appState);
     const onProposedQuestionNumberBlurHandler = React.useCallback((ev) => onProposedQuestionNumberBlur(ev, appState), [
         appState,
     ]);
-    const onProposedQuestionNumberKeyDownHandler = React.useCallback(
-        (ev) => onProposedQuestionNumberKeyDown(ev, appState),
-        [appState]
-    );
-    const onQuestionLabelDoubleClickHandler = React.useCallback(() => onQuestionLabelDoubleClick(appState), [appState]);
+    const onProposedQuestionNumberKeyDownHandler = (ev: React.KeyboardEvent<HTMLInputElement>): void =>
+        onProposedQuestionNumberKeyDown(ev, appState);
+    const onQuestionLabelDoubleClickHandler = (): void => onQuestionLabelDoubleClick(appState);
 
     const uiState: UIState = appState.uiState;
 

@@ -3,11 +3,11 @@ import { observer } from "mobx-react-lite";
 import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
 
 import { IFormattedText } from "../parser/IFormattedText";
-import { StateContext } from "../contexts/StateContext";
+import { useAppState } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";
 
 export const FormattedText = observer(function FormattedText(props: IFormattedTextProps): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
     const classes: IFormattedTextClassNames = useStyles(appState.uiState.pronunciationGuideColor, props.disabled);
 
     const elements: JSX.Element[] = [];

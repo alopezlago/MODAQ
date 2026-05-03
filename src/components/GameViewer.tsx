@@ -7,7 +7,7 @@ import { Scoreboard } from "./Scoreboard";
 import { EventViewer } from "./EventViewer";
 import { GameBar } from "./GameBar";
 import { AppState } from "../state/AppState";
-import { StateContext } from "../contexts/StateContext";
+import { useAppState } from "../contexts/StateContext";
 import { Clock } from "./Clock";
 import { ExportStatus } from "./ExportStatus";
 import { PacketNameLabel } from "./PacketNameLabel";
@@ -15,7 +15,7 @@ import { PacketNameLabel } from "./PacketNameLabel";
 const scoreboardAndQuestionViewerTokens: IStackTokens = { childrenGap: 20 };
 
 export const GameViewer = observer(function GameViewer() {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
     const gameExists: boolean = appState.game.isLoaded;
 
     const classes: IGameViewerClassNames = getClassNames(

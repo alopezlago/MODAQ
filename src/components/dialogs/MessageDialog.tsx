@@ -3,14 +3,14 @@ import { observer } from "mobx-react-lite";
 import { DialogFooter, PrimaryButton, Label, DefaultButton } from "@fluentui/react";
 
 import { AppState } from "../../state/AppState";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { IMessageDialogState, MessageDialogType } from "../../state/IMessageDialogState";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { ModalDialog } from "./ModalDialog";
 
 export const MessageDialog = observer(function MessageDialog(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
-    const closeHandler = React.useCallback(() => hideDialog(appState), [appState]);
+    const appState: AppState = useAppState();
+    const closeHandler = (): void => hideDialog(appState);
 
     const messageDialog: IMessageDialogState | undefined = appState.uiState.dialogState.messageDialog;
 

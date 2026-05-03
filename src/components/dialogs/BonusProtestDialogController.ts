@@ -2,8 +2,7 @@ import { AppState } from "../../state/AppState";
 import { Cycle } from "../../state/Cycle";
 import { IBonusProtestEvent, IBonusAnswerPart } from "../../state/Events";
 
-export function commit(cycle: Cycle): void {
-    const appState: AppState = AppState.instance;
+export function commit(appState: AppState, cycle: Cycle): void {
     const pendingProtestEvent: IBonusProtestEvent | undefined = appState.uiState.pendingBonusProtestEvent;
     let teamName = "";
     if (cycle.correctBuzz != undefined && cycle.bonusAnswer != undefined) {
@@ -33,10 +32,10 @@ export function commit(cycle: Cycle): void {
     }
 }
 
-export function changePart(part: string | number): void {
-    AppState.instance.uiState.updatePendingBonusProtestPart(part);
+export function changePart(appState: AppState, part: string | number): void {
+    appState.uiState.updatePendingBonusProtestPart(part);
 }
 
-export function cancel(): void {
-    AppState.instance.uiState.resetPendingBonusProtest();
+export function cancel(appState: AppState): void {
+    appState.uiState.resetPendingBonusProtest();
 }

@@ -43,8 +43,7 @@ function initializeApp(): AppState {
     const players: Player[] = createDefaultExistingPlayers();
     gameState.addNewPlayers(players);
 
-    AppState.resetInstance();
-    const appState: AppState = AppState.instance;
+    const appState: AppState = new AppState();
     appState.game = gameState;
     appState.uiState.dialogState.showRenameTeamDialog(players[0].teamName);
     return appState;
@@ -62,7 +61,7 @@ describe("RenameTeamDialogControllerTests", () => {
     it("changeNewName", () => {
         const name = "New team name";
         const appState: AppState = initializeApp();
-        RenameTeamDialogController.changeNewName(name);
+        RenameTeamDialogController.changeNewName(appState, name);
         const state: RenameTeamDialogState = getRenameTeamDialogState(appState);
 
         expect(state.newName).to.equal(name);
@@ -71,27 +70,27 @@ describe("RenameTeamDialogControllerTests", () => {
     });
     it("hideDialog", () => {
         const appState: AppState = initializeApp();
-        RenameTeamDialogController.hideDialog();
+        RenameTeamDialogController.hideDialog(appState);
 
         expect(appState.uiState.dialogState.renameTeamDialog).to.be.undefined;
     });
     describe("validate", () => {
         it("validate - non-empty name", () => {
-            initializeApp();
-            RenameTeamDialogController.changeNewName(" ");
-            const errorMessage: string | undefined = RenameTeamDialogController.validate();
+            const appState: AppState = initializeApp();
+            RenameTeamDialogController.changeNewName(appState, " ");
+            const errorMessage: string | undefined = RenameTeamDialogController.validate(appState);
             expect(errorMessage).to.not.be.undefined;
         });
         it("validate - duplicate name", () => {
-            initializeApp();
-            RenameTeamDialogController.changeNewName(defaultTeamNames[1]);
-            const errorMessage: string | undefined = RenameTeamDialogController.validate();
+            const appState: AppState = initializeApp();
+            RenameTeamDialogController.changeNewName(appState, defaultTeamNames[1]);
+            const errorMessage: string | undefined = RenameTeamDialogController.validate(appState);
             expect(errorMessage).to.not.be.undefined;
         });
         it("validate - new name", () => {
-            initializeApp();
-            RenameTeamDialogController.changeNewName("Newbie");
-            const errorMessage: string | undefined = RenameTeamDialogController.validate();
+            const appState: AppState = initializeApp();
+            RenameTeamDialogController.changeNewName(appState, "Newbie");
+            const errorMessage: string | undefined = RenameTeamDialogController.validate(appState);
             expect(errorMessage).to.be.undefined;
         });
     });
@@ -140,8 +139,8 @@ describe("RenameTeamDialogControllerTests", () => {
 
             appState.game.cycles[3].addSwapSubstitution(player, newPlayer);
 
-            RenameTeamDialogController.changeNewName(name);
-            RenameTeamDialogController.renameTeam();
+            RenameTeamDialogController.changeNewName(appState, name);
+            RenameTeamDialogController.renameTeam(appState);
 
             // Verify - dialog hidden, player is in game, add player event in cycle
             expect(appState.uiState.dialogState.renameTeamDialog).to.be.undefined;
@@ -216,8 +215,8 @@ describe("RenameTeamDialogControllerTests", () => {
         });
         it("renameTeam fails (empty name)", () => {
             const appState: AppState = initializeApp();
-            RenameTeamDialogController.changeNewName(" ");
-            RenameTeamDialogController.renameTeam();
+            RenameTeamDialogController.changeNewName(appState, " ");
+            RenameTeamDialogController.renameTeam(appState);
 
             const state: RenameTeamDialogState = getRenameTeamDialogState(appState);
             expect(state.errorMessage).to.not.be.undefined;
@@ -226,8 +225,8 @@ describe("RenameTeamDialogControllerTests", () => {
         });
         it("renameTeam fails (other team name)", () => {
             const appState: AppState = initializeApp();
-            RenameTeamDialogController.changeNewName(defaultTeamNames[1]);
-            RenameTeamDialogController.renameTeam();
+            RenameTeamDialogController.changeNewName(appState, defaultTeamNames[1]);
+            RenameTeamDialogController.renameTeam(appState);
 
             const state: RenameTeamDialogState = getRenameTeamDialogState(appState);
             expect(state.errorMessage).to.not.be.undefined;
@@ -236,8 +235,8 @@ describe("RenameTeamDialogControllerTests", () => {
         });
         it("renameTeam succeeds (same team name)", () => {
             const appState: AppState = initializeApp();
-            RenameTeamDialogController.changeNewName(defaultTeamNames[0]);
-            RenameTeamDialogController.renameTeam();
+            RenameTeamDialogController.changeNewName(appState, defaultTeamNames[0]);
+            RenameTeamDialogController.renameTeam(appState);
 
             expect(appState.uiState.dialogState.renameTeamDialog).to.be.undefined;
 

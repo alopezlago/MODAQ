@@ -4,7 +4,7 @@ import { IDialogContentProps, DialogType, DialogFooter, PrimaryButton, DefaultBu
 
 import * as CustomizeGameFormatDialogController from "./CustomGameFormatDialogController";
 import { AppState } from "../../state/AppState";
-import { StateContext } from "../../contexts/StateContext";
+import { useAppState } from "../../contexts/StateContext";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { ModalDialog } from "./ModalDialog";
 import { CustomizeGameFormatForm } from "../CustomizeGameFormatForm";
@@ -25,7 +25,7 @@ const content: IDialogContentProps = {
 
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const CustomizeGameFormatDialog = observer(function CustomizeGameFormatDialog(): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
 
     if (appState.uiState.dialogState.customizeGameFormat == undefined) {
         return <></>;
@@ -36,12 +36,12 @@ export const CustomizeGameFormatDialog = observer(function CustomizeGameFormatDi
             title="Customize Game Format"
             visibilityStatus={ModalVisibilityStatus.CustomizeGameFormat}
             dialogContentProps={content}
-            onDismiss={CustomizeGameFormatDialogController.cancel}
+            onDismiss={() => CustomizeGameFormatDialogController.cancel(appState)}
         >
             <CustomizeGameFormatForm state={appState.uiState.dialogState.customizeGameFormat} />
             <DialogFooter>
-                <PrimaryButton text="Save" onClick={CustomizeGameFormatDialogController.submit} />
-                <DefaultButton text="Cancel" onClick={CustomizeGameFormatDialogController.cancel} />
+                <PrimaryButton text="Save" onClick={() => CustomizeGameFormatDialogController.submit(appState)} />
+                <DefaultButton text="Cancel" onClick={() => CustomizeGameFormatDialogController.cancel(appState)} />
             </DialogFooter>
         </ModalDialog>
     );

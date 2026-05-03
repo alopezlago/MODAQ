@@ -15,7 +15,7 @@ import * as CustomizeGameFormatFormController from "./CustomizeGameFormatFormCon
 import { AppState } from "../state/AppState";
 import { IGameFormat } from "../state/IGameFormat";
 import { CustomizeGameFormatState } from "../state/CustomizeGameFormatState";
-import { StateContext } from "../contexts/StateContext";
+import { useAppState } from "../contexts/StateContext";
 import { GameFormatPicker } from "./GameFormatPicker";
 import { SheetType } from "../state/SheetState";
 
@@ -30,7 +30,7 @@ const settingsStackTokens: Partial<IStackTokens> = { childrenGap: 10 };
 export const CustomizeGameFormatForm = observer(function CustomizeGameFormatDialogBody(
     props: ICustomizeGameFormatFormProps
 ): JSX.Element {
-    const appState: AppState = React.useContext(StateContext);
+    const appState: AppState = useAppState();
     const customizeGameFormatState: CustomizeGameFormatState | undefined = props.state;
 
     const resetGameFormat = React.useCallback(

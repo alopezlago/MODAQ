@@ -3,8 +3,7 @@ import { AppState } from "../state/AppState";
 import { Cycle } from "../state/Cycle";
 import { UIState } from "../state/UIState";
 
-export function selectWordFromClick(event: React.MouseEvent<HTMLDivElement>): void {
-    const appState: AppState = AppState.instance;
+export function selectWordFromClick(appState: AppState, event: React.MouseEvent<HTMLDivElement>): void {
     const target = event.target as HTMLDivElement;
 
     // I'd like to avoid looking for a specific HTML element instead of a class. This would mean giving QuestionWord a
@@ -28,8 +27,7 @@ export function selectWordFromClick(event: React.MouseEvent<HTMLDivElement>): vo
     event.stopPropagation();
 }
 
-export function selectWordFromKeyboardEvent(event: React.KeyboardEvent<HTMLDivElement>): void {
-    const appState: AppState = AppState.instance;
+export function selectWordFromKeyboardEvent(appState: AppState, event: React.KeyboardEvent<HTMLDivElement>): void {
     const target = event.target as HTMLDivElement;
 
     // We're looking for spans with the word index that matches the selectedWordIndex
@@ -48,18 +46,15 @@ export function selectWordFromKeyboardEvent(event: React.KeyboardEvent<HTMLDivEl
     event.stopPropagation();
 }
 
-export function throwOutTossup(cycle: Cycle, tossupNumber: number): void {
-    const appState: AppState = AppState.instance;
-
+export function throwOutTossup(appState: AppState, cycle: Cycle, tossupNumber: number): void {
     appState.uiState.dialogState.showOKCancelMessageDialog(
         "Throw out Tossup",
         "Click OK to throw out the tossup. To undo this, click on the X next to its event in the Event Log.",
-        () => onConfirmThrowOutTossup(cycle, tossupNumber)
+        () => onConfirmThrowOutTossup(appState, cycle, tossupNumber)
     );
 }
 
-function onConfirmThrowOutTossup(cycle: Cycle, tossupNumber: number) {
-    const appState: AppState = AppState.instance;
+function onConfirmThrowOutTossup(appState: AppState, cycle: Cycle, tossupNumber: number) {
     cycle.addThrownOutTossup(tossupNumber - 1);
     appState.uiState.setSelectedWordIndex(-1);
 }

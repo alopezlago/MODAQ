@@ -5,41 +5,38 @@ export const defaultFont = "Segoe UI";
 
 const minimumFontSize = 12;
 
-export function cancel(): void {
-    hideDialog();
+export function cancel(appState: AppState): void {
+    hideDialog(appState);
 }
 
-export function changePendingSize(newValue: string): void {
-    const appState: AppState = AppState.instance;
-
+export function changePendingSize(appState: AppState, newValue: string): void {
     const size = Number.parseInt(newValue, 10);
     if (!isNaN(size)) {
         appState.uiState.dialogState.fontDialog?.setFontSize(size);
     }
 }
 
-export function changeFontFamily(newValue: string | undefined): void {
-    AppState.instance.uiState.dialogState.fontDialog?.setFontFamily(newValue ?? defaultFont);
+export function changeFontFamily(appState: AppState, newValue: string | undefined): void {
+    appState.uiState.dialogState.fontDialog?.setFontFamily(newValue ?? defaultFont);
 }
 
-export function changePronunciationGuideColor(color: string | undefined): void {
+export function changePronunciationGuideColor(appState: AppState, color: string | undefined): void {
     if (color == undefined) {
-        AppState.instance.uiState.dialogState.fontDialog?.resetPronunciationGuideColor();
+        appState.uiState.dialogState.fontDialog?.resetPronunciationGuideColor();
     } else {
-        AppState.instance.uiState.dialogState.fontDialog?.setPronunciationGuideColor(color);
+        appState.uiState.dialogState.fontDialog?.setPronunciationGuideColor(color);
     }
 }
 
-export function changeTextColor(color: string | undefined): void {
+export function changeTextColor(appState: AppState, color: string | undefined): void {
     if (color == undefined) {
-        AppState.instance.uiState.dialogState.fontDialog?.resetTextColor();
+        appState.uiState.dialogState.fontDialog?.resetTextColor();
     } else {
-        AppState.instance.uiState.dialogState.fontDialog?.setTextColor(color);
+        appState.uiState.dialogState.fontDialog?.setTextColor(color);
     }
 }
 
-export function update(): void {
-    const appState: AppState = AppState.instance;
+export function update(appState: AppState): void {
     const dialogState: FontDialogState | undefined = appState.uiState.dialogState.fontDialog;
     if (dialogState == undefined) {
         return;
@@ -57,9 +54,9 @@ export function update(): void {
     appState.uiState.setPronunciationGuideColor(dialogState.pronunciationGuideColor);
     appState.uiState.setQuestionFontColor(dialogState.textColor);
 
-    hideDialog();
+    hideDialog(appState);
 }
 
-function hideDialog(): void {
-    AppState.instance.uiState.dialogState.hideFontDialog();
+function hideDialog(appState: AppState): void {
+    appState.uiState.dialogState.hideFontDialog();
 }
