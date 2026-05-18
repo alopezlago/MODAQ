@@ -12,6 +12,7 @@ import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 import { RenameTeamDialogState } from "./RenameTeamDialogState";
 import { ImportFromQBJDialogState } from "./ImportFromQBJDialogState";
 import { AddPlayerDialogState } from "./AddPlayerDialogState";
+import { Cycle } from "./Cycle";
 
 export class DialogState {
     @ignore
@@ -171,6 +172,12 @@ export class DialogState {
     public showImportFromQBJDialog(): void {
         this.importFromQBJDialog = new ImportFromQBJDialogState();
         this.visibleDialog = ModalVisibilityStatus.ImportFromQBJ;
+    }
+
+    public showRemoveTossupProtestDialog(cycle: Cycle, teamName: string): void {
+        this.showOKCancelMessageDialog("Remove protest", `Remove tossup protest for "${teamName}"?`, () => {
+            cycle.removeTossupProtest(teamName);
+        });
     }
 
     public showRenamePlayerDialog(player: Player): void {

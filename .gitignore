@@ -2,5 +2,9 @@ node_modules
 
 npm-debug.log
 
+# output directories for build and buildDemo, respectively
 out
 dist
+
+# code coverage reports
+coverage/*

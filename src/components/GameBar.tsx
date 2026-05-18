@@ -17,7 +17,7 @@ import { Cycle } from "../state/Cycle";
 import { Bonus, Tossup } from "../state/PacketState";
 import { Player } from "../state/TeamState";
 import { AppState } from "../state/AppState";
-import { ITossupAnswerEvent } from "../state/Events";
+import { IBonusProtestEvent, ITossupAnswerEvent, ITossupProtestEvent } from "../state/Events";
 import { useAppState } from "../contexts/StateContext";
 import { StatusDisplayType } from "../state/StatusDisplayType";
 
@@ -695,6 +695,42 @@ function getProtestSubMenuItems(
         }
     }
 
+    const copyProtestInfoSubItems: ICommandBarItemProps[] = [];
+    if (cycle?.tossupProtests != undefined) {
+        for (const protest of cycle.tossupProtests) {
+            copyProtestInfoSubItems.push({
+                key: `copyTossupProtest_${protest.teamName}`,
+                text: `${protest.teamName}'s buzz`,
+                onClick: () => {
+                    const protestInfo: string = buildCopyTossupProtestInfoText(appState, cycle, protest);
+                    copyProtestInfo(uiState, protestInfo);
+                },
+            });
+        }
+    }
+
+    if (cycle?.bonusProtests != undefined) {
+        for (const protest of cycle.bonusProtests) {
+            copyProtestInfoSubItems.push({
+                key: `copyBonusProtest_${protest.teamName}_${protest.partIndex}`,
+                text: `Bonus part ${protest.partIndex + 1}`,
+                onClick: () => {
+                    const protestInfo: string = buildCopyBonusProtestInfoText(appState, cycle, protest);
+                    copyProtestInfo(uiState, protestInfo);
+                },
+            });
+        }
+    }
+
+    const copyProtestInfoItem: ICommandBarItemProps = {
+        key: "copyProtestInfo",
+        text: "Copy protest info",
+        subMenuProps: {
+            items: copyProtestInfoSubItems,
+        },
+        disabled: copyProtestInfoSubItems.length === 0,
+    };
+
     if (protestTossupItems == undefined) {
         protestTossupItems = {
             key: "protestTossup",
@@ -717,7 +753,7 @@ function getProtestSubMenuItems(
         sectionProps: {
             bottomDivider: true,
             title: "Protests",
-            items: [protestTossupItems, protestBonusItem],
+            items: [protestTossupItems, protestBonusItem, copyProtestInfoItem],
         },
     };
 }
@@ -757,7 +793,7 @@ function onProtestTossupClick(
 
     // If this item is checked, then clear the protest
     if (item.checked === true) {
-        cycle.removeTossupProtest(teamName);
+        uiState.dialogState.showRemoveTossupProtestDialog(cycle, teamName);
         return;
     }
 
@@ -769,6 +805,75 @@ function onProtestTossupClick(
     }
 
     uiState.setPendingTossupProtest(teamName, tossupIndex, item.data.buzz.marker.position);
+}
+
+function buildCopyTossupProtestInfoText(appState: AppState, cycle: Cycle, protest: ITossupProtestEvent): string {
+    const game: GameState = appState.game;
+    const uiState: UIState = appState.uiState;
+    const packetName: string = uiState.packetFilename != undefined ? `"${uiState.packetFilename}"` : "";
+
+    const tossup: Tossup = game.packet.tossups[protest.questionIndex];
+    return `* Packet ${packetName}
+* Cycle #${uiState.cycleIndex + 1}
+* Tossup #${protest.questionIndex + 1}
+* Packet Answerline: ${tossup.answer}
+* Player Answer: ${protest.givenAnswer}
+* Buzzpoint: Word #${protest.position} (${tossup
+        .getWords(game.gameFormat)
+        .filter((w) => w.canBuzzOn)
+        [protest.position].word.map((w) => w.text)
+        .join(" ")})
+* Metadata: ${tossup.metadata}
+* Moderator Judgment: ${
+        cycle.correctBuzz == undefined || cycle.correctBuzz.marker.player.teamName !== protest.teamName
+            ? "Incorrect"
+            : "Correct"
+    }
+* Justification: ${protest.reason}
+* Protest Matters: ${game.protestsMatter ? "Yes" : "No"}`;
+}
+
+function buildCopyBonusProtestInfoText(appState: AppState, cycle: Cycle, protest: IBonusProtestEvent): string {
+    const game: GameState = appState.game;
+    const uiState: UIState = appState.uiState;
+    const packetName: string = uiState.packetFilename != undefined ? `"${uiState.packetFilename}"` : "";
+    const bonus: Bonus = game.packet.bonuses[protest.questionIndex];
+
+    return `* Packet ${packetName}
+* Cycle #${uiState.cycleIndex + 1}
+* Bonus #${protest.questionIndex + 1}, Part #${protest.partIndex + 1}
+* Packet Answerline: ${bonus.parts[protest.partIndex].answer}
+* Player Answer: ${protest.givenAnswer}
+* Metadata: ${bonus.metadata}
+* Moderator Judgment: ${
+        cycle.bonusAnswer === undefined || cycle.bonusAnswer.parts[protest.partIndex].points <= 0
+            ? "Incorrect"
+            : "Correct"
+    }
+* Justification: ${protest.reason}
+* Protest Matters: ${game.protestsMatter ? "Yes" : "No"}`;
+}
+
+function copyProtestInfo(uiState: UIState, protestInfo: string): void {
+    try {
+        navigator.clipboard
+            .writeText(protestInfo)
+            .then(() => onCopyProtestInfoSuccess(uiState))
+            .catch(() => onCopyProtestInfoFailure(uiState));
+    } catch {
+        onCopyProtestInfoFailure(uiState);
+    }
+}
+
+function onCopyProtestInfoSuccess(uiState: UIState): void {
+    uiState.dialogState.showOKMessageDialog("Copied", "Protest info has been copied to clipboard.");
+}
+
+function onCopyProtestInfoFailure(uiState: UIState): void {
+    uiState.dialogState.showOKMessageDialog(
+        "Error",
+        "Unable to copy protest info to clipboard. Please allow MODAQ access to the clipboard."
+    );
 }
 
 function onPlayerLeaveClick(
