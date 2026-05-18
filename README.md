@@ -10,23 +10,23 @@ To use MODAQ in your project as an npm package:
 
 1. Add `modaq` as a dependency to your `package.json` file:
 
-   ```bash
-   npm install modaq
-   ```
+    ```bash
+    npm install modaq
+    ```
 
 2. In your React file, import MODAQ with:
 
-   ```typescript
-   import * as Modaq from "modaq";
-   ```
+    ```typescript
+    import * as Modaq from "modaq";
+    ```
 
-   Then use the control like `<Modaq.ModaqControl />`.
+    Then use the control like `<Modaq.ModaqControl />`.
 
 3. If you want to export to Google Sheets format, you need to supply your application's client ID and include this in your HTML:
 
-   ```html
-   <script async defer src="https://apis.google.com/js/api.js"></script>
-   ```
+    ```html
+    <script async defer src="https://apis.google.com/js/api.js"></script>
+    ```
 
 4. If you want to use the packet parser (instead of passing in a packet parameter), you need to include a URL to YAPP.
 
@@ -40,9 +40,9 @@ See [the MODAQ Wiki](https://github.com/alopezlago/MODAQ/wiki/Codebase-Overview)
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (version 14 or higher)
-- [yarn](https://yarnpkg.com/getting-started/install)
-- [npm](https://www.npmjs.com/get-npm)
+-   [Node.js](https://nodejs.org/) (version 14 or higher)
+-   [yarn](https://yarnpkg.com/getting-started/install)
+-   [npm](https://www.npmjs.com/get-npm)
 
 VS Code is recommended as an IDE. If using VS Code, install the Prettier extension for code formatting.
 
@@ -50,18 +50,18 @@ VS Code is recommended as an IDE. If using VS Code, install the Prettier extensi
 
 1. Download the [latest release](https://github.com/alopezlago/MODAQ/releases) or clone the repository:
 
-   ```bash
-   git clone https://github.com/alopezlago/MODAQ.git
-   cd MODAQ
-   ```
+    ```bash
+    git clone https://github.com/alopezlago/MODAQ.git
+    cd MODAQ
+    ```
 
 2. Install dependencies:
 
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
 
 ### Building
 
@@ -89,23 +89,23 @@ For testing via the Dev server (required for Google Sheets functionality), which
 
 1. Add this entry to your hosts file (on macOS/Linux: `/etc/hosts`, on Windows: `C:\Windows\System32\drivers\etc\hosts`):
 
-   ```bash
-   127.0.0.1 localhost.quizbowlreader.com
-   ```
+    ```bash
+    127.0.0.1 localhost.quizbowlreader.com
+    ```
 
-   - If using Chrome, you may also need to set the flag at `chrome://flags#local-network-access-check`.
+    - If using Chrome, you may also need to set the flag at `chrome://flags#local-network-access-check`.
 
 2. Run the dev server:
 
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
+    ```bash
+    npm run dev
+    # or
+    yarn dev
+    ```
 
 3. Open https://localhost.quizbowlreader.com:5173/out
 
-   You can accept the HTTPS certificate or create your own self-signed certificate.
+    You can accept the HTTPS certificate or create your own self-signed certificate.
 
 ### Testing
 
@@ -160,10 +160,14 @@ yarn serve
 Contributions are welcome! Please follow these steps:
 
 1. [Fork the repository.](https://github.com/alopezlago/MODAQ/fork) and create a feature branch.
-   - Alternatively, you can clone this repository, and create a feature branch on this repository directly.
+    - Alternatively, you can clone this repository, and create a feature branch on this repository directly.
 2. Commit your changes to the feature branch.
 3. Ensure `npm run lint` and `npm test` pass without warnings or failures.
 4. Submit a [pull request](https://github.com/alopezlago/MODAQ/compare).
+
+### AI policy
+
+Because it's unclear whether LLM-generated code can be copyrighted, LLM-generated code should be limited to tests or refactoring of existing code.
 
 ## License
 

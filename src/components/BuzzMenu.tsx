@@ -78,7 +78,9 @@ function getPlayerMenuItems(props: IBuzzMenuProps, theme: Theme | undefined, tea
                     PlayerUtils.playersEqual(buzz.marker.player, player) && buzz.marker.position === props.wordIndex
             ) >= 0;
         const isProtestChecked: boolean =
-            props.cycle.tossupProtests?.findIndex((protest) => protest.position === props.wordIndex) != undefined;
+            (isCorrectChecked || isWrongChecked) &&
+            props.cycle.tossupProtests != undefined &&
+            props.cycle.tossupProtests.findIndex((protest) => protest.teamName === player.teamName) >= 0;
 
         const buzzMenuItemData: IBuzzMenuItemData = { props, player };
 
@@ -246,7 +248,7 @@ function onProtestClicked(
     const { props, player } = { ...item.data };
 
     if (item.checked) {
-        props.cycle.removeTossupProtest(player.teamName);
+        props.appState.uiState.dialogState.showRemoveTossupProtestDialog(props.cycle, player.teamName);
     } else if (item.checked === false) {
         props.appState.uiState.setPendingTossupProtest(player.teamName, props.tossupNumber - 1, props.wordIndex);
     }

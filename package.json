@@ -1,6 +1,6 @@
 {
     "name": "modaq",
-    "version": "1.38.1",
+    "version": "1.39.0",
     "description": "Quiz Bowl Reader using TypeScript, React, and MobX",
     "repository": {
         "type": "git",
@@ -31,6 +31,7 @@
         "@typescript-eslint/eslint-plugin": "^5.31.0",
         "@typescript-eslint/parser": "^5.31.0",
         "@vitejs/plugin-react": "^4.3.2",
+        "c8": "^11.0.0",
         "chai": "^4.3.0",
         "copyfiles": "^2.4.1",
         "eslint": "^8.20.0",
@@ -70,6 +71,7 @@
         "test": "mocha --recursive tests/**/*.ts --exit --check-leaks -r tests/TestInit.js -r ts-node/register -r tsconfig-paths/register",
         "dev": "vite",
         "buildDemo": "tsc && vite build --mode production",
-        "serve": "vite preview"
+        "serve": "vite preview",
+        "codeCoverage": "c8 --reporter=lcov --reporter=text-summary npm run test"
     }
 }

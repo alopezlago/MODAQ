@@ -210,7 +210,9 @@ export class GameState {
                     const tossup: Tossup | undefined = this.packet.tossups[tossupProtest.questionIndex];
 
                     if (tossup != undefined) {
+                        let rewardOtherTeamPoints = true;
                         let tossupTeamIndex: number = tossupProtest.teamName === this.teamNames[0] ? 0 : 1;
+
                         if (cycle.correctBuzz) {
                             // If the correct buzz is for the protesting team, then this should be for "against"
                             if (
@@ -219,6 +221,14 @@ export class GameState {
                             ) {
                                 tossupTeamIndex = 1 - tossupTeamIndex;
                             }
+
+                            // The other team negged before the team they're protesting, so they couldn't score any
+                            // additional points even if the protest went through.
+                            rewardOtherTeamPoints =
+                                cycle.wrongBuzzes == undefined ||
+                                !cycle.wrongBuzzes.some(
+                                    (buzz) => buzz.marker.player.teamName !== tossupProtest.teamName
+                                );
 
                             // We have a correct buzz... we need to discount this buzz for the other team, plus any
                             // bonus they got
@@ -241,18 +251,28 @@ export class GameState {
                             swings[1 - tossupTeamIndex].against += correctTossupPoints + bonusPoints;
                         }
 
-                        const bonusIndex: number = this.getBonusIndex(i);
-                        const potentialBonusPoints =
-                            this.packet.bonuses[bonusIndex]?.parts.reduce(
-                                (previous, current) => current.value + previous,
-                                0
-                            ) ?? 0;
-
                         // Need to remove the neg (subtract) and add what the correct value would be
-                        swings[tossupTeamIndex].for +=
-                            tossup.getPointsAtPosition(this.gameFormat, tossupProtest.position, /* isCorrect */ true) -
-                            tossup.getPointsAtPosition(this.gameFormat, tossupProtest.position, /* isCorrect */ false) +
-                            potentialBonusPoints;
+                        if (rewardOtherTeamPoints) {
+                            const bonusIndex: number = this.getBonusIndex(i);
+                            const potentialBonusPoints =
+                                this.packet.bonuses[bonusIndex]?.parts.reduce(
+                                    (previous, current) => current.value + previous,
+                                    0
+                                ) ?? 0;
+
+                            swings[tossupTeamIndex].for +=
+                                tossup.getPointsAtPosition(
+                                    this.gameFormat,
+                                    tossupProtest.position,
+                                    /* isCorrect */ true
+                                ) -
+                                tossup.getPointsAtPosition(
+                                    this.gameFormat,
+                                    tossupProtest.position,
+                                    /* isCorrect */ false
+                                ) +
+                                potentialBonusPoints;
+                        }
                     }
                 }
             }

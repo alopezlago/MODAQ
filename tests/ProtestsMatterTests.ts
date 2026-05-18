@@ -161,6 +161,275 @@ describe("GameStateTests", () => {
             game.cycles[3].addTossupProtest(secondTeamPlayer.teamName, 2, 1, "My answer", "My reason");
             expect(game.protestsMatter).to.be.true;
         });
+        it("Uneven game, tossup protest can remove a neg and add tossup plus bonus", () => {
+            const game: GameState = createDefaultGame();
+
+            game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 2, isLastWord: false },
+                0,
+                game.gameFormat,
+                0,
+                1
+            );
+            game.cycles[0].setBonusPartAnswer(0, firstTeamPlayer.teamName, 10);
+
+            game.cycles[1].addWrongBuzz(
+                { player: secondTeamPlayer, points: -5, position: 1, isLastWord: false },
+                1,
+                game.gameFormat
+            );
+            game.cycles[1].addTossupProtest(secondTeamPlayer.teamName, 1, 1, "My answer", "My reason");
+
+            expect(game.protestsMatter).to.be.true;
+        });
+        it("Uneven game, tossup protest against other team's correct answer only removes their points", () => {
+            const game: GameState = createDefaultGame();
+
+            game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 2, isLastWord: false },
+                0,
+                game.gameFormat,
+                0,
+                1
+            );
+            game.cycles[0].setBonusPartAnswer(0, firstTeamPlayer.teamName, 10);
+            game.cycles[0].addTossupProtest(secondTeamPlayer.teamName, 0, 2, "My answer", "My reason");
+
+            game.cycles[1].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 1, isLastWord: false },
+                1,
+                game.gameFormat,
+                1,
+                1
+            );
+
+            expect(game.protestsMatter).to.be.true;
+        });
+        it("Uneven game, protest against an accepted correct buzz can use that team's name", () => {
+            const game: GameState = createDefaultGame();
+
+            game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 2, isLastWord: false },
+                0,
+                game.gameFormat,
+                0,
+                1
+            );
+            game.cycles[0].setBonusPartAnswer(0, firstTeamPlayer.teamName, 10);
+
+            // This matches the current UI flow for protesting the accepted correct buzz itself.
+            game.cycles[0].addTossupProtest(firstTeamPlayer.teamName, 0, 2, "My answer", "My reason");
+
+            game.cycles[1].addCorrectBuzz(
+                { player: secondTeamPlayer, points: 10, position: 1, isLastWord: false },
+                1,
+                game.gameFormat,
+                1,
+                1
+            );
+
+            expect(game.protestsMatter).to.be.true;
+        });
+        it("Uneven game, protest against an accepted correct buzz using that team's name does not matter after a neg", () => {
+            const game: GameState = createDefaultGame();
+
+            game.cycles[0].addWrongBuzz(
+                { player: secondTeamPlayer, points: -5, position: 1, isLastWord: false },
+                0,
+                game.gameFormat
+            );
+            game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 2, isLastWord: false },
+                0,
+                game.gameFormat,
+                0,
+                1
+            );
+            game.cycles[0].setBonusPartAnswer(0, firstTeamPlayer.teamName, 10);
+
+            // This also matches the current UI flow for protesting the accepted correct buzz itself.
+            game.cycles[0].addTossupProtest(firstTeamPlayer.teamName, 0, 2, "My answer", "My reason");
+
+            game.cycles[1].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 1, isLastWord: false },
+                1,
+                game.gameFormat,
+                1,
+                1
+            );
+
+            expect(game.protestsMatter).to.be.false;
+        });
+        it("Uneven game, invalid tossup protest question index is ignored", () => {
+            const game: GameState = createDefaultGame();
+
+            game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 2, isLastWord: false },
+                0,
+                game.gameFormat,
+                0,
+                1
+            );
+            game.cycles[0].addTossupProtest(secondTeamPlayer.teamName, 99, 2, "My answer", "My reason");
+
+            expect(game.protestsMatter).to.be.false;
+        });
+        it("Uneven game, end-of-question protest can matter by removing the other team's score", () => {
+            const game: GameState = createDefaultGame();
+
+            game.cycles[0].addWrongBuzz(
+                { player: secondTeamPlayer, points: 0, position: 2, isLastWord: true },
+                0,
+                game.gameFormat
+            );
+            game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 2, isLastWord: true },
+                0,
+                game.gameFormat,
+                0,
+                1
+            );
+            game.cycles[0].setBonusPartAnswer(0, firstTeamPlayer.teamName, 10);
+            game.cycles[0].addTossupProtest(secondTeamPlayer.teamName, 0, 2, "My answer", "My reason");
+
+            game.cycles[1].addWrongBuzz(
+                { player: firstTeamPlayer, points: -5, position: 1, isLastWord: false },
+                1,
+                game.gameFormat
+            );
+            game.cycles[1].addWrongBuzz(
+                { player: secondTeamPlayer, points: 0, position: 2, isLastWord: true },
+                1,
+                game.gameFormat
+            );
+
+            expect(game.protestsMatter).to.be.true;
+        });
+        it("Uneven game, end-of-question protest does not matter if the other team still leads", () => {
+            const game: GameState = createDefaultGame();
+
+            game.cycles[0].addWrongBuzz(
+                { player: secondTeamPlayer, points: 0, position: 2, isLastWord: true },
+                0,
+                game.gameFormat
+            );
+            game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 2, isLastWord: true },
+                0,
+                game.gameFormat,
+                0,
+                1
+            );
+            game.cycles[0].setBonusPartAnswer(0, firstTeamPlayer.teamName, 10);
+            game.cycles[0].addTossupProtest(secondTeamPlayer.teamName, 0, 2, "My answer", "My reason");
+
+            game.cycles[1].addWrongBuzz(
+                { player: secondTeamPlayer, points: -5, position: 1, isLastWord: false },
+                1,
+                game.gameFormat
+            );
+
+            expect(game.protestsMatter).to.be.true;
+
+            game.cycles[1].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 2, isLastWord: true },
+                1,
+                game.gameFormat,
+                1,
+                1
+            );
+
+            expect(game.protestsMatter).to.be.true;
+
+            game.cycles[1].setBonusPartAnswer(0, firstTeamPlayer.teamName, 10);
+
+            expect(game.protestsMatter).to.be.false;
+        });
+        it("Uneven game, multiple bonus protests can matter together", () => {
+            const packet: PacketState = new PacketState();
+            packet.setTossups([new Tossup("first q", "first a"), new Tossup("second q", "second a")]);
+            packet.setBonuses([
+                new Bonus("first leadin", [
+                    { question: "first bonus 1", answer: "first answer 1", value: 10 },
+                    { question: "first bonus 2", answer: "first answer 2", value: 10 },
+                ]),
+                new Bonus("second leadin", [{ question: "second bonus 1", answer: "second answer 1", value: 10 }]),
+            ]);
+
+            const game: GameState = new GameState();
+            game.addNewPlayers(players);
+            game.loadPacket(packet);
+
+            game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 2, isLastWord: false },
+                0,
+                game.gameFormat,
+                0,
+                2
+            );
+            game.cycles[0].setBonusPartAnswer(0, firstTeamPlayer.teamName, 10);
+            game.cycles[0].setBonusPartAnswer(1, firstTeamPlayer.teamName, 10);
+            game.cycles[0].addBonusProtest(0, 0, "My answer", "My reason", secondTeamPlayer.teamName);
+            game.cycles[0].addBonusProtest(0, 1, "My answer 2", "My reason 2", secondTeamPlayer.teamName);
+
+            game.cycles[1].addCorrectBuzz(
+                { player: secondTeamPlayer, points: 10, position: 1, isLastWord: false },
+                1,
+                game.gameFormat,
+                1,
+                1
+            );
+
+            expect(game.protestsMatter).to.be.true;
+        });
+        it("Uneven game, tossup protest uses the protested question's bonus value after a thrown out bonus", () => {
+            const packet: PacketState = new PacketState();
+            packet.setTossups([
+                new Tossup("first q", "first a"),
+                new Tossup("second q", "second a"),
+                new Tossup("third q", "third a"),
+            ]);
+            packet.setBonuses([
+                new Bonus("first leadin", [{ question: "first bonus", answer: "first answer", value: 10 }]),
+                new Bonus("second leadin", [{ question: "second bonus", answer: "second answer", value: 10 }]),
+                new Bonus("third leadin", [{ question: "third bonus", answer: "third answer", value: 10 }]),
+            ]);
+
+            const game: GameState = new GameState();
+            game.addNewPlayers(players);
+            game.loadPacket(packet);
+
+            game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 1, isLastWord: false },
+                0,
+                game.gameFormat,
+                0,
+                1
+            );
+            game.cycles[0].setBonusPartAnswer(0, firstTeamPlayer.teamName, 10);
+            game.cycles[0].addTossupProtest(firstTeamPlayer.teamName, 0, 1, "My answer", "My reason");
+            game.cycles[0].addThrownOutBonus(0);
+
+            game.cycles[1].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 1, isLastWord: false },
+                1,
+                game.gameFormat,
+                1,
+                1
+            );
+            game.cycles[1].setBonusPartAnswer(0, firstTeamPlayer.teamName, 10);
+
+            expect(game.protestsMatter).to.be.true;
+
+            game.cycles[2].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 1, isLastWord: false },
+                2,
+                game.gameFormat,
+                1,
+                1
+            );
+            expect(game.protestsMatter).to.be.false;
+        });
         it("Uneven game, bonus protest matters (for)", () => {
             const game: GameState = createDefaultGame();
             game.cycles[0].addCorrectBuzz(
