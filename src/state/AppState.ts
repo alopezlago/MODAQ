@@ -56,10 +56,10 @@ export class AppState {
                 if (status.isError) {
                     switch (displayType) {
                         case StatusDisplayType.MessageDialog:
-                            this.uiState.dialogState.showOKMessageDialog(
-                                "Export Error",
-                                `Export failed: ${status.status}.`
-                            );
+                            this.uiState.dialogState.showOKMessageDialog({
+                                title: "Export Error",
+                                message: `Export failed: ${status.status}.`,
+                            });
                             break;
                         case StatusDisplayType.Label:
                             this.uiState.setCustomExportStatus(`Export failed: ${status.status}.`);
@@ -71,7 +71,10 @@ export class AppState {
                     this.game.markUpdateComplete();
                     switch (displayType) {
                         case StatusDisplayType.MessageDialog:
-                            this.uiState.dialogState.showOKMessageDialog("Export Succeeded", "Export succeeded.");
+                            this.uiState.dialogState.showOKMessageDialog({
+                                title: "Export Succeeded",
+                                message: "Export succeeded.",
+                            });
                             break;
                         case StatusDisplayType.Label:
                             this.uiState.setCustomExportStatus("Export successful.");
@@ -85,10 +88,10 @@ export class AppState {
                 const message = e.message ? e.message : JSON.stringify(e);
                 switch (displayType) {
                     case StatusDisplayType.MessageDialog:
-                        this.uiState.dialogState.showOKMessageDialog(
-                            "Export Error",
-                            `Error in exporting the game. Hit an exception. Exception message: ${message}`
-                        );
+                        this.uiState.dialogState.showOKMessageDialog({
+                            title: "Export Error",
+                            message: `Error in exporting the game. Hit an exception. Exception message: ${message}`,
+                        });
                         break;
                     case StatusDisplayType.Label:
                         this.uiState.setCustomExportStatus(

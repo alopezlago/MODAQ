@@ -233,14 +233,14 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
             // Date subtraction gives you the number of milliseconds
             const lastUpdate: number | undefined = appState.game.lastUpdate?.getTime();
             if (lastUpdate && Date.now() - lastUpdate > minAgeToPromptForReset) {
-                appState.uiState.dialogState.showOKCancelMessageDialog(
-                    "Start new game?",
-                    "The loaded game is over 5 days old. Do you want to start a new game instead?",
-                    () => {
+                appState.uiState.dialogState.showOKCancelMessageDialog({
+                    title: "Start new game?",
+                    message: "The loaded game is over 5 days old. Do you want to start a new game instead?",
+                    onOK: () => {
                         appState.uiState.createPendingNewGame();
                         appState.uiState.dialogState.showNewGameDialog();
-                    }
-                );
+                    },
+                });
             }
         });
     }

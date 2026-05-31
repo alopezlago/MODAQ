@@ -47,11 +47,11 @@ export function selectWordFromKeyboardEvent(appState: AppState, event: React.Key
 }
 
 export function throwOutTossup(appState: AppState, cycle: Cycle, tossupNumber: number): void {
-    appState.uiState.dialogState.showOKCancelMessageDialog(
-        "Throw out Tossup",
-        "Click OK to throw out the tossup. To undo this, click on the X next to its event in the Event Log.",
-        () => onConfirmThrowOutTossup(appState, cycle, tossupNumber)
-    );
+    appState.uiState.dialogState.showOKCancelMessageDialog({
+        title: "Throw out Tossup",
+        message: "Click OK to throw out the tossup. To undo this, click on the X next to its event in the Event Log.",
+        onOK: () => onConfirmThrowOutTossup(appState, cycle, tossupNumber),
+    });
 }
 
 function onConfirmThrowOutTossup(appState: AppState, cycle: Cycle, tossupNumber: number) {

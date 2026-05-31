@@ -17,7 +17,11 @@ export const CancelButton = observer(function CancelButton(props: ICancelButtonP
             return;
         }
 
-        appState.uiState.dialogState.showOKCancelMessageDialog(props.prompt.title, props.prompt.message, props.onClick);
+        appState.uiState.dialogState.showOKCancelMessageDialog({
+            title: props.prompt.title,
+            message: props.prompt.message,
+            onOK: props.onClick,
+        });
     };
 
     return (

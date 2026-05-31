@@ -1,6 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { Dropdown, IDropdownOption } from "@fluentui/react/lib/Dropdown";
+import { Label } from "@fluentui/react";
 
 import * as BonusProtestDialogController from "./BonusProtestDialogController";
 import { ProtestDialogBase } from "./ProtestDialogBase";
@@ -16,30 +16,12 @@ export const BonusProtestDialog = observer(function BonusProtestDialog(props: IB
         props.cycle,
     ]);
     const hideDialogHandler = (): void => BonusProtestDialogController.cancel(props.appState);
-    const partChangeHandler = (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
-        if (option?.text != undefined) {
-            BonusProtestDialogController.changePart(props.appState, option.key);
-        }
-    };
 
     const protestEvent: IBonusProtestEvent | undefined = props.appState.uiState.pendingBonusProtestEvent;
     if (protestEvent == undefined) {
         // We shouldn't be showing anything if there's no pending bonus protest. Return undefined.
         return <></>;
     }
-
-    const partOptions: IDropdownOption[] = props.cycle
-        .getProtestableBonusPartIndexes(props.bonus.parts.length)
-        .map((index) => {
-            const partText: string = (index + 1).toString();
-            return {
-                key: index,
-                text: partText,
-                selected: protestEvent.partIndex === index,
-            };
-        });
-
-    const children: JSX.Element = <Dropdown label="Part" options={partOptions} onChange={partChangeHandler} />;
 
     return (
         <ProtestDialogBase
@@ -50,7 +32,7 @@ export const BonusProtestDialog = observer(function BonusProtestDialog(props: IB
             reason={protestEvent.reason}
             visibilityStatus={ModalVisibilityStatus.BonusProtest}
         >
-            {children}
+            <Label>Protest for part {protestEvent.partIndex + 1}</Label>
         </ProtestDialogBase>
     );
 });

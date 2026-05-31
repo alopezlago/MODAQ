@@ -21,13 +21,26 @@ export function commit(appState: AppState, cycle: Cycle): void {
     }
 
     if (pendingProtestEvent) {
-        cycle.addBonusProtest(
-            pendingProtestEvent.questionIndex,
-            pendingProtestEvent.partIndex,
-            pendingProtestEvent.givenAnswer,
-            pendingProtestEvent.reason,
-            teamName
-        );
+        const existingProtest = cycle.bonusProtests?.find((protest) => {
+            return (
+                protest.questionIndex === pendingProtestEvent.questionIndex &&
+                protest.partIndex === pendingProtestEvent.partIndex
+            );
+        });
+
+        if (existingProtest) {
+            existingProtest.givenAnswer = pendingProtestEvent.givenAnswer;
+            existingProtest.reason = pendingProtestEvent.reason;
+        } else {
+            cycle.addBonusProtest(
+                pendingProtestEvent.questionIndex,
+                pendingProtestEvent.partIndex,
+                pendingProtestEvent.givenAnswer,
+                pendingProtestEvent.reason,
+                teamName
+            );
+        }
+
         appState.uiState.resetPendingBonusProtest();
     }
 }

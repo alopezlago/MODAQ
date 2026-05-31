@@ -130,6 +130,41 @@ describe("BonusQuestionDialogControllerTests", () => {
         expect(newProtest.position).to.equal(100);
     });
 
+    it("updates existing protest", () => {
+        const originalGivenAnswer = "Original answer";
+        const originalReason = "Original reason";
+        const updatedGivenAnswer = "Updated answer";
+        const updatedReason = "Updated reason";
+
+        const appState: AppState = initializeApp(true);
+        const cycle: Cycle = appState.game.cycles[0];
+
+        // Existing protest for the same team/question that commit should update.
+        cycle.addTossupProtest(defaultTeamNames[0], 0, 2, originalGivenAnswer, originalReason);
+
+        if (appState.uiState.pendingTossupProtestEvent == undefined) {
+            assert.fail("Test wasn't initialized correctly");
+        }
+
+        appState.uiState.pendingTossupProtestEvent.givenAnswer = updatedGivenAnswer;
+        appState.uiState.pendingTossupProtestEvent.reason = updatedReason;
+
+        TossupProtestDialogController.commit(appState, cycle);
+
+        if (cycle.tossupProtests == undefined) {
+            assert.fail("Tossup protests were undefined");
+        }
+
+        expect(cycle.tossupProtests.length).to.equal(1);
+
+        const updatedProtest = cycle.tossupProtests[0];
+        expect(updatedProtest.teamName).to.equal(defaultTeamNames[0]);
+        expect(updatedProtest.questionIndex).to.equal(0);
+        expect(updatedProtest.position).to.equal(2);
+        expect(updatedProtest.givenAnswer).to.equal(updatedGivenAnswer);
+        expect(updatedProtest.reason).to.equal(updatedReason);
+    });
+
     it("hideDialog", () => {
         const appState: AppState = initializeApp();
         expect(appState.uiState.pendingTossupProtestEvent).to.not.be.undefined;

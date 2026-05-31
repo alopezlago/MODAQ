@@ -128,6 +128,43 @@ describe("BonusQuestionDialogControllerTests", () => {
         expect(newProtest.teamName).to.equal(defaultTeamNames[1]);
     });
 
+    it("updates existing protest", () => {
+        const originalGivenAnswer = "Original answer";
+        const originalReason = "Original reason";
+        const updatedGivenAnswer = "Updated answer";
+        const updatedReason = "Updated reason";
+
+        const appState: AppState = initializeApp(true);
+        const cycle: Cycle = appState.game.cycles[0];
+
+        // Existing protest for the same bonus/part that commit should update.
+        cycle.addBonusProtest(0, 2, originalGivenAnswer, originalReason, defaultTeamNames[0]);
+
+        if (appState.uiState.pendingBonusProtestEvent == undefined) {
+            assert.fail("Test wasn't initialized correctly");
+        }
+
+        BonusProtestDialogController.changePart(appState, 2);
+
+        appState.uiState.pendingBonusProtestEvent.givenAnswer = updatedGivenAnswer;
+        appState.uiState.pendingBonusProtestEvent.reason = updatedReason;
+
+        BonusProtestDialogController.commit(appState, cycle);
+
+        if (cycle.bonusProtests == undefined) {
+            assert.fail("Bonus protests were undefined");
+        }
+
+        expect(cycle.bonusProtests.length).to.equal(1);
+
+        const updatedProtest = cycle.bonusProtests[0];
+        expect(updatedProtest.questionIndex).to.equal(0);
+        expect(updatedProtest.partIndex).to.equal(2);
+        expect(updatedProtest.teamName).to.equal(defaultTeamNames[0]);
+        expect(updatedProtest.givenAnswer).to.equal(updatedGivenAnswer);
+        expect(updatedProtest.reason).to.equal(updatedReason);
+    });
+
     it("change part", () => {
         const givenAnswer = "My answer";
         const reason = "It is factually wrong";
