@@ -7,8 +7,8 @@ export function commit(appState: AppState, cycle: Cycle): void {
     if (pendingProtestEvent) {
         const existingProtest = cycle.tossupProtests?.find((protest) => {
             return (
-                protest.teamName === pendingProtestEvent.teamName &&
-                protest.questionIndex === pendingProtestEvent.questionIndex
+                protest.questionIndex === pendingProtestEvent.questionIndex &&
+                protest.teamName === pendingProtestEvent.teamName
             );
         });
 

@@ -667,11 +667,12 @@ function getProtestSubMenuItems(appState: AppState, game: GameState, uiState: UI
             if (bonus && bonus.parts.length > 0) {
                 const bonusProtestSubMenuItems: ICommandBarItemProps[] = [];
                 for (let i = 0; i < bonus.parts.length; i++) {
+                    // This is potentially quadratic, but bonus parts should be few in number
                     const bonusProtestExists = !protestableParts.includes(i);
 
                     const protestBonusPartHandler = () => {
+                        // Somehow a bonus disappeared or the bonus answer did when handled. It should never happen
                         if (bonus == undefined || cycle.bonusAnswer == undefined) {
-                            // Something is wrong... the bonus is undefined, but this handler can be accessed?
                             throw new Error(
                                 `Impossible to add bonus protest for bonus question ${bonusIndex}, part ${i + 1}`
                             );
