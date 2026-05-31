@@ -544,6 +544,60 @@ export class UIState {
         this.dialogState.visibleDialog = ModalVisibilityStatus.TossupProtest;
     }
 
+    public showRemoveTossupProtestDialog(cycle: Cycle, teamName: string): void {
+        const existingProtest: ITossupProtestEvent | undefined = cycle.tossupProtests?.find(
+            (protest) => protest.teamName === teamName
+        );
+        if (existingProtest == undefined) {
+            return;
+        }
+
+        this.dialogState.showYesNoCancelMessageDialog({
+            title: "Remove protest",
+            message: `Do you want to remove or edit the tossup protest for "${teamName}"?`,
+            yesLabel: "Remove",
+            noLabel: "Edit",
+            onYes: () => {
+                cycle.removeTossupProtest(teamName);
+            },
+            onNo: () => {
+                this.setPendingTossupProtest(teamName, existingProtest.questionIndex, existingProtest.position);
+
+                if (this.pendingTossupProtestEvent != undefined) {
+                    this.pendingTossupProtestEvent.givenAnswer = existingProtest.givenAnswer ?? "";
+                    this.pendingTossupProtestEvent.reason = existingProtest.reason;
+                }
+            },
+        });
+    }
+
+    public showRemoveBonusProtestDialog(cycle: Cycle, partIndex: number): void {
+        const existingProtest: IBonusProtestEvent | undefined = cycle.bonusProtests?.find(
+            (protest) => protest.partIndex === partIndex
+        );
+        if (existingProtest == undefined) {
+            return;
+        }
+
+        this.dialogState.showYesNoCancelMessageDialog({
+            title: "Remove protest",
+            message: `Do you want to remove or edit the bonus protest for part ${partIndex + 1}?`,
+            yesLabel: "Remove",
+            noLabel: "Edit",
+            onYes: () => {
+                cycle.removeBonusProtest(partIndex);
+            },
+            onNo: () => {
+                this.setPendingBonusProtest(existingProtest.teamName, existingProtest.questionIndex, partIndex);
+
+                if (this.pendingBonusProtestEvent != undefined) {
+                    this.pendingBonusProtestEvent.givenAnswer = existingProtest.givenAnswer ?? "";
+                    this.pendingBonusProtestEvent.reason = existingProtest.reason;
+                }
+            },
+        });
+    }
+
     public setPronunciationGuideColor(color: string | undefined): void {
         this.pronunciationGuideColor = color;
     }

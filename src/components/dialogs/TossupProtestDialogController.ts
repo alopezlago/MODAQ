@@ -5,13 +5,26 @@ import { ITossupProtestEvent } from "../../state/Events";
 export function commit(appState: AppState, cycle: Cycle): void {
     const pendingProtestEvent: ITossupProtestEvent | undefined = appState.uiState.pendingTossupProtestEvent;
     if (pendingProtestEvent) {
-        cycle.addTossupProtest(
-            pendingProtestEvent.teamName,
-            pendingProtestEvent.questionIndex,
-            pendingProtestEvent.position,
-            pendingProtestEvent.givenAnswer,
-            pendingProtestEvent.reason
-        );
+        const existingProtest = cycle.tossupProtests?.find((protest) => {
+            return (
+                protest.questionIndex === pendingProtestEvent.questionIndex &&
+                protest.teamName === pendingProtestEvent.teamName
+            );
+        });
+
+        if (existingProtest) {
+            existingProtest.givenAnswer = pendingProtestEvent.givenAnswer;
+            existingProtest.reason = pendingProtestEvent.reason;
+        } else {
+            cycle.addTossupProtest(
+                pendingProtestEvent.teamName,
+                pendingProtestEvent.questionIndex,
+                pendingProtestEvent.position,
+                pendingProtestEvent.givenAnswer,
+                pendingProtestEvent.reason
+            );
+        }
+
         appState.uiState.resetPendingTossupProtest();
     }
 }

@@ -150,6 +150,9 @@ function onBuzzMenuDismissed(props: IBuzzMenuProps): void {
 
     if (props.appState.uiState.buzzMenuState.clearSelectedWordOnClose) {
         props.appState.uiState.setSelectedWordIndex(-1);
+    } else {
+        const selectedWord = (props.target as React.MutableRefObject<HTMLElement | null>)?.current;
+        selectedWord?.focus();
     }
 }
 
@@ -248,7 +251,7 @@ function onProtestClicked(
     const { props, player } = { ...item.data };
 
     if (item.checked) {
-        props.appState.uiState.dialogState.showRemoveTossupProtestDialog(props.cycle, player.teamName);
+        props.appState.uiState.showRemoveTossupProtestDialog(props.cycle, player.teamName);
     } else if (item.checked === false) {
         props.appState.uiState.setPendingTossupProtest(player.teamName, props.tossupNumber - 1, props.wordIndex);
     }

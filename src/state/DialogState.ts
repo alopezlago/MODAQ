@@ -12,7 +12,11 @@ import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 import { RenameTeamDialogState } from "./RenameTeamDialogState";
 import { ImportFromQBJDialogState } from "./ImportFromQBJDialogState";
 import { AddPlayerDialogState } from "./AddPlayerDialogState";
-import { Cycle } from "./Cycle";
+import {
+    IOKCancelMessageDialogOptions,
+    IOKMessageDialogOptions,
+    IYesNoCancelMessageDialogOptions,
+} from "./IMessageDialogOptions";
 
 export class DialogState {
     @ignore
@@ -174,12 +178,6 @@ export class DialogState {
         this.visibleDialog = ModalVisibilityStatus.ImportFromQBJ;
     }
 
-    public showRemoveTossupProtestDialog(cycle: Cycle, teamName: string): void {
-        this.showOKCancelMessageDialog("Remove protest", `Remove tossup protest for "${teamName}"?`, () => {
-            cycle.removeTossupProtest(teamName);
-        });
-    }
-
     public showRenamePlayerDialog(player: Player): void {
         this.renamePlayerDialog = new RenamePlayerDialogState(player);
         this.visibleDialog = ModalVisibilityStatus.RenamePlayer;
@@ -199,33 +197,37 @@ export class DialogState {
         this.visibleDialog = ModalVisibilityStatus.Scoresheet;
     }
 
-    public showOKMessageDialog(title: string, message: string, onOK?: () => void): void {
+    public showOKMessageDialog(options: IOKMessageDialogOptions): void {
         this.messageDialog = {
-            title,
-            message,
+            title: options.title,
+            message: options.message,
             type: MessageDialogType.OK,
-            onOK,
+            onOK: options.onOK,
+            okLabel: options.okLabel,
         };
         this.visibleDialog = ModalVisibilityStatus.Message;
     }
 
-    public showOKCancelMessageDialog(title: string, message: string, onOK: () => void): void {
+    public showOKCancelMessageDialog(options: IOKCancelMessageDialogOptions): void {
         this.messageDialog = {
-            title,
-            message,
+            title: options.title,
+            message: options.message,
             type: MessageDialogType.OKCancel,
-            onOK,
+            onOK: options.onOK,
+            okLabel: options.okLabel,
         };
         this.visibleDialog = ModalVisibilityStatus.Message;
     }
 
-    public showYesNoCancelMessageDialog(title: string, message: string, onYes: () => void, onNo: () => void): void {
+    public showYesNoCancelMessageDialog(options: IYesNoCancelMessageDialogOptions): void {
         this.messageDialog = {
-            title,
-            message,
+            title: options.title,
+            message: options.message,
             type: MessageDialogType.YesNocCancel,
-            onOK: onYes,
-            onNo: onNo,
+            onOK: options.onYes,
+            onNo: options.onNo,
+            yesLabel: options.yesLabel,
+            noLabel: options.noLabel,
         };
         this.visibleDialog = ModalVisibilityStatus.Message;
     }

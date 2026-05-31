@@ -4,6 +4,9 @@ export interface IMessageDialogState {
     type: MessageDialogType;
     onOK?: () => void;
     onNo?: () => void;
+    okLabel?: string;
+    yesLabel?: string;
+    noLabel?: string;
 }
 
 export const enum MessageDialogType {

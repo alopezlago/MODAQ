@@ -32,10 +32,11 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     const newGameHandler = React.useCallback(() => {
         if (appState.game.hasUpdates) {
             // Prompt the user
-            uiState.dialogState.showYesNoCancelMessageDialog(
-                "Export Game?",
-                "The game has changes that haven't been exported. Would you like to export the game before starting a new one?",
-                () => {
+            uiState.dialogState.showYesNoCancelMessageDialog({
+                title: "Export Game?",
+                message:
+                    "The game has changes that haven't been exported. Would you like to export the game before starting a new one?",
+                onYes: () => {
                     // Open the export dialog, depending on if they have sheets. We should ideally abstract this logic
                     // to another method
                     if (appState.uiState.customExportOptions != undefined) {
@@ -47,13 +48,13 @@ export const GameBar = observer(function GameBar(): JSX.Element {
                         appState.uiState.dialogState.showExportToJsonDialog();
                     }
                 },
-                () => {
+                onNo: () => {
                     // User doesn't want any updates, so clear them
                     appState.game.markUpdateComplete();
                     uiState.createPendingNewGame();
                     uiState.dialogState.showNewGameDialog();
-                }
-            );
+                },
+            });
         } else {
             uiState.createPendingNewGame();
             uiState.dialogState.showNewGameDialog();
@@ -66,24 +67,6 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     const importFromQBJHandler = React.useCallback(() => {
         uiState.dialogState.showImportFromQBJDialog();
     }, [uiState]);
-
-    const protestBonusHandler = React.useCallback(() => {
-        // Issue: pending protest needs existing index. Need to update it to include the part number
-        const cycle: Cycle = game.cycles[uiState.cycleIndex];
-        if (cycle?.bonusAnswer == undefined) {
-            return;
-        }
-
-        const bonusIndex: number = game.getBonusIndex(uiState.cycleIndex);
-        const bonus: Bonus | undefined = game.packet.bonuses[bonusIndex];
-        if (bonus == undefined) {
-            // Something is wrong... the bonus is undefined, but this handler can be accessed?
-            throw new Error(`Impossible to add bonus protest for bonus question ${bonusIndex}`);
-        }
-
-        const protestableParts: number[] = cycle.getProtestableBonusPartIndexes(bonus.parts.length);
-        uiState.setPendingBonusProtest(cycle.bonusAnswer.receivingTeamName, bonusIndex, protestableParts[0]);
-    }, [game, uiState]);
 
     const addPlayerHandler = React.useCallback(() => {
         uiState.dialogState.showAddPlayerDialog(game.teamNames[0]);
@@ -100,9 +83,11 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     }, [uiState, game]);
 
     const reorderTeamsHandler = React.useCallback(() => {
-        uiState.dialogState.showOKCancelMessageDialog("Reorder teams", "Swap the order of teams?", () =>
-            ReorderTeamsDialogController.submit(appState)
-        );
+        uiState.dialogState.showOKCancelMessageDialog({
+            title: "Reorder teams",
+            message: "Swap the order of teams?",
+            onOK: () => ReorderTeamsDialogController.submit(appState),
+        });
     }, [appState, uiState]);
 
     const renameTeamHandler = React.useCallback(() => {
@@ -169,7 +154,6 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     const actionSubMenuItems: ICommandBarItemProps[] = getActionSubMenuItems(
         appState,
         addPlayerHandler,
-        protestBonusHandler,
         reorderPlayersHandler,
         reorderTeamsHandler,
         renameTeamHandler,
@@ -243,7 +227,6 @@ async function exportToSheets(appState: AppState): Promise<void> {
 function getActionSubMenuItems(
     appState: AppState,
     addPlayerHandler: () => void,
-    protestBonusHandler: () => void,
     reorderPlayersHandler: () => void,
     reorderTeamsHandler: () => void,
     renameTeamHandler: () => void,
@@ -264,7 +247,7 @@ function getActionSubMenuItems(
     );
     items.push(playerManagementSection);
 
-    const protestsSection: ICommandBarItemProps = getProtestSubMenuItems(appState, game, uiState, protestBonusHandler);
+    const protestsSection: ICommandBarItemProps = getProtestSubMenuItems(appState, game, uiState);
     items.push(protestsSection);
 
     const removeQuestionSection: ICommandBarItemProps = {
@@ -621,12 +604,7 @@ function getPlayerManagementSubMenuItems(
     };
 }
 
-function getProtestSubMenuItems(
-    appState: AppState,
-    game: GameState,
-    uiState: UIState,
-    protestBonusHandler: () => void
-): ICommandBarItemProps {
+function getProtestSubMenuItems(appState: AppState, game: GameState, uiState: UIState): ICommandBarItemProps {
     const cycle: Cycle | undefined =
         uiState.cycleIndex < game.cycles.length ? game.cycles[uiState.cycleIndex] : undefined;
 
@@ -636,7 +614,7 @@ function getProtestSubMenuItems(
     if (cycle?.orderedBuzzes != undefined) {
         const tossupIndex: number = game.getTossupIndex(uiState.cycleIndex);
         if (tossupIndex !== -1) {
-            const protestSubMenuItems: ICommandBarItemProps[] = [];
+            const tossupProtestSubMenuItems: ICommandBarItemProps[] = [];
             for (const buzz of cycle.orderedBuzzes) {
                 const { name, teamName } = buzz.marker.player;
                 const tossupProtestItemData: ITossupProtestMenuItemData = {
@@ -644,7 +622,7 @@ function getProtestSubMenuItems(
                     buzz,
                 };
 
-                const protestExists: boolean =
+                const tossupProtestExists: boolean =
                     cycle.tossupProtests != undefined &&
                     cycle.tossupProtests.findIndex((protest) => protest.teamName === teamName) >= 0;
 
@@ -652,12 +630,12 @@ function getProtestSubMenuItems(
                     key: `protest${teamName}_${name}`,
                     text: `${name} (${teamName})`,
                     canCheck: true,
-                    checked: protestExists,
+                    checked: tossupProtestExists,
                     data: tossupProtestItemData,
                     onClick: onProtestTossupClick,
                 };
 
-                const protestSection: ICommandBarItemProps = {
+                const tossupProtestSection: ICommandBarItemProps = {
                     key: `protestSection${teamName}_${name}`,
                     itemType: ContextualMenuItemType.Section,
                     sectionProps: {
@@ -667,16 +645,16 @@ function getProtestSubMenuItems(
                     },
                 };
 
-                protestSubMenuItems.push(protestSection);
+                tossupProtestSubMenuItems.push(tossupProtestSection);
             }
 
             protestTossupItems = {
                 key: "protestTossup",
                 text: "Protest tossup...",
                 subMenuProps: {
-                    items: protestSubMenuItems,
+                    items: tossupProtestSubMenuItems,
                 },
-                disabled: protestSubMenuItems.length === 0,
+                disabled: tossupProtestSubMenuItems.length === 0,
             };
         }
     }
@@ -685,11 +663,60 @@ function getProtestSubMenuItems(
         const bonusIndex: number = game.getBonusIndex(uiState.cycleIndex);
         if (bonusIndex !== -1) {
             const bonus: Bonus = game.packet.bonuses[bonusIndex];
-            if (cycle.getProtestableBonusPartIndexes(bonus.parts.length).length > 0) {
+            const protestableParts: number[] = cycle.getProtestableBonusPartIndexes(bonus.parts.length);
+            if (bonus && bonus.parts.length > 0) {
+                const bonusProtestSubMenuItems: ICommandBarItemProps[] = [];
+                for (let i = 0; i < bonus.parts.length; i++) {
+                    // This is potentially quadratic, but bonus parts should be few in number
+                    const bonusProtestExists = !protestableParts.includes(i);
+
+                    const protestBonusPartHandler = () => {
+                        // Somehow a bonus disappeared or the bonus answer did when handled. It should never happen
+                        if (bonus == undefined || cycle.bonusAnswer == undefined) {
+                            throw new Error(
+                                `Impossible to add bonus protest for bonus question ${bonusIndex}, part ${i + 1}`
+                            );
+                        }
+
+                        if (bonusProtestExists) {
+                            appState.uiState.showRemoveBonusProtestDialog(cycle, i);
+                            return;
+                        }
+
+                        uiState.setPendingBonusProtest(cycle.bonusAnswer.receivingTeamName, bonusIndex, i);
+                    };
+
+                    const bonusProtestItem: ICommandBarItemProps = {
+                        key: `protestBonusPart_${i}`,
+                        text: `${i + 1}`,
+                        canCheck: true,
+                        checked: bonusProtestExists,
+                        data: {
+                            appState,
+                            bonus: bonus,
+                            partIndex: i,
+                        },
+                        onClick: protestBonusPartHandler,
+                    };
+                    bonusProtestSubMenuItems.push(bonusProtestItem);
+                }
+
+                const bonusProtestSection: ICommandBarItemProps = {
+                    key: "bonusProtestSection",
+                    itemType: ContextualMenuItemType.Section,
+                    sectionProps: {
+                        bottomDivider: true,
+                        title: "Parts",
+                        items: bonusProtestSubMenuItems,
+                    },
+                };
+
                 protestBonusItem = {
                     key: "protestBonus",
                     text: "Protest bonus...",
-                    onClick: protestBonusHandler,
+                    subMenuProps: {
+                        items: [bonusProtestSection],
+                    },
                 };
             }
         }
@@ -793,7 +820,7 @@ function onProtestTossupClick(
 
     // If this item is checked, then clear the protest
     if (item.checked === true) {
-        uiState.dialogState.showRemoveTossupProtestDialog(cycle, teamName);
+        uiState.showRemoveTossupProtestDialog(cycle, teamName);
         return;
     }
 
@@ -814,23 +841,22 @@ function buildCopyTossupProtestInfoText(appState: AppState, cycle: Cycle, protes
 
     const tossup: Tossup = game.packet.tossups[protest.questionIndex];
     return `* Packet ${packetName}
-* Cycle #${uiState.cycleIndex + 1}
-* Tossup #${protest.questionIndex + 1}
-* Packet Answerline: ${tossup.answer}
-* Player Answer: ${protest.givenAnswer}
-* Buzzpoint: Word #${protest.position} (${tossup
+* **Cycle**: #${uiState.cycleIndex + 1}
+* **Tossup**: #${protest.questionIndex + 1}
+* **Metadata**: ${tossup.metadata}
+* **Packet Answerline**: ${tossup.answer}
+* **Player Answer**: ${protest.givenAnswer}
+* **Buzzpoint**: Word #${protest.position} (${tossup
         .getWords(game.gameFormat)
         .filter((w) => w.canBuzzOn)
         [protest.position].word.map((w) => w.text)
         .join(" ")})
-* Metadata: ${tossup.metadata}
-* Moderator Judgment: ${
+* **Moderator Judgment**: ${
         cycle.correctBuzz == undefined || cycle.correctBuzz.marker.player.teamName !== protest.teamName
             ? "Incorrect"
             : "Correct"
     }
-* Justification: ${protest.reason}
-* Protest Matters: ${game.protestsMatter ? "Yes" : "No"}`;
+* **Justification**: ${protest.reason}`;
 }
 
 function buildCopyBonusProtestInfoText(appState: AppState, cycle: Cycle, protest: IBonusProtestEvent): string {
@@ -840,18 +866,17 @@ function buildCopyBonusProtestInfoText(appState: AppState, cycle: Cycle, protest
     const bonus: Bonus = game.packet.bonuses[protest.questionIndex];
 
     return `* Packet ${packetName}
-* Cycle #${uiState.cycleIndex + 1}
-* Bonus #${protest.questionIndex + 1}, Part #${protest.partIndex + 1}
-* Packet Answerline: ${bonus.parts[protest.partIndex].answer}
-* Player Answer: ${protest.givenAnswer}
-* Metadata: ${bonus.metadata}
-* Moderator Judgment: ${
+* **Cycle**: #${uiState.cycleIndex + 1}
+* **Bonus**: #${protest.questionIndex + 1}, Part #${protest.partIndex + 1}
+* **Metadata**: ${bonus.metadata}
+* **Packet Answerline**: ${bonus.parts[protest.partIndex].answer}
+* **Player Answer**: ${protest.givenAnswer}
+* **Moderator Judgment**: ${
         cycle.bonusAnswer === undefined || cycle.bonusAnswer.parts[protest.partIndex].points <= 0
             ? "Incorrect"
             : "Correct"
     }
-* Justification: ${protest.reason}
-* Protest Matters: ${game.protestsMatter ? "Yes" : "No"}`;
+* **Justification**: ${protest.reason}`;
 }
 
 function copyProtestInfo(uiState: UIState, protestInfo: string): void {
@@ -866,14 +891,17 @@ function copyProtestInfo(uiState: UIState, protestInfo: string): void {
 }
 
 function onCopyProtestInfoSuccess(uiState: UIState): void {
-    uiState.dialogState.showOKMessageDialog("Copied", "Protest info has been copied to clipboard.");
+    uiState.dialogState.showOKMessageDialog({
+        title: "Copied",
+        message: "Protest info has been copied to clipboard.",
+    });
 }
 
 function onCopyProtestInfoFailure(uiState: UIState): void {
-    uiState.dialogState.showOKMessageDialog(
-        "Error",
-        "Unable to copy protest info to clipboard. Please allow MODAQ access to the clipboard."
-    );
+    uiState.dialogState.showOKMessageDialog({
+        title: "Error",
+        message: "Unable to copy protest info to clipboard. Please allow MODAQ access to the clipboard.",
+    });
 }
 
 function onPlayerLeaveClick(
@@ -888,13 +916,13 @@ function onPlayerLeaveClick(
 
     const appState: AppState = item.data.appState;
 
-    appState.uiState.dialogState.showOKCancelMessageDialog(
-        "Let Player Leave",
-        `Are you sure you want to let the player "${item.data.activePlayer.name}" from team "${
+    appState.uiState.dialogState.showOKCancelMessageDialog({
+        title: "Let Player Leave",
+        message: `Are you sure you want to let the player "${item.data.activePlayer.name}" from team "${
             item.data.activePlayer.teamName
         }" leave the game before question #${appState.uiState.cycleIndex + 1}?`,
-        () => appState.game.cycles[appState.uiState.cycleIndex].addPlayerLeaves(item.data.activePlayer)
-    );
+        onOK: () => appState.game.cycles[appState.uiState.cycleIndex].addPlayerLeaves(item.data.activePlayer),
+    });
 }
 
 function onRenamePlayerClick(
@@ -936,13 +964,14 @@ function onSwapPlayerClick(
         Math.abs(cycleIndex - halftimeIndex) <= 1
             ? ` If you want to substitute a player at halftime, do it on question ${Math.floor(halftimeIndex + 1)}.`
             : "";
-    item.data.appState.uiState.dialogState.showOKCancelMessageDialog(
-        "Substitute Player",
-        `You are substituting players outside of a normal time (beginning of the game, after halftime, overtime). Are you sure you want to substitute before question #${
-            cycleIndex + 1
-        }?` + additionalHint,
-        () => game.cycles[uiState.cycleIndex].addSwapSubstitution(item.data.player, item.data.activePlayer)
-    );
+    item.data.appState.uiState.dialogState.showOKCancelMessageDialog({
+        title: "Substitute Player",
+        message:
+            `You are substituting players outside of a normal time (beginning of the game, after halftime, overtime). Are you sure you want to substitute before question #${
+                cycleIndex + 1
+            }?` + additionalHint,
+        onOK: () => game.cycles[uiState.cycleIndex].addSwapSubstitution(item.data.player, item.data.activePlayer),
+    });
 }
 
 function isSubMenuItemData(data: ISubMenuItemData | undefined): data is ISubMenuItemData {
