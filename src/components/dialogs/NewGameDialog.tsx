@@ -62,6 +62,10 @@ const content: IDialogContentProps = {
     closeButtonAriaLabel: "Close",
     showCloseButton: true,
     styles: {
+        // Tighten the gap under the "New Game" title so more of the form fits on screen
+        title: {
+            paddingBottom: 4,
+        },
         innerContent: {
             display: "flex",
             flexDirection: "column",
@@ -82,7 +86,7 @@ const modalProps: IModalProps = {
             // To have max width respected normally, we'd need to pass in an IDialogStyleProps, but it ridiculously
             // requires you to pass in an entire theme to modify the max width. We could also use a modal, but that
             // requires building much of what Dialogs offer easily (close buttons, footer for buttons)
-            minWidth: "60% !important",
+            minWidth: "calc(60% + 100px) !important",
             maxWidth: "90% !important",
             maxHeight: "95% !important",
             top: "5vh",
@@ -390,7 +394,6 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
             <StackItem>
                 <div className={props.classes.teamEntriesContainer}>
                     <FromRostersTeamEntry
-                        playerListHeight={playerListHeight}
                         playerPool={playersFromRosters}
                         players={firstTeamPlayersFromRosters}
                         teamLabel="First team"
@@ -413,7 +416,6 @@ const FromSheetsNewGameBody = observer(function FromSheetsNewGameBody(props: INe
                     />
                     <Separator vertical={true} />
                     <FromRostersTeamEntry
-                        playerListHeight={playerListHeight}
                         playerPool={playersFromRosters}
                         players={secondTeamPlayersFromRosters}
                         teamNameErrorMessage={teamNameErrorMessage}
@@ -529,7 +531,6 @@ const FromQBJRegistrationNewGameBody = observer(function FromQBJRegistrationNewG
                     <StackItem>
                         <div className={props.classes.teamEntriesContainer}>
                             <FromRostersTeamEntry
-                                playerListHeight={playerListHeight}
                                 playerPool={playersFromRosters}
                                 players={firstTeamPlayers}
                                 teamLabel="First team"
@@ -552,7 +553,6 @@ const FromQBJRegistrationNewGameBody = observer(function FromQBJRegistrationNewG
                             />
                             <Separator vertical={true} />
                             <FromRostersTeamEntry
-                                playerListHeight={playerListHeight}
                                 playerPool={playersFromRosters}
                                 players={secondTeamPlayers}
                                 teamNameErrorMessage={teamNameErrorMessage}
