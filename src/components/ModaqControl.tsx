@@ -21,6 +21,7 @@ import { configure } from "mobx";
 import { observer } from "mobx-react-lite";
 
 import * as PacketLoaderController from "./PacketLoaderController";
+import * as TossupQuestionController from "./TossupQuestionController";
 import { StateProvider } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";
 import { GameViewer } from "./GameViewer";
@@ -250,14 +251,50 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
     const keydownListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) => shortcutHandler(event, appState);
     document.addEventListener("keyup", keydownListener);
 
+    // The buzz menu keys get a capture-phase keydown listener so they're seen before the menu's own keyboard
+    // handling (which has focus while the menu is open) can react to or swallow them
+    const buzzMenuKeyListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) =>
+        buzzMenuShortcutHandler(event, appState);
+    document.addEventListener("keydown", buzzMenuKeyListener, /* useCapture */ true);
+
     return () => {
         document.removeEventListener("keyup", keydownListener);
+        document.removeEventListener("keydown", buzzMenuKeyListener, /* useCapture */ true);
     };
+}
+
+// While the buzz menu is open, number keys pick a player and C/W mark their buzz as correct/wrong. The number
+// keys only act this way while the menu is open, so the bonus shortcuts in shortcutHandler still work normally.
+function buzzMenuShortcutHandler(event: KeyboardEvent, appState: AppState): void {
+    if (
+        appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None ||
+        !appState.uiState.buzzMenuState.visible
+    ) {
+        return;
+    }
+
+    const key: string = event.key.toUpperCase();
+    if (key.length === 1 && key >= "1" && key <= "9") {
+        TossupQuestionController.selectBuzzMenuPlayerByNumber(appState, Number(key));
+    } else if (key === "C" || key === "W") {
+        TossupQuestionController.markKeyboardSelectedPlayerBuzz(appState, /* isCorrect */ key === "C");
+    } else {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
 }
 
 function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
     // Disable shortcuts if there's a modal dialog open
     if (appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None) {
+        return;
+    }
+
+    // The buzz menu's keys (numbers, C, W) are handled by buzzMenuShortcutHandler on keydown; while the menu
+    // is open, don't let the same keys also trigger the shortcuts below
+    if (appState.uiState.buzzMenuState.visible) {
         return;
     }
 
@@ -289,6 +326,15 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
 
             break;
 
+        case "B":
+            // Open the buzz menu at the buzz point, anchoring it to the most recently read word when the
+            // microphone is tracking the reader and the user isn't picking a word with the mouse
+            TossupQuestionController.openBuzzMenuAtBuzzPoint(appState);
+
+            event.preventDefault();
+            event.stopPropagation();
+            break;
+
         case "N":
             if (appState.uiState.cycleIndex + 1 < appState.game.playableCycles.length) {
                 appState.uiState.nextCycle();
@@ -299,7 +345,6 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
             break;
 
         case "P":
-        case "B":
             appState.uiState.previousCycle();
             event.preventDefault();
             event.stopPropagation();

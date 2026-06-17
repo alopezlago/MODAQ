@@ -107,6 +107,40 @@ export class UIState {
     // Default should be to highlight answered bonuses
     public noBonusHighlight: boolean;
 
+    // When true, listen to the microphone and move the buzz point as the reader reads the tossup
+    public trackReaderWithMicrophone: boolean;
+
+    // When true, microphone tracking doesn't move the highlight on its own; it stays put until the user presses
+    // B, which jumps it to where the reader currently is. The live position is still tracked in the background.
+    public holdReaderHighlightUntilBuzz: boolean;
+
+    // When true, show diagnostics for the microphone tracking (engine, status, last heard words). On by default
+    // while the feature is being tuned.
+    @ignore
+    public showReaderFollowerDebug: boolean;
+
+    @ignore
+    public readerFollowerEngine: string | undefined;
+
+    @ignore
+    public readerFollowerStatus: string | undefined;
+
+    @ignore
+    public readerFollowerTranscript: string | undefined;
+
+    // Where the reader currently is, before the pause delay moves the buzz point there
+    @ignore
+    public readerFollowerLivePosition: number;
+
+    // The last event that made the buzz point update immediately (buzz sound, "correct"/"incorrect"/etc.)
+    @ignore
+    public readerFollowerLastCue: string | undefined;
+
+    // When the mouse last moved over the question text. Used to decide if the user is picking a buzz point
+    // manually (so keyboard shortcuts shouldn't move it) or relying on the microphone tracking.
+    @ignore
+    public lastQuestionTextMouseMoveTime: number;
+
     public pronunciationGuideColor: string | undefined;
 
     public questionFontColor: string | undefined;
@@ -130,6 +164,7 @@ export class UIState {
         this.buzzMenuState = {
             clearSelectedWordOnClose: true,
             visible: false,
+            selectedPlayerIndex: undefined,
         };
         this.customExportOptions = undefined;
         this.customExportIntervalId = undefined;
@@ -154,6 +189,15 @@ export class UIState {
         this.pendingNewGame = undefined;
         this.pendingSheet = undefined;
         this.pendingTossupProtestEvent = undefined;
+        this.trackReaderWithMicrophone = false;
+        this.holdReaderHighlightUntilBuzz = false;
+        this.showReaderFollowerDebug = true;
+        this.readerFollowerEngine = undefined;
+        this.readerFollowerStatus = undefined;
+        this.readerFollowerTranscript = undefined;
+        this.readerFollowerLivePosition = -1;
+        this.readerFollowerLastCue = undefined;
+        this.lastQuestionTextMouseMoveTime = 0;
         this.useDarkMode = false;
         this.yappServiceUrl = undefined;
 
@@ -614,6 +658,50 @@ export class UIState {
         this.selectedWordIndex = newIndex;
     }
 
+    public toggleHoldReaderHighlightUntilBuzz(): void {
+        this.holdReaderHighlightUntilBuzz = !this.holdReaderHighlightUntilBuzz;
+    }
+
+    public setTrackReaderWithMicrophone(value: boolean): void {
+        this.trackReaderWithMicrophone = value;
+
+        if (!value) {
+            this.readerFollowerEngine = undefined;
+            this.readerFollowerStatus = undefined;
+            this.readerFollowerTranscript = undefined;
+            this.readerFollowerLivePosition = -1;
+            this.readerFollowerLastCue = undefined;
+        }
+    }
+
+    public setReaderFollowerLivePosition(position: number): void {
+        this.readerFollowerLivePosition = position;
+    }
+
+    public setReaderFollowerLastCue(cue: string): void {
+        this.readerFollowerLastCue = cue;
+    }
+
+    public setLastQuestionTextMouseMoveTime(time: number): void {
+        // Mouse move events fire constantly while the mouse is over the text; only record one every so often
+        if (time - this.lastQuestionTextMouseMoveTime >= 250) {
+            this.lastQuestionTextMouseMoveTime = time;
+        }
+    }
+
+    public setReaderFollowerStatus(engine: string, status: string): void {
+        this.readerFollowerEngine = engine;
+        this.readerFollowerStatus = status;
+    }
+
+    public setReaderFollowerTranscript(transcript: string): void {
+        this.readerFollowerTranscript = transcript;
+    }
+
+    public toggleReaderFollowerDebug(): void {
+        this.showReaderFollowerDebug = !this.showReaderFollowerDebug;
+    }
+
     public setYappServiceUrl(url: string | undefined): void {
         this.yappServiceUrl = url;
     }
@@ -652,6 +740,11 @@ export class UIState {
 
     public hideBuzzMenu(): void {
         this.buzzMenuState.visible = false;
+        this.buzzMenuState.selectedPlayerIndex = undefined;
+    }
+
+    public setBuzzMenuSelectedPlayerIndex(index: number | undefined): void {
+        this.buzzMenuState.selectedPlayerIndex = index;
     }
 
     public resetCustomExport(): void {
@@ -715,6 +808,7 @@ export class UIState {
     public showBuzzMenu(clearSelectedWordOnClose: boolean): void {
         this.buzzMenuState.visible = true;
         this.buzzMenuState.clearSelectedWordOnClose = clearSelectedWordOnClose;
+        this.buzzMenuState.selectedPlayerIndex = undefined;
     }
 
     // We have to do this call here because this is where the information is available

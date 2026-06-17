@@ -59,7 +59,7 @@ const getClassNames = memoizeFunction(
                 { display: "inline-flex" },
                 selected && {
                     fontWeight: "bold",
-                    background: theme ? theme.palette.themeLight + "20" : "rbg(192, 192, 192)",
+                    background: theme ? theme.palette.themeLight : "rgb(192, 192, 192)",
                 },
                 correct && {
                     background: theme ? theme.palette.tealLight + "20" : "rbg(0, 128, 128)",

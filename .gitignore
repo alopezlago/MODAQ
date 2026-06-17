@@ -8,3 +8,4 @@ dist
 
 # code coverage reports
 coverage/*
+.vercel

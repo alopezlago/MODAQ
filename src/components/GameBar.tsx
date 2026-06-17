@@ -20,6 +20,7 @@ import { AppState } from "../state/AppState";
 import { IBonusProtestEvent, ITossupAnswerEvent, ITossupProtestEvent } from "../state/Events";
 import { useAppState } from "../contexts/StateContext";
 import { StatusDisplayType } from "../state/StatusDisplayType";
+import { ReaderFollower } from "../speech/ReaderFollower";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
@@ -347,6 +348,43 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             onClick: () => {
                 appState.uiState.showFontDialog();
             },
+        },
+        {
+            key: "trackReader",
+            text: "Follow reading with microphone",
+            title: "Listen to the microphone and move the buzz point to where the reader is in the tossup",
+            canCheck: true,
+            checked: appState.uiState.trackReaderWithMicrophone,
+            onClick: () => {
+                if (!appState.uiState.trackReaderWithMicrophone && !ReaderFollower.isSupported()) {
+                    appState.uiState.dialogState.showOKMessageDialog({
+                        title: "Microphone Tracking Unavailable",
+                        message:
+                            "Neither speech recognition nor microphone capture is supported in this browser. Try a recent version of Chrome, Edge, or Firefox.",
+                    });
+                    return;
+                }
+
+                appState.uiState.setTrackReaderWithMicrophone(!appState.uiState.trackReaderWithMicrophone);
+            },
+        },
+        {
+            key: "holdReaderHighlight",
+            text: "Hold highlight until I press B",
+            title: "In microphone mode, don't move the highlight automatically; pressing B jumps it to where the reader is",
+            canCheck: true,
+            checked: appState.uiState.holdReaderHighlightUntilBuzz,
+            disabled: !appState.uiState.trackReaderWithMicrophone,
+            onClick: () => appState.uiState.toggleHoldReaderHighlightUntilBuzz(),
+        },
+        {
+            key: "trackReaderDebug",
+            text: "Microphone debug info",
+            title: "Show diagnostics for microphone tracking under the tossup",
+            canCheck: true,
+            checked: appState.uiState.showReaderFollowerDebug,
+            disabled: !appState.uiState.trackReaderWithMicrophone,
+            onClick: () => appState.uiState.toggleReaderFollowerDebug(),
         }
     );
 
