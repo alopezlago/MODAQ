@@ -124,7 +124,10 @@ export const PlayerRoster = observer(function PlayerRoster(props: IPlayerRosterP
 
             setAutoFocusRowIndex(undefined);
         }
-    }, [autoFocusRowIndex, props.players, setAutoFocusRowIndex]);
+        // props.players is intentionally not a dependency: under MobX it's a stable reference, so it would never
+        // re-trigger this effect. Focus is driven entirely by autoFocusRowIndex, which we reset to undefined above so
+        // the effect re-fires every time the shortcut is used.
+    }, [autoFocusRowIndex, setAutoFocusRowIndex]);
 
     function onRowKeyDown(ev: React.KeyboardEvent<HTMLDivElement>, player: Player, index: number): void {
         // Pressing 1-8 while a player is selected swaps that player to the matching position

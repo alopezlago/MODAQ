@@ -47,8 +47,6 @@ import { FilePicker } from "../FilePicker";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { IResult } from "../../IResult";
 
-const playerListHeight = "25vh";
-
 const enum PivotKey {
     Manual = "M",
     TJSheets = "T",
@@ -254,7 +252,6 @@ const ManualNewGamePivotBody = observer(function ManualNewGamePivotBody(props: I
             <div className={props.classes.teamEntriesContainer}>
                 <ManualTeamEntry
                     defaultTeamName={manualState.firstTeamPlayers[0].teamName}
-                    playerListHeight={playerListHeight}
                     players={manualState.firstTeamPlayers}
                     teamNameErrorMessage={teamNameErrorMessage}
                     teamLabel="First team"
@@ -265,7 +262,6 @@ const ManualNewGamePivotBody = observer(function ManualNewGamePivotBody(props: I
                 <Separator vertical={true} />
                 <ManualTeamEntry
                     defaultTeamName={manualState.secondTeamPlayers[0].teamName}
-                    playerListHeight={playerListHeight}
                     players={manualState.secondTeamPlayers}
                     teamNameErrorMessage={teamNameErrorMessage}
                     teamLabel="Second team"
