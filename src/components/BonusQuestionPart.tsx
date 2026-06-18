@@ -15,7 +15,7 @@ import { BonusPart } from "../state/PacketState";
 import { Cycle } from "../state/Cycle";
 import { Answer } from "./Answer";
 import { FormattedText } from "./FormattedText";
-import { IFormattedText } from "../parser/IFormattedText";
+import type { IFormattedText } from "../parser/IFormattedText";
 import { IGameFormat } from "../state/IGameFormat";
 import { useAppState } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";

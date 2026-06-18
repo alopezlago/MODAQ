@@ -2,7 +2,7 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { mergeStyleSets, memoizeFunction } from "@fluentui/react";
 
-import { IFormattedText } from "../parser/IFormattedText";
+import type { IFormattedText } from "../parser/IFormattedText";
 import { useAppState } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";
 

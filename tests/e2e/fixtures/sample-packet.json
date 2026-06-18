@@ -1,0 +1,39 @@
+{
+    "name": "Test Packet",
+    "tossups": [
+        {
+            "question": "His farewell address warned against the dangers of political parties. For 10 points, name this first president of the United States.",
+            "answer": "George <b><u>Washington</u></b>"
+        },
+        {
+            "question": "One way to search over these data structurs is with the Knuth-Morris-Pratt algorithm. For 10 points, name these data structures that represent text.",
+            "answer": "<b><u>string</u></b>"
+        }
+    ],
+    "bonuses": [
+        {
+            "leadin": "Answer some questions about Spain, for 10 points each.",
+            "parts": [
+                "Name this is the capital of Spain.",
+                "Name this second most populous city in Spain. Catalan is spoken there.",
+                "Another language spoken in Spain is this one that comes from the Northwestern part of the country. It is heavily influenced by Portuguese."
+            ],
+            "answers": [
+                "<b><u>Madrid</u></b>",
+                "<b><u>Barcelona</u></b>",
+                "<b><u>Galician</u></b> (accept <b><u>gallego</u></b>)"
+            ],
+            "values": [10, 10, 10]
+        },
+        {
+            "leadin": "This character's biggest fear of rats is exploited in Room 101. For 10 points each:",
+            "parts": [
+                "Name this character.",
+                "Winston Smith is a character in this novel.",
+                "This event happens each day in the novel, where they shout insults to Emmanuel Goldstein."
+            ],
+            "answers": ["Winston <b><u>Smith</u></b>", "<b><u>1984</u></b>", "The <b><u>Two Minutes Hate</u></b>"],
+            "values": [10, 10, 10]
+        }
+    ]
+}

@@ -1,4 +1,4 @@
-import { IFormattedText } from "./IFormattedText";
+import type { IFormattedText } from "./IFormattedText";
 
 /**
  * Default pronunciation guide markers used if none are passed into `IFormattingOptions`

@@ -2,7 +2,7 @@ import { makeAutoObservable } from "mobx";
 import { format } from "mobx-sync";
 
 import * as FormattedTextParser from "../parser/FormattedTextParser";
-import { IFormattedText } from "../parser/IFormattedText";
+import type { IFormattedText } from "../parser/IFormattedText";
 import { IGameFormat } from "./IGameFormat";
 
 export class PacketState {

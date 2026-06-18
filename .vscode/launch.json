@@ -12,8 +12,10 @@
                 "999999",
                 "--colors",
                 "--recursive",
-                "${workspaceFolder}/tests/**/*.ts",
+                "${workspaceFolder}/tests/unit/**/*.ts",
                 "--check-leaks",
+                "-r",
+                "${workspaceFolder}/tests/unit/TestInit.js",
                 "-r",
                 "ts-node/register",
                 "-r",
@@ -26,6 +28,45 @@
             "skipFiles": ["<node_internals>/**"],
             "type": "node",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Playwright: Current File (headed)",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/node_modules/@playwright/test/cli.js",
+            "args": ["test", "${file}", "--project=chromium", "--headed"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": ["<node_internals>/**"]
+        },
+        {
+            "name": "Playwright: Current File (PWDEBUG)",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/node_modules/@playwright/test/cli.js",
+            "args": ["test", "${file}", "--project=chromium", "--headed"],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PWDEBUG": "1"
+            },
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": ["<node_internals>/**"]
+        },
+        {
+            "name": "Playwright: Test at Cursor (PWDEBUG)",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/node_modules/@playwright/test/cli.js",
+            "args": ["test", "${file}", "--project=chromium", "--headed", "-g", "${selectedText}"],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PWDEBUG": "1"
+            },
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": ["<node_internals>/**"]
         },
         {
             "type": "chrome",

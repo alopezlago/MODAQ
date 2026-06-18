@@ -1,0 +1,33 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Playwright: Run All (headed)",
+            "type": "shell",
+            "command": "yarn test:e2e:headed",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Playwright: Debug All",
+            "type": "shell",
+            "command": "yarn test:e2e:debug",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Playwright: UI Mode",
+            "type": "shell",
+            "command": "yarn test:e2e:ui",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Playwright: Codegen",
+            "type": "shell",
+            "command": "yarn test:e2e:codegen",
+            "group": "test",
+            "problemMatcher": []
+        }
+    ]
+}
