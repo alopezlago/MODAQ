@@ -8,3 +8,5 @@ dist
 
 # code coverage reports
 coverage/*
+.vercel/project.json
+.vercel/README.txt
