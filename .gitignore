@@ -8,5 +8,11 @@ dist
 
 # code coverage reports
 coverage/*
+
+# Playwright results
+playwright-report/
+test-results/
+
+# Vercel configuration for forks/testing
 .vercel/project.json
 .vercel/README.txt

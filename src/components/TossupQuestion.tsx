@@ -9,7 +9,7 @@ import { QuestionWord } from "./QuestionWord";
 import { Cycle } from "../state/Cycle";
 import { BuzzMenu } from "./BuzzMenu";
 import { Answer } from "./Answer";
-import { IFormattedText } from "../parser/IFormattedText";
+import type { IFormattedText } from "../parser/IFormattedText";
 import { TossupProtestDialog } from "./dialogs/TossupProtestDialog";
 import { CancelButton } from "./CancelButton";
 import { AppState } from "../state/AppState";

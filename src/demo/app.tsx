@@ -10,7 +10,7 @@ declare const __BUILD_VERSION__: string;
 const demoGoogleClientId = "1038902414768-nj056sbrbe0oshavft2uq9et6tvbu2d5.apps.googleusercontent.com";
 const demoYappService = "https://www.quizbowlreader.com/yapp/api/parse?modaq=true";
 
-window.onload = () => {
+function renderApp(): void {
     // This element might not exist when running tests. In that case, skip rendering the application.
     const element: HTMLElement | null = document.getElementById("root");
     if (element) {
@@ -24,4 +24,12 @@ window.onload = () => {
             document.getElementById("root")
         );
     }
-};
+}
+
+// Make rendering happen once all of the scripts are downloaded so that startup is deterministic.
+// This helps with test stability in Playwright.
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", renderApp, { once: true });
+} else {
+    renderApp();
+}

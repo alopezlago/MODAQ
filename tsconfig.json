@@ -23,5 +23,5 @@
         "target": "es6",
         "useDefineForClassFields": true
     },
-    "include": ["src", "tests", "vite.env.d.ts", "index.ts"]
+    "include": ["src", "tests/unit", "vite.env.d.ts", "index.ts"]
 }
