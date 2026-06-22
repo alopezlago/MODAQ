@@ -20,7 +20,8 @@ export const TossupAnswerCycleItem = observer(function TossupAnswerCycleItem(
     let buzzDescription = "answered";
     const points: number = props.game.getBuzzValue(props.buzz);
     if (points <= 0) {
-        buzzDescription = `for ${points} ✗`;
+        const actualPoints = props.buzz === props.cycle.firstWrongBuzz ? points : 0;
+        buzzDescription = `for ${actualPoints} ✗`;
     } else {
         buzzDescription = `for ${points} ✓`;
     }
