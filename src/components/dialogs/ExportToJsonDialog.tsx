@@ -71,8 +71,12 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
             maxWidth="40vw"
             onDismiss={cancelHandler}
         >
-            <Label>To export the whole game (packet, players, and events), click on &quot;Export game&quot;.</Label>
-            <Label>To only export the events, click on &quot;Export events&quot;.</Label>
+            {!appState.uiState.tmsActive && (
+                <>
+                    <Label>To export the whole game (packet, players, and events), click on &quot;Export game&quot;.</Label>
+                    <Label>To only export the events, click on &quot;Export events&quot;.</Label>
+                </>
+            )}
             <RoundSelector
                 roundNumber={roundNumber}
                 onRoundNumberChange={(newValue) => appState.uiState.setExportRoundNumber(newValue)}
@@ -113,8 +117,17 @@ const ExportToJsonDialogFooter = observer(function ExportToJsonDialogFooter(
 
     return (
         <DialogFooter>
-            <PrimaryButton text="Export game" onClick={exportHandler} href={gameHref} download={gameFilename} />
-            <PrimaryButton text="Export events" onClick={exportHandler} href={cyclesHref} download={cyclesFilename} />
+            {!appState.uiState.tmsActive && (
+                <>
+                    <PrimaryButton text="Export game" onClick={exportHandler} href={gameHref} download={gameFilename} />
+                    <PrimaryButton
+                        text="Export events"
+                        onClick={exportHandler}
+                        href={cyclesHref}
+                        download={cyclesFilename}
+                    />
+                </>
+            )}
             <PrimaryButton text="Export QBJ" onClick={exportHandler} href={qbjHref} download={qbjFilename} />
             <DefaultButton text="Cancel" onClick={cancelHandler} />
         </DialogFooter>

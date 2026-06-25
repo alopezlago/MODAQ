@@ -69,6 +69,11 @@ export class UIState {
     @ignore
     public hideNewGame: boolean;
 
+    // True when MODAQ is embedded in TMS's moderator-managed flow. Gates TMS-specific UI behavior
+    // (backup-only export, always-visible packet loader, QBJ-only export dialog).
+    @ignore
+    public tmsActive: boolean;
+
     @ignore
     public importGameStatus: IStatus | undefined;
 
@@ -137,6 +142,7 @@ export class UIState {
         this.exportRoundNumber = 1;
         this.hideBonusOnDeadTossup = false;
         this.hideNewGame = false;
+        this.tmsActive = false;
 
         // Default to Fabric UI's default font (Segoe UI), then Times New Roman
         this.fontFamily = DefaultFontFamily;
@@ -501,6 +507,10 @@ export class UIState {
 
     public setHideNewGame(value: boolean): void {
         this.hideNewGame = value;
+    }
+
+    public setTmsActive(value: boolean): void {
+        this.tmsActive = value;
     }
 
     public setImportGameStatus(status: IStatus): void {

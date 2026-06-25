@@ -6,6 +6,11 @@ import {
     IButtonProps,
     ICommandBarItemProps,
     CommandBar,
+    Dialog,
+    DialogType,
+    DialogFooter,
+    PrimaryButton,
+    DefaultButton,
 } from "@fluentui/react";
 
 import * as BonusQuestionController from "./BonusQuestionController";
@@ -28,6 +33,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     const appState: AppState = useAppState();
     const uiState: UIState = appState.uiState;
     const game: GameState = appState.game;
+    const [showBackupConfirm, setShowBackupConfirm] = React.useState(false);
 
     const newGameHandler = React.useCallback(() => {
         if (appState.game.hasUpdates) {
@@ -167,8 +173,18 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         },
     });
 
-    // If a custom export option is given, only show a button for that export
-    if (appState.uiState.customExportOptions == undefined) {
+    // In TMS-managed mode, only show a button for exporting a backup, gated behind a confirmation dialog.
+    // Otherwise show the custom export button (if given) or the standard export submenu.
+    if (uiState.tmsActive) {
+        items.push({
+            key: "exportBackup",
+            text: "Export Backup",
+            disabled: appState.game.cycles.length === 0,
+            onClick: () => {
+                setShowBackupConfirm(true);
+            },
+        });
+    } else if (appState.uiState.customExportOptions == undefined) {
         const exportSubMenuItems: ICommandBarItemProps[] = getExportSubMenuItems(appState);
         items.push({
             key: "export",
@@ -216,7 +232,33 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         onClick: openHelpHandler,
     });
 
-    return <CommandBar items={items} overflowButtonProps={overflowProps} />;
+    return (
+        <>
+            <CommandBar items={items} overflowButtonProps={overflowProps} />
+            <Dialog
+                hidden={!showBackupConfirm}
+                onDismiss={() => setShowBackupConfirm(false)}
+                dialogContentProps={{
+                    type: DialogType.normal,
+                    title: "Export Backup",
+                    subText:
+                        "This function is intended for downloading a backup file to move to demo MODAQ for emergencies. Are you sure you want to proceed?",
+                }}
+                modalProps={{ isBlocking: false }}
+            >
+                <DialogFooter>
+                    <PrimaryButton
+                        text="Yes, Export Backup"
+                        onClick={() => {
+                            setShowBackupConfirm(false);
+                            appState.uiState.dialogState.showExportToJsonDialog();
+                        }}
+                    />
+                    <DefaultButton text="Cancel" onClick={() => setShowBackupConfirm(false)} />
+                </DialogFooter>
+            </Dialog>
+        </>
+    );
 });
 
 async function exportToSheets(appState: AppState): Promise<void> {

@@ -97,6 +97,13 @@ interface IBaseCustomExport {
      * The smallest interval allowed is 5000 milliseconds.
      */
     customExportInterval?: number;
+
+    /**
+     * If defined, called instead of showing the default "Export Succeeded" dialog when a Menu-triggered export
+     * succeeds. Only used when `tmsActive` is enabled on the `ModaqControl`.
+     * @param source How the export was triggered
+     */
+    onSuccess?: (source: ExportSource) => void;
 }
 
 export type ExportType = "Raw" | "QBJ";

@@ -218,6 +218,13 @@ export interface IModaqControlProps {
     storeName?: string | undefined;
 
     /**
+     * When `true`, enables TMS-specific UI behavior: the export menu is replaced with a single
+     * "Export Backup" button (gated behind a confirmation dialog), the packet loader is always shown
+     * regardless of `yappServiceUrl`, and the JSON export dialog only offers a QBJ export.
+     */
+    tmsActive?: boolean;
+
+    /**
      * The URL to a Yet Another Packet Parser (YAPP) compatible service, which parses docx files. If this value isn't
      * defined, then packets must be in a JSON format.
      */
@@ -388,6 +395,10 @@ function update(appState: AppState, props: IModaqControlProps): void {
 
     if (props.hideNewGame !== appState.uiState.hideNewGame) {
         appState.uiState.setHideNewGame(props.hideNewGame == true);
+    }
+
+    if (props.tmsActive !== appState.uiState.tmsActive) {
+        appState.uiState.setTmsActive(props.tmsActive == true);
     }
 
     if (props.packetName !== appState.uiState.packetFilename && props.packetName !== appState.game.packet.name) {
