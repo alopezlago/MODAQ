@@ -22,6 +22,7 @@ import { BuzzMenuState } from "./BuzzMenuState";
 import { ICustomExport } from "./CustomExport";
 import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 import { IPacketParseStatus } from "./IPacketParseStatus";
+import { IPacket } from "./IPacket";
 
 // TODO: Look into breaking this up into individual UI component states. Lots of pendingX fields, which could be in
 // their own (see CustomizeGameFormatDialogState)
@@ -73,6 +74,11 @@ export class UIState {
     // (backup-only export, always-visible packet loader, QBJ-only export dialog).
     @ignore
     public tmsActive: boolean;
+
+    // Injected by the host (TMS) when tmsActive. Given a secret code entered in the Add Questions dialog, resolves
+    // to the replacement question packet, or an IStatus describing why the lookup failed.
+    @ignore
+    public onFetchQuestionById: ((id: string) => Promise<IPacket | IStatus>) | undefined;
 
     @ignore
     public importGameStatus: IStatus | undefined;
@@ -143,6 +149,7 @@ export class UIState {
         this.hideBonusOnDeadTossup = false;
         this.hideNewGame = false;
         this.tmsActive = false;
+        this.onFetchQuestionById = undefined;
 
         // Default to Fabric UI's default font (Segoe UI), then Times New Roman
         this.fontFamily = DefaultFontFamily;
@@ -511,6 +518,10 @@ export class UIState {
 
     public setTmsActive(value: boolean): void {
         this.tmsActive = value;
+    }
+
+    public setOnFetchQuestionById(callback: ((id: string) => Promise<IPacket | IStatus>) | undefined): void {
+        this.onFetchQuestionById = callback;
     }
 
     public setImportGameStatus(status: IStatus): void {

@@ -32,6 +32,7 @@ import { Bonus, ITossupWord, PacketState, Tossup } from "../state/PacketState";
 import { ICustomExport } from "../state/CustomExport";
 import { Cycle } from "../state/Cycle";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
+import { IStatus } from "../IStatus";
 
 // Initialize Fluent UI icons when this is loaded, before the first render
 initializeIcons();
@@ -117,6 +118,10 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
             if (packet) {
                 appState.game.loadPacket(packet);
             }
+
+            // The "Packet loaded" message from this initial load has no UI surface of its own; clear it so it
+            // doesn't leak into other UI (e.g. the Add Questions dialog) that reads packetParseStatus.
+            appState.uiState.clearPacketStatus();
         }
     }, [appState, props.packet]);
     React.useEffect(() => {
@@ -189,6 +194,13 @@ export interface IModaqControlProps {
      * When `true`, the New Game button in the menu is hidden.
      */
     hideNewGame?: boolean;
+
+    /**
+     * Only used when `tmsActive` is `true`. Given the secret code entered in the Add Questions dialog, this should
+     * resolve to the replacement question packet (an `IPacket`), or an `IStatus` describing why the lookup failed.
+     * MODAQ has no knowledge of how or where the question is stored; the host application owns that lookup.
+     */
+    onFetchQuestionById?: (id: string) => Promise<IPacket | IStatus>;
 
     /**
      * The packet for the current game. This should only be set once.
@@ -399,6 +411,10 @@ function update(appState: AppState, props: IModaqControlProps): void {
 
     if (props.tmsActive !== appState.uiState.tmsActive) {
         appState.uiState.setTmsActive(props.tmsActive == true);
+    }
+
+    if (props.onFetchQuestionById !== appState.uiState.onFetchQuestionById) {
+        appState.uiState.setOnFetchQuestionById(props.onFetchQuestionById);
     }
 
     if (props.packetName !== appState.uiState.packetFilename && props.packetName !== appState.game.packet.name) {
