@@ -12,7 +12,7 @@ import { ModalDialog } from "./ModalDialog";
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const AddQuestionsDialog = observer(function AddQuestionsDialog(): JSX.Element {
     const appState: AppState = useAppState();
-    const tmsActive: boolean = appState.uiState.tmsActive;
+    const hasQuestionLookup: boolean = appState.uiState.onFetchQuestionById != undefined;
 
     return (
         <ModalDialog
@@ -21,7 +21,7 @@ export const AddQuestionsDialog = observer(function AddQuestionsDialog(): JSX.El
             onDismiss={() => AddQuestionsDialogController.cancel(appState)}
         >
             <AddQuestionsDialogBody appState={appState} />
-            {!tmsActive && (
+            {!hasQuestionLookup && (
                 <DialogFooter>
                     <PrimaryButton text="Load" onClick={() => AddQuestionsDialogController.commit(appState)} />
                     <DefaultButton text="Cancel" onClick={() => AddQuestionsDialogController.cancel(appState)} />
@@ -37,7 +37,7 @@ const AddQuestionsDialogBody = observer(function AddQuestionsDialogBody(
     const appState: AppState = props.appState;
     const [questionId, setQuestionId] = React.useState("");
 
-    if (appState.uiState.tmsActive) {
+    if (appState.uiState.onFetchQuestionById != undefined) {
         return (
             <Stack tokens={{ childrenGap: 10 }}>
                 <StackItem>

@@ -242,7 +242,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
                     type: DialogType.normal,
                     title: "Export Backup",
                     subText:
-                        "This function is intended for downloading a backup file to move to demo MODAQ for emergencies. Are you sure you want to proceed?",
+                        "This function is intended for downloading a backup file for an emergency migration to MODAQ outside of TMS. Are you sure you want to proceed?",
                 }}
                 modalProps={{ isBlocking: false }}
             >

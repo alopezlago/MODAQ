@@ -196,9 +196,10 @@ export interface IModaqControlProps {
     hideNewGame?: boolean;
 
     /**
-     * Only used when `tmsActive` is `true`. Given the secret code entered in the Add Questions dialog, this should
-     * resolve to the replacement question packet (an `IPacket`), or an `IStatus` describing why the lookup failed.
-     * MODAQ has no knowledge of how or where the question is stored; the host application owns that lookup.
+     * If provided, the Add Questions dialog switches to a secret-code lookup mode: instead of uploading a packet
+     * file, the user enters an ID, and this callback is given that ID and should resolve to the replacement
+     * question packet (an `IPacket`), or an `IStatus` describing why the lookup failed. MODAQ has no knowledge of
+     * how or where the question is stored; the host application owns that lookup.
      */
     onFetchQuestionById?: (id: string) => Promise<IPacket | IStatus>;
 

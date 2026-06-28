@@ -75,8 +75,9 @@ export class UIState {
     @ignore
     public tmsActive: boolean;
 
-    // Injected by the host (TMS) when tmsActive. Given a secret code entered in the Add Questions dialog, resolves
-    // to the replacement question packet, or an IStatus describing why the lookup failed.
+    // Injected by the host. If provided, switches the Add Questions dialog to secret-code lookup mode: given a
+    // secret code entered there, resolves to the replacement question packet, or an IStatus describing why the
+    // lookup failed.
     @ignore
     public onFetchQuestionById: ((id: string) => Promise<IPacket | IStatus>) | undefined;
 
