@@ -139,13 +139,15 @@ export const GameBar = observer(function GameBar(): JSX.Element {
           ];
 
     const optionsSubMenuItems: ICommandBarItemProps[] = getOptionsSubMenuItems(appState);
-    items.push({
-        key: "options",
-        text: "Options",
-        subMenuProps: {
-            items: optionsSubMenuItems,
-        },
-    });
+    if (optionsSubMenuItems.length > 0) {
+        items.push({
+            key: "options",
+            text: "Options",
+            subMenuProps: {
+                items: optionsSubMenuItems,
+            },
+        });
+    }
 
     const viewSubMenuItems: ICommandBarItemProps[] = getViewSubMenuItems(appState);
     items.push({
@@ -375,6 +377,12 @@ function getExportSubMenuItems(appState: AppState): ICommandBarItemProps[] {
 function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
 
+    // Changing the game format isn't applicable in TMS-managed mode, where the format is set in TMS. Font moves
+    // to the View menu in that case, so Options would otherwise be left with a single, oddly-scoped item.
+    if (appState.uiState.tmsActive) {
+        return items;
+    }
+
     items.push(
         {
             key: "changeFormat",
@@ -467,6 +475,22 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             onClick: () => appState.uiState.toggleBonusHighlight(),
         },
     ]);
+
+    if (appState.uiState.tmsActive) {
+        items = items.concat([
+            {
+                key: "viewDividerFont",
+                itemType: ContextualMenuItemType.Divider,
+            },
+            {
+                key: "font",
+                text: "Font...",
+                onClick: () => {
+                    appState.uiState.showFontDialog();
+                },
+            },
+        ]);
+    }
 
     items = items.concat([
         {
@@ -562,7 +586,12 @@ function getPlayerManagementSubMenuItems(
                 // TODO: should this be styled in a different color?
             };
 
-            const items: ICommandBarItemProps[] = isActivePlayer
+            // Renaming players isn't applicable in TMS-managed mode, where players are managed in TMS.
+            const items: ICommandBarItemProps[] = uiState.tmsActive
+                ? isActivePlayer
+                    ? [subMenuSectionItem, changeActivityItem]
+                    : [changeActivityItem]
+                : isActivePlayer
                 ? [subMenuSectionItem, changeActivityItem, renameItem]
                 : [changeActivityItem, renameItem];
 
@@ -589,7 +618,7 @@ function getPlayerManagementSubMenuItems(
     // TODO: This should be under a section for player management (add player, subs)
     const playerActionsItem: ICommandBarItemProps = {
         key: "player",
-        text: "Player",
+        text: uiState.tmsActive ? "Substitutions" : "Player",
         subMenuProps: {
             items: playerActionsMenus,
         },
@@ -635,13 +664,18 @@ function getPlayerManagementSubMenuItems(
         disabled: gameMenuItemsDisabled,
     };
 
+    // Add Player and Rename Team aren't applicable in TMS-managed mode, where rosters/teams are managed in TMS.
+    const teamManagementItems: ICommandBarItemProps[] = uiState.tmsActive
+        ? [playerActionsItem, reorderPlayersItem, reorderTeamsItem]
+        : [playerActionsItem, addPlayerItem, reorderPlayersItem, reorderTeamsItem, renameTeamItem];
+
     return {
         key: "teamManagement",
         itemType: ContextualMenuItemType.Section,
         sectionProps: {
             bottomDivider: true,
             title: "Team Management",
-            items: [playerActionsItem, addPlayerItem, reorderPlayersItem, reorderTeamsItem, renameTeamItem],
+            items: teamManagementItems,
         },
     };
 }
