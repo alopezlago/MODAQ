@@ -1,6 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { DialogFooter, PrimaryButton, TextField, Stack, StackItem, Text } from "@fluentui/react";
+import { DialogFooter, PrimaryButton, DefaultButton, TextField, Stack, StackItem, Text } from "@fluentui/react";
 
 import * as AddQuestionsDialogController from "./AddQuestionsDialogController";
 import { AppState } from "../../state/AppState";
@@ -24,6 +24,7 @@ export const AddQuestionsDialog = observer(function AddQuestionsDialog(): JSX.El
             {!tmsActive && (
                 <DialogFooter>
                     <PrimaryButton text="Load" onClick={() => AddQuestionsDialogController.commit(appState)} />
+                    <DefaultButton text="Cancel" onClick={() => AddQuestionsDialogController.cancel(appState)} />
                 </DialogFooter>
             )}
         </ModalDialog>
