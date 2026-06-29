@@ -6,7 +6,7 @@ import { Player } from "../state/TeamState";
 import { PlayerRoster } from "./PlayerRoster";
 
 export const FromRostersTeamEntry = observer(function FromRostersTeamEntry(props: IFromRostersTeamEntryProps) {
-    const classes: ITeamEntryClassNames = getClassNames(props.playerListHeight);
+    const classes: ITeamEntryClassNames = getClassNames();
 
     const partChangeHandler = React.useCallback(
         (ev: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
@@ -40,7 +40,7 @@ export const FromRostersTeamEntry = observer(function FromRostersTeamEntry(props
                 onChange={partChangeHandler}
                 errorMessage={props.teamNameErrorMessage}
             />
-            <div className={classes.playerListContainer} data-is-scrollable="true">
+            <div className={classes.playerListContainer}>
                 <PlayerRoster
                     canSetStarter={true}
                     players={props.players}
@@ -54,23 +54,21 @@ export const FromRostersTeamEntry = observer(function FromRostersTeamEntry(props
 });
 
 // TODO: Unify with ManualTeamEntry
-const getClassNames = (playerListHeight: number | string): ITeamEntryClassNames =>
+const getClassNames = (): ITeamEntryClassNames =>
     mergeStyleSets({
+        // The whole dialog scrolls when needed, so this list isn't separately scrollable
         playerListContainer: {
-            height: playerListHeight,
             marginBottom: 10,
-            overflowY: "auto",
         },
         teamEntry: {
             display: "flex",
             flexDirection: "column",
-            padding: "5px 20px",
+            padding: "5px 8px",
         },
     });
 
 export interface IFromRostersTeamEntryProps {
     initialTeamName?: string;
-    playerListHeight: string | number;
     players: Player[];
     playerPool: Player[];
     teamLabel: string;

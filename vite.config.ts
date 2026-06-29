@@ -1,4 +1,4 @@
-import { defineConfig, splitVendorChunkPlugin } from "vite";
+import { defineConfig } from "vite";
 import mkcert from "vite-plugin-mkcert";
 import react from "@vitejs/plugin-react";
 
@@ -23,7 +23,13 @@ export default defineConfig(({ mode }) => {
                 },
             },
         },
-        plugins: [react(), mkcert(), splitVendorChunkPlugin()],
+        server: {
+            watch: {
+                // Avoid watcher crashes/reloads from Playwright artifacts that may be created/deleted rapidly.
+                ignored: ["**/playwright-report/**", "**/test-results/**"],
+            },
+        },
+        plugins: [react(), mkcert()],
         define: {
             __BUILD_VERSION__: JSON.stringify(`${mode.startsWith("production") ? "" : "dev_"}${version}`),
         },

@@ -19,23 +19,11 @@ export const TossupAnswerCycleItem = observer(function TossupAnswerCycleItem(
 
     let buzzDescription = "answered";
     const points: number = props.game.getBuzzValue(props.buzz);
-    if (points < 0 && props.buzz === props.cycle.firstWrongBuzz) {
-        buzzDescription = "NEGGED";
-    } else if (points <= 0) {
-        buzzDescription = "answered WRONGLY";
-    } else if (points === 10) {
-        buzzDescription = "answered CORRECTLY";
+    if (points <= 0) {
+        const actualPoints = props.buzz === props.cycle.firstWrongBuzz ? points : 0;
+        buzzDescription = `for ${actualPoints} ✗`;
     } else {
-        const powerIndex: number = props.game.gameFormat.powers.findIndex((power) => power.points === points);
-        // Add more "SUPER"s depending on the number of remaining power levels
-        // Subtract 1 since the first element is for regular powers
-        const superpowerLevel: number = props.game.gameFormat.powers.length - powerIndex - 1;
-        if (superpowerLevel === 0 || powerIndex === -1) {
-            buzzDescription = "POWERED";
-        } else {
-            // Treat the 0 case as special since we don't want to create empty arrays for no reason
-            buzzDescription = new Array(superpowerLevel).fill("SUPER").join("") + "POWERED";
-        }
+        buzzDescription = `for ${points} ✓`;
     }
 
     const text = `${props.buzz.marker.player.name} (${props.buzz.marker.player.teamName}) ${buzzDescription}`;

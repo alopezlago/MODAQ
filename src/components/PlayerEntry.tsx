@@ -7,16 +7,30 @@ import { ILabelStyles, Label, mergeStyleSets } from "@fluentui/react";
 import { Player } from "../state/TeamState";
 import { CancelButton } from "./CancelButton";
 
+const playerNameFontSize = 12;
+
 const playerNameStyle: Partial<ITextFieldStyles> = {
     root: {
         minWidth: 80,
         marginRight: 20,
+    },
+    field: {
+        fontSize: playerNameFontSize,
     },
 };
 
 const playerNameLabelStyle: Partial<ILabelStyles> = {
     root: {
         marginRight: 20,
+        fontSize: playerNameFontSize,
+    },
+};
+
+const fillPlayerNameLabelStyle: Partial<ILabelStyles> = {
+    root: {
+        marginRight: 20,
+        flexGrow: 1,
+        fontSize: playerNameFontSize,
     },
 };
 
@@ -66,7 +80,9 @@ export const PlayerEntry = observer(function PlayerEntry(props: React.PropsWithC
             <span className={classes.spacer} />
         );
     } else {
-        playerName = <Label styles={playerNameLabelStyle}>{props.player.name}</Label>;
+        playerName = (
+            <Label styles={props.fillWidth ? fillPlayerNameLabelStyle : playerNameLabelStyle}>{props.player.name}</Label>
+        );
     }
 
     const checkbox = props.canSetStarter !== false && (
@@ -79,7 +95,7 @@ export const PlayerEntry = observer(function PlayerEntry(props: React.PropsWithC
     );
 
     return (
-        <div className={classes.playerEntryContainer}>
+        <div className={props.fillWidth ? classes.playerEntryContainerFill : classes.playerEntryContainer}>
             {playerName}
             {checkbox}
             {cancelButtonOrSpacer}
@@ -107,11 +123,14 @@ interface IReadonlyPlayerEntryProps extends IBasePlayerEntryProps {
 
 interface IBasePlayerEntryProps {
     canSetStarter?: boolean;
+    // When set, the entry fills the available width so the starter checkbox and any controls align across rows
+    fillWidth?: boolean;
     player: Player;
 }
 
 interface IPlayerEntryClassNames {
     playerEntryContainer: string;
+    playerEntryContainerFill: string;
     spacer: string;
 }
 
@@ -122,6 +141,14 @@ const getClassNames = (): IPlayerEntryClassNames =>
             flexDirection: "row",
             justifyContent: "space-between",
             margin: "5px 0",
+        },
+        playerEntryContainerFill: {
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            width: "100%",
+            margin: "1px 0",
         },
         spacer: {
             // TODO: See if this needs to change, based on different media queries

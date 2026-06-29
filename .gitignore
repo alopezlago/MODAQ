@@ -8,4 +8,10 @@ dist
 
 # code coverage reports
 coverage/*
+
+# Playwright results
+playwright-report/
+test-results/
+
+# Vercel (local project link; per Vercel this folder shouldn't be committed)
 .vercel

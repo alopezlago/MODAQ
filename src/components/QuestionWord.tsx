@@ -2,7 +2,7 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { mergeStyleSets, memoizeFunction, ThemeContext, Theme } from "@fluentui/react";
 
-import { IFormattedText } from "../parser/IFormattedText";
+import type { IFormattedText } from "../parser/IFormattedText";
 import { FormattedText } from "./FormattedText";
 
 export const QuestionWord = observer(function QuestionWord(props: IQuestionWordProps): JSX.Element {
