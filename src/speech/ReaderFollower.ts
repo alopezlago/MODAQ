@@ -1,13 +1,15 @@
+import { getReaderFollowMode, ReaderFollowMode } from "./ReaderFollowerConfig";
 import { ISpeechEngine, ISpeechEngineCallbacks } from "./SpeechEngine";
 import {
+    ConfirmingTranscriptProcessor,
     IncrementalTranscriptProcessor,
     IProcessResult,
+    ITranscriptProcessor,
     normalizeSpokenWord,
     TranscriptAligner,
 } from "./TranscriptAligner";
 import { VoskSpeechEngine } from "./VoskSpeechEngine";
 import { WebSpeechEngine } from "./WebSpeechEngine";
-import { tryCreateExperimentalWhisperEngine } from "./experimental/WhisperSpeechEngine";
 
 // Words the moderator says right after a buzz is resolved ("correct", "neg 5", "power, 15 points"). Hearing one
 // means a buzz just happened, so the buzz point should update right away instead of waiting for a pause.
@@ -55,12 +57,16 @@ export class ReaderFollower {
 
     private engine: ISpeechEngine | undefined;
 
-    private processor: IncrementalTranscriptProcessor | undefined;
+    private processor: ITranscriptProcessor | undefined;
+
+    // The configured reader-follow mode in effect for the running engine.
+    private mode: ReaderFollowMode;
 
     constructor(callbacks: IReaderFollowerCallbacks) {
         this.callbacks = callbacks;
         this.engine = undefined;
         this.processor = undefined;
+        this.mode = "interim";
     }
 
     public static isSupported(): boolean {
@@ -72,8 +78,6 @@ export class ReaderFollower {
      */
     public start(targetWords: string[]): void {
         this.stop();
-
-        this.processor = new IncrementalTranscriptProcessor(new TranscriptAligner(targetWords));
 
         const engineCallbacks: ISpeechEngineCallbacks = {
             onPartialTranscript: (utteranceKey, transcript) => this.handleTranscript(utteranceKey, transcript, false),
@@ -89,17 +93,16 @@ export class ReaderFollower {
             },
         };
 
-        // EXPERIMENTAL: if the OpenAI Whisper engine has been enabled (see src/speech/experimental/README.md),
-        // use it. Off by default, so this returns undefined and the normal engines are used. Remove this line
-        // and the import to drop the experimental feature entirely.
-        const experimentalEngine: ISpeechEngine | undefined = tryCreateExperimentalWhisperEngine(
-            engineCallbacks,
-            targetWords.join(" ")
-        );
+        this.engine = WebSpeechEngine.isSupported()
+            ? new WebSpeechEngine(engineCallbacks)
+            : new VoskSpeechEngine(engineCallbacks);
 
-        this.engine =
-            experimentalEngine ??
-            (WebSpeechEngine.isSupported() ? new WebSpeechEngine(engineCallbacks) : new VoskSpeechEngine(engineCallbacks));
+        this.mode = getReaderFollowMode();
+        this.processor =
+            this.mode === "confirmed"
+                ? new ConfirmingTranscriptProcessor(new TranscriptAligner(targetWords))
+                : new IncrementalTranscriptProcessor(new TranscriptAligner(targetWords));
+
         this.engine.start();
     }
 
@@ -120,6 +123,12 @@ export class ReaderFollower {
 
         if (this.callbacks.onTranscript != undefined && transcript.trim() !== "") {
             this.callbacks.onTranscript(transcript.trim());
+        }
+
+        // Mode A ("finals-only"): ignore speculative interims entirely; only finalized utterances move the
+        // position. The transcript is still shown above so the user sees what's being heard.
+        if (this.mode === "finals-only" && !isFinal) {
+            return;
         }
 
         const oldPosition: number = this.processor.position;

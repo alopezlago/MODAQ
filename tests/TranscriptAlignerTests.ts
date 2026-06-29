@@ -1,10 +1,15 @@
 import { expect } from "chai";
 
 import {
+    ConfirmingTranscriptProcessor,
     IncrementalTranscriptProcessor,
     TranscriptAligner,
     normalizeSpokenWord,
 } from "src/speech/TranscriptAligner";
+
+// A target with a phrase ("beta gamma") that repeats, so a spoken occurrence can match a later position than
+// the reader is actually at -- the situation that lets a speculative interim overshoot.
+const repeatedPhraseWords: string[] = "alpha beta gamma delta beta gamma omega".split(" ");
 
 const questionWords: string[] = "In one experiment, this scientist shined light on a zinc plate to demonstrate the photoelectric effect".split(
     " "
@@ -256,6 +261,89 @@ describe("TranscriptAlignerTests", () => {
 
             // But growing beyond it should pick up the new word
             expect(processor.process("u1", "In one experiment this", false).position).to.equal(3);
+        });
+    });
+
+    describe("TranscriptAligner commit/rollback", () => {
+        it("rollbackToCommitted restores the position to the last commit", () => {
+            const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
+
+            expect(aligner.processTranscript("In one experiment")).to.equal(2);
+            aligner.commit();
+
+            // Advance past the commit, then roll back; the advance is discarded
+            expect(aligner.processTranscript("this scientist shined")).to.equal(5);
+            aligner.rollbackToCommitted();
+            expect(aligner.currentPosition).to.equal(2);
+
+            // After rolling back, the aligner keeps working from the committed position
+            expect(aligner.processTranscript("this scientist")).to.equal(4);
+        });
+        it("rollbackToCommitted with no commit returns to the start", () => {
+            const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
+
+            expect(aligner.processTranscript("In one experiment")).to.equal(2);
+            aligner.rollbackToCommitted();
+            expect(aligner.currentPosition).to.equal(-1);
+        });
+    });
+
+    describe("ConfirmingTranscriptProcessor", () => {
+        it("Advances on interims like the incremental processor for clean reading", () => {
+            const processor: ConfirmingTranscriptProcessor = new ConfirmingTranscriptProcessor(
+                new TranscriptAligner(questionWords)
+            );
+
+            expect(processor.process("u1", "In", false).position).to.equal(0);
+            expect(processor.process("u1", "In one", false).position).to.equal(1);
+            expect(processor.process("u1", "In one experiment", false).position).to.equal(2);
+        });
+        it("Retracts an interim overshoot when the interim is revised", () => {
+            const processor: ConfirmingTranscriptProcessor = new ConfirmingTranscriptProcessor(
+                new TranscriptAligner(repeatedPhraseWords)
+            );
+
+            // First utterance is confirmed at "gamma" (index 2)
+            expect(processor.process("u1", "alpha beta gamma", true).position).to.equal(2);
+
+            // A speculative interim adds the repeated phrase "beta gamma", which matches the LATER occurrence
+            // (indices 4-5), overshooting to index 5
+            expect(processor.process("u2", "delta beta gamma", false).position).to.equal(5);
+
+            // The recognizer revises the interim back to just "delta"; re-evaluating from the confirmed position
+            // retracts the overshoot to "delta" (index 3)
+            expect(processor.process("u2", "delta", false).position).to.equal(3);
+
+            // Contrast: the incremental processor stays stuck at the overshoot, since it never reprocesses
+            const incremental: IncrementalTranscriptProcessor = new IncrementalTranscriptProcessor(
+                new TranscriptAligner(repeatedPhraseWords)
+            );
+            incremental.process("u1", "alpha beta gamma", true);
+            expect(incremental.process("u2", "delta beta gamma", false).position).to.equal(5);
+            expect(incremental.process("u2", "delta", false).position).to.equal(5);
+        });
+        it("A finalized utterance commits, so a later utterance can't retract past it", () => {
+            const processor: ConfirmingTranscriptProcessor = new ConfirmingTranscriptProcessor(
+                new TranscriptAligner(questionWords)
+            );
+
+            expect(processor.process("u1", "In one experiment", true).position).to.equal(2);
+
+            // A new utterance's interim is re-evaluated from the committed position (2), not from scratch
+            expect(processor.process("u2", "this scientist", false).position).to.equal(4);
+            // Shrinking the interim only rolls back to the commit, never before it
+            expect(processor.process("u2", "this", false).position).to.equal(3);
+            expect(processor.process("u2", "", false).position).to.equal(2);
+        });
+        it("Reports only the new words of an utterance, for buzz-resolution detection", () => {
+            const processor: ConfirmingTranscriptProcessor = new ConfirmingTranscriptProcessor(
+                new TranscriptAligner(questionWords)
+            );
+
+            expect(processor.process("u1", "In one", false).newWords).to.deep.equal(["In", "one"]);
+            expect(processor.process("u1", "In one experiment", false).newWords).to.deep.equal(["experiment"]);
+            // Re-evaluating the same transcript reports nothing new even though the whole utterance is re-aligned
+            expect(processor.process("u1", "In one experiment", false).newWords).to.deep.equal([]);
         });
     });
 });

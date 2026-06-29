@@ -114,6 +114,11 @@ export class UIState {
     // B, which jumps it to where the reader currently is. The live position is still tracked in the background.
     public holdReaderHighlightUntilBuzz: boolean;
 
+    // When true, microphone tracking moves the highlight to the reader's position immediately, instead of
+    // waiting for the reading to pause. More responsive, but the highlight jitters with the recognizer's bursts.
+    // Has no effect when holdReaderHighlightUntilBuzz is on (the highlight is held until B regardless).
+    public instantReaderHighlight: boolean;
+
     // When true, show diagnostics for the microphone tracking (engine, status, last heard words). On by default
     // while the feature is being tuned.
     @ignore
@@ -191,6 +196,7 @@ export class UIState {
         this.pendingTossupProtestEvent = undefined;
         this.trackReaderWithMicrophone = false;
         this.holdReaderHighlightUntilBuzz = false;
+        this.instantReaderHighlight = false;
         this.showReaderFollowerDebug = true;
         this.readerFollowerEngine = undefined;
         this.readerFollowerStatus = undefined;
@@ -660,6 +666,10 @@ export class UIState {
 
     public toggleHoldReaderHighlightUntilBuzz(): void {
         this.holdReaderHighlightUntilBuzz = !this.holdReaderHighlightUntilBuzz;
+    }
+
+    public toggleInstantReaderHighlight(): void {
+        this.instantReaderHighlight = !this.instantReaderHighlight;
     }
 
     public setTrackReaderWithMicrophone(value: boolean): void {

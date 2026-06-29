@@ -64,6 +64,10 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
         // tracked so pressing B can jump to it. Read fresh each call so toggling it doesn't restart the mic.
         const holdHighlightUntilBuzz = (): boolean => props.appState.uiState.holdReaderHighlightUntilBuzz;
 
+        // When this is on, move the highlight to the reader's position immediately instead of waiting for a
+        // pause. Read fresh each call so toggling it doesn't restart the mic.
+        const moveHighlightInstantly = (): boolean => props.appState.uiState.instantReaderHighlight;
+
         const flushBuzzPoint = (cue: string): void => {
             clearPauseTimer();
             TossupQuestionController.updateReaderFollowerCue(props.appState, cue);
@@ -78,6 +82,12 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
 
             clearPauseTimer();
             if (holdHighlightUntilBuzz()) {
+                return;
+            }
+
+            // Instant mode: follow the reader word-by-word with no pause delay
+            if (moveHighlightInstantly()) {
+                TossupQuestionController.updateBuzzPointFromReader(props.appState, latestWordIndex);
                 return;
             }
 

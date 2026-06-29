@@ -378,6 +378,15 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             onClick: () => appState.uiState.toggleHoldReaderHighlightUntilBuzz(),
         },
         {
+            key: "instantReaderHighlight",
+            text: "Move highlight instantly (no delay)",
+            title: "In microphone mode, move the highlight to the reader's position immediately instead of waiting for a pause",
+            canCheck: true,
+            checked: appState.uiState.instantReaderHighlight,
+            disabled: !appState.uiState.trackReaderWithMicrophone || appState.uiState.holdReaderHighlightUntilBuzz,
+            onClick: () => appState.uiState.toggleInstantReaderHighlight(),
+        },
+        {
             key: "trackReaderDebug",
             text: "Microphone debug info",
             title: "Show diagnostics for microphone tracking under the tossup",

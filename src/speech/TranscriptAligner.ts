@@ -60,11 +60,17 @@ export class TranscriptAligner {
     // Wall-clock time the position last advanced, for the temporal checks. 0 means it hasn't advanced yet.
     private lastProgressTime: number;
 
+    // The last position confirmed via commit(). rollbackToCommitted() returns the aligner here, which lets a
+    // caller advance the position on speculative (interim) words and then discard that advance if it isn't
+    // borne out -- see ConfirmingTranscriptProcessor.
+    private committedState: IAlignerState;
+
     constructor(targetWords: string[]) {
         this.targetWords = targetWords.map(normalizeSpokenWord);
         this.position = -1;
         this.pendingSkip = undefined;
         this.lastProgressTime = 0;
+        this.committedState = { position: -1, pendingSkip: undefined, lastProgressTime: 0 };
     }
 
     /**
@@ -72,6 +78,23 @@ export class TranscriptAligner {
      */
     public get currentPosition(): number {
         return this.position;
+    }
+
+    /** Marks the current position as confirmed; a later rollbackToCommitted() returns the aligner here. */
+    public commit(): void {
+        this.committedState = {
+            position: this.position,
+            pendingSkip: this.pendingSkip == undefined ? undefined : { ...this.pendingSkip },
+            lastProgressTime: this.lastProgressTime,
+        };
+    }
+
+    /** Discards any advancement made since the last commit() (or since construction, if none). */
+    public rollbackToCommitted(): void {
+        this.position = this.committedState.position;
+        this.pendingSkip =
+            this.committedState.pendingSkip == undefined ? undefined : { ...this.committedState.pendingSkip };
+        this.lastProgressTime = this.committedState.lastProgressTime;
     }
 
     /**
@@ -196,13 +219,35 @@ interface IPendingSkip {
     distance: number;
 }
 
+// A snapshot of the aligner's mutable state, captured by commit() and restored by rollbackToCommitted().
+interface IAlignerState {
+    position: number;
+    pendingSkip: IPendingSkip | undefined;
+    lastProgressTime: number;
+}
+
+/**
+ * Feeds an engine's growing/revisable utterance transcripts into a TranscriptAligner and reports the resulting
+ * position. Implementations differ in how much they trust speculative (interim) transcripts.
+ */
+export interface ITranscriptProcessor {
+    /** The aligner's current position. */
+    readonly position: number;
+
+    /**
+     * Processes the latest transcript for an utterance. `isFinal` means the utterance is complete and the next
+     * call belongs to a new utterance.
+     */
+    process(utteranceKey: string, transcript: string, isFinal: boolean): IProcessResult;
+}
+
 /**
  * Feeds growing/revisable utterance transcripts into a TranscriptAligner without double-counting words.
  * Speech recognizers emit partial transcripts that grow (and occasionally get revised) as the speaker keeps
  * talking, then a final transcript when the utterance ends. Each utterance is identified by a key; words
  * already consumed from the current utterance aren't fed to the aligner again.
  */
-export class IncrementalTranscriptProcessor {
+export class IncrementalTranscriptProcessor implements ITranscriptProcessor {
     private readonly aligner: TranscriptAligner;
 
     private currentUtteranceKey: string | undefined;
@@ -242,6 +287,66 @@ export class IncrementalTranscriptProcessor {
         } else {
             // If a revision shortened the transcript, keep the old count so re-added words aren't double-counted
             this.wordsConsumed = Math.max(this.wordsConsumed, words.length);
+        }
+
+        return {
+            position: this.aligner.currentPosition,
+            newWords,
+        };
+    }
+}
+
+/**
+ * Like IncrementalTranscriptProcessor, but treats interim (non-final) transcripts as provisional: each
+ * utterance is re-aligned from the last confirmed position, so a revised interim that no longer contains an
+ * earlier (mis)guess pulls the position back instead of leaving it stuck forward. Only a finalized utterance --
+ * or the start of the next utterance -- confirms the position. This guards against speculative interims (which
+ * can run ahead of the audio, then get walked back) pinning the position past where the reader actually is.
+ */
+export class ConfirmingTranscriptProcessor implements ITranscriptProcessor {
+    private readonly aligner: TranscriptAligner;
+
+    private currentUtteranceKey: string | undefined;
+
+    // Words already reported as "new" for the current utterance, so newWords stays a delta (for buzz-resolution
+    // word detection) even though the position is recomputed from the whole utterance each call.
+    private wordsReported: number;
+
+    constructor(aligner: TranscriptAligner) {
+        this.aligner = aligner;
+        this.currentUtteranceKey = undefined;
+        this.wordsReported = 0;
+    }
+
+    public get position(): number {
+        return this.aligner.currentPosition;
+    }
+
+    public process(utteranceKey: string, transcript: string, isFinal: boolean): IProcessResult {
+        if (utteranceKey !== this.currentUtteranceKey) {
+            // A new utterance began; whatever the previous one settled on is now confirmed (its final may have
+            // been missed, and the reader has moved on regardless).
+            this.aligner.commit();
+            this.currentUtteranceKey = utteranceKey;
+            this.wordsReported = 0;
+        }
+
+        const words: string[] = transcript.split(/\s+/).filter((word) => word !== "");
+
+        // Re-evaluate this utterance from the last confirmed position. Re-aligning the whole utterance each time
+        // (rather than only its new words) is what lets a shortened/revised interim retract an earlier overshoot.
+        this.aligner.rollbackToCommitted();
+        if (words.length > 0) {
+            this.aligner.processTranscript(words.join(" "));
+        }
+
+        const newWords: string[] = words.slice(this.wordsReported);
+        this.wordsReported = Math.max(this.wordsReported, words.length);
+
+        if (isFinal) {
+            this.aligner.commit();
+            this.currentUtteranceKey = undefined;
+            this.wordsReported = 0;
         }
 
         return {
