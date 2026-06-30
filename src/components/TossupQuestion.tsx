@@ -14,6 +14,13 @@ import { TossupProtestDialog } from "./dialogs/TossupProtestDialog";
 import { CancelButton } from "./CancelButton";
 import { AppState } from "../state/AppState";
 import { PostQuestionMetadata } from "./PostQuestionMetadata";
+import { BuzzSoundDetector } from "../speech/BuzzSoundDetector";
+import { ReaderFollower } from "../speech/ReaderFollower";
+import { ReaderFollowerDebug } from "./ReaderFollowerDebug";
+
+// How long the reading has to pause (no new matched words) before the buzz point moves to the reader's position.
+// Speech recognizers emit words in bursts while someone is talking, so this also smooths out mid-sentence jitter.
+const readerPauseDelayInMs = 500;
 
 export const TossupQuestion = observer(function TossupQuestion(props: IQuestionProps): JSX.Element {
     const classes: ITossupQuestionClassNames = getClassNames();
@@ -29,6 +36,89 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
             tossupTextRef.current.scrollTop = 0;
         }
     }
+
+    // Follow the reader with the microphone, if it's enabled. Once there's a correct buzz the tossup is over (the
+    // reader moves on to the bonus), so stop listening then. Wrong buzzes keep the tossup live, so keep following.
+    const isReaderFollowingEnabled: boolean = props.appState.uiState.trackReaderWithMicrophone;
+    const isTossupOver: boolean = props.cycle.correctBuzz != undefined;
+    const gameFormat = props.appState.game.gameFormat;
+    React.useEffect(() => {
+        if (!isReaderFollowingEnabled || isTossupOver) {
+            return;
+        }
+
+        // While the reader is actively speaking, position updates stream in constantly, and moving the highlight
+        // word-by-word is distracting. Only move the buzz point once updates pause (the reader stopped because
+        // someone buzzed, or paused at the end of a clue). A buzzer sound or a buzz resolution word ("correct",
+        // "neg") means a buzz definitely happened, so those move it immediately.
+        let latestWordIndex = -1;
+        let pauseTimerId: number | undefined = undefined;
+        const clearPauseTimer = (): void => {
+            if (pauseTimerId != undefined) {
+                window.clearTimeout(pauseTimerId);
+                pauseTimerId = undefined;
+            }
+        };
+
+        // When this is on, the reader follower never moves the highlight on its own; the live position is still
+        // tracked so pressing Space can jump to it. Read fresh each call so toggling it doesn't restart the mic.
+        const holdHighlightUntilBuzz = (): boolean => props.appState.uiState.holdReaderHighlightUntilBuzz;
+
+        // When this is on, move the highlight to the reader's position immediately instead of waiting for a
+        // pause. Read fresh each call so toggling it doesn't restart the mic.
+        const moveHighlightInstantly = (): boolean => props.appState.uiState.instantReaderHighlight;
+
+        const flushBuzzPoint = (cue: string): void => {
+            clearPauseTimer();
+            TossupQuestionController.updateReaderFollowerCue(props.appState, cue);
+            if (latestWordIndex >= 0 && !holdHighlightUntilBuzz()) {
+                TossupQuestionController.updateBuzzPointFromReader(props.appState, latestWordIndex);
+            }
+        };
+
+        const onPositionChanged = (wordIndex: number): void => {
+            latestWordIndex = wordIndex;
+            TossupQuestionController.updateReaderFollowerLivePosition(props.appState, wordIndex);
+
+            clearPauseTimer();
+            if (holdHighlightUntilBuzz()) {
+                return;
+            }
+
+            // Instant mode: follow the reader word-by-word with no pause delay
+            if (moveHighlightInstantly()) {
+                TossupQuestionController.updateBuzzPointFromReader(props.appState, latestWordIndex);
+                return;
+            }
+
+            pauseTimerId = window.setTimeout(() => {
+                pauseTimerId = undefined;
+                TossupQuestionController.updateBuzzPointFromReader(props.appState, latestWordIndex);
+            }, readerPauseDelayInMs);
+        };
+
+        const follower: ReaderFollower = new ReaderFollower({
+            onPositionChanged,
+            onPermanentError: (message) => TossupQuestionController.onReaderFollowerError(props.appState, message),
+            onBuzzResolutionWord: (word) => flushBuzzPoint(`heard "${word}"`),
+            onStatusChanged: (engine, status) =>
+                TossupQuestionController.updateReaderFollowerStatus(props.appState, engine, status),
+            onTranscript: (transcript) =>
+                TossupQuestionController.updateReaderFollowerTranscript(props.appState, transcript),
+        });
+        follower.start(TossupQuestionController.getWordsForReaderFollower(props.tossup, gameFormat));
+
+        const buzzSoundDetector: BuzzSoundDetector | undefined = BuzzSoundDetector.isSupported()
+            ? new BuzzSoundDetector(() => flushBuzzPoint("buzz sound"))
+            : undefined;
+        buzzSoundDetector?.start();
+
+        return () => {
+            clearPauseTimer();
+            follower.stop();
+            buzzSoundDetector?.stop();
+        };
+    }, [props.appState, props.tossup, gameFormat, isReaderFollowingEnabled, isTossupOver]);
 
     const disableThrowOutButton: boolean = props.appState.game.cycles.some(
         (cycle) => cycle.orderedBuzzes.length > 0 && cycle.orderedBuzzes[0].tossupIndex + 1 > props.tossupNumber
@@ -69,6 +159,10 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
             TossupQuestionController.selectWordFromClick(props.appState, event),
         [props.appState]
     );
+    const mouseMoveHandler = React.useCallback(
+        () => props.appState.uiState.setLastQuestionTextMouseMoveTime(Date.now()),
+        [props.appState]
+    );
 
     // Need tossuptext/answer in one container, X in the other
     return (
@@ -82,11 +176,13 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
                     direction={FocusZoneDirection.bidirectional}
                     onClick={selectWordFromClickHandler}
                     onDoubleClick={selectWordFromClickHandler}
+                    onMouseMove={mouseMoveHandler}
                 >
                     {questionWords}
                 </FocusZone>
                 <Answer text={props.tossup.answer} />
                 <PostQuestionMetadata metadata={props.tossup.metadata} />
+                <ReaderFollowerDebug appState={props.appState} />
             </div>
             <div>
                 <CancelButton

@@ -21,6 +21,7 @@ import { configure } from "mobx";
 import { observer } from "mobx-react-lite";
 
 import * as PacketLoaderController from "./PacketLoaderController";
+import * as TossupQuestionController from "./TossupQuestionController";
 import { StateProvider } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";
 import { GameViewer } from "./GameViewer";
@@ -250,14 +251,91 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
     const keydownListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) => shortcutHandler(event, appState);
     document.addEventListener("keyup", keydownListener);
 
+    // The buzz menu keys get a capture-phase keydown listener so they're seen before the menu's own keyboard
+    // handling (which has focus while the menu is open) can react to or swallow them
+    const buzzMenuKeyListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) =>
+        buzzMenuShortcutHandler(event, appState);
+    document.addEventListener("keydown", buzzMenuKeyListener, /* useCapture */ true);
+
+    // Space is the buzz shortcut, but it acts on keyup (above). Stop its keydown from scrolling the page (or
+    // clicking a focused button) when it's serving as the shortcut -- i.e. not while typing or in a dialog.
+    const preventSpaceScrollListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) => {
+        if (
+            event.key === " " &&
+            !isTextEntryElement(event.target) &&
+            appState.uiState.dialogState.visibleDialog === ModalVisibilityStatus.None &&
+            !appState.uiState.buzzMenuState.visible
+        ) {
+            event.preventDefault();
+        }
+    };
+    document.addEventListener("keydown", preventSpaceScrollListener);
+
     return () => {
         document.removeEventListener("keyup", keydownListener);
+        document.removeEventListener("keydown", buzzMenuKeyListener, /* useCapture */ true);
+        document.removeEventListener("keydown", preventSpaceScrollListener);
     };
+}
+
+// Whether the event targets a text-entry control, where keys (notably Space) should be typed rather than treated
+// as moderator shortcuts.
+function isTextEntryElement(target: EventTarget | null): boolean {
+    const element: HTMLElement | null = target as HTMLElement | null;
+    if (element == null || element.tagName == undefined) {
+        return false;
+    }
+
+    const tagName: string = element.tagName;
+    return tagName === "INPUT" || tagName === "TEXTAREA" || element.isContentEditable === true;
+}
+
+// While the buzz menu is open, number keys pick a player and C/W mark their buzz as correct/wrong, and
+// Shift+Left/Shift+Right nudge the buzz point to the exact word. These keys only act this way while the menu is
+// open, so the bonus shortcuts in shortcutHandler still work normally.
+function buzzMenuShortcutHandler(event: KeyboardEvent, appState: AppState): void {
+    if (
+        appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None ||
+        !appState.uiState.buzzMenuState.visible
+    ) {
+        return;
+    }
+
+    // Shift+Left/Shift+Right move the buzz point one word earlier/later, following the reading order. (Plain
+    // arrows are left to the menu's own navigation.) Moving the selected word re-anchors the open menu to it.
+    if (event.shiftKey && event.key === "ArrowLeft") {
+        TossupQuestionController.moveBuzzPoint(appState, -1);
+    } else if (event.shiftKey && event.key === "ArrowRight") {
+        TossupQuestionController.moveBuzzPoint(appState, 1);
+    } else {
+        const key: string = event.key.toUpperCase();
+        if (key.length === 1 && key >= "1" && key <= "9") {
+            TossupQuestionController.selectBuzzMenuPlayerByNumber(appState, Number(key));
+        } else if (key === "C" || key === "W") {
+            TossupQuestionController.markKeyboardSelectedPlayerBuzz(appState, /* isCorrect */ key === "C");
+        } else {
+            return;
+        }
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
 }
 
 function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
     // Disable shortcuts if there's a modal dialog open
     if (appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None) {
+        return;
+    }
+
+    // The buzz menu's keys (numbers, C, W) are handled by buzzMenuShortcutHandler on keydown; while the menu
+    // is open, don't let the same keys also trigger the shortcuts below
+    if (appState.uiState.buzzMenuState.visible) {
+        return;
+    }
+
+    // Don't hijack keys while the user is typing in a text field (notably Space, the buzz shortcut)
+    if (isTextEntryElement(event.target)) {
         return;
     }
 
@@ -289,6 +367,15 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
 
             break;
 
+        case " ":
+            // Space is the buzz shortcut: open the buzz menu at the buzz point, anchoring it to the most recently
+            // read word when the microphone is tracking the reader and the user isn't picking a word with the mouse
+            TossupQuestionController.openBuzzMenuAtBuzzPoint(appState);
+
+            event.preventDefault();
+            event.stopPropagation();
+            break;
+
         case "N":
             if (appState.uiState.cycleIndex + 1 < appState.game.playableCycles.length) {
                 appState.uiState.nextCycle();
@@ -299,7 +386,6 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
             break;
 
         case "P":
-        case "B":
             appState.uiState.previousCycle();
             event.preventDefault();
             event.stopPropagation();

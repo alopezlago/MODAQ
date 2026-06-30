@@ -12,6 +12,7 @@ import { observer } from "mobx-react-lite";
 import { ContextualMenu, ContextualMenuItemType, IContextualMenuItem } from "@fluentui/react/lib/ContextualMenu";
 
 import * as PlayerUtils from "../state/PlayerUtils";
+import * as TossupQuestionController from "./TossupQuestionController";
 import { Player } from "../state/TeamState";
 import { Cycle } from "../state/Cycle";
 import { Tossup } from "../state/PacketState";
@@ -24,13 +25,30 @@ export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps) {
     const onHideBuzzMenu: () => void = React.useCallback(() => onBuzzMenuDismissed(props), [props]);
 
     const teamNames: string[] = props.appState.game.teamNames;
-    const menuItems: IContextualMenuItem[] = [];
+
+    // Dereference the observables we render in the component body. mobx's observer only tracks reads made
+    // directly during this function; reads inside the ThemeContext.Consumer callback below happen during the
+    // Consumer's render and aren't tracked, so the menu wouldn't update (e.g. when a player is selected with a
+    // number key) if we read them there.
+    const visible: boolean = props.appState.uiState.buzzMenuState.visible;
+    const selectedPlayerIndex: number | undefined = props.appState.uiState.buzzMenuState.selectedPlayerIndex;
 
     return (
         <ThemeContext.Consumer>
             {(theme) => {
+                const menuItems: IContextualMenuItem[] = [];
+
+                // Number the players across both teams so number keys can pick them while the menu is open
+                let playerOffset = 0;
                 for (const teamName of teamNames) {
-                    const subMenuItems: IContextualMenuItem[] = getPlayerMenuItems(props, theme, teamName);
+                    const subMenuItems: IContextualMenuItem[] = getPlayerMenuItems(
+                        props,
+                        theme,
+                        teamName,
+                        playerOffset,
+                        selectedPlayerIndex
+                    );
+                    playerOffset += subMenuItems.length;
                     menuItems.push({
                         key: `${teamName}_${menuItems.length}_Section`,
                         itemType: ContextualMenuItemType.Section,
@@ -44,7 +62,7 @@ export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps) {
 
                 return (
                     <ContextualMenu
-                        hidden={!props.appState.uiState.buzzMenuState.visible}
+                        hidden={!visible}
                         target={props.target}
                         items={menuItems}
                         onDismiss={onHideBuzzMenu}
@@ -57,7 +75,13 @@ export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps) {
     );
 });
 
-function getPlayerMenuItems(props: IBuzzMenuProps, theme: Theme | undefined, teamName: string): IContextualMenuItem[] {
+function getPlayerMenuItems(
+    props: IBuzzMenuProps,
+    theme: Theme | undefined,
+    teamName: string,
+    playerOffset: number,
+    selectedPlayerIndex: number | undefined
+): IContextualMenuItem[] {
     // TODO: Need to support Wrong (1st buzz) and Wrong (2nd buzz)
     // TODO: Add some highlighting/indicator on the player to show that they have a buzz in a different word
 
@@ -88,6 +112,8 @@ function getPlayerMenuItems(props: IBuzzMenuProps, theme: Theme | undefined, tea
             {
                 key: `${topLevelKey}_correct`,
                 text: "Correct ✓",
+                // Shown right-aligned; documents the C shortcut for the number-key-selected player
+                secondaryText: "C",
                 data: buzzMenuItemData,
                 canCheck: true,
                 checked: isCorrectChecked,
@@ -96,6 +122,8 @@ function getPlayerMenuItems(props: IBuzzMenuProps, theme: Theme | undefined, tea
             {
                 key: `${topLevelKey}_wrong`,
                 text: "Wrong ✗",
+                // Shown right-aligned; documents the W shortcut for the number-key-selected player
+                secondaryText: "W",
                 data: buzzMenuItemData,
                 canCheck: true,
                 checked: isWrongChecked,
@@ -119,12 +147,22 @@ function getPlayerMenuItems(props: IBuzzMenuProps, theme: Theme | undefined, tea
         // TODO: See if we can improve the style, since the background doesn't change on hover. We can look into
         // tagging this with a class name and using react-jss, or using a style on the parent component (much harder to
         // do without folding this back into the render method)
+        // The first nine players across both teams can be picked with number keys; show the number, and
+        // highlight the player picked that way (C marks them correct, W marks them wrong)
+        const globalIndex: number = playerOffset + index;
+        const isKeyboardSelected: boolean = selectedPlayerIndex === globalIndex;
+
         menuItems.push({
             key: `Team_${teamName}_Player_${index}`,
-            text: player.name,
+            id: TossupQuestionController.getBuzzMenuPlayerElementId(globalIndex),
+            text: globalIndex < 9 ? `${globalIndex + 1}. ${player.name}` : player.name,
             style: {
                 // + "20" makes the background translucent by 32/255 ~15%
-                background: isCorrectChecked
+                background: isKeyboardSelected
+                    ? theme
+                        ? theme.palette.themeLight
+                        : "rgb(192, 192, 192)"
+                    : isCorrectChecked
                     ? theme
                         ? theme.palette.teal + "20"
                         : "rgb(0, 128, 128)"

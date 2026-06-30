@@ -13,6 +13,5 @@ coverage/*
 playwright-report/
 test-results/
 
-# Vercel configuration for forks/testing
-.vercel/project.json
-.vercel/README.txt
+# Vercel (local project link; per Vercel this folder shouldn't be committed)
+.vercel
