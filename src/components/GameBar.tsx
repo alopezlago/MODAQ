@@ -370,8 +370,8 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
         },
         {
             key: "holdReaderHighlight",
-            text: "Hold highlight until I press B",
-            title: "In microphone mode, don't move the highlight automatically; pressing B jumps it to where the reader is",
+            text: "Hold highlight until I press Space",
+            title: "In microphone mode, don't move the highlight automatically; pressing Space jumps it to where the reader is",
             canCheck: true,
             checked: appState.uiState.holdReaderHighlightUntilBuzz,
             disabled: !appState.uiState.trackReaderWithMicrophone,
@@ -385,6 +385,21 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             checked: appState.uiState.instantReaderHighlight,
             disabled: !appState.uiState.trackReaderWithMicrophone || appState.uiState.holdReaderHighlightUntilBuzz,
             onClick: () => appState.uiState.toggleInstantReaderHighlight(),
+        },
+        {
+            key: "buzzPointOffset",
+            text: "Buzz point offset (Space)",
+            title: "When you press Space, offset the buzz point this many words from where the reader is detected",
+            disabled: !appState.uiState.trackReaderWithMicrophone,
+            subMenuProps: {
+                items: [-4, -3, -2, -1, 0, 1, 2, 3, 4].map((offset) => ({
+                    key: `buzzPointOffset_${offset}`,
+                    text: offset === 0 ? "No offset" : `${offset > 0 ? "+" : ""}${offset} words`,
+                    canCheck: true,
+                    checked: appState.uiState.buzzPointWordOffset === offset,
+                    onClick: () => appState.uiState.setBuzzPointWordOffset(offset),
+                })),
+            },
         },
         {
             key: "trackReaderDebug",

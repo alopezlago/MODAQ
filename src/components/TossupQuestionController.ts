@@ -106,13 +106,13 @@ export function updateReaderFollowerCue(appState: AppState, cue: string): void {
 }
 
 // If the mouse moved over the question text in the last few seconds, the user is targeting a word manually, so
-// the B shortcut shouldn't move the buzz point out from under them
+// the buzz shortcut shouldn't move the buzz point out from under them
 const recentMouseMoveThresholdInMs = 3000;
 
 /**
- * Handles the B (buzz) shortcut: opens the buzz menu at the buzz point. If the microphone tracking knows where
- * the reader is and the user isn't picking a word with the mouse, the buzz point anchors to the most recently
- * read word first.
+ * Handles the buzz shortcut (Space): opens the buzz menu at the buzz point. If the microphone tracking knows
+ * where the reader is and the user isn't picking a word with the mouse, the buzz point anchors to the most
+ * recently read word first.
  */
 export function openBuzzMenuAtBuzzPoint(appState: AppState, now?: number): void {
     const uiState: UIState = appState.uiState;
@@ -127,9 +127,13 @@ export function openBuzzMenuAtBuzzPoint(appState: AppState, now?: number): void 
     const livePosition: number = uiState.readerFollowerLivePosition;
 
     if (!isMouseOnText && livePosition >= 0) {
-        // B is a buzz cue: anchor the buzz point to the most recently read word right away
-        uiState.setReaderFollowerLastCue("pressed B");
-        uiState.setSelectedWordIndex(livePosition);
+        // Space is a buzz cue: anchor the buzz point to the most recently read word right away, shifted by the
+        // user's configured offset (to compensate for recognition lag/lead) and clamped to the tossup
+        uiState.setReaderFollowerLastCue("pressed Space");
+        const lastBuzzableIndex: number =
+            tossup.getWords(appState.game.gameFormat).filter((word) => word.canBuzzOn).length - 1;
+        const offsetPosition: number = livePosition + uiState.buzzPointWordOffset;
+        uiState.setSelectedWordIndex(Math.max(0, Math.min(lastBuzzableIndex, offsetPosition)));
     } else if (uiState.selectedWordIndex < 0) {
         // Nothing selected and no reading position known; fall back to the end of the tossup
         const words: ITossupWord[] = tossup.getWords(appState.game.gameFormat);
@@ -137,6 +141,32 @@ export function openBuzzMenuAtBuzzPoint(appState: AppState, now?: number): void 
     }
 
     uiState.showBuzzMenu(/* clearSelectedWordOnClose */ false);
+}
+
+/**
+ * Moves the buzz point by `delta` buzzable words, clamped to the tossup. Backs the Shift+Left/Shift+Right
+ * shortcuts that let the moderator nudge the buzz point to the exact word while the buzz menu is open. Moving
+ * the selected word re-anchors the open buzz menu to it.
+ */
+export function moveBuzzPoint(appState: AppState, delta: number): void {
+    const uiState: UIState = appState.uiState;
+    const tossup: Tossup | undefined = appState.game.getTossup(uiState.cycleIndex);
+    if (tossup == undefined) {
+        return;
+    }
+
+    const lastBuzzableIndex: number =
+        tossup.getWords(appState.game.gameFormat).filter((word) => word.canBuzzOn).length - 1;
+    if (lastBuzzableIndex < 0) {
+        return;
+    }
+
+    // If nothing is selected yet, start from the end of the tossup (the buzz menu's own fallback)
+    const current: number = uiState.selectedWordIndex >= 0 ? uiState.selectedWordIndex : lastBuzzableIndex;
+    const next: number = Math.min(lastBuzzableIndex, Math.max(0, current + delta));
+    if (next !== uiState.selectedWordIndex) {
+        uiState.setSelectedWordIndex(next);
+    }
 }
 
 /**

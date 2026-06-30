@@ -112,6 +112,8 @@ function getPlayerMenuItems(
             {
                 key: `${topLevelKey}_correct`,
                 text: "Correct ✓",
+                // Shown right-aligned; documents the C shortcut for the number-key-selected player
+                secondaryText: "C",
                 data: buzzMenuItemData,
                 canCheck: true,
                 checked: isCorrectChecked,
@@ -120,6 +122,8 @@ function getPlayerMenuItems(
             {
                 key: `${topLevelKey}_wrong`,
                 text: "Wrong ✗",
+                // Shown right-aligned; documents the W shortcut for the number-key-selected player
+                secondaryText: "W",
                 data: buzzMenuItemData,
                 canCheck: true,
                 checked: isWrongChecked,

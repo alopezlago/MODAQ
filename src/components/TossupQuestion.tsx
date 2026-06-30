@@ -61,7 +61,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
         };
 
         // When this is on, the reader follower never moves the highlight on its own; the live position is still
-        // tracked so pressing B can jump to it. Read fresh each call so toggling it doesn't restart the mic.
+        // tracked so pressing Space can jump to it. Read fresh each call so toggling it doesn't restart the mic.
         const holdHighlightUntilBuzz = (): boolean => props.appState.uiState.holdReaderHighlightUntilBuzz;
 
         // When this is on, move the highlight to the reader's position immediately instead of waiting for a

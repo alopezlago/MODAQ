@@ -119,6 +119,10 @@ export class UIState {
     // Has no effect when holdReaderHighlightUntilBuzz is on (the highlight is held until B regardless).
     public instantReaderHighlight: boolean;
 
+    // Words to offset the buzz point from the reader's detected position when pressing Space (-4 to +4). Lets
+    // the user compensate for recognition lag/lead so the buzz lands on the right word. 0 means no offset.
+    public buzzPointWordOffset: number;
+
     // When true, show diagnostics for the microphone tracking (engine, status, last heard words). On by default
     // while the feature is being tuned.
     @ignore
@@ -197,6 +201,7 @@ export class UIState {
         this.trackReaderWithMicrophone = false;
         this.holdReaderHighlightUntilBuzz = false;
         this.instantReaderHighlight = false;
+        this.buzzPointWordOffset = 0;
         this.showReaderFollowerDebug = true;
         this.readerFollowerEngine = undefined;
         this.readerFollowerStatus = undefined;
@@ -670,6 +675,11 @@ export class UIState {
 
     public toggleInstantReaderHighlight(): void {
         this.instantReaderHighlight = !this.instantReaderHighlight;
+    }
+
+    public setBuzzPointWordOffset(offset: number): void {
+        // Clamp to the supported range so a bad stored value can't push the buzz point wildly off
+        this.buzzPointWordOffset = Math.max(-4, Math.min(4, Math.round(offset)));
     }
 
     public setTrackReaderWithMicrophone(value: boolean): void {
