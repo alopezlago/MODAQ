@@ -41,10 +41,10 @@ export async function loadById(appState: AppState, questionId: string): Promise<
     }
 
     loadPacket(appState, packet);
-
-    // Unlike the manual upload flow, there's no separate footer "Load" button in TMS mode to commit the staged
-    // packet, so merge it into the live game immediately. Keep the dialog open so the TD can enter another code.
-    mergeNewPacketIntoGame(appState);
+    uiState.setPacketStatus({
+        isError: false,
+        status: `Loaded ${packet.tossups.length} tossup(s) and ${packet.bonuses.length} bonus(es). Click Confirm to merge into the game.`,
+    });
 }
 
 function isPacket(result: IPacket | IStatus): result is IPacket {

@@ -1,6 +1,15 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { DialogFooter, PrimaryButton, DefaultButton, TextField, Stack, StackItem, Text } from "@fluentui/react";
+import {
+    DialogFooter,
+    PrimaryButton,
+    DefaultButton,
+    TextField,
+    Stack,
+    StackItem,
+    Text,
+    useTheme,
+} from "@fluentui/react";
 
 import * as AddQuestionsDialogController from "./AddQuestionsDialogController";
 import { AppState } from "../../state/AppState";
@@ -13,6 +22,9 @@ import { ModalDialog } from "./ModalDialog";
 export const AddQuestionsDialog = observer(function AddQuestionsDialog(): JSX.Element {
     const appState: AppState = useAppState();
     const hasQuestionLookup: boolean = appState.uiState.onFetchQuestionById != undefined;
+    const newPacket = appState.uiState.dialogState.addQuestions?.newPacket;
+    const hasPacketStaged: boolean =
+        (newPacket?.tossups.length ?? 0) > 0 || (newPacket?.bonuses.length ?? 0) > 0;
 
     return (
         <ModalDialog
@@ -27,6 +39,11 @@ export const AddQuestionsDialog = observer(function AddQuestionsDialog(): JSX.El
                     <DefaultButton text="Cancel" onClick={() => AddQuestionsDialogController.cancel(appState)} />
                 </DialogFooter>
             )}
+            {hasQuestionLookup && hasPacketStaged && (
+                <DialogFooter>
+                    <PrimaryButton text="Confirm" onClick={() => AddQuestionsDialogController.commit(appState)} />
+                </DialogFooter>
+            )}
         </ModalDialog>
     );
 });
@@ -36,12 +53,13 @@ const AddQuestionsDialogBody = observer(function AddQuestionsDialogBody(
 ): JSX.Element {
     const appState: AppState = props.appState;
     const [questionId, setQuestionId] = React.useState("");
+    const theme = useTheme();
 
     if (appState.uiState.onFetchQuestionById != undefined) {
         return (
             <Stack tokens={{ childrenGap: 10 }}>
                 <StackItem>
-                    <Text variant="small" styles={{ root: { color: "#605e5c" } }}>
+                    <Text variant="small" styles={{ root: { color: theme.palette.neutralSecondary } }}>
                         To add a replacement question, request a secret code from the tournament director and enter
                         it below.
                     </Text>
@@ -69,8 +87,8 @@ const AddQuestionsDialogBody = observer(function AddQuestionsDialogBody(
                             styles={{
                                 root: {
                                     color: appState.uiState.packetParseStatus.status.isError
-                                        ? "#a4262c"
-                                        : "#605e5c",
+                                        ? theme.palette.redDark
+                                        : theme.palette.neutralSecondary,
                                 },
                             }}
                         >

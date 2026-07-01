@@ -71,7 +71,7 @@ export class AppState {
                     this.game.markUpdateComplete();
                     switch (displayType) {
                         case StatusDisplayType.MessageDialog:
-                            if (this.uiState.tmsActive && customExport.onSuccess) {
+                            if (customExport.onSuccess) {
                                 customExport.onSuccess(source);
                             } else {
                                 this.uiState.dialogState.showOKMessageDialog({
