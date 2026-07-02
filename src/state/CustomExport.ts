@@ -100,7 +100,7 @@ interface IBaseCustomExport {
 
     /**
      * If defined, called instead of showing the default "Export Succeeded" dialog when a Menu-triggered export
-     * succeeds. Only used when `tmsActive` is enabled on the `ModaqControl`.
+     * succeeds.
      * @param source How the export was triggered
      */
     onSuccess?: (source: ExportSource) => void;

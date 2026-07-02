@@ -75,6 +75,10 @@ export class UIState {
     @ignore
     public tmsActive: boolean;
 
+    // The name of the host product, used in dialogs that reference the host (e.g. the Export Backup confirmation).
+    @ignore
+    public hostProductName: string | undefined;
+
     // Injected by the host. If provided, switches the Add Questions dialog to secret-code lookup mode: given a
     // secret code entered there, resolves to the replacement question packet, or an IStatus describing why the
     // lookup failed.
@@ -150,6 +154,7 @@ export class UIState {
         this.hideBonusOnDeadTossup = false;
         this.hideNewGame = false;
         this.tmsActive = false;
+        this.hostProductName = undefined;
         this.onFetchQuestionById = undefined;
 
         // Default to Fabric UI's default font (Segoe UI), then Times New Roman
@@ -519,6 +524,10 @@ export class UIState {
 
     public setTmsActive(value: boolean): void {
         this.tmsActive = value;
+    }
+
+    public setHostProductName(value: string | undefined): void {
+        this.hostProductName = value;
     }
 
     public setOnFetchQuestionById(callback: ((id: string) => Promise<IPacket | IStatus>) | undefined): void {

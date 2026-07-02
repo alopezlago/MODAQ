@@ -115,23 +115,19 @@ const ExportToJsonDialogFooter = observer(function ExportToJsonDialogFooter(
     const qbjHref: string = URL.createObjectURL(qbjJson);
     const qbjFilename = `Round_${roundNumber}_${joinedTeamNames}.qbj`;
 
-    return (
-        <DialogFooter>
-            {!appState.uiState.tmsActive && (
-                <>
-                    <PrimaryButton text="Export game" onClick={exportHandler} href={gameHref} download={gameFilename} />
-                    <PrimaryButton
-                        text="Export events"
-                        onClick={exportHandler}
-                        href={cyclesHref}
-                        download={cyclesFilename}
-                    />
-                </>
-            )}
-            <PrimaryButton text="Export QBJ" onClick={exportHandler} href={qbjHref} download={qbjFilename} />
-            <DefaultButton text="Cancel" onClick={cancelHandler} />
-        </DialogFooter>
+    const buttons: JSX.Element[] = [];
+    if (!appState.uiState.tmsActive) {
+        buttons.push(
+            <PrimaryButton key="exportGame" text="Export game" onClick={exportHandler} href={gameHref} download={gameFilename} />,
+            <PrimaryButton key="exportEvents" text="Export events" onClick={exportHandler} href={cyclesHref} download={cyclesFilename} />
+        );
+    }
+    buttons.push(
+        <PrimaryButton key="exportQBJ" text="Export QBJ" onClick={exportHandler} href={qbjHref} download={qbjFilename} />,
+        <DefaultButton key="cancel" text="Cancel" onClick={cancelHandler} />
     );
+
+    return <DialogFooter>{buttons}</DialogFooter>;
 });
 
 function exportGame(appState: AppState): void {

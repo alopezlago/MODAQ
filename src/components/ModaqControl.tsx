@@ -238,6 +238,12 @@ export interface IModaqControlProps {
     tmsActive?: boolean;
 
     /**
+     * The name of the host product. Used in dialogs that reference the host, such as the Export Backup confirmation
+     * message. Falls back to a generic description if not provided.
+     */
+    hostProductName?: string;
+
+    /**
      * The URL to a Yet Another Packet Parser (YAPP) compatible service, which parses docx files. If this value isn't
      * defined, then packets must be in a JSON format.
      */
@@ -408,6 +414,10 @@ function update(appState: AppState, props: IModaqControlProps): void {
 
     if (props.hideNewGame !== appState.uiState.hideNewGame) {
         appState.uiState.setHideNewGame(props.hideNewGame == true);
+    }
+
+    if (props.hostProductName !== appState.uiState.hostProductName) {
+        appState.uiState.setHostProductName(props.hostProductName);
     }
 
     if (props.tmsActive !== appState.uiState.tmsActive) {
