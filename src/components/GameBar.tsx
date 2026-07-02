@@ -28,7 +28,6 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     const appState: AppState = useAppState();
     const uiState: UIState = appState.uiState;
     const game: GameState = appState.game;
-
     const newGameHandler = React.useCallback(() => {
         if (appState.game.hasUpdates) {
             // Prompt the user
@@ -101,45 +100,47 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     const items: ICommandBarItemProps[] = appState.uiState.hideNewGame
         ? []
         : [
-              {
-                  key: "newGame",
-                  text: "New game",
-                  iconProps: { iconName: "Add" },
-                  split: true,
-                  subMenuProps: {
-                      items: [
-                          {
-                              key: "newGameSubMenuItem",
-                              text: "New game...",
-                              iconProps: { iconName: "Add" },
-                              onClick: newGameHandler,
-                          },
-                          {
-                              key: "importQBJ",
-                              text: "Import from QBJ...",
-                              iconProps: { iconName: "Download" },
-                              onClick: importFromQBJHandler,
-                          },
-                          {
-                              key: "importGame",
-                              text: "Import raw game...",
-                              iconProps: { iconName: "Download" },
-                              onClick: importGameHandler,
-                          },
-                      ],
-                  },
-                  onClick: newGameHandler,
-              },
-          ];
+            {
+                key: "newGame",
+                text: "New game",
+                iconProps: { iconName: "Add" },
+                split: true,
+                subMenuProps: {
+                    items: [
+                        {
+                            key: "newGameSubMenuItem",
+                            text: "New game...",
+                            iconProps: { iconName: "Add" },
+                            onClick: newGameHandler,
+                        },
+                        {
+                            key: "importQBJ",
+                            text: "Import from QBJ...",
+                            iconProps: { iconName: "Download" },
+                            onClick: importFromQBJHandler,
+                        },
+                        {
+                            key: "importGame",
+                            text: "Import raw game...",
+                            iconProps: { iconName: "Download" },
+                            onClick: importGameHandler,
+                        },
+                    ],
+                },
+                onClick: newGameHandler,
+            },
+        ];
 
     const optionsSubMenuItems: ICommandBarItemProps[] = getOptionsSubMenuItems(appState);
-    items.push({
-        key: "options",
-        text: "Options",
-        subMenuProps: {
-            items: optionsSubMenuItems,
-        },
-    });
+    if (optionsSubMenuItems.length > 0) {
+        items.push({
+            key: "options",
+            text: "Options",
+            subMenuProps: {
+                items: optionsSubMenuItems,
+            },
+        });
+    }
 
     const viewSubMenuItems: ICommandBarItemProps[] = getViewSubMenuItems(appState);
     items.push({
@@ -167,8 +168,23 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         },
     });
 
-    // If a custom export option is given, only show a button for that export
-    if (appState.uiState.customExportOptions == undefined) {
+    // In TMS-managed mode, only show a button for exporting a backup, gated behind a confirmation dialog.
+    // Otherwise show the custom export button (if given) or the standard export submenu.
+    if (uiState.tmsActive) {
+        items.push({
+            key: "exportBackup",
+            text: "Export Backup",
+            disabled: appState.game.cycles.length === 0,
+            onClick: () => {
+                uiState.dialogState.showOKCancelMessageDialog({
+                    title: "Export Backup",
+                    message: `This function is intended for downloading a backup file for an emergency migration to MODAQ outside of ${uiState.hostProductName ?? "the host application"}. Are you sure you want to proceed?`,
+                    onOK: () => uiState.dialogState.showExportToJsonDialog(),
+                    okLabel: "Yes, Export Backup",
+                });
+            },
+        });
+    } else if (appState.uiState.customExportOptions == undefined) {
         const exportSubMenuItems: ICommandBarItemProps[] = getExportSubMenuItems(appState);
         items.push({
             key: "export",
@@ -333,6 +349,12 @@ function getExportSubMenuItems(appState: AppState): ICommandBarItemProps[] {
 function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
 
+    // Changing the game format isn't applicable in TMS-managed mode, where the format is set in TMS. Font moves
+    // to the View menu in that case, so Options would otherwise be left with a single, oddly-scoped item.
+    if (appState.uiState.tmsActive) {
+        return items;
+    }
+
     items.push(
         {
             key: "changeFormat",
@@ -425,6 +447,22 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             onClick: () => appState.uiState.toggleBonusHighlight(),
         },
     ]);
+
+    if (appState.uiState.tmsActive) {
+        items = items.concat([
+            {
+                key: "viewDividerFont",
+                itemType: ContextualMenuItemType.Divider,
+            },
+            {
+                key: "font",
+                text: "Font...",
+                onClick: () => {
+                    appState.uiState.showFontDialog();
+                },
+            },
+        ]);
+    }
 
     items = items.concat([
         {
@@ -520,9 +558,14 @@ function getPlayerManagementSubMenuItems(
                 // TODO: should this be styled in a different color?
             };
 
-            const items: ICommandBarItemProps[] = isActivePlayer
-                ? [subMenuSectionItem, changeActivityItem, renameItem]
-                : [changeActivityItem, renameItem];
+            // Renaming players isn't applicable in TMS-managed mode, where players are managed in TMS.
+            const items: ICommandBarItemProps[] = uiState.tmsActive
+                ? isActivePlayer
+                    ? [subMenuSectionItem, changeActivityItem]
+                    : [changeActivityItem]
+                : isActivePlayer
+                    ? [subMenuSectionItem, changeActivityItem, renameItem]
+                    : [changeActivityItem, renameItem];
 
             activePlayerMenuItems.push({
                 key: `active_${teamName}_${player.name}`,
@@ -547,7 +590,7 @@ function getPlayerManagementSubMenuItems(
     // TODO: This should be under a section for player management (add player, subs)
     const playerActionsItem: ICommandBarItemProps = {
         key: "player",
-        text: "Player",
+        text: uiState.tmsActive ? "Substitutions" : "Player",
         subMenuProps: {
             items: playerActionsMenus,
         },
@@ -593,13 +636,18 @@ function getPlayerManagementSubMenuItems(
         disabled: gameMenuItemsDisabled,
     };
 
+    // Add Player and Rename Team aren't applicable in TMS-managed mode, where rosters/teams are managed in TMS.
+    const teamManagementItems: ICommandBarItemProps[] = uiState.tmsActive
+        ? [playerActionsItem, reorderPlayersItem, reorderTeamsItem]
+        : [playerActionsItem, addPlayerItem, reorderPlayersItem, reorderTeamsItem, renameTeamItem];
+
     return {
         key: "teamManagement",
         itemType: ContextualMenuItemType.Section,
         sectionProps: {
             bottomDivider: true,
             title: "Team Management",
-            items: [playerActionsItem, addPlayerItem, reorderPlayersItem, reorderTeamsItem, renameTeamItem],
+            items: teamManagementItems,
         },
     };
 }
@@ -847,15 +895,14 @@ function buildCopyTossupProtestInfoText(appState: AppState, cycle: Cycle, protes
 * **Packet Answerline**: ${tossup.answer}
 * **Player Answer**: ${protest.givenAnswer}
 * **Buzzpoint**: Word #${protest.position} (${tossup
-        .getWords(game.gameFormat)
-        .filter((w) => w.canBuzzOn)
+            .getWords(game.gameFormat)
+            .filter((w) => w.canBuzzOn)
         [protest.position].word.map((w) => w.text)
-        .join(" ")})
-* **Moderator Judgment**: ${
-        cycle.correctBuzz == undefined || cycle.correctBuzz.marker.player.teamName !== protest.teamName
+            .join(" ")})
+* **Moderator Judgment**: ${cycle.correctBuzz == undefined || cycle.correctBuzz.marker.player.teamName !== protest.teamName
             ? "Incorrect"
             : "Correct"
-    }
+        }
 * **Justification**: ${protest.reason}`;
 }
 
@@ -871,11 +918,10 @@ function buildCopyBonusProtestInfoText(appState: AppState, cycle: Cycle, protest
 * **Metadata**: ${bonus.metadata}
 * **Packet Answerline**: ${bonus.parts[protest.partIndex].answer}
 * **Player Answer**: ${protest.givenAnswer}
-* **Moderator Judgment**: ${
-        cycle.bonusAnswer === undefined || cycle.bonusAnswer.parts[protest.partIndex].points <= 0
+* **Moderator Judgment**: ${cycle.bonusAnswer === undefined || cycle.bonusAnswer.parts[protest.partIndex].points <= 0
             ? "Incorrect"
             : "Correct"
-    }
+        }
 * **Justification**: ${protest.reason}`;
 }
 
@@ -918,9 +964,8 @@ function onPlayerLeaveClick(
 
     appState.uiState.dialogState.showOKCancelMessageDialog({
         title: "Let Player Leave",
-        message: `Are you sure you want to let the player "${item.data.activePlayer.name}" from team "${
-            item.data.activePlayer.teamName
-        }" leave the game before question #${appState.uiState.cycleIndex + 1}?`,
+        message: `Are you sure you want to let the player "${item.data.activePlayer.name}" from team "${item.data.activePlayer.teamName
+            }" leave the game before question #${appState.uiState.cycleIndex + 1}?`,
         onOK: () => appState.game.cycles[appState.uiState.cycleIndex].addPlayerLeaves(item.data.activePlayer),
     });
 }
@@ -967,8 +1012,7 @@ function onSwapPlayerClick(
     item.data.appState.uiState.dialogState.showOKCancelMessageDialog({
         title: "Substitute Player",
         message:
-            `You are substituting players outside of a normal time (beginning of the game, after halftime, overtime). Are you sure you want to substitute before question #${
-                cycleIndex + 1
+            `You are substituting players outside of a normal time (beginning of the game, after halftime, overtime). Are you sure you want to substitute before question #${cycleIndex + 1
             }?` + additionalHint,
         onOK: () => game.cycles[uiState.cycleIndex].addSwapSubstitution(item.data.player, item.data.activePlayer),
     });

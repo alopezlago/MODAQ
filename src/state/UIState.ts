@@ -22,6 +22,7 @@ import { BuzzMenuState } from "./BuzzMenuState";
 import { ICustomExport } from "./CustomExport";
 import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 import { IPacketParseStatus } from "./IPacketParseStatus";
+import { IPacket } from "./IPacket";
 
 // TODO: Look into breaking this up into individual UI component states. Lots of pendingX fields, which could be in
 // their own (see CustomizeGameFormatDialogState)
@@ -68,6 +69,21 @@ export class UIState {
 
     @ignore
     public hideNewGame: boolean;
+
+    // True when MODAQ is embedded in TMS's moderator-managed flow. Gates TMS-specific UI behavior
+    // (backup-only export, always-visible packet loader, QBJ-only export dialog).
+    @ignore
+    public tmsActive: boolean;
+
+    // The name of the host product, used in dialogs that reference the host (e.g. the Export Backup confirmation).
+    @ignore
+    public hostProductName: string | undefined;
+
+    // Injected by the host. If provided, switches the Add Questions dialog to secret-code lookup mode: given a
+    // secret code entered there, resolves to the replacement question packet, or an IStatus describing why the
+    // lookup failed.
+    @ignore
+    public onFetchQuestionById: ((id: string) => Promise<IPacket | IStatus>) | undefined;
 
     @ignore
     public importGameStatus: IStatus | undefined;
@@ -137,6 +153,9 @@ export class UIState {
         this.exportRoundNumber = 1;
         this.hideBonusOnDeadTossup = false;
         this.hideNewGame = false;
+        this.tmsActive = false;
+        this.hostProductName = undefined;
+        this.onFetchQuestionById = undefined;
 
         // Default to Fabric UI's default font (Segoe UI), then Times New Roman
         this.fontFamily = DefaultFontFamily;
@@ -501,6 +520,18 @@ export class UIState {
 
     public setHideNewGame(value: boolean): void {
         this.hideNewGame = value;
+    }
+
+    public setTmsActive(value: boolean): void {
+        this.tmsActive = value;
+    }
+
+    public setHostProductName(value: string | undefined): void {
+        this.hostProductName = value;
+    }
+
+    public setOnFetchQuestionById(callback: ((id: string) => Promise<IPacket | IStatus>) | undefined): void {
+        this.onFetchQuestionById = callback;
     }
 
     public setImportGameStatus(status: IStatus): void {

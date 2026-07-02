@@ -32,6 +32,7 @@ import { Bonus, ITossupWord, PacketState, Tossup } from "../state/PacketState";
 import { ICustomExport } from "../state/CustomExport";
 import { Cycle } from "../state/Cycle";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
+import { IStatus } from "../IStatus";
 
 // Initialize Fluent UI icons when this is loaded, before the first render
 initializeIcons();
@@ -117,6 +118,10 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
             if (packet) {
                 appState.game.loadPacket(packet);
             }
+
+            // The "Packet loaded" message from this initial load has no UI surface of its own; clear it so it
+            // doesn't leak into other UI (e.g. the Add Questions dialog) that reads packetParseStatus.
+            appState.uiState.clearPacketStatus();
         }
     }, [appState, props.packet]);
     React.useEffect(() => {
@@ -191,6 +196,14 @@ export interface IModaqControlProps {
     hideNewGame?: boolean;
 
     /**
+     * If provided, the Add Questions dialog switches to a secret-code lookup mode: instead of uploading a packet
+     * file, the user enters an ID, and this callback is given that ID and should resolve to the replacement
+     * question packet (an `IPacket`), or an `IStatus` describing why the lookup failed. MODAQ has no knowledge of
+     * how or where the question is stored; the host application owns that lookup.
+     */
+    onFetchQuestionById?: (id: string) => Promise<IPacket | IStatus>;
+
+    /**
      * The packet for the current game. This should only be set once.
      */
     packet?: IPacket;
@@ -216,6 +229,19 @@ export interface IModaqControlProps {
      * render.
      */
     storeName?: string | undefined;
+
+    /**
+     * When `true`, enables TMS-specific UI behavior: the export menu is replaced with a single
+     * "Export Backup" button (gated behind a confirmation dialog), the packet loader is always shown
+     * regardless of `yappServiceUrl`, and the JSON export dialog only offers a QBJ export.
+     */
+    tmsActive?: boolean;
+
+    /**
+     * The name of the host product. Used in dialogs that reference the host, such as the Export Backup confirmation
+     * message. Falls back to a generic description if not provided.
+     */
+    hostProductName?: string;
 
     /**
      * The URL to a Yet Another Packet Parser (YAPP) compatible service, which parses docx files. If this value isn't
@@ -388,6 +414,18 @@ function update(appState: AppState, props: IModaqControlProps): void {
 
     if (props.hideNewGame !== appState.uiState.hideNewGame) {
         appState.uiState.setHideNewGame(props.hideNewGame == true);
+    }
+
+    if (props.hostProductName !== appState.uiState.hostProductName) {
+        appState.uiState.setHostProductName(props.hostProductName);
+    }
+
+    if (props.tmsActive !== appState.uiState.tmsActive) {
+        appState.uiState.setTmsActive(props.tmsActive == true);
+    }
+
+    if (props.onFetchQuestionById !== appState.uiState.onFetchQuestionById) {
+        appState.uiState.setOnFetchQuestionById(props.onFetchQuestionById);
     }
 
     if (props.packetName !== appState.uiState.packetFilename && props.packetName !== appState.game.packet.name) {

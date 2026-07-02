@@ -71,10 +71,14 @@ export class AppState {
                     this.game.markUpdateComplete();
                     switch (displayType) {
                         case StatusDisplayType.MessageDialog:
-                            this.uiState.dialogState.showOKMessageDialog({
-                                title: "Export Succeeded",
-                                message: "Export succeeded.",
-                            });
+                            if (customExport.onSuccess) {
+                                customExport.onSuccess(source);
+                            } else {
+                                this.uiState.dialogState.showOKMessageDialog({
+                                    title: "Export Succeeded",
+                                    message: "Export succeeded.",
+                                });
+                            }
                             break;
                         case StatusDisplayType.Label:
                             this.uiState.setCustomExportStatus("Export successful.");
