@@ -503,13 +503,25 @@ export class GameState {
     }
 
     public getBonusIndex(cycleIndex: number): number {
+        // If this cycle has a protest replacement, return that specific index directly.
+        const currentCycle: Cycle = this.cycles[cycleIndex];
+        const protestReplacement = currentCycle.thrownOutBonuses?.find(
+            (e) => e.replacementQuestionIndex != undefined
+        );
+        if (protestReplacement != undefined) {
+            const idx = protestReplacement.replacementQuestionIndex!;
+            return idx >= this.packet.bonuses.length ? -1 : idx;
+        }
+
         if (this.gameFormat.pairTossupsBonuses) {
-            // Same as the cycle index plus thrown out questions
+            // Same as the cycle index plus sequential (non-protest) thrown-out bonuses
             let thrownOutBonusesCount = 0;
             for (let i = 0; i <= cycleIndex; i++) {
                 const cycle: Cycle = this.cycles[i];
                 if (cycle.thrownOutBonuses !== undefined) {
-                    thrownOutBonusesCount += cycle.thrownOutBonuses.length;
+                    thrownOutBonusesCount += cycle.thrownOutBonuses.filter(
+                        (e) => e.replacementQuestionIndex == undefined
+                    ).length;
                 }
             }
 
@@ -526,7 +538,9 @@ export class GameState {
             }
 
             if (cycle.thrownOutBonuses != undefined) {
-                usedBonusesCount += cycle.thrownOutBonuses.length;
+                usedBonusesCount += cycle.thrownOutBonuses.filter(
+                    (e) => e.replacementQuestionIndex == undefined
+                ).length;
             }
         }
 
@@ -551,11 +565,24 @@ export class GameState {
     }
 
     public getTossupIndex(cycleIndex: number): number {
+        // If this cycle has a protest replacement, return that specific index directly.
+        const currentCycle: Cycle = this.cycles[cycleIndex];
+        const protestReplacement = currentCycle.thrownOutTossups?.find(
+            (e) => e.replacementQuestionIndex != undefined
+        );
+        if (protestReplacement != undefined) {
+            return protestReplacement.replacementQuestionIndex!;
+        }
+
+        // Otherwise, offset by the number of sequential (non-protest) throw-outs up to and including this cycle.
+        // Protest throw-outs don't shift the sequential order for subsequent cycles.
         let thrownOutTossupsCount = 0;
         for (let i = 0; i <= cycleIndex; i++) {
             const cycle: Cycle = this.cycles[i];
             if (cycle.thrownOutTossups !== undefined) {
-                thrownOutTossupsCount += cycle.thrownOutTossups.length;
+                thrownOutTossupsCount += cycle.thrownOutTossups.filter(
+                    (e) => e.replacementQuestionIndex == undefined
+                ).length;
             }
         }
 

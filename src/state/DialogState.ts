@@ -38,6 +38,9 @@ export class DialogState {
     public messageDialog: IMessageDialogState | undefined;
 
     @ignore
+    public throwOutQuestionDialog: IThrowOutQuestionDialogState | undefined;
+
+    @ignore
     public renamePlayerDialog: RenamePlayerDialogState | undefined;
 
     @ignore
@@ -58,6 +61,7 @@ export class DialogState {
         this.fontDialog = undefined;
         this.importFromQBJDialog = undefined;
         this.messageDialog = undefined;
+        this.throwOutQuestionDialog = undefined;
         this.renamePlayerDialog = undefined;
         this.renameTeamDialog = undefined;
         this.reorderPlayersDialog = undefined;
@@ -108,6 +112,18 @@ export class DialogState {
         if (this.visibleDialog === ModalVisibilityStatus.Message) {
             this.hideModalDialog();
         }
+    }
+
+    public hideThrowOutQuestionDialog(): void {
+        this.throwOutQuestionDialog = undefined;
+        if (this.visibleDialog === ModalVisibilityStatus.ThrowOutQuestion) {
+            this.hideModalDialog();
+        }
+    }
+
+    public showThrowOutQuestionDialog(options: IThrowOutQuestionDialogState): void {
+        this.throwOutQuestionDialog = options;
+        this.visibleDialog = ModalVisibilityStatus.ThrowOutQuestion;
     }
 
     public hideRenamePlayerDialog(): void {
@@ -235,4 +251,15 @@ export class DialogState {
     public showNewGameDialog(): void {
         this.visibleDialog = ModalVisibilityStatus.NewGame;
     }
+}
+
+export interface IThrowOutQuestionDialogState {
+    title: string;
+    message: string;
+    // The pre-computed replacement question number (1-based) shown in the SpinButton. Undefined if the packet
+    // has no available replacement (user must upload more questions first).
+    defaultReplacementNumber: number | undefined;
+    // Upper bound for the SpinButton (total questions of this type in the packet).
+    maxQuestionNumber: number;
+    onConfirm: (replacementIndex: number | undefined) => void;
 }

@@ -62,6 +62,9 @@ export interface ITimeoutEvent {
 
 export interface IThrowOutQuestionEvent {
     questionIndex: number;
+    // Set for protest replacements, which pull from the end of the packet rather than the next sequential question.
+    // Undefined means the next sequential question is used as the replacement.
+    replacementQuestionIndex?: number;
 }
 
 export type PlayerChangeEvent = IPlayerJoinsEvent | IPlayerLeavesEvent | ISubstitutionEvent;

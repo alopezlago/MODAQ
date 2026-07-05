@@ -19,6 +19,7 @@ import { AppState } from "../state/AppState";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
 import { RenameTeamDialog } from "./dialogs/RenameTeamDialog";
 import { ImportFromQBJDialog } from "./dialogs/ImportFromQBJDialog";
+import { ThrowOutQuestionDialog } from "./dialogs/ThrowOutQuestionDialog";
 
 export const ModalDialogContainer = observer(function ModalDialogContainer() {
     // The Protest dialogs aren't here because they require extra information
@@ -44,6 +45,7 @@ export const ModalDialogContainer = observer(function ModalDialogContainer() {
             <RenameTeamDialog />
             <ReorderPlayerDialog />
             <ScoresheetDialog />
+            <ThrowOutQuestionDialog />
         </>
     );
 });

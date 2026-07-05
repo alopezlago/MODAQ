@@ -30,13 +30,6 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
         }
     }
 
-    const disableThrowOutButton: boolean = props.appState.activeGame.cycles.some(
-        (cycle) => cycle.orderedBuzzes.length > 0 && cycle.orderedBuzzes[0].tossupIndex + 1 > props.tossupNumber
-    );
-    const throwOutButtonTooltip: string = disableThrowOutButton
-        ? "Cannot throw out tossup if future tossups have events"
-        : "Throw out tossup";
-
     const correctBuzzIndex: number = props.cycle.correctBuzz?.marker.position ?? -1;
     const wrongBuzzIndexes: number[] = (props.cycle.wrongBuzzes ?? [])
         .filter((buzz) => buzz.tossupIndex === props.tossupNumber - 1)
@@ -89,11 +82,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
                 <PostQuestionMetadata metadata={props.tossup.metadata} />
             </div>
             <div>
-                <CancelButton
-                    disabled={disableThrowOutButton}
-                    tooltip={throwOutButtonTooltip}
-                    onClick={throwOutClickHandler}
-                />
+                <CancelButton tooltip="Throw out tossup" onClick={throwOutClickHandler} />
             </div>
         </div>
     );

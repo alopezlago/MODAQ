@@ -2,6 +2,7 @@ import React from "react";
 import { AppState } from "../state/AppState";
 import { Cycle } from "../state/Cycle";
 import { UIState } from "../state/UIState";
+import { getReplacementQuestionIndex, getThrowOutQuestionMessage } from "./ThrowOutQuestionMessage";
 
 export function selectWordFromClick(appState: AppState, event: React.MouseEvent<HTMLDivElement>): void {
     const target = event.target as HTMLDivElement;
@@ -47,14 +48,20 @@ export function selectWordFromKeyboardEvent(appState: AppState, event: React.Key
 }
 
 export function throwOutTossup(appState: AppState, cycle: Cycle, tossupNumber: number): void {
-    appState.uiState.dialogState.showOKCancelMessageDialog({
-        title: "Throw out Tossup",
-        message: "Click OK to throw out the tossup. To undo this, click on the X next to its event in the Event Log.",
-        onOK: () => onConfirmThrowOutTossup(appState, cycle, tossupNumber),
+    const cycleIndex: number = appState.game.cycles.indexOf(cycle);
+    const replacementIndex: number | undefined = getReplacementQuestionIndex(appState, cycleIndex, "tossup", tossupNumber);
+    const message: string = getThrowOutQuestionMessage(appState, cycleIndex, "tossup", tossupNumber);
+    const totalTossups: number = appState.game.packet.tossups.length;
+    appState.uiState.dialogState.showThrowOutQuestionDialog({
+        title: "Throw Out Tossup",
+        message: `${message} To undo this, click on the X next to its event in the Event Log.`,
+        defaultReplacementNumber: replacementIndex != undefined ? replacementIndex + 1 : undefined,
+        maxQuestionNumber: totalTossups,
+        onConfirm: (userReplacementIndex) => onConfirmThrowOutTossup(appState, cycle, tossupNumber, userReplacementIndex),
     });
 }
 
-function onConfirmThrowOutTossup(appState: AppState, cycle: Cycle, tossupNumber: number) {
-    cycle.addThrownOutTossup(tossupNumber - 1);
+function onConfirmThrowOutTossup(appState: AppState, cycle: Cycle, tossupNumber: number, replacementIndex: number | undefined) {
+    cycle.addThrownOutTossup(tossupNumber - 1, replacementIndex);
     appState.uiState.setSelectedWordIndex(-1);
 }

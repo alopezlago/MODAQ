@@ -67,13 +67,6 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
     }
 
     const disabled = !props.inPlay;
-    const disableThrowOutButton: boolean =
-        disabled ||
-        props.appState.activeGame.cycles.some(
-            (cycle) => cycle.bonusAnswer != undefined && cycle.bonusAnswer.bonusIndex > props.bonusIndex
-        );
-    const throwOutButtonTooltip: string =
-        disableThrowOutButton && !disabled ? "Cannot throw out bonus if future bonuses have events" : "Throw out bonus";
 
     const parts: JSX.Element[] = props.bonus.parts.map((bonusPartProps, index) => {
         return (
@@ -121,8 +114,8 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
                             </StackItem>
                             <StackItem>
                                 <CancelButton
-                                    disabled={disableThrowOutButton}
-                                    tooltip={throwOutButtonTooltip}
+                                    disabled={disabled}
+                                    tooltip="Throw out bonus"
                                     onClick={throwOutClickHandler}
                                 />
                             </StackItem>
