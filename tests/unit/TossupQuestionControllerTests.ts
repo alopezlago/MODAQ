@@ -199,4 +199,94 @@ describe("TossupQuestionControllerTests", () => {
             expect(appState.game.getTossupIndex(0)).to.equal(1);
         });
     });
+
+    describe("type word number auto-commit", () => {
+        function createAppStateWithLongTossup(): AppState {
+            const appState: AppState = new AppState();
+            appState.game.addNewPlayers([new Player("Alice", "Alpha", true)]);
+
+            const packet: PacketState = new PacketState();
+            // 15 buzzable words, so word numbers up to 15 are valid
+            packet.setTossups([
+                new Tossup(
+                    "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen",
+                    "Answer"
+                ),
+            ]);
+            appState.game.loadPacket(packet);
+            return appState;
+        }
+
+        // The controller schedules the auto-commit with window.setTimeout, which doesn't exist under Node; fake it
+        let originalWindow: unknown;
+        let scheduled: { callback: () => void; delay: number } | undefined;
+
+        beforeEach(() => {
+            originalWindow = (globalThis as unknown as { window: unknown }).window;
+            scheduled = undefined;
+            (globalThis as unknown as { window: unknown }).window = {
+                setTimeout: (callback: () => void, delay: number): number => {
+                    scheduled = { callback, delay };
+                    return 1;
+                },
+                clearTimeout: (): void => {
+                    scheduled = undefined;
+                },
+            };
+        });
+
+        afterEach(() => {
+            (globalThis as unknown as { window: unknown }).window = originalWindow;
+        });
+
+        it("Arms a 2-second timer and commits after a 2-digit number is idle", () => {
+            const appState: AppState = createAppStateWithLongTossup();
+            TossupQuestionController.startBuzzIndexEntry(appState);
+            TossupQuestionController.appendBuzzIndexDigit(appState, "1");
+            TossupQuestionController.appendBuzzIndexDigit(appState, "2");
+
+            expect(scheduled, "a timer should be armed after two digits").to.not.be.undefined;
+            expect(scheduled?.delay).to.equal(2000);
+
+            // Firing the timer should set the buzz point at word 12 (index 11) and open the menu
+            scheduled?.callback();
+            expect(appState.uiState.selectedWordIndex).to.equal(11);
+            expect(appState.uiState.buzzMenuState.visible).to.be.true;
+            expect(appState.uiState.isEnteringBuzzIndex).to.be.false;
+        });
+
+        it("Does not arm a timer for a single digit", () => {
+            const appState: AppState = createAppStateWithLongTossup();
+            TossupQuestionController.startBuzzIndexEntry(appState);
+            TossupQuestionController.appendBuzzIndexDigit(appState, "5");
+
+            expect(scheduled).to.be.undefined;
+        });
+
+        it("Resets the timer on each new keystroke", () => {
+            const appState: AppState = createAppStateWithLongTossup();
+            TossupQuestionController.startBuzzIndexEntry(appState);
+            TossupQuestionController.appendBuzzIndexDigit(appState, "1");
+            TossupQuestionController.appendBuzzIndexDigit(appState, "2");
+            TossupQuestionController.appendBuzzIndexDigit(appState, "3");
+
+            // The latest armed timer reflects "123", which clamps to the last buzzable position (the
+            // end-of-question marker after the 15 words, index 15)
+            expect(scheduled).to.not.be.undefined;
+            scheduled?.callback();
+            expect(appState.uiState.selectedWordIndex).to.equal(15);
+            expect(appState.uiState.buzzMenuState.visible).to.be.true;
+        });
+
+        it("A manual commit cancels the pending timer", () => {
+            const appState: AppState = createAppStateWithLongTossup();
+            TossupQuestionController.startBuzzIndexEntry(appState);
+            TossupQuestionController.appendBuzzIndexDigit(appState, "1");
+            TossupQuestionController.appendBuzzIndexDigit(appState, "2");
+            expect(scheduled).to.not.be.undefined;
+
+            TossupQuestionController.commitBuzzIndexEntry(appState);
+            expect(scheduled, "commit should clear the timer").to.be.undefined;
+        });
+    });
 });

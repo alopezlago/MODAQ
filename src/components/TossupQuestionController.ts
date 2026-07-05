@@ -169,6 +169,135 @@ export function moveBuzzPoint(appState: AppState, delta: number): void {
     }
 }
 
+// The index of the last buzzable word in the current tossup, or -1 if there isn't one.
+function getLastBuzzableIndex(appState: AppState): number {
+    const tossup: Tossup | undefined = appState.game.getTossup(appState.uiState.cycleIndex);
+    if (tossup == undefined) {
+        return -1;
+    }
+
+    return tossup.getWords(appState.game.gameFormat).filter((word) => word.canBuzzOn).length - 1;
+}
+
+// Longest word number a tossup could have; also caps how many digits the user can type
+const maximumBuzzIndexDigits = 3;
+
+// Once a 2- or 3-digit number has sat untouched this long, assume it's the intended word and open the buzz menu.
+// (Single digits are left alone, since the reader may still be typing a longer number.)
+const buzzIndexAutoCommitDelayInMs = 2000;
+
+let buzzIndexAutoCommitTimer: number | undefined = undefined;
+
+function clearBuzzIndexAutoCommit(): void {
+    if (buzzIndexAutoCommitTimer != undefined) {
+        window.clearTimeout(buzzIndexAutoCommitTimer);
+        buzzIndexAutoCommitTimer = undefined;
+    }
+}
+
+// (Re)arms the idle auto-commit timer after a keystroke: only when the number is 2-3 digits, and reset on every
+// keystroke so it fires only after a pause.
+function rearmBuzzIndexAutoCommit(appState: AppState): void {
+    clearBuzzIndexAutoCommit();
+
+    const length: number = appState.uiState.buzzIndexEntryValue.length;
+    if (typeof window === "undefined" || (length !== 2 && length !== 3)) {
+        return;
+    }
+
+    buzzIndexAutoCommitTimer = window.setTimeout(() => {
+        buzzIndexAutoCommitTimer = undefined;
+        // Guard against a stale timer firing after entry already ended (e.g. the question changed)
+        if (appState.uiState.isEnteringBuzzIndex) {
+            commitBuzzIndexEntry(appState);
+        }
+    }, buzzIndexAutoCommitDelayInMs);
+}
+
+/**
+ * Starts word-number entry: the user types a word's number (shown above each word) and presses Enter to set the
+ * buzz point there. Used by the Space shortcut when "type word number to buzz" mode is on.
+ */
+export function startBuzzIndexEntry(appState: AppState): void {
+    const uiState: UIState = appState.uiState;
+    clearBuzzIndexAutoCommit();
+    uiState.setReaderFollowerLastCue("typing word number");
+    uiState.setSelectedWordIndex(-1);
+    uiState.startBuzzIndexEntry();
+}
+
+/**
+ * Appends a typed digit to the word number and previews the buzz point at the matching word.
+ */
+export function appendBuzzIndexDigit(appState: AppState, digit: string): void {
+    const uiState: UIState = appState.uiState;
+    if (uiState.buzzIndexEntryValue.length >= maximumBuzzIndexDigits) {
+        return;
+    }
+
+    uiState.setBuzzIndexEntryValue(uiState.buzzIndexEntryValue + digit);
+    previewBuzzIndexSelection(appState);
+    rearmBuzzIndexAutoCommit(appState);
+}
+
+/**
+ * Removes the last typed digit from the word number and updates the preview.
+ */
+export function backspaceBuzzIndexDigit(appState: AppState): void {
+    const uiState: UIState = appState.uiState;
+    uiState.setBuzzIndexEntryValue(uiState.buzzIndexEntryValue.slice(0, -1));
+    previewBuzzIndexSelection(appState);
+    rearmBuzzIndexAutoCommit(appState);
+}
+
+// Highlights the word matching the number typed so far (1-based, clamped to the tossup), without opening the
+// buzz menu yet, so the user can see where the buzz point will land as they type.
+function previewBuzzIndexSelection(appState: AppState): void {
+    const uiState: UIState = appState.uiState;
+    const wordIndex: number = parseBuzzIndexSelection(appState);
+    uiState.setSelectedWordIndex(wordIndex);
+}
+
+// Turns the typed word number into a 0-based buzzable word index, clamped to the tossup, or -1 if nothing's typed.
+function parseBuzzIndexSelection(appState: AppState): number {
+    const value: string = appState.uiState.buzzIndexEntryValue;
+    if (value === "") {
+        return -1;
+    }
+
+    const lastBuzzableIndex: number = getLastBuzzableIndex(appState);
+    // The numbers shown above the words are 1-based, so the word index is the typed number minus one
+    return Math.max(0, Math.min(lastBuzzableIndex, Number(value) - 1));
+}
+
+/**
+ * Commits word-number entry: sets the buzz point to the typed word and opens the buzz menu there. If nothing was
+ * typed, just cancels out of entry mode.
+ */
+export function commitBuzzIndexEntry(appState: AppState): void {
+    const uiState: UIState = appState.uiState;
+    clearBuzzIndexAutoCommit();
+    const wordIndex: number = parseBuzzIndexSelection(appState);
+    uiState.endBuzzIndexEntry();
+
+    if (wordIndex < 0) {
+        return;
+    }
+
+    uiState.setSelectedWordIndex(wordIndex);
+    uiState.showBuzzMenu(/* clearSelectedWordOnClose */ false);
+}
+
+/**
+ * Cancels word-number entry without setting a buzz point.
+ */
+export function cancelBuzzIndexEntry(appState: AppState): void {
+    const uiState: UIState = appState.uiState;
+    clearBuzzIndexAutoCommit();
+    uiState.endBuzzIndexEntry();
+    uiState.setSelectedWordIndex(-1);
+}
+
 /**
  * The players shown in the buzz menu, in display order (each team's active players in turn). Number keys pick
  * from this list.
@@ -304,11 +433,23 @@ export function markKeyboardSelectedPlayerBuzz(appState: AppState, isCorrect: bo
     }
 }
 
-export function throwOutTossup(appState: AppState, cycle: Cycle, tossupNumber: number): void {
+export function throwOutTossup(
+    appState: AppState,
+    cycle: Cycle,
+    tossupNumber: number,
+    onThrownOut?: () => void
+): void {
     appState.uiState.dialogState.showOKCancelMessageDialog({
         title: "Throw out Tossup",
-        message: "Click OK to throw out the tossup. To undo this, click on the X next to its event in the Event Log.",
-        onOK: () => onConfirmThrowOutTossup(appState, cycle, tossupNumber),
+        message:
+            "Click OK to throw out the tossup. To undo this, click on the X next to its event in the Event Log." +
+            (onThrownOut ? " If the packet runs out of tossups, the next tiebreaker question is added automatically." : ""),
+        onOK: () => {
+            onConfirmThrowOutTossup(appState, cycle, tossupNumber);
+            if (onThrownOut) {
+                onThrownOut();
+            }
+        },
     });
 }
 

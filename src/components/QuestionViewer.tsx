@@ -11,12 +11,14 @@ import {
     IStackStyles,
     memoizeFunction,
     mergeStyleSets,
+    PrimaryButton,
     Separator,
     Stack,
     StackItem,
 } from "@fluentui/react";
 import { AppState } from "../state/AppState";
 import { useAppState } from "../contexts/StateContext";
+import { useTiebreakers } from "../contexts/TiebreakerContext";
 
 const separatorStyles: Partial<ISeparatorStyles> = {
     root: {
@@ -26,6 +28,7 @@ const separatorStyles: Partial<ISeparatorStyles> = {
 
 export const QuestionViewer = observer(function QuestionViewer() {
     const appState: AppState = useAppState();
+    const tiebreakers = useTiebreakers();
     const fontSize: number = appState.uiState.questionFontSize;
     const fontFamily: string = appState.uiState.fontFamily;
     const classes: IQuestionViewerClassNames = getClassNames(appState.uiState.questionFontColor, fontSize);
@@ -81,8 +84,16 @@ export const QuestionViewer = observer(function QuestionViewer() {
                 tossup={game.packet.tossups[tossupIndex]}
             />
         );
+    } else if (tiebreakers != undefined) {
+        // The host has tiebreaker questions available: offer them right here
+        // instead of a dead end (subInIfNeeded appends the next unused one).
+        tossup = (
+            <div>
+                <p>No more tossups available in the packet.</p>
+                <PrimaryButton text="Add the next tiebreaker question" onClick={() => tiebreakers.subInIfNeeded()} />
+            </div>
+        );
     } else {
-        // TODO: Allow users to add more tossups (maybe by appending to a packet)
         // TODO: Move this and the bonus error message inside the components? Then it would be styled properly
         tossup = (
             <div>

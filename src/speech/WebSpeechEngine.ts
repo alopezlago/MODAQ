@@ -68,6 +68,9 @@ function getSpeechRecognitionConstructor(): ISpeechRecognitionConstructor | unde
 export class WebSpeechEngine implements ISpeechEngine {
     public readonly name: string = "Web Speech API";
 
+    // The Web Speech API emits interim results (interimResults = true) that it revises as it hears more.
+    public readonly hasSpeculativePartials: boolean = true;
+
     private readonly callbacks: ISpeechEngineCallbacks;
 
     private recognition: ISpeechRecognition | undefined;

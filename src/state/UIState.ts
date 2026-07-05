@@ -123,6 +123,23 @@ export class UIState {
     // the user compensate for recognition lag/lead so the buzz lands on the right word. 0 means no offset.
     public buzzPointWordOffset: number;
 
+    // When true, pressing Space shows a number above each word and the user types a word's number (then Enter)
+    // to set the buzz point there, instead of opening the buzz menu at the detected position right away.
+    public typeBuzzIndexMode: boolean;
+
+    // When true, microphone tracking transcribes with OpenAI's Whisper running in the browser (transformers.js)
+    // instead of the Web Speech API / Vosk. More accurate, fully on-device, but heavier (model download) and
+    // slower, and not streaming. Requires reloading the tossup (toggling mic tracking) to take effect.
+    public useWhisperWebEngine: boolean;
+
+    // Whether we're currently waiting for the user to type a word number (after pressing Space in the mode above)
+    @ignore
+    public isEnteringBuzzIndex: boolean;
+
+    // The digits typed so far while entering a word number
+    @ignore
+    public buzzIndexEntryValue: string;
+
     // When true, show diagnostics for the microphone tracking (engine, status, last heard words). On by default
     // while the feature is being tuned.
     @ignore
@@ -202,6 +219,10 @@ export class UIState {
         this.holdReaderHighlightUntilBuzz = false;
         this.instantReaderHighlight = false;
         this.buzzPointWordOffset = 0;
+        this.typeBuzzIndexMode = false;
+        this.isEnteringBuzzIndex = false;
+        this.buzzIndexEntryValue = "";
+        this.useWhisperWebEngine = false;
         this.showReaderFollowerDebug = true;
         this.readerFollowerEngine = undefined;
         this.readerFollowerStatus = undefined;
@@ -402,6 +423,14 @@ export class UIState {
         this.pendingNewGame.gameFormat = gameFormat;
     }
 
+    public setPendingNewGamePacket(packet: PacketState): void {
+        if (this.pendingNewGame == undefined) {
+            return;
+        }
+
+        this.pendingNewGame.packet = packet;
+    }
+
     public setPendingNewGameRegistrationErrorMessage(message: string): void {
         if (this.pendingNewGame?.type !== PendingGameType.QBJRegistration) {
             return;
@@ -531,6 +560,9 @@ export class UIState {
 
             // Clear the selected words, since it's not relevant to the next question
             this.selectedWordIndex = -1;
+
+            // Any in-progress word-number entry belongs to the previous question
+            this.endBuzzIndexEntry();
         }
     }
 
@@ -680,6 +712,32 @@ export class UIState {
     public setBuzzPointWordOffset(offset: number): void {
         // Clamp to the supported range so a bad stored value can't push the buzz point wildly off
         this.buzzPointWordOffset = Math.max(-4, Math.min(4, Math.round(offset)));
+    }
+
+    public toggleTypeBuzzIndexMode(): void {
+        this.typeBuzzIndexMode = !this.typeBuzzIndexMode;
+        // Don't leave a half-finished entry around if the mode is turned off mid-entry
+        if (!this.typeBuzzIndexMode) {
+            this.endBuzzIndexEntry();
+        }
+    }
+
+    public toggleUseWhisperWebEngine(): void {
+        this.useWhisperWebEngine = !this.useWhisperWebEngine;
+    }
+
+    public startBuzzIndexEntry(): void {
+        this.isEnteringBuzzIndex = true;
+        this.buzzIndexEntryValue = "";
+    }
+
+    public setBuzzIndexEntryValue(value: string): void {
+        this.buzzIndexEntryValue = value;
+    }
+
+    public endBuzzIndexEntry(): void {
+        this.isEnteringBuzzIndex = false;
+        this.buzzIndexEntryValue = "";
     }
 
     public setTrackReaderWithMicrophone(value: boolean): void {

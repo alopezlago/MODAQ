@@ -21,7 +21,14 @@
         "skipLibCheck": true,
         "sourceMap": true,
         "target": "es6",
+        // Only auto-include the @types packages that provide globals we rely on. Notably this excludes
+        // @types/node (pulled in transitively by @huggingface/transformers), whose modern syntax this old
+        // TypeScript can't parse. Explicitly imported types (react, chai, etc.) still resolve normally.
+        "types": ["gapi.client", "gapi.client.discovery", "gapi.client.sheets", "google.accounts", "mocha"],
         "useDefineForClassFields": true
     },
-    "include": ["src", "tests/unit", "vite.env.d.ts", "index.ts"]
+    "include": ["src", "tests/unit", "vite.env.d.ts", "index.ts"],
+    // The Whisper worker imports @huggingface/transformers, whose type declarations this old TypeScript can't
+    // parse. Vite/esbuild still compiles the worker (it's referenced via a ?worker import); tsc just skips it.
+    "exclude": ["src/speech/whisperWebWorker.ts"]
 }

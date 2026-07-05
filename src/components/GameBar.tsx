@@ -21,6 +21,7 @@ import { IBonusProtestEvent, ITossupAnswerEvent, ITossupProtestEvent } from "../
 import { useAppState } from "../contexts/StateContext";
 import { StatusDisplayType } from "../state/StatusDisplayType";
 import { ReaderFollower } from "../speech/ReaderFollower";
+import { useTiebreakers } from "../contexts/TiebreakerContext";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
@@ -29,6 +30,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     const appState: AppState = useAppState();
     const uiState: UIState = appState.uiState;
     const game: GameState = appState.game;
+    const tiebreakers = useTiebreakers();
 
     const newGameHandler = React.useCallback(() => {
         if (appState.game.hasUpdates) {
@@ -158,7 +160,8 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         reorderPlayersHandler,
         reorderTeamsHandler,
         renameTeamHandler,
-        addQuestionsHandler
+        addQuestionsHandler,
+        tiebreakers ? () => void tiebreakers.subInIfNeeded() : undefined
     );
     items.push({
         key: "actions",
@@ -231,7 +234,8 @@ function getActionSubMenuItems(
     reorderPlayersHandler: () => void,
     reorderTeamsHandler: () => void,
     renameTeamHandler: () => void,
-    addQuestionsHandler: () => void
+    addQuestionsHandler: () => void,
+    onTossupThrownOut?: () => void
 ): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
     const uiState: UIState = appState.uiState;
@@ -265,7 +269,8 @@ function getActionSubMenuItems(
                         TossupQuestionController.throwOutTossup(
                             appState,
                             appState.game.cycles[appState.uiState.cycleIndex],
-                            appState.game.getTossupIndex(appState.uiState.cycleIndex) + 1
+                            appState.game.getTossupIndex(appState.uiState.cycleIndex) + 1,
+                            onTossupThrownOut
                         ),
                     disabled: appState.game.cycles.length === 0,
                 },
@@ -400,6 +405,23 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
                     onClick: () => appState.uiState.setBuzzPointWordOffset(offset),
                 })),
             },
+        },
+        {
+            key: "typeBuzzIndexMode",
+            text: "Type word number to buzz (Space)",
+            title: "When you press Space, show a number above each word; type a word's number and press Enter to set the buzz point there",
+            canCheck: true,
+            checked: appState.uiState.typeBuzzIndexMode,
+            onClick: () => appState.uiState.toggleTypeBuzzIndexMode(),
+        },
+        {
+            key: "useWhisperWebEngine",
+            text: "Use in-browser Whisper (more accurate, on-device)",
+            title: "Transcribe with OpenAI's Whisper running locally in the browser instead of the Web Speech API. More accurate and fully on-device, but downloads a model on first use and is slower. Toggle microphone tracking off and on to apply.",
+            canCheck: true,
+            checked: appState.uiState.useWhisperWebEngine,
+            disabled: !appState.uiState.trackReaderWithMicrophone,
+            onClick: () => appState.uiState.toggleUseWhisperWebEngine(),
         },
         {
             key: "trackReaderDebug",

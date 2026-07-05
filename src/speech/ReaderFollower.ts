@@ -10,6 +10,7 @@ import {
 } from "./TranscriptAligner";
 import { VoskSpeechEngine } from "./VoskSpeechEngine";
 import { WebSpeechEngine } from "./WebSpeechEngine";
+import { WhisperWebEngine } from "./WhisperWebEngine";
 
 // Words the moderator says right after a buzz is resolved ("correct", "neg 5", "power, 15 points"). Hearing one
 // means a buzz just happened, so the buzz point should update right away instead of waiting for a pause.
@@ -74,9 +75,11 @@ export class ReaderFollower {
     }
 
     /**
-     * Starts listening and following along the given words. Any previous session is stopped first.
+     * Starts listening and following along the given words. Any previous session is stopped first. When
+     * `preferWhisperWeb` is set and supported, the in-browser Whisper engine is used instead of the default
+     * (Web Speech / Vosk).
      */
-    public start(targetWords: string[]): void {
+    public start(targetWords: string[], preferWhisperWeb?: boolean): void {
         this.stop();
 
         const engineCallbacks: ISpeechEngineCallbacks = {
@@ -93,11 +96,17 @@ export class ReaderFollower {
             },
         };
 
-        this.engine = WebSpeechEngine.isSupported()
-            ? new WebSpeechEngine(engineCallbacks)
-            : new VoskSpeechEngine(engineCallbacks);
+        if (preferWhisperWeb && WhisperWebEngine.isSupported()) {
+            this.engine = new WhisperWebEngine(engineCallbacks);
+        } else if (WebSpeechEngine.isSupported()) {
+            this.engine = new WebSpeechEngine(engineCallbacks);
+        } else {
+            this.engine = new VoskSpeechEngine(engineCallbacks);
+        }
 
-        this.mode = getReaderFollowMode();
+        // The overshoot-guard modes only make sense for engines whose partials are speculative; engines with
+        // stable partials (Whisper) always use the default incremental path.
+        this.mode = this.engine.hasSpeculativePartials ? getReaderFollowMode() : "interim";
         this.processor =
             this.mode === "confirmed"
                 ? new ConfirmingTranscriptProcessor(new TranscriptAligner(targetWords))

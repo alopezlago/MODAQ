@@ -48,6 +48,9 @@ function getModel(modelUrl: string): Promise<Model> {
 export class VoskSpeechEngine implements ISpeechEngine {
     public readonly name: string = "Vosk (WebAssembly)";
 
+    // Vosk emits partialresult events that it revises as it decodes more audio.
+    public readonly hasSpeculativePartials: boolean = true;
+
     private readonly callbacks: ISpeechEngineCallbacks;
 
     private readonly modelUrl: string;
