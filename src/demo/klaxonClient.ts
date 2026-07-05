@@ -236,9 +236,10 @@ export const KlaxonApi = {
         token: string | null,
         round: string,
         qbj: unknown,
-        inProgress = false
+        inProgress = false,
+        currentQuestion?: number
     ): Promise<{ filename: string }> {
-        return rest("POST", `/api/rooms/${code}/export`, { token, round, qbj, inProgress });
+        return rest("POST", `/api/rooms/${code}/export`, { token, round, qbj, inProgress, currentQuestion });
     },
     getTiebreakers(code: string, token: string | null): Promise<{ tiebreakers: ITiebreakerItem[] }> {
         return rest("GET", `/api/rooms/${code}/tiebreakers?${q(token)}`);

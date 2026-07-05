@@ -248,7 +248,11 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                             // Same condition as the Next button turning into Export.
                             const inProgress: boolean =
                                 appState.uiState.cycleIndex + 1 < appState.game.playableCycles.length;
-                            onGameUpdate(QBJ.toQBJ(appState.game, appState.uiState.packetFilename), inProgress);
+                            onGameUpdate(
+                                QBJ.toQBJ(appState.game, appState.uiState.packetFilename),
+                                inProgress,
+                                appState.uiState.cycleIndex + 1
+                            );
                         } catch {
                             /* a transient inconsistent state shouldn't crash the reader */
                         }
@@ -263,6 +267,46 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
             dispose();
         };
     }, [appState, onGameUpdate]);
+
+    // Buzz judgments: fire when the reader marks a buzz correct or wrong on the
+    // question being read (not when revisiting an already-judged question), so a
+    // host with its own buzzer can clear the buzz queue.
+    const onBuzzJudged = props.onBuzzJudged;
+    React.useEffect(() => {
+        if (onBuzzJudged == undefined) {
+            return;
+        }
+        return reaction(
+            () => {
+                // Track lastUpdate: it's bumped by every cycle event, and reading cycles[i] before the game
+                // loads is an out-of-bounds array read that MobX doesn't track, which would leave this
+                // reaction dormant for the rest of the game.
+                const cycleIndex: number = appState.uiState.cycleIndex;
+                const cycle: Cycle | undefined =
+                    cycleIndex < appState.game.cycles.length ? appState.game.cycles[cycleIndex] : undefined;
+                const judgedCount: number =
+                    cycle == undefined ? 0 : (cycle.correctBuzz ? 1 : 0) + (cycle.wrongBuzzes?.length ?? 0);
+                return {
+                    isLoaded: appState.game.isLoaded,
+                    lastUpdate: appState.game.lastUpdate,
+                    cycleIndex,
+                    judgedCount,
+                };
+            },
+            (current, previous) => {
+                // previous.isLoaded filters out persisted-state restoration on page load, which can bump the
+                // judged count without the reader judging anything.
+                if (
+                    previous != undefined &&
+                    previous.isLoaded &&
+                    current.cycleIndex === previous.cycleIndex &&
+                    current.judgedCount > previous.judgedCount
+                ) {
+                    onBuzzJudged();
+                }
+            }
+        );
+    }, [appState, onBuzzJudged]);
     React.useEffect(() => {
         if (props.gameFormat != undefined) {
             appState.game.setGameFormat(props.gameFormat);
@@ -354,9 +398,16 @@ export interface IModaqControlProps {
      * Called (debounced) with the game's QBJ whenever the game changes — buzzes, bonus answers, subs, etc. Lets the
      * host keep a live copy of the match stats in sync without the moderator clicking export. inProgress is true
      * until the reader reaches the last playable question (the same point where Next becomes Export), so hosts can
-     * avoid counting a half-played game as final.
+     * avoid counting a half-played game as final. currentQuestion is the 1-based question the reader is on, so a
+     * host can show live scoreboards with game progress.
      */
-    onGameUpdate?: (qbj: IMatch, inProgress?: boolean) => void;
+    onGameUpdate?: (qbj: IMatch, inProgress?: boolean, currentQuestion?: number) => void;
+
+    /**
+     * Called when the reader marks a buzz correct or wrong on the question being read. Hosts with their own buzzer
+     * (like Klaxon) can use this to clear the buzz queue once the buzz is resolved.
+     */
+    onBuzzJudged?: () => void;
 
     /**
      * Tiebreaker questions the moderator can sub in from the Add Questions dialog.

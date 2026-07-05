@@ -552,7 +552,7 @@ function Reading(props: {
 
     const customExport: ICustomExport = React.useMemo(
         () => ({
-            label: "Save match to Klaxon",
+            label: "Autosaving to Klaxon",
             type: "QBJ",
             onExport: async (qbj: IMatch): Promise<IStatus> => {
                 try {
@@ -574,21 +574,20 @@ function Reading(props: {
 
     // Live sync: push the QBJ to the server on every game change so the TD sees
     // current stats without the moderator exporting. Overwrites one file/match.
-    // inProgress keeps a half-played game out of the W/L standings, and drives
-    // the resume marker: while a game is live, a reload of this page jumps
-    // straight back into this round instead of the setup screen.
+    // inProgress keeps a half-played game out of the W/L standings. The resume
+    // marker (a reload of this page jumps straight back into this round instead
+    // of the setup screen) stays set for the whole game — inProgress flips false
+    // as soon as the reader REACHES the last question, so removing it here would
+    // lose resume while that question is still being read. Only a deliberate
+    // exit clears it: the explicit export or "Change round / teams".
     const onGameUpdate = React.useCallback(
-        (qbj: IMatch, inProgress?: boolean) => {
+        (qbj: IMatch, inProgress?: boolean, currentQuestion?: number) => {
             try {
-                if (inProgress === true) {
-                    localStorage.setItem("bz_modaqLive:" + code, round);
-                } else {
-                    localStorage.removeItem("bz_modaqLive:" + code);
-                }
+                localStorage.setItem("bz_modaqLive:" + code, round);
             } catch {
                 /* storage may be unavailable; resume is best-effort */
             }
-            KlaxonApi.saveExport(code, token, round, qbj, inProgress === true).catch(() => {
+            KlaxonApi.saveExport(code, token, round, qbj, inProgress === true, currentQuestion).catch(() => {
                 /* transient failures self-heal on the next change */
             });
         },
@@ -608,6 +607,10 @@ function Reading(props: {
         },
         [code, token, round]
     );
+
+    // Judging a buzz in MODAQ (correct or wrong) resolves the current buzz, so
+    // clear the Klaxon buzzer — same as pressing "r" in the panel.
+    const onBuzzJudged = React.useCallback(() => client.resetBuzzer(), [client]);
 
     const onErrataChange = React.useCallback(
         (errata: IErratum[]) => {
@@ -645,6 +648,7 @@ function Reading(props: {
                     errata={config.errata}
                     onErrataChange={onErrataChange}
                     onGameUpdate={onGameUpdate}
+                    onBuzzJudged={onBuzzJudged}
                     tiebreakers={config.tiebreakers}
                     onTiebreakerUsed={onTiebreakerUsed}
                     customExport={customExport}
@@ -666,6 +670,7 @@ function LiteReading(props: {
     roomState: IPublicRoomState | undefined;
 }): JSX.Element {
     const { code, client, roomState } = props;
+    const onBuzzJudged = React.useCallback(() => client.resetBuzzer(), [client]);
     return (
         <div className="mod-shell">
             <div className="mod-main">
@@ -675,6 +680,7 @@ function LiteReading(props: {
                     buildVersion={__BUILD_VERSION__}
                     persistState={true}
                     storeName={`klaxon-lite-${code}`}
+                    onBuzzJudged={onBuzzJudged}
                 />
             </div>
             <div className="mod-side">
