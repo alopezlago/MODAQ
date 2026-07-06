@@ -23,6 +23,7 @@ import { ICustomExport } from "./CustomExport";
 import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 import { IPacketParseStatus } from "./IPacketParseStatus";
 import { IPacket } from "./IPacket";
+import { IHostSettings } from "./IHostSettings";
 
 // TODO: Look into breaking this up into individual UI component states. Lots of pendingX fields, which could be in
 // their own (see CustomizeGameFormatDialogState)
@@ -70,10 +71,10 @@ export class UIState {
     @ignore
     public hideNewGame: boolean;
 
-    // True when MODAQ is embedded in TMS's moderator-managed flow. Gates TMS-specific UI behavior
-    // (backup-only export, always-visible packet loader, QBJ-only export dialog).
+    // Host-supplied settings that gate host-managed UI behavior (backup-only export, QBJ-only export
+    // dialog, substitutions-only roster, host-managed game format). Normalized so every flag is defined.
     @ignore
-    public tmsActive: boolean;
+    public hostSettings: Required<IHostSettings>;
 
     // The name of the host product, used in dialogs that reference the host (e.g. the Export Backup confirmation).
     @ignore
@@ -153,7 +154,12 @@ export class UIState {
         this.exportRoundNumber = 1;
         this.hideBonusOnDeadTossup = false;
         this.hideNewGame = false;
-        this.tmsActive = false;
+        this.hostSettings = {
+            promptBeforeExport: false,
+            onlyAllowQbjExport: false,
+            allowSubstitutions: false,
+            disableChangeFormat: false,
+        };
         this.hostProductName = undefined;
         this.onFetchQuestionById = undefined;
 
@@ -522,8 +528,13 @@ export class UIState {
         this.hideNewGame = value;
     }
 
-    public setTmsActive(value: boolean): void {
-        this.tmsActive = value;
+    public setHostSettings(value: IHostSettings | undefined): void {
+        this.hostSettings = {
+            promptBeforeExport: value?.promptBeforeExport ?? false,
+            onlyAllowQbjExport: value?.onlyAllowQbjExport ?? false,
+            allowSubstitutions: value?.allowSubstitutions ?? false,
+            disableChangeFormat: value?.disableChangeFormat ?? false,
+        };
     }
 
     public setHostProductName(value: string | undefined): void {

@@ -30,6 +30,7 @@ import { IPacket } from "../state/IPacket";
 import { IPlayer, Player } from "../state/TeamState";
 import { Bonus, ITossupWord, PacketState, Tossup } from "../state/PacketState";
 import { ICustomExport } from "../state/CustomExport";
+import { IHostSettings } from "../state/IHostSettings";
 import { Cycle } from "../state/Cycle";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
 import { IStatus } from "../IStatus";
@@ -231,11 +232,11 @@ export interface IModaqControlProps {
     storeName?: string | undefined;
 
     /**
-     * When `true`, enables TMS-specific UI behavior: the export menu is replaced with a single
-     * "Export Backup" button (gated behind a confirmation dialog), the packet loader is always shown
-     * regardless of `yappServiceUrl`, and the JSON export dialog only offers a QBJ export.
+     * Settings supplied by the host application to gate host-managed UI behavior: backup-only export,
+     * QBJ-only export dialog, substitutions-only roster, and host-managed game format. See
+     * {@link IHostSettings} for the individual flags.
      */
-    tmsActive?: boolean;
+    hostSettings?: IHostSettings;
 
     /**
      * The name of the host product. Used in dialogs that reference the host, such as the Export Backup confirmation
@@ -420,8 +421,15 @@ function update(appState: AppState, props: IModaqControlProps): void {
         appState.uiState.setHostProductName(props.hostProductName);
     }
 
-    if (props.tmsActive !== appState.uiState.tmsActive) {
-        appState.uiState.setTmsActive(props.tmsActive == true);
+    const nextHostSettings: IHostSettings | undefined = props.hostSettings;
+    const currentHostSettings: Required<IHostSettings> = appState.uiState.hostSettings;
+    if (
+        (nextHostSettings?.promptBeforeExport ?? false) !== currentHostSettings.promptBeforeExport ||
+        (nextHostSettings?.onlyAllowQbjExport ?? false) !== currentHostSettings.onlyAllowQbjExport ||
+        (nextHostSettings?.allowSubstitutions ?? false) !== currentHostSettings.allowSubstitutions ||
+        (nextHostSettings?.disableChangeFormat ?? false) !== currentHostSettings.disableChangeFormat
+    ) {
+        appState.uiState.setHostSettings(nextHostSettings);
     }
 
     if (props.onFetchQuestionById !== appState.uiState.onFetchQuestionById) {

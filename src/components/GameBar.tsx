@@ -170,7 +170,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
 
     // In TMS-managed mode, only show a button for exporting a backup, gated behind a confirmation dialog.
     // Otherwise show the custom export button (if given) or the standard export submenu.
-    if (uiState.tmsActive) {
+    if (uiState.hostSettings.promptBeforeExport) {
         items.push({
             key: "exportBackup",
             text: "Export Backup",
@@ -351,7 +351,7 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
 
     // Changing the game format isn't applicable in TMS-managed mode, where the format is set in TMS. Font moves
     // to the View menu in that case, so Options would otherwise be left with a single, oddly-scoped item.
-    if (appState.uiState.tmsActive) {
+    if (appState.uiState.hostSettings.disableChangeFormat) {
         return items;
     }
 
@@ -448,7 +448,7 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
         },
     ]);
 
-    if (appState.uiState.tmsActive) {
+    if (appState.uiState.hostSettings.disableChangeFormat) {
         items = items.concat([
             {
                 key: "viewDividerFont",
@@ -559,7 +559,7 @@ function getPlayerManagementSubMenuItems(
             };
 
             // Renaming players isn't applicable in TMS-managed mode, where players are managed in TMS.
-            const items: ICommandBarItemProps[] = uiState.tmsActive
+            const items: ICommandBarItemProps[] = uiState.hostSettings.allowSubstitutions
                 ? isActivePlayer
                     ? [subMenuSectionItem, changeActivityItem]
                     : [changeActivityItem]
@@ -590,7 +590,7 @@ function getPlayerManagementSubMenuItems(
     // TODO: This should be under a section for player management (add player, subs)
     const playerActionsItem: ICommandBarItemProps = {
         key: "player",
-        text: uiState.tmsActive ? "Substitutions" : "Player",
+        text: uiState.hostSettings.allowSubstitutions ? "Substitutions" : "Player",
         subMenuProps: {
             items: playerActionsMenus,
         },
@@ -637,7 +637,7 @@ function getPlayerManagementSubMenuItems(
     };
 
     // Add Player and Rename Team aren't applicable in TMS-managed mode, where rosters/teams are managed in TMS.
-    const teamManagementItems: ICommandBarItemProps[] = uiState.tmsActive
+    const teamManagementItems: ICommandBarItemProps[] = uiState.hostSettings.allowSubstitutions
         ? [playerActionsItem, reorderPlayersItem, reorderTeamsItem]
         : [playerActionsItem, addPlayerItem, reorderPlayersItem, reorderTeamsItem, renameTeamItem];
 

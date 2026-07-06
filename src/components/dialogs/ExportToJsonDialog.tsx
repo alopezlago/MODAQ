@@ -71,7 +71,7 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
             maxWidth="40vw"
             onDismiss={cancelHandler}
         >
-            {!appState.uiState.tmsActive && (
+            {!appState.uiState.hostSettings.onlyAllowQbjExport && (
                 <>
                     <Label>To export the whole game (packet, players, and events), click on &quot;Export game&quot;.</Label>
                     <Label>To only export the events, click on &quot;Export events&quot;.</Label>
@@ -116,7 +116,7 @@ const ExportToJsonDialogFooter = observer(function ExportToJsonDialogFooter(
     const qbjFilename = `Round_${roundNumber}_${joinedTeamNames}.qbj`;
 
     const buttons: JSX.Element[] = [];
-    if (!appState.uiState.tmsActive) {
+    if (!appState.uiState.hostSettings.onlyAllowQbjExport) {
         buttons.push(
             <PrimaryButton key="exportGame" text="Export game" onClick={exportHandler} href={gameHref} download={gameFilename} />,
             <PrimaryButton key="exportEvents" text="Export events" onClick={exportHandler} href={cyclesHref} download={cyclesFilename} />
