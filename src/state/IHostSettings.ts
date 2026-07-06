@@ -17,4 +17,10 @@ export interface IHostSettings {
 
     /** The game format is managed by the host: hide "Change Format" and move the Font item to the View menu. */
     disableChangeFormat?: boolean;
+
+    /**
+     * The name of the host product, used in dialogs that reference the host (e.g. the Export Backup confirmation
+     * message). Falls back to a generic description if not provided.
+     */
+    productName?: string;
 }

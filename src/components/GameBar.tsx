@@ -178,7 +178,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
             onClick: () => {
                 uiState.dialogState.showOKCancelMessageDialog({
                     title: "Export Backup",
-                    message: `This function is intended for downloading a backup file for an emergency migration to MODAQ outside of ${uiState.hostProductName ?? "the host application"}. Are you sure you want to proceed?`,
+                    message: `This function is intended for downloading a backup file for an emergency migration to MODAQ outside of ${uiState.hostSettings.productName ?? "the host application"}. Are you sure you want to proceed?`,
                     onOK: () => uiState.dialogState.showExportToJsonDialog(),
                     okLabel: "Yes, Export Backup",
                 });

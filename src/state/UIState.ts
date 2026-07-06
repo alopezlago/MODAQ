@@ -72,13 +72,10 @@ export class UIState {
     public hideNewGame: boolean;
 
     // Host-supplied settings that gate host-managed UI behavior (backup-only export, QBJ-only export
-    // dialog, substitutions-only roster, host-managed game format). Normalized so every flag is defined.
+    // dialog, restricted roster changes, host-managed game format, host product name). The boolean flags are
+    // normalized so they are always defined; productName stays optional.
     @ignore
-    public hostSettings: Required<IHostSettings>;
-
-    // The name of the host product, used in dialogs that reference the host (e.g. the Export Backup confirmation).
-    @ignore
-    public hostProductName: string | undefined;
+    public hostSettings: Required<Omit<IHostSettings, "productName">> & Pick<IHostSettings, "productName">;
 
     // Injected by the host. If provided, switches the Add Questions dialog to secret-code lookup mode: given a
     // secret code entered there, resolves to the replacement question packet, or an IStatus describing why the
@@ -159,8 +156,8 @@ export class UIState {
             onlyAllowQbjExport: false,
             restrictRosterChanges: false,
             disableChangeFormat: false,
+            productName: undefined,
         };
-        this.hostProductName = undefined;
         this.onFetchQuestionById = undefined;
 
         // Default to Fabric UI's default font (Segoe UI), then Times New Roman
@@ -534,11 +531,8 @@ export class UIState {
             onlyAllowQbjExport: value?.onlyAllowQbjExport ?? false,
             restrictRosterChanges: value?.restrictRosterChanges ?? false,
             disableChangeFormat: value?.disableChangeFormat ?? false,
+            productName: value?.productName,
         };
-    }
-
-    public setHostProductName(value: string | undefined): void {
-        this.hostProductName = value;
     }
 
     public setOnFetchQuestionById(callback: ((id: string) => Promise<IPacket | IStatus>) | undefined): void {

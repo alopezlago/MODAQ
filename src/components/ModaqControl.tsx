@@ -239,12 +239,6 @@ export interface IModaqControlProps {
     hostSettings?: IHostSettings;
 
     /**
-     * The name of the host product. Used in dialogs that reference the host, such as the Export Backup confirmation
-     * message. Falls back to a generic description if not provided.
-     */
-    hostProductName?: string;
-
-    /**
      * The URL to a Yet Another Packet Parser (YAPP) compatible service, which parses docx files. If this value isn't
      * defined, then packets must be in a JSON format.
      */
@@ -417,17 +411,14 @@ function update(appState: AppState, props: IModaqControlProps): void {
         appState.uiState.setHideNewGame(props.hideNewGame == true);
     }
 
-    if (props.hostProductName !== appState.uiState.hostProductName) {
-        appState.uiState.setHostProductName(props.hostProductName);
-    }
-
     const nextHostSettings: IHostSettings | undefined = props.hostSettings;
-    const currentHostSettings: Required<IHostSettings> = appState.uiState.hostSettings;
+    const currentHostSettings = appState.uiState.hostSettings;
     if (
         (nextHostSettings?.promptBeforeExport ?? false) !== currentHostSettings.promptBeforeExport ||
         (nextHostSettings?.onlyAllowQbjExport ?? false) !== currentHostSettings.onlyAllowQbjExport ||
         (nextHostSettings?.restrictRosterChanges ?? false) !== currentHostSettings.restrictRosterChanges ||
-        (nextHostSettings?.disableChangeFormat ?? false) !== currentHostSettings.disableChangeFormat
+        (nextHostSettings?.disableChangeFormat ?? false) !== currentHostSettings.disableChangeFormat ||
+        nextHostSettings?.productName !== currentHostSettings.productName
     ) {
         appState.uiState.setHostSettings(nextHostSettings);
     }
