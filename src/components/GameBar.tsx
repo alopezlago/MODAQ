@@ -590,7 +590,7 @@ function getPlayerManagementSubMenuItems(
     // TODO: This should be under a section for player management (add player, subs)
     const playerActionsItem: ICommandBarItemProps = {
         key: "player",
-        text: uiState.hostSettings.restrictRosterChanges ? "Substitutions" : "Player",
+        text: "Player",
         subMenuProps: {
             items: playerActionsMenus,
         },

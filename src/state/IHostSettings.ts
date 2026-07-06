@@ -10,8 +10,7 @@ export interface IHostSettings {
 
     /**
      * Restrict roster changes because the host manages the roster: hides Add Player, Rename Player, and
-     * Rename Team, and relabels the player menu to "Substitutions". Substitutions and reordering remain
-     * available.
+     * Rename Team. Substitutions and reordering remain available.
      */
     restrictRosterChanges?: boolean;
 
