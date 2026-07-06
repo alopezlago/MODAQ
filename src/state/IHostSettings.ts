@@ -9,11 +9,11 @@ export interface IHostSettings {
     onlyAllowQbjExport?: boolean;
 
     /**
-     * The roster is managed by the host, so only substitutions are allowed: the player menu is labeled
-     * "Substitutions" and Add Player / Rename Player / Rename Team are hidden. Note the polarity - `true`
-     * here means fewer roster actions, not more.
+     * Restrict roster changes because the host manages the roster: hides Add Player, Rename Player, and
+     * Rename Team, and relabels the player menu to "Substitutions". Substitutions and reordering remain
+     * available.
      */
-    allowSubstitutions?: boolean;
+    restrictRosterChanges?: boolean;
 
     /** The game format is managed by the host: hide "Change Format" and move the Font item to the View menu. */
     disableChangeFormat?: boolean;

@@ -559,7 +559,7 @@ function getPlayerManagementSubMenuItems(
             };
 
             // Renaming players isn't applicable in TMS-managed mode, where players are managed in TMS.
-            const items: ICommandBarItemProps[] = uiState.hostSettings.allowSubstitutions
+            const items: ICommandBarItemProps[] = uiState.hostSettings.restrictRosterChanges
                 ? isActivePlayer
                     ? [subMenuSectionItem, changeActivityItem]
                     : [changeActivityItem]
@@ -590,7 +590,7 @@ function getPlayerManagementSubMenuItems(
     // TODO: This should be under a section for player management (add player, subs)
     const playerActionsItem: ICommandBarItemProps = {
         key: "player",
-        text: uiState.hostSettings.allowSubstitutions ? "Substitutions" : "Player",
+        text: uiState.hostSettings.restrictRosterChanges ? "Substitutions" : "Player",
         subMenuProps: {
             items: playerActionsMenus,
         },
@@ -637,7 +637,7 @@ function getPlayerManagementSubMenuItems(
     };
 
     // Add Player and Rename Team aren't applicable in TMS-managed mode, where rosters/teams are managed in TMS.
-    const teamManagementItems: ICommandBarItemProps[] = uiState.hostSettings.allowSubstitutions
+    const teamManagementItems: ICommandBarItemProps[] = uiState.hostSettings.restrictRosterChanges
         ? [playerActionsItem, reorderPlayersItem, reorderTeamsItem]
         : [playerActionsItem, addPlayerItem, reorderPlayersItem, reorderTeamsItem, renameTeamItem];
 

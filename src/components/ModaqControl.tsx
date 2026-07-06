@@ -426,7 +426,7 @@ function update(appState: AppState, props: IModaqControlProps): void {
     if (
         (nextHostSettings?.promptBeforeExport ?? false) !== currentHostSettings.promptBeforeExport ||
         (nextHostSettings?.onlyAllowQbjExport ?? false) !== currentHostSettings.onlyAllowQbjExport ||
-        (nextHostSettings?.allowSubstitutions ?? false) !== currentHostSettings.allowSubstitutions ||
+        (nextHostSettings?.restrictRosterChanges ?? false) !== currentHostSettings.restrictRosterChanges ||
         (nextHostSettings?.disableChangeFormat ?? false) !== currentHostSettings.disableChangeFormat
     ) {
         appState.uiState.setHostSettings(nextHostSettings);

@@ -157,7 +157,7 @@ export class UIState {
         this.hostSettings = {
             promptBeforeExport: false,
             onlyAllowQbjExport: false,
-            allowSubstitutions: false,
+            restrictRosterChanges: false,
             disableChangeFormat: false,
         };
         this.hostProductName = undefined;
@@ -532,7 +532,7 @@ export class UIState {
         this.hostSettings = {
             promptBeforeExport: value?.promptBeforeExport ?? false,
             onlyAllowQbjExport: value?.onlyAllowQbjExport ?? false,
-            allowSubstitutions: value?.allowSubstitutions ?? false,
+            restrictRosterChanges: value?.restrictRosterChanges ?? false,
             disableChangeFormat: value?.disableChangeFormat ?? false,
         };
     }
