@@ -31,8 +31,8 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
     };
     const formattedLeadin: IFormattedText[] = React.useMemo(
         () =>
-            PacketState.getBonusWords(`${props.bonusIndex + 1}. ${props.bonus.leadin}`, props.appState.game.gameFormat),
-        [props.bonusIndex, props.bonus.leadin, props.appState.game.gameFormat]
+            PacketState.getBonusWords(`${props.bonusIndex + 1}. ${props.bonus.leadin}`, props.appState.activeGame.gameFormat),
+        [props.bonusIndex, props.bonus.leadin, props.appState.activeGame.gameFormat]
     );
     const [lastBonus, setLastBonus] = React.useState(props.bonus);
 
@@ -69,7 +69,7 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
     const disabled = !props.inPlay;
     const disableThrowOutButton: boolean =
         disabled ||
-        props.appState.game.cycles.some(
+        props.appState.activeGame.cycles.some(
             (cycle) => cycle.bonusAnswer != undefined && cycle.bonusAnswer.bonusIndex > props.bonusIndex
         );
     const throwOutButtonTooltip: string =
@@ -81,9 +81,9 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
                 key={index}
                 bonusPart={bonusPartProps}
                 cycle={props.cycle}
-                gameFormat={props.appState.game.gameFormat}
+                gameFormat={props.appState.activeGame.gameFormat}
                 partNumber={index + 1}
-                teamNames={props.appState.game.teamNames}
+                teamNames={props.appState.activeGame.teamNames}
                 disabled={disabled}
             />
         );

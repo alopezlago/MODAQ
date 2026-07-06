@@ -264,10 +264,10 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
     switch (event.key.toUpperCase()) {
         case "E":
             // Go to the end of a tossup and open up the buzz menu.
-            const tossup: Tossup | undefined = appState.game.getTossup(appState.uiState.cycleIndex);
+            const tossup: Tossup | undefined = appState.activeGame.getTossup(appState.uiState.cycleIndex);
             if (tossup) {
                 // Issue is that this removes parens, so we don't have all the info we need
-                const words: ITossupWord[] = tossup.getWords(appState.game.gameFormat);
+                const words: ITossupWord[] = tossup.getWords(appState.activeGame.gameFormat);
                 const index: number = words.filter((word) => word.canBuzzOn).length - 1;
 
                 appState.uiState.setSelectedWordIndex(index);
@@ -290,7 +290,7 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
             break;
 
         case "N":
-            if (appState.uiState.cycleIndex + 1 < appState.game.playableCycles.length) {
+            if (appState.uiState.cycleIndex + 1 < appState.activeGame.playableCycles.length) {
                 appState.uiState.nextCycle();
             }
             event.preventDefault();
@@ -313,7 +313,7 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
             // This shortcut is only supported when bouncebacks are disabled. We could add support for it later and just
             // toggle through all the fields, but the logic is slightly more complicated and very few formats use
             // bouncebacks.
-            if (appState.game.gameFormat.bonusesBounceBack) {
+            if (appState.activeGame.gameFormat.bonusesBounceBack) {
                 event.preventDefault();
                 event.stopPropagation();
 
@@ -323,8 +323,8 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
             // If there are bonuses and they are active, toggle the bonus part. We have to do some defensive checks to
             // make sure that we can update the bonus
             const cycleIndex: number = appState.uiState.cycleIndex;
-            const cycle: Cycle = appState.game.cycles[cycleIndex];
-            const bonus: Bonus | undefined = appState.game.getBonus(cycleIndex);
+            const cycle: Cycle = appState.activeGame.cycles[cycleIndex];
+            const bonus: Bonus | undefined = appState.activeGame.getBonus(cycleIndex);
             if (cycle.correctBuzz == undefined || bonus == undefined) {
                 event.preventDefault();
                 event.stopPropagation();

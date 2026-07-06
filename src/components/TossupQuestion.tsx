@@ -30,7 +30,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
         }
     }
 
-    const disableThrowOutButton: boolean = props.appState.game.cycles.some(
+    const disableThrowOutButton: boolean = props.appState.activeGame.cycles.some(
         (cycle) => cycle.orderedBuzzes.length > 0 && cycle.orderedBuzzes[0].tossupIndex + 1 > props.tossupNumber
     );
     const throwOutButtonTooltip: string = disableThrowOutButton
@@ -42,7 +42,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
         .filter((buzz) => buzz.tossupIndex === props.tossupNumber - 1)
         .map((buzz) => buzz.marker.position);
 
-    const words: ITossupWord[] = props.tossup.getWords(props.appState.game.gameFormat);
+    const words: ITossupWord[] = props.tossup.getWords(props.appState.activeGame.gameFormat);
 
     let questionWords: JSX.Element[] = [<span key="tuNumber">{props.tossupNumber}. </span>];
 
