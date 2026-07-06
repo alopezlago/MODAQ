@@ -16,6 +16,7 @@ import * as QBJ from "../qbj/QBJ";
 import { IStatus } from "../IStatus";
 import { BuzzPanel } from "./BuzzPanel";
 import {
+    IDirectorMessage,
     IPublicRoomState,
     IServerErratum,
     ITournamentFormat,
@@ -101,6 +102,11 @@ function Moderator(): JSX.Element {
     const clientRef = React.useRef<KlaxonClient | undefined>(undefined);
     const [phase, setPhase] = React.useState<"connecting" | "error" | "setup" | "reading" | "lite" | "account">("connecting");
     const [fatal, setFatal] = React.useState<string>("");
+    // When the fix for an error is signing in, the error view offers the link.
+    const [signInUrl, setSignInUrl] = React.useState<string | null>(null);
+    // The account phase gates on actual tournament MEMBERSHIP (not just packet
+    // access) when the socket join itself was denied for a missing approval.
+    const [needsMembership, setNeedsMembership] = React.useState(false);
     const [roomState, setRoomState] = React.useState<IPublicRoomState | undefined>(undefined);
 
     // Setup inputs
@@ -125,8 +131,14 @@ function Moderator(): JSX.Element {
         }
         const client = new KlaxonClient(code);
         clientRef.current = client;
-        if (!client.token) {
-            setFatal("You don't have a reader token for this room on this device. Open it from your reader link first.");
+        // Two ways in: the room's reader link (staff token), or a logged-in
+        // account the director approved for this tournament.
+        if (!client.token && !sessionToken()) {
+            setFatal(
+                "You don't have a reader link for this room on this device. " +
+                    "Sign in with your reader account (if the director added you as a moderator), or open the room from your reader link."
+            );
+            setSignInUrl(`/account?return=${encodeURIComponent(`/modaq?room=${code}`)}`);
             setPhase("error");
             return;
         }
@@ -158,8 +170,22 @@ function Moderator(): JSX.Element {
                 }
                 setPhase("setup");
             })
-            .catch((error: Error) => {
-                setFatal(error.message);
+            .catch((error: Error & { denyReason?: string; state?: IPublicRoomState }) => {
+                if (error.denyReason === "not_logged_in") {
+                    setFatal("Sign in with your reader account to moderate this room (the director must have added or approved you).");
+                    setSignInUrl(`/account?return=${encodeURIComponent(`/modaq?room=${code}`)}`);
+                } else if (error.denyReason === "not_approved" && error.state?.tournamentCode) {
+                    // Known account, not approved yet: offer the request-access
+                    // flow; approval needs a fresh join, so reload afterwards.
+                    setRoomState(error.state);
+                    setNeedsMembership(true);
+                    setPhase("account");
+                    return;
+                } else if (error.denyReason === "not_approved") {
+                    setFatal("Your account isn't approved for this tournament yet — ask the director to add you (they can use your email).");
+                } else {
+                    setFatal(error.message);
+                }
                 setPhase("error");
             });
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -339,6 +365,24 @@ function Moderator(): JSX.Element {
         setPhase("reading");
     }
 
+    // Players a moderator adds mid-game flow back into the shared roster, so
+    // re-fetch it when starting a round instead of trusting the page-load copy.
+    // A roster the moderator uploaded themselves (BYO) is never clobbered.
+    async function refreshCentralRoster(client: KlaxonClient): Promise<IPlayer[] | undefined> {
+        if (!centralRoster) return undefined;
+        try {
+            const { roster } = await KlaxonApi.getRoster(code, client.token);
+            if (!roster) return undefined;
+            const parsed = QBJ.parseRegistration(roster);
+            if (!parsed.success) return undefined;
+            const list = parsed.value.map((p) => ({ name: p.name, teamName: p.teamName, isStarter: p.isStarter }));
+            setRosterPlayers(list);
+            return list;
+        } catch {
+            return undefined;
+        }
+    }
+
     async function onStart(): Promise<void> {
         const client = clientRef.current;
         if (!client) return;
@@ -347,7 +391,8 @@ function Moderator(): JSX.Element {
         setSetupMsg("");
         try {
             const packet = await loadPacketForStart(client, roundLabel);
-            await enterReading(client, roundLabel, packet, rosterPlayers, tournamentFormat);
+            const freshRoster = await refreshCentralRoster(client);
+            await enterReading(client, roundLabel, packet, freshRoster ?? rosterPlayers, tournamentFormat);
         } catch (error) {
             setSetupMsg((error as Error).message);
         } finally {
@@ -370,18 +415,23 @@ function Moderator(): JSX.Element {
     if (phase === "account") {
         return (
             <AccountGate
+                strict={needsMembership}
                 tcode={roomState?.tournamentCode || ""}
                 onApproved={async () => {
                     // Now approved: fetch the centralized artifacts and go to setup
-                    // (or straight back into a game that was being read).
+                    // (or straight back into a game that was being read). If the
+                    // original socket join was denied (account-based access), a
+                    // fresh join is needed — reload to redo the whole handshake.
                     const client = clientRef.current;
                     if (client && client.lastState) {
                         const boot = await bootstrap(client, client.lastState);
                         if (await tryResume(client, boot)) {
                             return;
                         }
+                        setPhase("setup");
+                        return;
                     }
-                    setPhase("setup");
+                    location.reload();
                 }}
             />
         );
@@ -392,6 +442,11 @@ function Moderator(): JSX.Element {
             <div className="mod-center">
                 <h1>Can&apos;t open the moderator view</h1>
                 <p className="msg">{fatal}</p>
+                {signInUrl ? (
+                    <p>
+                        <a href={signInUrl}>Sign in with your reader account →</a>
+                    </p>
+                ) : undefined}
                 <p>
                     <a href={`/r/${code}`}>Back to the room</a>
                 </p>
@@ -406,6 +461,7 @@ function Moderator(): JSX.Element {
         return (
             <div className="mod-center mod-setup">
                 <h1>MODAQ moderator — room {code}</h1>
+                {clientRef.current ? <DirectorMessages client={clientRef.current} /> : undefined}
                 <p className="hint">
                     Pick the round and packet, then set teams in MODAQ&apos;s New Game dialog and read with the Klaxon
                     buzzer on the right.
@@ -508,6 +564,36 @@ function Moderator(): JSX.Element {
                 setPhase("setup");
             }}
         />
+    );
+}
+
+// Messages from the tournament director, shown as a banner above the reader
+// until dismissed. Replayed messages (reconnects) are deduped by timestamp.
+function DirectorMessages(props: { client: KlaxonClient }): JSX.Element | null {
+    const [messages, setMessages] = React.useState<IDirectorMessage[]>([]);
+    React.useEffect(
+        () =>
+            props.client.onDirectorMessage((m) =>
+                setMessages((current) =>
+                    current.some((x) => x.at === m.at && x.text === m.text) ? current : [...current, m].slice(-3)
+                )
+            ),
+        [props.client]
+    );
+    if (messages.length === 0) {
+        return null;
+    }
+    return (
+        <div className="mod-director-msg" role="alert">
+            <div>
+                {messages.map((m) => (
+                    <p key={`${m.at}-${m.text}`}>
+                        <strong>Director:</strong> {m.text}
+                    </p>
+                ))}
+            </div>
+            <button onClick={() => setMessages([])}>Dismiss</button>
+        </div>
     );
 }
 
@@ -634,6 +720,7 @@ function Reading(props: {
                 <RoomToolbar code={code} label={`Room ${code} · Round ${round}`}>
                     <button onClick={onChange}>Change round / teams</button>
                 </RoomToolbar>
+                <DirectorMessages client={client} />
                 <ModaqControl
                     applyStylingToRoot={false}
                     buildVersion={__BUILD_VERSION__}
@@ -675,6 +762,7 @@ function LiteReading(props: {
         <div className="mod-shell">
             <div className="mod-main">
                 <RoomToolbar code={code} label={`Room ${code} · MODAQ lite`} />
+                <DirectorMessages client={client} />
                 <ModaqControl
                     applyStylingToRoot={false}
                     buildVersion={__BUILD_VERSION__}
@@ -690,10 +778,13 @@ function LiteReading(props: {
     );
 }
 
-// Login / register + request-access gate for tournaments that require approved
-// reader accounts.
-function AccountGate(props: { tcode: string; onApproved: () => void }): JSX.Element {
-    const { tcode, onApproved } = props;
+// Login / register + request-access gate. Default mode gates packet reads for
+// tournaments that require approved reader accounts (auto-passes when the
+// tournament doesn't). `strict` gates account-based MODERATION — joining a
+// room without its reader link — which always needs an actual approved
+// membership, regardless of the tournament's reader-account setting.
+function AccountGate(props: { tcode: string; onApproved: () => void; strict?: boolean }): JSX.Element {
+    const { tcode, onApproved, strict } = props;
     const [checking, setChecking] = React.useState(true);
     const [loggedIn, setLoggedIn] = React.useState(false);
     const [status, setStatus] = React.useState<string | null>(null);
@@ -712,12 +803,13 @@ function AccountGate(props: { tcode: string; onApproved: () => void }): JSX.Elem
         if (isIn) {
             try {
                 const a = await KlaxonApi.getAccess(tcode);
-                setStatus(a.status);
-                if (a.status === "approved") { onApproved(); return; }
+                const effective = strict ? a.memberStatus ?? null : a.status;
+                setStatus(effective);
+                if (effective === "approved") { onApproved(); return; }
             } catch { /* ignore */ }
         }
         setChecking(false);
-    }, [tcode, onApproved]);
+    }, [tcode, onApproved, strict]);
 
     React.useEffect(() => { refresh(); }, [refresh]);
 

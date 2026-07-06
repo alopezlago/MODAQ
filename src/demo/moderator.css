@@ -238,3 +238,28 @@ body {
     font-family: inherit;
     resize: vertical;
 }
+
+/* Director-to-reader message banner (see DirectorMessages in moderator.tsx). */
+.mod-director-msg {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #fff4ce;
+    border: 1px solid #f0c36d;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+.mod-director-msg p {
+    margin: 2px 0;
+}
+.mod-director-msg button {
+    padding: 6px 10px;
+    border: 1px solid #8a8886;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    flex-shrink: 0;
+}

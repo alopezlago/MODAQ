@@ -71,6 +71,13 @@ export function readCredentials(code: string): { token: string | null; role: str
 
 type StateListener = (state: IPublicRoomState) => void;
 
+// A message from the tournament director to this room's reader(s).
+export interface IDirectorMessage {
+    text: string;
+    at: number;
+}
+type MessageListener = (message: IDirectorMessage) => void;
+
 export class KlaxonClient {
     public readonly code: string;
     public readonly token: string | null;
@@ -79,7 +86,9 @@ export class KlaxonClient {
     private readonly name: string;
     private socket: KlaxonSocket | undefined;
     private readonly listeners: StateListener[] = [];
+    private readonly messageListeners: MessageListener[] = [];
     public lastState: IPublicRoomState | undefined;
+    public messages: IDirectorMessage[] = [];
 
     constructor(code: string) {
         this.code = code.toUpperCase();
@@ -109,6 +118,15 @@ export class KlaxonClient {
                 for (const l of this.listeners) l(s);
             });
 
+            socket.on("director_message", (...args: unknown[]) => {
+                const m = args[0] as IDirectorMessage;
+                if (!m || typeof m.text !== "string") return;
+                // Buffer so a banner that mounts later (e.g. on the setup
+                // screen) still gets messages that already arrived.
+                this.messages = [...this.messages, m].slice(-5);
+                for (const l of this.messageListeners) l(m);
+            });
+
             const join = (): void => {
                 socket.emit(
                     "join",
@@ -118,14 +136,32 @@ export class KlaxonClient {
                         name: this.name,
                         role: this.role,
                         staffToken: this.token,
+                        // An approved tournament moderator account authorizes as
+                        // reader even without the room's staff token.
+                        sessionToken: sessionToken() || undefined,
                     },
-                    (resp: { ok?: boolean; state?: IPublicRoomState; staffDenied?: boolean }) => {
+                    (resp: {
+                        ok?: boolean;
+                        state?: IPublicRoomState;
+                        staffDenied?: boolean;
+                        denyReason?: string;
+                        error?: string;
+                    }) => {
                         if (!resp || !resp.ok) {
-                            reject(new Error("Could not join room as moderator."));
+                            const message =
+                                resp?.error === "no_room"
+                                    ? "This room doesn't exist — it may have expired. Ask for a new link."
+                                    : "Could not join room as moderator.";
+                            reject(new Error(message));
                             return;
                         }
                         if (resp.staffDenied) {
-                            reject(new Error("Staff token was rejected — reopen from your reader link."));
+                            const error = new Error(
+                                "You don't have moderator access to this room."
+                            ) as Error & { denyReason?: string; state?: IPublicRoomState };
+                            error.denyReason = resp.denyReason;
+                            error.state = resp.state;
+                            reject(error);
                             return;
                         }
                         if (resp.state) {
@@ -144,6 +180,17 @@ export class KlaxonClient {
     public onState(listener: StateListener): void {
         this.listeners.push(listener);
         if (this.lastState) listener(this.lastState);
+    }
+
+    // Returns a disposer so a React effect can unsubscribe cleanly. Messages
+    // that arrived before subscribing are replayed (listeners dedupe).
+    public onDirectorMessage(listener: MessageListener): () => void {
+        this.messageListeners.push(listener);
+        for (const m of this.messages) listener(m);
+        return () => {
+            const i = this.messageListeners.indexOf(listener);
+            if (i >= 0) this.messageListeners.splice(i, 1);
+        };
     }
 
     public resetBuzzer(): void {
@@ -222,7 +269,7 @@ export const KlaxonApi = {
     me(): Promise<{ account: { id: string; username: string } }> {
         return rest("GET", `/api/accounts/me?sessionToken=${encodeURIComponent(sessionToken() || "")}`);
     },
-    getAccess(tcode: string): Promise<{ required: boolean; status: string | null }> {
+    getAccess(tcode: string): Promise<{ required: boolean; status: string | null; memberStatus?: string | null }> {
         return rest("GET", `/api/tournaments/${tcode}/access?sessionToken=${encodeURIComponent(sessionToken() || "")}`);
     },
     requestAccess(tcode: string): Promise<{ status: string }> {
