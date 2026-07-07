@@ -20,10 +20,11 @@
     ],
     "devDependencies": {
         "@babel/core": "^7.25.2",
+        "@playwright/test": "^1.28.0",
         "@types/chai": "^4.2.15",
-        "@types/google.accounts": "^0.0.15",
-        "@types/gapi.client.sheets": "^4.0.20201031",
         "@types/gapi.client": "^1.0.8",
+        "@types/gapi.client.sheets": "^4.0.20201031",
+        "@types/google.accounts": "^0.0.15",
         "@types/he": "^1.1.2",
         "@types/mocha": "^8.2.1",
         "@types/react": "^17.0.3",
@@ -42,22 +43,23 @@
         "eslint-plugin-react": "^7.30.1",
         "eslint-plugin-react-hooks": "^4.6.0",
         "mocha": "^10.0.0",
-        "@playwright/test": "^1.28.0",
         "prettier": "^2.2.1",
         "react": "^17.0.1",
         "react-dom": "^17.0.1",
-        "tsconfig-paths": "^3.9.0",
         "ts-node": "^9.1.1",
+        "tsconfig-paths": "^3.9.0",
         "typescript": "^4.2.3",
         "vite": "^8.0.14",
         "vite-plugin-mkcert": "^1.17.6"
     },
     "dependencies": {
         "@fluentui/react": "^8.122.9",
+        "@huggingface/transformers": "^4.2.0",
         "he": "^1.2.0",
         "mobx": "^6.5.0",
         "mobx-react-lite": "^3.3.0",
-        "mobx-sync": "^3.0.0"
+        "mobx-sync": "^3.0.0",
+        "vosk-browser": "^0.0.8"
     },
     "peerDependencies": {
         "react": "^17.0.1 || ^18.0.0 || ^19.0.0",
@@ -81,6 +83,7 @@
         "test:e2e:codegen": "playwright codegen https://localhost:5173",
         "dev": "vite",
         "buildDemo": "tsc && vite build --mode production",
+        "buildModerator": "vite build --mode production --config vite.moderator.config.ts",
         "serve": "vite preview",
         "codeCoverage": "c8 --reporter=lcov --reporter=text-summary npm run test"
     }

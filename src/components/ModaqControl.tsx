@@ -17,17 +17,25 @@ import {
     IPalette,
 } from "@fluentui/react";
 import { AsyncTrunk } from "mobx-sync";
-import { configure } from "mobx";
+import { configure, reaction } from "mobx";
 import { observer } from "mobx-react-lite";
+import he from "he";
 
 import * as PacketLoaderController from "./PacketLoaderController";
+import * as TossupQuestionController from "./TossupQuestionController";
 import { StateProvider } from "../contexts/StateContext";
+import { ErrataContext, IErrataContextValue } from "../contexts/ErrataContext";
+import { IErratum } from "../state/IErratum";
+import { TiebreakerContext, ITiebreakerContextValue, ITiebreakerItem } from "../contexts/TiebreakerContext";
+import * as QBJ from "../qbj/QBJ";
+import { IMatch } from "../qbj/QBJ";
 import { AppState } from "../state/AppState";
 import { GameViewer } from "./GameViewer";
 import { ModalDialogContainer } from "./ModalDialogContainer";
 import { IGameFormat } from "../state/IGameFormat";
 import { IPacket } from "../state/IPacket";
 import { IPlayer, Player } from "../state/TeamState";
+import { PendingGameType } from "../state/IPendingNewGame";
 import { Bonus, ITossupWord, PacketState, Tossup } from "../state/PacketState";
 import { ICustomExport } from "../state/CustomExport";
 import { Cycle } from "../state/Cycle";
@@ -97,11 +105,208 @@ const darkModePalette: Partial<IPalette> = {
 export const ModaqControl = observer(function ModaqControl(props: IModaqControlProps): JSX.Element {
     const [appState]: [AppState, React.Dispatch<React.SetStateAction<AppState>>] = React.useState(() => new AppState());
 
+    // Errata are host-owned (persisted to the tournament by the embedder), kept
+    // in plain React state so they're independent of the game/persistence.
+    const [errata, setErrata] = React.useState<IErratum[]>(props.errata ?? []);
+    const onErrataChange = props.onErrataChange;
+
+    // Adopt errata the host passes in (e.g. loaded from the server) when that
+    // reference changes.
+    React.useEffect(() => {
+        if (props.errata != undefined) {
+            setErrata(props.errata);
+        }
+    }, [props.errata]);
+
+    const setErratum = React.useCallback(
+        (erratum: IErratum): void => {
+            setErrata((previous) => {
+                const next: IErratum[] = [
+                    ...previous.filter(
+                        (existing) =>
+                            !(
+                                existing.questionNumber === erratum.questionNumber &&
+                                existing.questionType === erratum.questionType
+                            )
+                    ),
+                    { ...erratum, at: erratum.at ?? Date.now() },
+                ];
+                if (onErrataChange) {
+                    onErrataChange(next);
+                }
+                return next;
+            });
+        },
+        [onErrataChange]
+    );
+
+    const removeErratum = React.useCallback(
+        (questionNumber: number, questionType: "tossup" | "bonus"): void => {
+            setErrata((previous) => {
+                const next: IErratum[] = previous.filter(
+                    (existing) =>
+                        !(existing.questionNumber === questionNumber && existing.questionType === questionType)
+                );
+                if (onErrataChange) {
+                    onErrataChange(next);
+                }
+                return next;
+            });
+        },
+        [onErrataChange]
+    );
+
+    // Only expose the errata context (and thus the errata UI) when the host opts
+    // in by providing an onErrataChange handler.
+    const errataValue: IErrataContextValue | undefined = React.useMemo(
+        () => (onErrataChange ? { errata, setErratum, removeErratum } : undefined),
+        [onErrataChange, errata, setErratum, removeErratum]
+    );
+
+    // Tiebreakers: append the chosen question to the packet (so the next/thrown-
+    // out tossup reads it) and report which teams heard it.
+    const tiebreakers = props.tiebreakers;
+    const onTiebreakerUsed = props.onTiebreakerUsed;
+    const addTiebreaker = React.useCallback(
+        (index: number): void => {
+            const item = tiebreakers?.[index];
+            if (item == undefined) {
+                return;
+            }
+            const combined: PacketState = new PacketState();
+            combined.setTossups(
+                appState.game.packet.tossups.concat([new Tossup(he.decode(item.question), he.decode(item.answer))])
+            );
+            combined.setBonuses(appState.game.packet.bonuses);
+            combined.setName(appState.game.packet.name);
+            appState.game.loadPacket(combined);
+            if (onTiebreakerUsed) {
+                onTiebreakerUsed({ ...item, teams: appState.game.teamNames });
+            }
+        },
+        [appState, tiebreakers, onTiebreakerUsed]
+    );
+    // After a tossup is thrown out, the packet can run out of questions before
+    // the game does. When that happens, sub in the next unused tiebreaker
+    // automatically. Already-added tiebreakers are recognized by their question
+    // text (rather than a counter), so this survives page reloads.
+    const subInIfNeeded = React.useCallback((): boolean => {
+        const game = appState.game;
+        if (tiebreakers == undefined || tiebreakers.length === 0 || !game.isLoaded || game.cycles.length === 0) {
+            return false;
+        }
+        if (game.getTossup(game.playableCycles.length - 1) != undefined) {
+            // The packet still covers every playable question; nothing to do.
+            return false;
+        }
+        const existing = new Set(game.packet.tossups.map((t) => t.question));
+        const index = tiebreakers.findIndex((tb) => !existing.has(he.decode(tb.question)));
+        if (index < 0) {
+            return false;
+        }
+        addTiebreaker(index);
+        return true;
+    }, [appState, tiebreakers, addTiebreaker]);
+
+    const tiebreakerValue: ITiebreakerContextValue | undefined = React.useMemo(
+        () => (tiebreakers && tiebreakers.length > 0 ? { tiebreakers, addTiebreaker, subInIfNeeded } : undefined),
+        [tiebreakers, addTiebreaker, subInIfNeeded]
+    );
+
     // We only want to run this effect once, which requires passing in an empty array of dependencies
     // eslint-disable-next-line react-hooks/exhaustive-deps
     React.useEffect(() => initializeControl(appState, { ...props, persistState: props.persistState ?? true }), []);
 
     React.useEffect(() => update(appState, props), [appState, props]);
+
+    // Live stats sync: whenever the game changes, hand the host the current QBJ
+    // (debounced so a burst of edits collapses into one push).
+    const onGameUpdate = props.onGameUpdate;
+    React.useEffect(() => {
+        if (onGameUpdate == undefined) {
+            return;
+        }
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const dispose = reaction(
+            // Track the last change and whether a game is loaded, so the first
+            // sync fires as soon as the game is created (New Game), not only
+            // after the first scoring change. Also track the question index:
+            // reaching the last playable question flips the game to "final"
+            // even when no scoring change accompanies it (e.g. a dead tossup).
+            () => ({
+                lastUpdate: appState.game.lastUpdate,
+                isLoaded: appState.game.isLoaded,
+                cycleIndex: appState.uiState.cycleIndex,
+            }),
+            () => {
+                if (timer != undefined) {
+                    clearTimeout(timer);
+                }
+                timer = setTimeout(() => {
+                    if (appState.game.isLoaded) {
+                        try {
+                            // Same condition as the Next button turning into Export.
+                            const inProgress: boolean =
+                                appState.uiState.cycleIndex + 1 < appState.game.playableCycles.length;
+                            onGameUpdate(
+                                QBJ.toQBJ(appState.game, appState.uiState.packetFilename),
+                                inProgress,
+                                appState.uiState.cycleIndex + 1
+                            );
+                        } catch {
+                            /* a transient inconsistent state shouldn't crash the reader */
+                        }
+                    }
+                }, 1200);
+            }
+        );
+        return () => {
+            if (timer != undefined) {
+                clearTimeout(timer);
+            }
+            dispose();
+        };
+    }, [appState, onGameUpdate]);
+
+    // Buzz judgments: fire when the reader marks a buzz correct or wrong on the
+    // question being read (not when revisiting an already-judged question), so a
+    // host with its own buzzer can clear the buzz queue.
+    const onBuzzJudged = props.onBuzzJudged;
+    React.useEffect(() => {
+        if (onBuzzJudged == undefined) {
+            return;
+        }
+        return reaction(
+            () => {
+                // Track lastUpdate: it's bumped by every cycle event, and reading cycles[i] before the game
+                // loads is an out-of-bounds array read that MobX doesn't track, which would leave this
+                // reaction dormant for the rest of the game.
+                const cycleIndex: number = appState.uiState.cycleIndex;
+                const cycle: Cycle | undefined =
+                    cycleIndex < appState.game.cycles.length ? appState.game.cycles[cycleIndex] : undefined;
+                const judgedCount: number =
+                    cycle == undefined ? 0 : (cycle.correctBuzz ? 1 : 0) + (cycle.wrongBuzzes?.length ?? 0);
+                return {
+                    isLoaded: appState.game.isLoaded,
+                    lastUpdate: appState.game.lastUpdate,
+                    cycleIndex,
+                    judgedCount,
+                };
+            },
+            (current, previous) => {
+                // previous.isLoaded filters out persisted-state restoration on page load, which can bump the
+                // judged count without the reader judging anything.
+                if (
+                    previous != undefined &&
+                    previous.isLoaded &&
+                    current.cycleIndex === previous.cycleIndex &&
+                    current.judgedCount > previous.judgedCount
+                ) {
+                    onBuzzJudged();
+                }
+            }
+        );
+    }, [appState, onBuzzJudged]);
     React.useEffect(() => {
         if (props.gameFormat != undefined) {
             appState.game.setGameFormat(props.gameFormat);
@@ -143,12 +348,16 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
     return (
         <ErrorBoundary appState={appState}>
             <StateProvider appState={appState}>
-                <ThemeProvider theme={theme} applyTo={applyTo}>
-                    <div className="modaq-control">
-                        <GameViewer />
-                        <ModalDialogContainer />
-                    </div>
-                </ThemeProvider>
+                <ErrataContext.Provider value={errataValue}>
+                    <TiebreakerContext.Provider value={tiebreakerValue}>
+                        <ThemeProvider theme={theme} applyTo={applyTo}>
+                            <div className="modaq-control">
+                                <GameViewer />
+                                <ModalDialogContainer />
+                            </div>
+                        </ThemeProvider>
+                    </TiebreakerContext.Provider>
+                </ErrataContext.Provider>
             </StateProvider>
         </ErrorBoundary>
     );
@@ -175,6 +384,42 @@ export interface IModaqControlProps {
     customExport?: ICustomExport;
 
     /**
+     * Initial errata for the current packet, e.g. loaded from a server. Adopted whenever this reference changes.
+     */
+    errata?: IErratum[];
+
+    /**
+     * Called whenever the moderator adds, edits, or removes an erratum, with the full new errata list. Providing this
+     * handler is what enables the errata UI.
+     */
+    onErrataChange?: (errata: IErratum[]) => void;
+
+    /**
+     * Called (debounced) with the game's QBJ whenever the game changes — buzzes, bonus answers, subs, etc. Lets the
+     * host keep a live copy of the match stats in sync without the moderator clicking export. inProgress is true
+     * until the reader reaches the last playable question (the same point where Next becomes Export), so hosts can
+     * avoid counting a half-played game as final. currentQuestion is the 1-based question the reader is on, so a
+     * host can show live scoreboards with game progress.
+     */
+    onGameUpdate?: (qbj: IMatch, inProgress?: boolean, currentQuestion?: number) => void;
+
+    /**
+     * Called when the reader marks a buzz correct or wrong on the question being read. Hosts with their own buzzer
+     * (like Klaxon) can use this to clear the buzz queue once the buzz is resolved.
+     */
+    onBuzzJudged?: () => void;
+
+    /**
+     * Tiebreaker questions the moderator can sub in from the Add Questions dialog.
+     */
+    tiebreakers?: ITiebreakerItem[];
+
+    /**
+     * Called when the moderator subs in a tiebreaker, with the question and the teams that just heard it.
+     */
+    onTiebreakerUsed?: (info: ITiebreakerItem & { teams: string[] }) => void;
+
+    /**
      * The format of the current game, such as if powers are supported, if tossups are paired with bonuses, etc.
      */
     gameFormat?: IGameFormat;
@@ -189,6 +434,13 @@ export interface IModaqControlProps {
      * When `true`, the New Game button in the menu is hidden.
      */
     hideNewGame?: boolean;
+
+    /**
+     * If provided and there's no game already loaded (e.g. a fresh start, not a restored one), MODAQ's own New Game
+     * dialog is opened prefilled with this packet and — when `rosters` is given — its player pool, so the host can use
+     * MODAQ's native team/player entry (with reordering) instead of a custom form.
+     */
+    newGameOnLoad?: { packet: IPacket; packetName?: string; rosters?: IPlayer[] };
 
     /**
      * The packet for the current game. This should only be set once.
@@ -224,6 +476,38 @@ export interface IModaqControlProps {
     yappServiceUrl?: string;
 }
 
+// Open MODAQ's own New Game dialog, prefilled by the host with a packet and
+// (optionally) a roster player pool, so the moderator sets up teams/players with
+// MODAQ's native UI (including reordering). No-op if a game is already loaded.
+function maybeOpenHostNewGame(appState: AppState, props: IModaqControlProps): void {
+    const spec = props.newGameOnLoad;
+    if (spec == undefined || appState.game.isLoaded) {
+        return;
+    }
+
+    const packetState = PacketLoaderController.loadPacket(appState, spec.packet, spec.packetName);
+    appState.uiState.createPendingNewGame();
+    if (packetState != undefined) {
+        appState.uiState.setPendingNewGamePacket(packetState);
+    }
+    if (props.gameFormat != undefined) {
+        appState.uiState.setPendingNewGameFormat(props.gameFormat);
+    }
+    if (spec.packetName != undefined) {
+        appState.uiState.setPacketFilename(spec.packetName);
+    }
+
+    const rosters = (spec.rosters ?? []).filter((player) => player != undefined);
+    if (rosters.length > 0) {
+        appState.uiState.setPendingNewGameType(PendingGameType.QBJRegistration);
+        appState.uiState.setPendingNewGameRosters(
+            rosters.map((player) => new Player(player.name, player.teamName, player.isStarter))
+        );
+    }
+
+    appState.uiState.dialogState.showNewGameDialog();
+}
+
 function initializeControl(appState: AppState, props: IModaqControlProps): () => void {
     if (props.persistState) {
         configure({ enforceActions: "observed", computedRequiresReaction: true });
@@ -242,7 +526,12 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
                     },
                 });
             }
+            // Only open the host-driven New Game once persistence has restored any in-progress game (so a mid-round
+            // refresh doesn't clobber it).
+            maybeOpenHostNewGame(appState, props);
         });
+    } else {
+        maybeOpenHostNewGame(appState, props);
     }
 
     // We have to add the listener at the document layer, otherwise the event isn't picked up if the user clicks on
@@ -250,14 +539,146 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
     const keydownListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) => shortcutHandler(event, appState);
     document.addEventListener("keyup", keydownListener);
 
+    // The buzz menu keys get a capture-phase keydown listener so they're seen before the menu's own keyboard
+    // handling (which has focus while the menu is open) can react to or swallow them
+    const buzzMenuKeyListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) =>
+        buzzMenuShortcutHandler(event, appState);
+    document.addEventListener("keydown", buzzMenuKeyListener, /* useCapture */ true);
+
+    // Space is the buzz shortcut, but it acts on keyup (above). Stop its keydown from scrolling the page (or
+    // clicking a focused button) when it's serving as the shortcut -- i.e. not while typing or in a dialog.
+    const preventSpaceScrollListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) => {
+        if (
+            event.key === " " &&
+            !isTextEntryElement(event.target) &&
+            appState.uiState.dialogState.visibleDialog === ModalVisibilityStatus.None &&
+            !appState.uiState.buzzMenuState.visible
+        ) {
+            event.preventDefault();
+        }
+    };
+    document.addEventListener("keydown", preventSpaceScrollListener);
+
+    // Capture phase so it beats the question text's FocusZone to Space/Enter while typing a word number
+    const typeBuzzIndexListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) =>
+        typeBuzzIndexKeydownHandler(event, appState);
+    document.addEventListener("keydown", typeBuzzIndexListener, /* useCapture */ true);
+
     return () => {
         document.removeEventListener("keyup", keydownListener);
+        document.removeEventListener("keydown", buzzMenuKeyListener, /* useCapture */ true);
+        document.removeEventListener("keydown", preventSpaceScrollListener);
+        document.removeEventListener("keydown", typeBuzzIndexListener, /* useCapture */ true);
     };
+}
+
+// Whether the event targets a text-entry control, where keys (notably Space) should be typed rather than treated
+// as moderator shortcuts.
+function isTextEntryElement(target: EventTarget | null): boolean {
+    const element: HTMLElement | null = target as HTMLElement | null;
+    if (element == null || element.tagName == undefined) {
+        return false;
+    }
+
+    const tagName: string = element.tagName;
+    return tagName === "INPUT" || tagName === "TEXTAREA" || element.isContentEditable === true;
+}
+
+// While the buzz menu is open, number keys pick a player and C/W mark their buzz as correct/wrong, and
+// Shift+Left/Shift+Right nudge the buzz point to the exact word. These keys only act this way while the menu is
+// open, so the bonus shortcuts in shortcutHandler still work normally.
+function buzzMenuShortcutHandler(event: KeyboardEvent, appState: AppState): void {
+    if (
+        appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None ||
+        !appState.uiState.buzzMenuState.visible
+    ) {
+        return;
+    }
+
+    // Shift+Left/Shift+Right move the buzz point one word earlier/later, following the reading order. (Plain
+    // arrows are left to the menu's own navigation.) Moving the selected word re-anchors the open menu to it.
+    if (event.shiftKey && event.key === "ArrowLeft") {
+        TossupQuestionController.moveBuzzPoint(appState, -1);
+    } else if (event.shiftKey && event.key === "ArrowRight") {
+        TossupQuestionController.moveBuzzPoint(appState, 1);
+    } else {
+        const key: string = event.key.toUpperCase();
+        if (key.length === 1 && key >= "1" && key <= "9") {
+            TossupQuestionController.selectBuzzMenuPlayerByNumber(appState, Number(key));
+        } else if (key === "C" || key === "W") {
+            TossupQuestionController.markKeyboardSelectedPlayerBuzz(appState, /* isCorrect */ key === "C");
+        } else {
+            return;
+        }
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+}
+
+// Drives "type word number to buzz" mode on a capture-phase keydown, so it runs before the question text's
+// FocusZone (which would otherwise turn Space/Enter on a focused word into a click and open the normal buzz
+// menu -- the reason this mode didn't work unless the mic happened to hold focus elsewhere). Space starts entry;
+// once entering, digits/Enter/Backspace/Escape drive it. Other situations fall through to the normal handlers.
+function typeBuzzIndexKeydownHandler(event: KeyboardEvent, appState: AppState): void {
+    const uiState = appState.uiState;
+    if (
+        !uiState.typeBuzzIndexMode ||
+        uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None ||
+        uiState.buzzMenuState.visible ||
+        isTextEntryElement(event.target)
+    ) {
+        return;
+    }
+
+    if (uiState.isEnteringBuzzIndex) {
+        buzzIndexEntryHandler(event, appState);
+    } else if (event.key === " ") {
+        TossupQuestionController.startBuzzIndexEntry(appState);
+        event.preventDefault();
+        event.stopPropagation();
+    }
+}
+
+// While typing a word number (Space in "type word number" mode), digits build the number, Enter sets the buzz
+// point at that word and opens the buzz menu, Backspace edits the number, and Escape cancels.
+function buzzIndexEntryHandler(event: KeyboardEvent, appState: AppState): void {
+    if (event.key.length === 1 && event.key >= "0" && event.key <= "9") {
+        TossupQuestionController.appendBuzzIndexDigit(appState, event.key);
+    } else if (event.key === "Enter") {
+        TossupQuestionController.commitBuzzIndexEntry(appState);
+    } else if (event.key === "Backspace") {
+        TossupQuestionController.backspaceBuzzIndexDigit(appState);
+    } else if (event.key === "Escape") {
+        TossupQuestionController.cancelBuzzIndexEntry(appState);
+    } else {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
 }
 
 function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
     // Disable shortcuts if there's a modal dialog open
     if (appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None) {
+        return;
+    }
+
+    // The buzz menu's keys (numbers, C, W) are handled by buzzMenuShortcutHandler on keydown; while the menu
+    // is open, don't let the same keys also trigger the shortcuts below
+    if (appState.uiState.buzzMenuState.visible) {
+        return;
+    }
+
+    // Don't hijack keys while the user is typing in a text field (notably Space, the buzz shortcut)
+    if (isTextEntryElement(event.target)) {
+        return;
+    }
+
+    // While typing a word number, the keys are handled on keydown (typeBuzzIndexKeydownHandler); don't also run
+    // the shortcuts below on keyup
+    if (appState.uiState.isEnteringBuzzIndex) {
         return;
     }
 
@@ -289,6 +710,18 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
 
             break;
 
+        case " ":
+            // In "type word number" mode, Space is handled on keydown (typeBuzzIndexKeydownHandler) so it beats
+            // the FocusZone. Otherwise it opens the buzz menu at the buzz point, anchoring it to the most recently
+            // read word when the mic is tracking and the user isn't picking a word with the mouse.
+            if (!appState.uiState.typeBuzzIndexMode) {
+                TossupQuestionController.openBuzzMenuAtBuzzPoint(appState);
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            break;
+
         case "N":
             if (appState.uiState.cycleIndex + 1 < appState.game.playableCycles.length) {
                 appState.uiState.nextCycle();
@@ -299,7 +732,6 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
             break;
 
         case "P":
-        case "B":
             appState.uiState.previousCycle();
             event.preventDefault();
             event.stopPropagation();

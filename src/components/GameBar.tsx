@@ -20,6 +20,8 @@ import { AppState } from "../state/AppState";
 import { IBonusProtestEvent, ITossupAnswerEvent, ITossupProtestEvent } from "../state/Events";
 import { useAppState } from "../contexts/StateContext";
 import { StatusDisplayType } from "../state/StatusDisplayType";
+import { ReaderFollower } from "../speech/ReaderFollower";
+import { useTiebreakers } from "../contexts/TiebreakerContext";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
@@ -28,6 +30,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     const appState: AppState = useAppState();
     const uiState: UIState = appState.uiState;
     const game: GameState = appState.game;
+    const tiebreakers = useTiebreakers();
 
     const newGameHandler = React.useCallback(() => {
         if (appState.game.hasUpdates) {
@@ -157,7 +160,8 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         reorderPlayersHandler,
         reorderTeamsHandler,
         renameTeamHandler,
-        addQuestionsHandler
+        addQuestionsHandler,
+        tiebreakers ? () => void tiebreakers.subInIfNeeded() : undefined
     );
     items.push({
         key: "actions",
@@ -230,7 +234,8 @@ function getActionSubMenuItems(
     reorderPlayersHandler: () => void,
     reorderTeamsHandler: () => void,
     renameTeamHandler: () => void,
-    addQuestionsHandler: () => void
+    addQuestionsHandler: () => void,
+    onTossupThrownOut?: () => void
 ): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
     const uiState: UIState = appState.uiState;
@@ -264,7 +269,8 @@ function getActionSubMenuItems(
                         TossupQuestionController.throwOutTossup(
                             appState,
                             appState.game.cycles[appState.uiState.cycleIndex],
-                            appState.game.getTossupIndex(appState.uiState.cycleIndex) + 1
+                            appState.game.getTossupIndex(appState.uiState.cycleIndex) + 1,
+                            onTossupThrownOut
                         ),
                     disabled: appState.game.cycles.length === 0,
                 },
@@ -347,6 +353,84 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             onClick: () => {
                 appState.uiState.showFontDialog();
             },
+        },
+        {
+            key: "trackReader",
+            text: "Follow reading with microphone",
+            title: "Listen to the microphone and move the buzz point to where the reader is in the tossup",
+            canCheck: true,
+            checked: appState.uiState.trackReaderWithMicrophone,
+            onClick: () => {
+                if (!appState.uiState.trackReaderWithMicrophone && !ReaderFollower.isSupported()) {
+                    appState.uiState.dialogState.showOKMessageDialog({
+                        title: "Microphone Tracking Unavailable",
+                        message:
+                            "Neither speech recognition nor microphone capture is supported in this browser. Try a recent version of Chrome, Edge, or Firefox.",
+                    });
+                    return;
+                }
+
+                appState.uiState.setTrackReaderWithMicrophone(!appState.uiState.trackReaderWithMicrophone);
+            },
+        },
+        {
+            key: "holdReaderHighlight",
+            text: "Hold highlight until I press Space",
+            title: "In microphone mode, don't move the highlight automatically; pressing Space jumps it to where the reader is",
+            canCheck: true,
+            checked: appState.uiState.holdReaderHighlightUntilBuzz,
+            disabled: !appState.uiState.trackReaderWithMicrophone,
+            onClick: () => appState.uiState.toggleHoldReaderHighlightUntilBuzz(),
+        },
+        {
+            key: "instantReaderHighlight",
+            text: "Move highlight instantly (no delay)",
+            title: "In microphone mode, move the highlight to the reader's position immediately instead of waiting for a pause",
+            canCheck: true,
+            checked: appState.uiState.instantReaderHighlight,
+            disabled: !appState.uiState.trackReaderWithMicrophone || appState.uiState.holdReaderHighlightUntilBuzz,
+            onClick: () => appState.uiState.toggleInstantReaderHighlight(),
+        },
+        {
+            key: "buzzPointOffset",
+            text: "Buzz point offset (Space)",
+            title: "When you press Space, offset the buzz point this many words from where the reader is detected",
+            disabled: !appState.uiState.trackReaderWithMicrophone,
+            subMenuProps: {
+                items: [-4, -3, -2, -1, 0, 1, 2, 3, 4].map((offset) => ({
+                    key: `buzzPointOffset_${offset}`,
+                    text: offset === 0 ? "No offset" : `${offset > 0 ? "+" : ""}${offset} words`,
+                    canCheck: true,
+                    checked: appState.uiState.buzzPointWordOffset === offset,
+                    onClick: () => appState.uiState.setBuzzPointWordOffset(offset),
+                })),
+            },
+        },
+        {
+            key: "typeBuzzIndexMode",
+            text: "Type word number to buzz (Space)",
+            title: "When you press Space, show a number above each word; type a word's number and press Enter to set the buzz point there",
+            canCheck: true,
+            checked: appState.uiState.typeBuzzIndexMode,
+            onClick: () => appState.uiState.toggleTypeBuzzIndexMode(),
+        },
+        {
+            key: "useWhisperWebEngine",
+            text: "Use in-browser Whisper (more accurate, on-device)",
+            title: "Transcribe with OpenAI's Whisper running locally in the browser instead of the Web Speech API. More accurate and fully on-device, but downloads a model on first use and is slower. Toggle microphone tracking off and on to apply.",
+            canCheck: true,
+            checked: appState.uiState.useWhisperWebEngine,
+            disabled: !appState.uiState.trackReaderWithMicrophone,
+            onClick: () => appState.uiState.toggleUseWhisperWebEngine(),
+        },
+        {
+            key: "trackReaderDebug",
+            text: "Microphone debug info",
+            title: "Show diagnostics for microphone tracking under the tossup",
+            canCheck: true,
+            checked: appState.uiState.showReaderFollowerDebug,
+            disabled: !appState.uiState.trackReaderWithMicrophone,
+            onClick: () => appState.uiState.toggleReaderFollowerDebug(),
         }
     );
 

@@ -14,7 +14,9 @@ export const QuestionWord = observer(function QuestionWord(props: IQuestionWordP
                     props.selected,
                     props.correct,
                     props.wrong,
-                    props.index != undefined
+                    props.index != undefined,
+                    props.reserveIndexSpace === true,
+                    props.indexActive === true
                 );
                 return (
                     <span
@@ -23,6 +25,13 @@ export const QuestionWord = observer(function QuestionWord(props: IQuestionWordP
                         data-is-focusable="true"
                         className={classes.word}
                     >
+                        {props.reserveIndexSpace && (
+                            // Render the number for buzzable words, or a blank placeholder otherwise, so every
+                            // word (and the question number / power mark) reserves the same space above it
+                            <span className={classes.indexLabel}>
+                                {props.displayIndex != undefined ? props.displayIndex : " "}
+                            </span>
+                        )}
                         <FormattedText segments={props.word} />
                     </span>
                 );
@@ -34,6 +43,13 @@ export const QuestionWord = observer(function QuestionWord(props: IQuestionWordP
 interface IQuestionWordProps {
     word: IFormattedText[];
     index: number | undefined;
+    // When set, the number to display above the word (used while typing a word number to set the buzz point)
+    displayIndex?: number;
+    // When true, reserve the space above the word for the number, even if this word has no number, so every
+    // word (and the question number / power mark) keeps consistent vertical spacing
+    reserveIndexSpace?: boolean;
+    // When true, the user is actively typing a number, so the numbers are shown a bit darker
+    indexActive?: boolean;
     selected?: boolean;
     correct?: boolean;
     wrong?: boolean;
@@ -43,6 +59,7 @@ interface IQuestionWordProps {
 
 interface IQuestionWordClassNames {
     word: string;
+    indexLabel: string;
 }
 
 // This would be a great place for theming or settings
@@ -52,14 +69,34 @@ const getClassNames = memoizeFunction(
         selected: boolean | undefined,
         correct: boolean | undefined,
         wrong: boolean | undefined,
-        isIndexDefined: boolean
+        isIndexDefined: boolean,
+        reserveIndexSpace: boolean,
+        indexActive: boolean
     ): IQuestionWordClassNames =>
         mergeStyleSets({
+            indexLabel: {
+                // Small, non-bold number sitting directly above the word. Very light while idle so it barely
+                // distracts; darker once the user starts typing a number, to make the choice easier to read.
+                fontSize: "0.7em",
+                lineHeight: 1,
+                fontWeight: "normal",
+                color: indexActive
+                    ? theme
+                        ? theme.palette.neutralSecondary
+                        : "rgb(96, 96, 96)"
+                    : theme
+                    ? theme.palette.neutralQuaternaryAlt
+                    : "rgb(215, 215, 215)",
+                userSelect: "none",
+            },
             word: [
-                { display: "inline-flex" },
+                // While numbering words, stack the number on top of the word; otherwise lay words out inline
+                reserveIndexSpace
+                    ? { display: "inline-flex", flexDirection: "column", alignItems: "center" }
+                    : { display: "inline-flex" },
                 selected && {
                     fontWeight: "bold",
-                    background: theme ? theme.palette.themeLight + "20" : "rbg(192, 192, 192)",
+                    background: theme ? theme.palette.themeLight : "rgb(192, 192, 192)",
                 },
                 correct && {
                     background: theme ? theme.palette.tealLight + "20" : "rbg(0, 128, 128)",

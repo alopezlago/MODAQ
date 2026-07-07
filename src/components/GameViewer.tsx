@@ -10,6 +10,7 @@ import { AppState } from "../state/AppState";
 import { useAppState } from "../contexts/StateContext";
 import { Clock } from "./Clock";
 import { ExportStatus } from "./ExportStatus";
+import { ErrataControl } from "./ErrataControl";
 import { PacketNameLabel } from "./PacketNameLabel";
 
 const scoreboardAndQuestionViewerTokens: IStackTokens = { childrenGap: 20 };
@@ -54,7 +55,10 @@ export const GameViewer = observer(function GameViewer() {
                         </StackItem>
                         <StackItem>{packetName}</StackItem>
                         <StackItem>
-                            <ExportStatus />
+                            <Stack horizontal tokens={{ childrenGap: 10 }} verticalAlign="center">
+                                <ErrataControl />
+                                <ExportStatus />
+                            </Stack>
                         </StackItem>
                     </Stack>
                 </StackItem>

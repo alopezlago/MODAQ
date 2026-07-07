@@ -107,6 +107,66 @@ export class UIState {
     // Default should be to highlight answered bonuses
     public noBonusHighlight: boolean;
 
+    // When true, listen to the microphone and move the buzz point as the reader reads the tossup
+    public trackReaderWithMicrophone: boolean;
+
+    // When true, microphone tracking doesn't move the highlight on its own; it stays put until the user presses
+    // B, which jumps it to where the reader currently is. The live position is still tracked in the background.
+    public holdReaderHighlightUntilBuzz: boolean;
+
+    // When true, microphone tracking moves the highlight to the reader's position immediately, instead of
+    // waiting for the reading to pause. More responsive, but the highlight jitters with the recognizer's bursts.
+    // Has no effect when holdReaderHighlightUntilBuzz is on (the highlight is held until B regardless).
+    public instantReaderHighlight: boolean;
+
+    // Words to offset the buzz point from the reader's detected position when pressing Space (-4 to +4). Lets
+    // the user compensate for recognition lag/lead so the buzz lands on the right word. 0 means no offset.
+    public buzzPointWordOffset: number;
+
+    // When true, pressing Space shows a number above each word and the user types a word's number (then Enter)
+    // to set the buzz point there, instead of opening the buzz menu at the detected position right away.
+    public typeBuzzIndexMode: boolean;
+
+    // When true, microphone tracking transcribes with OpenAI's Whisper running in the browser (transformers.js)
+    // instead of the Web Speech API / Vosk. More accurate, fully on-device, but heavier (model download) and
+    // slower, and not streaming. Requires reloading the tossup (toggling mic tracking) to take effect.
+    public useWhisperWebEngine: boolean;
+
+    // Whether we're currently waiting for the user to type a word number (after pressing Space in the mode above)
+    @ignore
+    public isEnteringBuzzIndex: boolean;
+
+    // The digits typed so far while entering a word number
+    @ignore
+    public buzzIndexEntryValue: string;
+
+    // When true, show diagnostics for the microphone tracking (engine, status, last heard words). On by default
+    // while the feature is being tuned.
+    @ignore
+    public showReaderFollowerDebug: boolean;
+
+    @ignore
+    public readerFollowerEngine: string | undefined;
+
+    @ignore
+    public readerFollowerStatus: string | undefined;
+
+    @ignore
+    public readerFollowerTranscript: string | undefined;
+
+    // Where the reader currently is, before the pause delay moves the buzz point there
+    @ignore
+    public readerFollowerLivePosition: number;
+
+    // The last event that made the buzz point update immediately (buzz sound, "correct"/"incorrect"/etc.)
+    @ignore
+    public readerFollowerLastCue: string | undefined;
+
+    // When the mouse last moved over the question text. Used to decide if the user is picking a buzz point
+    // manually (so keyboard shortcuts shouldn't move it) or relying on the microphone tracking.
+    @ignore
+    public lastQuestionTextMouseMoveTime: number;
+
     public pronunciationGuideColor: string | undefined;
 
     public questionFontColor: string | undefined;
@@ -130,6 +190,7 @@ export class UIState {
         this.buzzMenuState = {
             clearSelectedWordOnClose: true,
             visible: false,
+            selectedPlayerIndex: undefined,
         };
         this.customExportOptions = undefined;
         this.customExportIntervalId = undefined;
@@ -154,6 +215,21 @@ export class UIState {
         this.pendingNewGame = undefined;
         this.pendingSheet = undefined;
         this.pendingTossupProtestEvent = undefined;
+        this.trackReaderWithMicrophone = false;
+        this.holdReaderHighlightUntilBuzz = false;
+        this.instantReaderHighlight = false;
+        this.buzzPointWordOffset = 0;
+        this.typeBuzzIndexMode = false;
+        this.isEnteringBuzzIndex = false;
+        this.buzzIndexEntryValue = "";
+        this.useWhisperWebEngine = false;
+        this.showReaderFollowerDebug = true;
+        this.readerFollowerEngine = undefined;
+        this.readerFollowerStatus = undefined;
+        this.readerFollowerTranscript = undefined;
+        this.readerFollowerLivePosition = -1;
+        this.readerFollowerLastCue = undefined;
+        this.lastQuestionTextMouseMoveTime = 0;
         this.useDarkMode = false;
         this.yappServiceUrl = undefined;
 
@@ -347,6 +423,14 @@ export class UIState {
         this.pendingNewGame.gameFormat = gameFormat;
     }
 
+    public setPendingNewGamePacket(packet: PacketState): void {
+        if (this.pendingNewGame == undefined) {
+            return;
+        }
+
+        this.pendingNewGame.packet = packet;
+    }
+
     public setPendingNewGameRegistrationErrorMessage(message: string): void {
         if (this.pendingNewGame?.type !== PendingGameType.QBJRegistration) {
             return;
@@ -476,6 +560,9 @@ export class UIState {
 
             // Clear the selected words, since it's not relevant to the next question
             this.selectedWordIndex = -1;
+
+            // Any in-progress word-number entry belongs to the previous question
+            this.endBuzzIndexEntry();
         }
     }
 
@@ -614,6 +701,85 @@ export class UIState {
         this.selectedWordIndex = newIndex;
     }
 
+    public toggleHoldReaderHighlightUntilBuzz(): void {
+        this.holdReaderHighlightUntilBuzz = !this.holdReaderHighlightUntilBuzz;
+    }
+
+    public toggleInstantReaderHighlight(): void {
+        this.instantReaderHighlight = !this.instantReaderHighlight;
+    }
+
+    public setBuzzPointWordOffset(offset: number): void {
+        // Clamp to the supported range so a bad stored value can't push the buzz point wildly off
+        this.buzzPointWordOffset = Math.max(-4, Math.min(4, Math.round(offset)));
+    }
+
+    public toggleTypeBuzzIndexMode(): void {
+        this.typeBuzzIndexMode = !this.typeBuzzIndexMode;
+        // Don't leave a half-finished entry around if the mode is turned off mid-entry
+        if (!this.typeBuzzIndexMode) {
+            this.endBuzzIndexEntry();
+        }
+    }
+
+    public toggleUseWhisperWebEngine(): void {
+        this.useWhisperWebEngine = !this.useWhisperWebEngine;
+    }
+
+    public startBuzzIndexEntry(): void {
+        this.isEnteringBuzzIndex = true;
+        this.buzzIndexEntryValue = "";
+    }
+
+    public setBuzzIndexEntryValue(value: string): void {
+        this.buzzIndexEntryValue = value;
+    }
+
+    public endBuzzIndexEntry(): void {
+        this.isEnteringBuzzIndex = false;
+        this.buzzIndexEntryValue = "";
+    }
+
+    public setTrackReaderWithMicrophone(value: boolean): void {
+        this.trackReaderWithMicrophone = value;
+
+        if (!value) {
+            this.readerFollowerEngine = undefined;
+            this.readerFollowerStatus = undefined;
+            this.readerFollowerTranscript = undefined;
+            this.readerFollowerLivePosition = -1;
+            this.readerFollowerLastCue = undefined;
+        }
+    }
+
+    public setReaderFollowerLivePosition(position: number): void {
+        this.readerFollowerLivePosition = position;
+    }
+
+    public setReaderFollowerLastCue(cue: string): void {
+        this.readerFollowerLastCue = cue;
+    }
+
+    public setLastQuestionTextMouseMoveTime(time: number): void {
+        // Mouse move events fire constantly while the mouse is over the text; only record one every so often
+        if (time - this.lastQuestionTextMouseMoveTime >= 250) {
+            this.lastQuestionTextMouseMoveTime = time;
+        }
+    }
+
+    public setReaderFollowerStatus(engine: string, status: string): void {
+        this.readerFollowerEngine = engine;
+        this.readerFollowerStatus = status;
+    }
+
+    public setReaderFollowerTranscript(transcript: string): void {
+        this.readerFollowerTranscript = transcript;
+    }
+
+    public toggleReaderFollowerDebug(): void {
+        this.showReaderFollowerDebug = !this.showReaderFollowerDebug;
+    }
+
     public setYappServiceUrl(url: string | undefined): void {
         this.yappServiceUrl = url;
     }
@@ -652,6 +818,11 @@ export class UIState {
 
     public hideBuzzMenu(): void {
         this.buzzMenuState.visible = false;
+        this.buzzMenuState.selectedPlayerIndex = undefined;
+    }
+
+    public setBuzzMenuSelectedPlayerIndex(index: number | undefined): void {
+        this.buzzMenuState.selectedPlayerIndex = index;
     }
 
     public resetCustomExport(): void {
@@ -715,6 +886,7 @@ export class UIState {
     public showBuzzMenu(clearSelectedWordOnClose: boolean): void {
         this.buzzMenuState.visible = true;
         this.buzzMenuState.clearSelectedWordOnClose = clearSelectedWordOnClose;
+        this.buzzMenuState.selectedPlayerIndex = undefined;
     }
 
     // We have to do this call here because this is where the information is available

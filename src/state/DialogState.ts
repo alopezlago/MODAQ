@@ -146,6 +146,10 @@ export class DialogState {
         this.visibleDialog = ModalVisibilityStatus.CustomizeGameFormat;
     }
 
+    public showErrataDialog(): void {
+        this.visibleDialog = ModalVisibilityStatus.Errata;
+    }
+
     public showExportToJsonDialog(): void {
         this.visibleDialog = ModalVisibilityStatus.ExportToJson;
     }
