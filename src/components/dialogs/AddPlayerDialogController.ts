@@ -6,7 +6,7 @@ import { UIState } from "../../state/UIState";
 import { AddPlayerDialogState } from "../../state/AddPlayerDialogState";
 
 export function addPlayer(appState: AppState): void {
-    const game: GameState = appState.game;
+    const game: GameState = appState.activeGame;
     const uiState: UIState = appState.uiState;
 
     if (validatePlayer(appState) != undefined) {
@@ -53,11 +53,11 @@ export function validatePlayer(appState: AppState): string | undefined {
         return "Player name cannot be blank";
     }
 
-    if (appState.game.teamNames.indexOf(newPlayer.teamName) === -1) {
+    if (appState.activeGame.teamNames.indexOf(newPlayer.teamName) === -1) {
         return "Team doesn't exist";
     }
 
-    const playersOnTeam: Player[] = [...appState.game.getPlayers(newPlayer.teamName), newPlayer];
+    const playersOnTeam: Player[] = [...appState.activeGame.getPlayers(newPlayer.teamName), newPlayer];
     return NewGameValidator.newPlayerNameUnique(playersOnTeam, trimmedPlayerName);
 }
 

@@ -60,7 +60,7 @@ const AddPlayerDialogBody = observer(function AddPlayerDialogBody(props: IAddPla
 
     const newPlayer: IPlayer = addPlayerDialogState.player;
 
-    const teamOptions: IDropdownOption[] = appState.game.teamNames.map((teamName, index) => {
+    const teamOptions: IDropdownOption[] = appState.activeGame.teamNames.map((teamName, index) => {
         return {
             key: index,
             text: teamName,

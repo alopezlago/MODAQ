@@ -16,7 +16,7 @@ const scoreboardAndQuestionViewerTokens: IStackTokens = { childrenGap: 20 };
 
 export const GameViewer = observer(function GameViewer() {
     const appState: AppState = useAppState();
-    const gameExists: boolean = appState.game.isLoaded;
+    const gameExists: boolean = appState.activeGame.isLoaded;
 
     const classes: IGameViewerClassNames = getClassNames(
         gameExists,

@@ -151,7 +151,7 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
 
     const existingPacketName: string | undefined = props.updateFilename
         ? uiState.packetFilename
-        : props.appState.game.packet.name;
+        : props.appState.activeGame.packet.name;
     const packet: PacketState | undefined = PacketLoaderController.loadPacket(
         props.appState,
         parsedPacket,
