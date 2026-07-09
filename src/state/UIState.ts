@@ -72,10 +72,10 @@ export class UIState {
     public hideNewGame: boolean;
 
     // Host-supplied settings that gate host-managed UI behavior (backup-only export, QBJ-only export
-    // dialog, restricted roster changes, host-managed game format, host product name). The boolean flags are
-    // normalized so they are always defined; productName stays optional.
+    // dialog, restricted roster changes, host-managed game format, host product name). setHostSettings
+    // normalizes the boolean flags to false so reads don't have to handle undefined.
     @ignore
-    public hostSettings: Required<Omit<IHostSettings, "productName">> & Pick<IHostSettings, "productName">;
+    public hostSettings: IHostSettings;
 
     // Injected by the host. If provided, switches the Add Questions dialog to secret-code lookup mode: given a
     // secret code entered there, resolves to the replacement question packet, or an IStatus describing why the
