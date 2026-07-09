@@ -22,6 +22,8 @@ import { BuzzMenuState } from "./BuzzMenuState";
 import { ICustomExport } from "./CustomExport";
 import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 import { IPacketParseStatus } from "./IPacketParseStatus";
+import { IPacket } from "./IPacket";
+import { IHostSettings } from "./IHostSettings";
 
 // TODO: Look into breaking this up into individual UI component states. Lots of pendingX fields, which could be in
 // their own (see CustomizeGameFormatDialogState)
@@ -68,6 +70,18 @@ export class UIState {
 
     @ignore
     public hideNewGame: boolean;
+
+    // Host-supplied settings that gate host-managed UI behavior (backup-only export, QBJ-only export
+    // dialog, restricted roster changes, host-managed game format, host product name). setHostSettings
+    // normalizes the boolean flags to false so reads don't have to handle undefined.
+    @ignore
+    public hostSettings: IHostSettings;
+
+    // Injected by the host. If provided, switches the Add Questions dialog to secret-code lookup mode: given a
+    // secret code entered there, resolves to the replacement question packet, or an IStatus describing why the
+    // lookup failed.
+    @ignore
+    public onFetchQuestionById: ((id: string) => Promise<IPacket | IStatus>) | undefined;
 
     @ignore
     public importGameStatus: IStatus | undefined;
@@ -137,6 +151,14 @@ export class UIState {
         this.exportRoundNumber = 1;
         this.hideBonusOnDeadTossup = false;
         this.hideNewGame = false;
+        this.hostSettings = {
+            promptBeforeExport: false,
+            onlyAllowQbjExport: false,
+            restrictRosterChanges: false,
+            disableChangeFormat: false,
+            productName: undefined,
+        };
+        this.onFetchQuestionById = undefined;
 
         // Default to Fabric UI's default font (Segoe UI), then Times New Roman
         this.fontFamily = DefaultFontFamily;
@@ -501,6 +523,20 @@ export class UIState {
 
     public setHideNewGame(value: boolean): void {
         this.hideNewGame = value;
+    }
+
+    public setHostSettings(value: IHostSettings | undefined): void {
+        this.hostSettings = {
+            promptBeforeExport: value?.promptBeforeExport ?? false,
+            onlyAllowQbjExport: value?.onlyAllowQbjExport ?? false,
+            restrictRosterChanges: value?.restrictRosterChanges ?? false,
+            disableChangeFormat: value?.disableChangeFormat ?? false,
+            productName: value?.productName,
+        };
+    }
+
+    public setOnFetchQuestionById(callback: ((id: string) => Promise<IPacket | IStatus>) | undefined): void {
+        this.onFetchQuestionById = callback;
     }
 
     public setImportGameStatus(status: IStatus): void {
