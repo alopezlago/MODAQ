@@ -57,7 +57,7 @@ export function commit(appState: AppState): void {
 }
 
 function mergeNewPacketIntoGame(appState: AppState): void {
-    const game: GameState = appState.game;
+    const game: GameState = appState.activeGame;
     const state: AddQuestionDialogState | undefined = appState.uiState.dialogState.addQuestions;
     if (state == undefined) {
         throw new Error("Tried adding more questions without any questions");

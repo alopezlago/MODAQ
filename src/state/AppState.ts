@@ -23,6 +23,14 @@ export class AppState {
         this.uiState = new UIState();
     }
 
+    /**
+     * The GameState that gameplay UI should read from and mutate. Today this is always the real game; it exists
+     * as a single indirection point so callers read through one accessor rather than referencing `game` directly.
+     */
+    public get activeGame(): GameState {
+        return this.game;
+    }
+
     // Could do a version with callbacks. There are 4 places this gets called from, and 3 use the same callback
     // Could also just do a bool, and pass in a different value (e.g. enum) if we want more flexibility in the future
     public handleCustomExport(displayType: StatusDisplayType, source: CustomExport.ExportSource): Promise<void> {

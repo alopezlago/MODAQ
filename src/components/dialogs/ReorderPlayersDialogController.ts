@@ -30,7 +30,7 @@ export function movePlayerToIndex(appState: AppState, player: Player, index: num
 }
 
 export function submit(appState: AppState): void {
-    const game: GameState = appState.game;
+    const game: GameState = appState.activeGame;
     const reorderPlayersDialogState: ReorderPlayersDialogState | undefined =
         appState.uiState.dialogState.reorderPlayersDialog;
     if (reorderPlayersDialogState == undefined) {

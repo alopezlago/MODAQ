@@ -19,8 +19,8 @@ export const Scoreboard = observer(function Scoreboard() {
     const appState: AppState = useAppState();
     const classes: IScoreboardStyle = getClassNames();
 
-    const scores: number[] = appState.game.finalScore;
-    const teamNames = appState.game.teamNames;
+    const scores: number[] = appState.activeGame.finalScore;
+    const teamNames = appState.activeGame.teamNames;
     let label: JSX.Element | undefined;
     if (appState.uiState.isScoreVertical) {
         label = (
@@ -65,7 +65,7 @@ export const Scoreboard = observer(function Scoreboard() {
 const ProtestIndicator = observer(function ProtestIndicator() {
     const appState: AppState = useAppState();
 
-    return appState.game.protestsMatter ? (
+    return appState.activeGame.protestsMatter ? (
         <Stack horizontal={true}>
             <StackItem>
                 <Icon iconName="Warning" styles={warningIconStyles} />
