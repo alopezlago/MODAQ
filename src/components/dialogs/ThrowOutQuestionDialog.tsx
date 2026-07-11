@@ -8,6 +8,8 @@ import {
     Separator,
     ActionButton,
     mergeStyleSets,
+    ILabelStyles,
+    ISpinButtonStyles,
 } from "@fluentui/react";
 
 import { AppState } from "../../state/AppState";
@@ -38,7 +40,6 @@ export const ThrowOutQuestionDialog = observer(function ThrowOutQuestionDialog()
         return <></>;
     }
 
-    const classes = getClassNames();
     const closeHandler = (): void => hideDialog(appState);
 
     const confirmHandler = (): void => {
@@ -73,10 +74,10 @@ export const ThrowOutQuestionDialog = observer(function ThrowOutQuestionDialog()
                 setReplacementNumber(prev);
                 return prev.toString();
             }}
-            styles={{ root: { marginTop: 8 } }}
+            styles={spinButtonStyles}
         />
     ) : (
-        <Label styles={{ root: { marginTop: 8, fontStyle: "italic" } }}>
+        <Label styles={noReplacementLabelStyles}>
             No replacement available — upload additional questions before confirming.
         </Label>
     );
@@ -89,7 +90,7 @@ export const ThrowOutQuestionDialog = observer(function ThrowOutQuestionDialog()
             onDismiss={closeHandler}
         >
             <Label>{dialogState.message}</Label>
-            <div className={classes.buttonRow}>
+            <div className={classNames.buttonRow}>
                 <PrimaryButton text="Confirm" onClick={confirmHandler} />
                 <DefaultButton text="Cancel" onClick={closeHandler} />
             </div>
@@ -97,7 +98,7 @@ export const ThrowOutQuestionDialog = observer(function ThrowOutQuestionDialog()
             <ActionButton
                 iconProps={{ iconName: showCustomInput ? "ChevronDown" : "ChevronRight" }}
                 onClick={() => setShowCustomInput(!showCustomInput)}
-                className={classes.toggleButton}
+                className={classNames.toggleButton}
             >
                 Use a different replacement question
             </ActionButton>
@@ -110,23 +111,23 @@ function hideDialog(appState: AppState): void {
     appState.uiState.dialogState.hideThrowOutQuestionDialog();
 }
 
-interface IThrowOutQuestionDialogClassNames {
-    buttonRow: string;
-    toggleButton: string;
-}
+const classNames = mergeStyleSets({
+    buttonRow: {
+        display: "flex",
+        gap: 8,
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    toggleButton: {
+        display: "block",
+        height: 24,
+        padding: 0,
+        textAlign: "left",
+    },
+});
 
-const getClassNames = (): IThrowOutQuestionDialogClassNames =>
-    mergeStyleSets({
-        buttonRow: {
-            display: "flex",
-            gap: 8,
-            marginTop: 16,
-            marginBottom: 8,
-        },
-        toggleButton: {
-            display: "block",
-            height: 24,
-            padding: 0,
-            textAlign: "left",
-        },
-    });
+const spinButtonStyles: Partial<ISpinButtonStyles> = { root: { marginTop: 8 } };
+
+const noReplacementLabelStyles: Partial<ILabelStyles> = {
+    root: { marginTop: 8, fontStyle: "italic" },
+};
