@@ -90,10 +90,6 @@ export const ThrowOutQuestionDialog = observer(function ThrowOutQuestionDialog()
             onDismiss={closeHandler}
         >
             <Label>{dialogState.message}</Label>
-            <div className={classNames.buttonRow}>
-                <PrimaryButton text="Confirm" onClick={confirmHandler} />
-                <DefaultButton text="Cancel" onClick={closeHandler} />
-            </div>
             <Separator />
             <ActionButton
                 iconProps={{ iconName: showCustomInput ? "ChevronDown" : "ChevronRight" }}
@@ -103,6 +99,10 @@ export const ThrowOutQuestionDialog = observer(function ThrowOutQuestionDialog()
                 Use a different replacement question
             </ActionButton>
             {showCustomInput && customInputSection}
+            <div className={classNames.buttonRow}>
+                <PrimaryButton text="Confirm" onClick={confirmHandler} />
+                <DefaultButton text="Cancel" onClick={closeHandler} />
+            </div>
         </ModalDialog>
     );
 });
