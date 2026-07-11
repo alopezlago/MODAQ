@@ -48,9 +48,9 @@ export function selectWordFromKeyboardEvent(appState: AppState, event: React.Key
 }
 
 export function throwOutTossup(appState: AppState, cycle: Cycle, tossupNumber: number): void {
-    const cycleIndex: number = appState.game.cycles.indexOf(cycle);
+    const cycleIndex: number = appState.activeGame.cycles.indexOf(cycle);
     const { message, replacementIndex } = getThrowOutQuestionPrompt(appState, cycleIndex, "tossup", tossupNumber);
-    const totalTossups: number = appState.game.packet.tossups.length;
+    const totalTossups: number = appState.activeGame.packet.tossups.length;
     appState.uiState.dialogState.showThrowOutQuestionDialog({
         title: "Throw Out Tossup",
         message: `${message} To undo this, click on the X next to its event in the Event Log.`,

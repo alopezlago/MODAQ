@@ -3,9 +3,9 @@ import { Cycle } from "../state/Cycle";
 import { getThrowOutQuestionPrompt } from "./ThrowOutQuestionMessage";
 
 export function throwOutBonus(appState: AppState, cycle: Cycle, bonusIndex: number): void {
-    const cycleIndex: number = appState.game.cycles.indexOf(cycle);
+    const cycleIndex: number = appState.activeGame.cycles.indexOf(cycle);
     const { message, replacementIndex } = getThrowOutQuestionPrompt(appState, cycleIndex, "bonus", bonusIndex + 1);
-    const totalBonuses: number = appState.game.packet.bonuses.length;
+    const totalBonuses: number = appState.activeGame.packet.bonuses.length;
     appState.uiState.dialogState.showThrowOutQuestionDialog({
         title: "Throw Out Bonus",
         message: `${message} To undo this, click on the X next to its event in the Event Log.`,

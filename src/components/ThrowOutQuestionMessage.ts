@@ -20,7 +20,7 @@ function getScenario(
         return "tiebreaker";
     }
 
-    const hasGameDataAfter: boolean = appState.game.cycles
+    const hasGameDataAfter: boolean = appState.activeGame.cycles
         .slice(cycleIndex + 1)
         .some((cycle: Cycle) => cycle.orderedBuzzes.length > 0 || cycle.bonusAnswer != undefined);
     return hasGameDataAfter ? "protest" : "procedural";
@@ -47,10 +47,10 @@ export function getThrowOutQuestionPrompt(
     questionType: ThrowOutQuestionType,
     currentQuestionNumber: number // 1-based
 ): IThrowOutQuestionPrompt {
-    const gameFormat: IGameFormat = appState.game.gameFormat;
+    const gameFormat: IGameFormat = appState.activeGame.gameFormat;
     const nextQuestionNumber: number = currentQuestionNumber + 1;
     const totalQuestionCount: number =
-        questionType === "tossup" ? appState.game.packet.tossups.length : appState.game.packet.bonuses.length;
+        questionType === "tossup" ? appState.activeGame.packet.tossups.length : appState.activeGame.packet.bonuses.length;
     const needsMoreQuestions: boolean = nextQuestionNumber > totalQuestionCount;
 
     const scenario: ThrowOutScenario = getScenario(appState, cycleIndex, questionType, gameFormat);
