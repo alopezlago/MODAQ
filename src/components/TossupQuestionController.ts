@@ -2,7 +2,7 @@ import React from "react";
 import { AppState } from "../state/AppState";
 import { Cycle } from "../state/Cycle";
 import { UIState } from "../state/UIState";
-import { getReplacementQuestionIndex, getThrowOutQuestionMessage } from "./ThrowOutQuestionMessage";
+import { getThrowOutQuestionPrompt } from "./ThrowOutQuestionMessage";
 
 export function selectWordFromClick(appState: AppState, event: React.MouseEvent<HTMLDivElement>): void {
     const target = event.target as HTMLDivElement;
@@ -49,8 +49,7 @@ export function selectWordFromKeyboardEvent(appState: AppState, event: React.Key
 
 export function throwOutTossup(appState: AppState, cycle: Cycle, tossupNumber: number): void {
     const cycleIndex: number = appState.game.cycles.indexOf(cycle);
-    const replacementIndex: number | undefined = getReplacementQuestionIndex(appState, cycleIndex, "tossup", tossupNumber);
-    const message: string = getThrowOutQuestionMessage(appState, cycleIndex, "tossup", tossupNumber);
+    const { message, replacementIndex } = getThrowOutQuestionPrompt(appState, cycleIndex, "tossup", tossupNumber);
     const totalTossups: number = appState.game.packet.tossups.length;
     appState.uiState.dialogState.showThrowOutQuestionDialog({
         title: "Throw Out Tossup",

@@ -1,11 +1,10 @@
 import { AppState } from "../state/AppState";
 import { Cycle } from "../state/Cycle";
-import { getReplacementQuestionIndex, getThrowOutQuestionMessage } from "./ThrowOutQuestionMessage";
+import { getThrowOutQuestionPrompt } from "./ThrowOutQuestionMessage";
 
 export function throwOutBonus(appState: AppState, cycle: Cycle, bonusIndex: number): void {
     const cycleIndex: number = appState.game.cycles.indexOf(cycle);
-    const replacementIndex: number | undefined = getReplacementQuestionIndex(appState, cycleIndex, "bonus", bonusIndex + 1);
-    const message: string = getThrowOutQuestionMessage(appState, cycleIndex, "bonus", bonusIndex + 1);
+    const { message, replacementIndex } = getThrowOutQuestionPrompt(appState, cycleIndex, "bonus", bonusIndex + 1);
     const totalBonuses: number = appState.game.packet.bonuses.length;
     appState.uiState.dialogState.showThrowOutQuestionDialog({
         title: "Throw Out Bonus",
