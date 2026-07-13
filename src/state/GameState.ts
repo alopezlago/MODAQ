@@ -505,12 +505,11 @@ export class GameState {
     public getBonusIndex(cycleIndex: number): number {
         // If this cycle has a protest replacement, return that specific index directly.
         const currentCycle: Cycle = this.cycles[cycleIndex];
-        const protestReplacement = currentCycle.thrownOutBonuses?.find(
+        const protestReplacementIndex: number | undefined = currentCycle.thrownOutBonuses?.find(
             (e) => e.replacementQuestionIndex != undefined
-        );
-        if (protestReplacement != undefined) {
-            const idx = protestReplacement.replacementQuestionIndex!;
-            return idx >= this.packet.bonuses.length ? -1 : idx;
+        )?.replacementQuestionIndex;
+        if (protestReplacementIndex != undefined) {
+            return protestReplacementIndex >= this.packet.bonuses.length ? -1 : protestReplacementIndex;
         }
 
         if (this.gameFormat.pairTossupsBonuses) {
@@ -567,11 +566,11 @@ export class GameState {
     public getTossupIndex(cycleIndex: number): number {
         // If this cycle has a protest replacement, return that specific index directly.
         const currentCycle: Cycle = this.cycles[cycleIndex];
-        const protestReplacement = currentCycle.thrownOutTossups?.find(
+        const protestReplacementIndex: number | undefined = currentCycle.thrownOutTossups?.find(
             (e) => e.replacementQuestionIndex != undefined
-        );
-        if (protestReplacement != undefined) {
-            return protestReplacement.replacementQuestionIndex!;
+        )?.replacementQuestionIndex;
+        if (protestReplacementIndex != undefined) {
+            return protestReplacementIndex;
         }
 
         // Otherwise, offset by the number of sequential (non-protest) throw-outs up to and including this cycle.
