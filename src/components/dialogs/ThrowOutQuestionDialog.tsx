@@ -14,7 +14,7 @@ import {
 
 import { AppState } from "../../state/AppState";
 import { useAppState } from "../../contexts/StateContext";
-import { IThrowOutQuestionDialogState } from "../../state/DialogState";
+import { IThrowOutQuestionDialogState } from "../../state/IThrowOutQuestionDialogState";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
 import { ModalDialog } from "./ModalDialog";
 
