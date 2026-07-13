@@ -63,7 +63,8 @@ export interface ITimeoutEvent {
 export interface IThrowOutQuestionEvent {
     questionIndex: number;
     // Set for protest replacements, which pull from the end of the packet rather than the next sequential question.
-    // Undefined means the next sequential question is used as the replacement.
+    // Undefined means the next sequential question is used as the replacement, which preserves the original
+    // behavior from before this property was added.
     replacementQuestionIndex?: number;
 }
 
