@@ -20,9 +20,11 @@ function getScenario(
         return "tiebreaker";
     }
 
+    // A bonus is only ever recorded after a correct tossup buzz, so a defined bonusAnswer always implies a
+    // non-empty orderedBuzzes; checking the buzzes alone is sufficient to detect game data after this cycle.
     const hasGameDataAfter: boolean = appState.activeGame.cycles
         .slice(cycleIndex + 1)
-        .some((cycle: Cycle) => cycle.orderedBuzzes.length > 0 || cycle.bonusAnswer != undefined);
+        .some((cycle: Cycle) => cycle.orderedBuzzes.length > 0);
     return hasGameDataAfter ? "protest" : "procedural";
 }
 
