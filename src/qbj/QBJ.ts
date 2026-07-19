@@ -635,16 +635,31 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
             }
         }
 
+        // replacement_tossup_question only supports a single replacement per cycle (see IMatchQuestion), so a cycle
+        // with multiple thrown out tossups keeps the last one here, while GameState.getTossupIndex uses the first
+        // with a defined replacement. Cycles with multiple replacements are out of scope for now.
         let replacementTossup: IQuestion | undefined = undefined;
         if (cycle.thrownOutTossups) {
             for (const thrownOutTossup of cycle.thrownOutTossups) {
                 noteworthyEvents.push(`Tossup thrown out on question ${thrownOutTossup.questionIndex + 1}`);
-                tossupNumber++;
-                replacementTossup = {
-                    parts: 1,
-                    question_number: tossupNumber,
-                    type: "tossup",
-                };
+                if (thrownOutTossup.replacementQuestionIndex == undefined) {
+                    // Sequential replacement: the next tossup in the packet is used, so advance the running counter.
+                    tossupNumber++;
+                    replacementTossup = {
+                        parts: 1,
+                        question_number: tossupNumber,
+                        type: "tossup",
+                    };
+                } else {
+                    // Protest replacement: pulls a specific question (usually the last in the packet) and doesn't
+                    // shift the questions later cycles use, so leave the running counter alone. GameState
+                    // .getTossupIndex likewise ignores these when computing its sequential offset.
+                    replacementTossup = {
+                        parts: 1,
+                        question_number: thrownOutTossup.replacementQuestionIndex + 1,
+                        type: "tossup",
+                    };
+                }
             }
         }
 
@@ -653,7 +668,11 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
                 // TODO: Unclear on how thrown out bonuses should be handled, since the replacement_bonus is just the
                 // bonus right now. Just add an event for now
                 noteworthyEvents.push(`Bonus thrown out on question ${thrownOutBonus.questionIndex + 1}`);
-                bonusNumber++;
+                if (thrownOutBonus.replacementQuestionIndex == undefined) {
+                    // Only sequential replacements advance the bonus counter; protest replacements don't shift the
+                    // bonuses later cycles use. See GameState.getBonusIndex.
+                    bonusNumber++;
+                }
             }
         }
 

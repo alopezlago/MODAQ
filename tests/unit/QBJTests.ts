@@ -1561,6 +1561,44 @@ describe("QBJTests", () => {
                 }
             );
         });
+        it("Thrown out tossup with protest replacement", () => {
+            verifyToQBJ(
+                (game) => {
+                    // Protest replacement: throw out the first tossup and replace it with the last tossup in the
+                    // packet (index 3) rather than the next sequential one.
+                    game.cycles[0].addThrownOutTossup(0, 3);
+                    game.cycles[0].addCorrectBuzz(
+                        {
+                            player: firstTeamPlayers[0],
+                            points: 10,
+                            position: 1,
+                            isLastWord: true,
+                        },
+                        3,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+                },
+                (match) => {
+                    const replacementTossup: QBJ.IQuestion | undefined =
+                        match.match_questions[0].replacement_tossup_question;
+                    if (replacementTossup == undefined) {
+                        assert.fail("Replacement tossup was undefined");
+                    }
+
+                    // The replacement points at the specific question that was read, not the next sequential one
+                    expect(replacementTossup.question_number).to.equal(4);
+                    expect(replacementTossup.type).to.equal("tossup");
+
+                    // A protest replacement doesn't shift the questions used by later cycles, so the tossup numbers
+                    // stay on the sequential track instead of drifting by one
+                    expect(match.match_questions.map((q) => q.tossup_question.question_number)).to.deep.equal([
+                        1, 2, 3, 4,
+                    ]);
+                }
+            );
+        });
         it("Thrown out bonus", () => {
             verifyToQBJ(
                 (game) => {
