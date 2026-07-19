@@ -12,9 +12,14 @@ function getScenario(
     questionType: ThrowOutQuestionType,
     gameFormat: IGameFormat
 ): ThrowOutScenario {
+    // Cycles 0 through regulationTossupCount - 1 are regulation, so any cycle at or beyond
+    // regulationTossupCount is an overtime tossup. minimumOvertimeQuestionCount === 1 identifies
+    // sudden-death overtime, which is played one tossup at a time, so every overtime tossup in those
+    // formats is a tiebreaker. Formats that play a fixed block of overtime questions (e.g. NAQT's three)
+    // aren't sudden death, so their overtime tossups fall through to the protest/procedural cases.
     const isTiebreakerTossup: boolean =
         questionType === "tossup" &&
-        cycleIndex === gameFormat.regulationTossupCount &&
+        cycleIndex >= gameFormat.regulationTossupCount &&
         gameFormat.minimumOvertimeQuestionCount === 1;
     if (isTiebreakerTossup) {
         return "tiebreaker";
@@ -38,7 +43,7 @@ export interface IThrowOutQuestionPrompt {
 
 // Builds the confirmation prompt shown before throwing out a question. Both the message and the replacement
 // index are derived from the same scenario, based on where in the game the question falls:
-// - The single tiebreaker tossup (standard formats that replace it, rather than appending more tiebreakers, e.g. NAQT)
+// - An overtime tiebreaker tossup (sudden-death formats, which play overtime one tossup at a time)
 // - Mid-match with no recorded events afterward (likely a moderator procedural error)
 // - Mid-match with recorded events afterward (likely a protest resolution)
 // Protest replacements pull from the end of the packet; tiebreaker and procedural replacements use the next
