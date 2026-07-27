@@ -32,6 +32,8 @@ export interface IRoomSettings {
     queueMode?: boolean;
     allowWithdraw?: boolean;
     autoClear?: boolean;
+    requireTeam?: boolean;
+    playerAlerts?: boolean;
     modaqMode?: boolean;
     modaqLite?: boolean;
 }
@@ -43,6 +45,8 @@ export interface IPublicRoomState {
     phase: "open" | "locked";
     cycleNo: number;
     settings: IRoomSettings;
+    // Server time of the buzz still waiting on the moderator (null when clear).
+    lastBuzzAt?: number | null;
     queue: IBuzzQueueEntry[];
     members: IRoomMember[];
 }
@@ -78,6 +82,15 @@ export interface IDirectorMessage {
 }
 type MessageListener = (message: IDirectorMessage) => void;
 
+// A player in this room reporting that the buzzer was never cleared.
+export interface IStuckAlert {
+    playerId: string;
+    name: string;
+    team: string | null;
+    at: number;
+}
+type StuckListener = (alert: IStuckAlert) => void;
+
 export class KlaxonClient {
     public readonly code: string;
     public readonly token: string | null;
@@ -87,6 +100,7 @@ export class KlaxonClient {
     private socket: KlaxonSocket | undefined;
     private readonly listeners: StateListener[] = [];
     private readonly messageListeners: MessageListener[] = [];
+    private readonly stuckListeners: StuckListener[] = [];
     public lastState: IPublicRoomState | undefined;
     public messages: IDirectorMessage[] = [];
 
@@ -125,6 +139,12 @@ export class KlaxonClient {
                 // screen) still gets messages that already arrived.
                 this.messages = [...this.messages, m].slice(-5);
                 for (const l of this.messageListeners) l(m);
+            });
+
+            socket.on("stuck_alert", (...args: unknown[]) => {
+                const a = args[0] as IStuckAlert;
+                if (!a || typeof a.playerId !== "string") return;
+                for (const l of this.stuckListeners) l(a);
             });
 
             const join = (): void => {
@@ -190,6 +210,16 @@ export class KlaxonClient {
         return () => {
             const i = this.messageListeners.indexOf(listener);
             if (i >= 0) this.messageListeners.splice(i, 1);
+        };
+    }
+
+    // "The buzzer isn't clear" pings from players. Transient (no replay): the
+    // moderator only cares about a complaint that is still outstanding.
+    public onStuckAlert(listener: StuckListener): () => void {
+        this.stuckListeners.push(listener);
+        return () => {
+            const i = this.stuckListeners.indexOf(listener);
+            if (i >= 0) this.stuckListeners.splice(i, 1);
         };
     }
 

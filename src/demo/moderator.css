@@ -61,6 +61,31 @@ body {
     background: #d13438;
     color: #fff;
 }
+/* A player reporting that the buzzer was never cleared — deliberately loud. */
+.klaxon-stuck {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #fde7e9;
+    border: 1px solid #d13438;
+    color: #a4262c;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.klaxon-stuck button {
+    flex: none;
+    padding: 4px 8px;
+    border: 1px solid #d13438;
+    border-radius: 6px;
+    background: #fff;
+    color: #a4262c;
+    cursor: pointer;
+    font-size: 0.78rem;
+}
 .klaxon-queue {
     list-style: decimal inside;
     margin: 0 0 10px;
