@@ -121,7 +121,7 @@ export const EventViewer = observer(function EventViewer(): JSX.Element | null {
 
     // This needs to re-render based on cycleIndex so it can select the current one
     return (
-        <div className={classes.eventViewerContainer} data-is-scrollable="true" ref={containerRef}>
+        <div className={`${classes.eventViewerContainer} event-viewer`} data-is-scrollable="true" ref={containerRef}>
             <DetailsList
                 checkboxVisibility={CheckboxVisibility.hidden}
                 selectionMode={SelectionMode.single}

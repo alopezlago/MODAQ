@@ -112,7 +112,7 @@ export const NewGameDialog = observer(function NewGameDialog(): JSX.Element {
                 <NewGameDialogBody appState={appState} />
             )}
             <DialogFooter>
-                <PrimaryButton text="Start" onClick={submitHandler} />
+                <PrimaryButton className="new-game-start" text="Start" onClick={submitHandler} />
                 <DefaultButton text="Cancel" onClick={cancelHandler} />
             </DialogFooter>
         </Dialog>
@@ -195,6 +195,7 @@ const NewGameDialogBody = observer(function NewGameDialogBody(props: INewGameDia
             <PacketLoader appState={appState} onLoad={packetLoadHandler} updateFilename />
             <Separator />
             <GameFormatPicker
+                className="new-game-format"
                 gameFormat={uiState.pendingNewGame.gameFormat}
                 exportFormatSupportsBouncebacks={uiState.pendingNewGame.type !== PendingGameType.UCSDSheets}
                 updateGameFormat={updateGameFormat}
@@ -251,6 +252,7 @@ const ManualNewGamePivotBody = observer(function ManualNewGamePivotBody(props: I
         <Stack>
             <div className={props.classes.teamEntriesContainer}>
                 <ManualTeamEntry
+                    className="new-game-first-team"
                     defaultTeamName={manualState.firstTeamPlayers[0].teamName}
                     players={manualState.firstTeamPlayers}
                     teamNameErrorMessage={teamNameErrorMessage}
@@ -261,6 +263,7 @@ const ManualNewGamePivotBody = observer(function ManualNewGamePivotBody(props: I
                 />
                 <Separator vertical={true} />
                 <ManualTeamEntry
+                    className="new-game-second-team"
                     defaultTeamName={manualState.secondTeamPlayers[0].teamName}
                     players={manualState.secondTeamPlayers}
                     teamNameErrorMessage={teamNameErrorMessage}

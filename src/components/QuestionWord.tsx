@@ -21,7 +21,7 @@ export const QuestionWord = observer(function QuestionWord(props: IQuestionWordP
                         ref={props.componentRef}
                         data-index={props.index}
                         data-is-focusable="true"
-                        className={classes.word}
+                        className={props.index != undefined ? `${classes.word} word-${props.index}` : classes.word}
                     >
                         <FormattedText segments={props.word} />
                     </span>

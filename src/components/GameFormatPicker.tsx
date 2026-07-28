@@ -62,7 +62,7 @@ export const GameFormatPicker = observer(function GameFormatPicker(props: IGameF
                     ) : undefined;
 
                 return (
-                    <Stack horizontal={true}>
+                    <Stack horizontal={true} className={props.className}>
                         <StackItem grow={2}>
                             <Dropdown
                                 label="Format"
@@ -105,4 +105,5 @@ export interface IGameFormatPickerProps {
     gameFormat: IGameFormat;
     exportFormatSupportsBouncebacks?: boolean;
     updateGameFormat(gameFormat: IGameFormat): void;
+    className?: string;
 }

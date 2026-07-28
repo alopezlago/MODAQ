@@ -118,12 +118,33 @@ const ExportToJsonDialogFooter = observer(function ExportToJsonDialogFooter(
     const buttons: JSX.Element[] = [];
     if (!appState.uiState.hostSettings.onlyAllowQbjExport) {
         buttons.push(
-            <PrimaryButton key="exportGame" text="Export game" onClick={exportHandler} href={gameHref} download={gameFilename} />,
-            <PrimaryButton key="exportEvents" text="Export events" onClick={exportHandler} href={cyclesHref} download={cyclesFilename} />
+            <PrimaryButton
+                key="exportGame"
+                className="export-json-game"
+                text="Export game"
+                onClick={exportHandler}
+                href={gameHref}
+                download={gameFilename}
+            />,
+            <PrimaryButton
+                key="exportEvents"
+                className="export-json-events"
+                text="Export events"
+                onClick={exportHandler}
+                href={cyclesHref}
+                download={cyclesFilename}
+            />
         );
     }
     buttons.push(
-        <PrimaryButton key="exportQBJ" text="Export QBJ" onClick={exportHandler} href={qbjHref} download={qbjFilename} />,
+        <PrimaryButton
+            key="exportQBJ"
+            className="export-json-qbj"
+            text="Export QBJ"
+            onClick={exportHandler}
+            href={qbjHref}
+            download={qbjFilename}
+        />,
         <DefaultButton key="cancel" text="Cancel" onClick={cancelHandler} />
     );
 

@@ -32,7 +32,11 @@ export const CancelButton = observer(function CancelButton(props: ICancelButtonP
                 return (
                     <IconButton
                         ariaLabel={props.tooltip}
-                        className={classes.cancelButton}
+                        className={
+                            props.className == undefined
+                                ? classes.cancelButton
+                                : `${classes.cancelButton} ${props.className}`
+                        }
                         disabled={props.disabled}
                         iconProps={deleteIconProps}
                         title={props.tooltip}
@@ -45,6 +49,7 @@ export const CancelButton = observer(function CancelButton(props: ICancelButtonP
 });
 
 export interface ICancelButtonProps {
+    className?: string;
     disabled?: boolean;
     prompt?: ICancelButtonPrompt;
     tooltip: string;
