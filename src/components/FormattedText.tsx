@@ -52,6 +52,13 @@ const FormattedSegment = observer(function FormattedSegment(props: IFormattedSeg
         );
     }
 
+    // YAPP2: the word(s) a nearby pronunciation guide covers. These are read aloud like any other words, so they
+    // keep the normal text color; only the dotted underline ties them to the guide. Checked before `pronunciation`
+    // so that a guide inside an anchor still renders as a guide.
+    if (props.segment.pronunciationTarget && !props.segment.pronunciation) {
+        element = <span className={props.classNames.pronunciationTarget}>{element}</span>;
+    }
+
     if (props.segment.pronunciation) {
         element = <span className={props.classNames.pronunciationGuide}>{element}</span>;
     }
@@ -73,6 +80,7 @@ interface IFormattedSegmentProps {
 interface IFormattedTextClassNames {
     text: string;
     pronunciationGuide: string;
+    pronunciationTarget: string;
 }
 
 const useStyles = memoizeFunction(
@@ -85,6 +93,13 @@ const useStyles = memoizeFunction(
             pronunciationGuide: {
                 // Don't override the color if it's disabled; the container has that responsibility
                 color: disabled ? undefined : pronunciationGuideColor ?? "#777777",
+            },
+            pronunciationTarget: {
+                // Tie the anchored word(s) to their guide with a dotted underline in the guide's color, leaving the
+                // text color alone: these words are read aloud, so coloring them like a guide would mislead a reader.
+                textDecoration: "underline dotted",
+                textDecorationColor: disabled ? undefined : pronunciationGuideColor ?? "#777777",
+                textUnderlineOffset: "0.15em",
             },
         })
 );

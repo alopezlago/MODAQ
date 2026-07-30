@@ -32,6 +32,24 @@ To use MODAQ in your project as an npm package:
 
 For details on props, visit the [ModaqControl props section of the MODAQ wiki](https://github.com/alopezlago/QuizBowlDiscordScoreTracker/wiki/ModaqControl-props).
 
+## Packet formats
+
+This build reads plain YAPP JSON and **YAPP2**, a backward-compatible superset that records which words each
+pronunciation guide covers. Plain YAPP has nowhere to put that, so authoring tools had to discard it on export.
+
+A YAPP2 file declares `"version": "yapp2/1.0"` and keeps its `question`/`answer`/`leadin`/`parts`/`answers` fields
+identical to plain YAPP, with `<pg>`-tagged copies in a parallel `anchored` object per question. An unmodified YAPP
+reader therefore loads a YAPP2 file correctly and simply doesn't see the anchors.
+
+Anchored words are read aloud, count as words, and are buzzable — only the parenthesized guide itself is non-word
+text. Anchors never shift a buzz position.
+
+In code: `<pg>` parses into `IFormattedText.pronunciationTarget`, rendered with a dotted underline in the
+pronunciation guide color. `hasPronunciationAnchors` and `stripPronunciationAnchors` are exported for writing text
+back out to consumers that only understand plain YAPP.
+
+The full spec is in [YAPP2_FORMAT.md](./YAPP2_FORMAT.md).
+
 ## Development
 
 ### Codebase Overview

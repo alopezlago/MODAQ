@@ -1,11 +1,35 @@
 import * as he from "he";
 
 import { AppState } from "../state/AppState";
-import { IBonus, IPacket, ITossup } from "../state/IPacket";
+import { IBonus, IPacket, ITossup, yapp2VersionPrefix } from "../state/IPacket";
 import { Bonus, BonusPart, PacketState, Tossup } from "../state/PacketState";
 import { UIState } from "../state/UIState";
 
 const minExpectedQuestionLength = 100;
+
+/**
+ * `true` if the packet declares itself as YAPP2, which means its questions may carry `anchored` text with `<pg>`
+ * pronunciation guide anchors. See YAPP2_FORMAT.md.
+ */
+function isYapp2(packet: IPacket): boolean {
+    return packet.version != undefined && packet.version.toLowerCase().startsWith(yapp2VersionPrefix);
+}
+
+/**
+ * The anchored form of a field when the packet is YAPP2 and supplies one, else the canonical text. We understand
+ * `<pg>`, so preferring the anchored text loses nothing: the two differ only by that tag.
+ */
+function anchoredOr(canonical: string, anchored: string | undefined, useAnchored: boolean): string {
+    return useAnchored && anchored != undefined ? anchored : canonical;
+}
+
+/**
+ * The anchored forms of an array field, used only when it lines up with the canonical array. Parts and answers are
+ * matched up by index, so a mismatched length means the anchored copy can't be trusted and is ignored.
+ */
+function anchoredArrayOr(canonical: string[], anchored: string[] | undefined, useAnchored: boolean): string[] {
+    return useAnchored && anchored != undefined && anchored.length === canonical.length ? anchored : canonical;
+}
 
 export function loadPacket(
     appState: AppState,
@@ -22,11 +46,13 @@ export function loadPacket(
         return;
     }
 
+    const useAnchored: boolean = isYapp2(parsedPacket);
+
     const tossups: Tossup[] = parsedPacket.tossups.map(
         (tossup) =>
             new Tossup(
-                he.decode(tossup.question),
-                he.decode(tossup.answer),
+                he.decode(anchoredOr(tossup.question, tossup.anchored?.question, useAnchored)),
+                he.decode(anchoredOr(tossup.answer, tossup.anchored?.answer, useAnchored)),
                 tossup.metadata ? he.decode(tossup.metadata) : tossup.metadata
             )
     );
@@ -49,18 +75,25 @@ export function loadPacket(
                 return;
             }
 
+            const bonusParts: string[] = anchoredArrayOr(bonus.parts, bonus.anchored?.parts, useAnchored);
+            const bonusAnswers: string[] = anchoredArrayOr(bonus.answers, bonus.anchored?.answers, useAnchored);
+
             const parts: BonusPart[] = [];
             for (let i = 0; i < bonus.answers.length; i++) {
                 parts.push({
-                    answer: he.decode(bonus.answers[i]),
-                    question: he.decode(bonus.parts[i]),
+                    answer: he.decode(bonusAnswers[i]),
+                    question: he.decode(bonusParts[i]),
                     value: bonus.values[i],
                     difficultyModifier: bonus.difficultyModifiers ? bonus.difficultyModifiers[i] : undefined,
                 });
             }
 
             bonuses.push(
-                new Bonus(he.decode(bonus.leadin), parts, bonus.metadata ? he.decode(bonus.metadata) : bonus.metadata)
+                new Bonus(
+                    he.decode(anchoredOr(bonus.leadin, bonus.anchored?.leadin, useAnchored)),
+                    parts,
+                    bonus.metadata ? he.decode(bonus.metadata) : bonus.metadata
+                )
             );
         }
     }

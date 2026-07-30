@@ -2,7 +2,13 @@ import * as gameFormats from "./src/state/GameFormats";
 import * as qbj from "./src/qbj/QBJ";
 import { IFormattedText as iFormattedText } from "./src/parser/IFormattedText";
 import { IGameFormat as gameFormat } from "./src/state/IGameFormat";
-import { IBonus as bonus, IPacket as packet, ITossup as tossup } from "./src/state/IPacket";
+import {
+    IAnchoredBonusText as anchoredBonusText,
+    IAnchoredTossupText as anchoredTossupText,
+    IBonus as bonus,
+    IPacket as packet,
+    ITossup as tossup,
+} from "./src/state/IPacket";
 import { IPlayer as player } from "./src/state/TeamState";
 import { IErratum as erratum } from "./src/state/IErratum";
 import { ModaqControl as control, IModaqControlProps as controlProps } from "./src/components/ModaqControl";
@@ -12,6 +18,8 @@ import {
     splitFormattedTextIntoWords as ftpSplitFormattedTextIntoWords,
     defaultPronunciationGuideMarkers as ftpDefaultPronunciationGuideMarkers,
     defaultReaderDirectives as ftpDefaultReaderDirectives,
+    hasPronunciationAnchors as ftpHasPronunciationAnchors,
+    stripPronunciationAnchors as ftpStripPronunciationAnchors,
 } from "./src/parser/FormattedTextParser";
 import { IResult } from "./src/IResult";
 
@@ -24,6 +32,10 @@ export type IPacket = packet;
 export type ITossup = tossup;
 
 export type IBonus = bonus;
+
+export type IAnchoredTossupText = anchoredTossupText;
+
+export type IAnchoredBonusText = anchoredBonusText;
 
 export type IPlayer = player;
 
@@ -44,6 +56,10 @@ export const defaultReaderDirectives = ftpDefaultReaderDirectives;
 export const parseFormattedText = ftpParseFormattedText;
 
 export const splitFormattedTextIntoWords = ftpSplitFormattedTextIntoWords;
+
+export const hasPronunciationAnchors = ftpHasPronunciationAnchors;
+
+export const stripPronunciationAnchors = ftpStripPronunciationAnchors;
 
 export const parseQbjRegistration = (registrationJson: string): IResult<IPlayer[]> => {
     const parseResult: IResult<IPlayer[]> = qbj.parseRegistration(registrationJson);

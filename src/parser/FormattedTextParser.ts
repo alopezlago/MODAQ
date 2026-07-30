@@ -84,6 +84,7 @@ export function parseFormattedText(text: string, options?: IFormattingOptions): 
     let subscripted = false;
     let superscripted = false;
     let pronunciation = false;
+    let pronunciationTarget = false;
     let startIndex = 0;
 
     let extraTags = "";
@@ -98,7 +99,7 @@ export function parseFormattedText(text: string, options?: IFormattingOptions): 
     // If we need to support older browswers, use RegExp, exec, and a while loop. See
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/matchAll
     const matchIterator: IterableIterator<RegExpMatchArray> = text.matchAll(
-        new RegExp(`<\\/?em>|<\\/?req>|<\\/?b>|<\\/?u>|<\\/?sub>|<\\/?sup>${extraTags}`, "gi")
+        new RegExp(`<\\/?em>|<\\/?req>|<\\/?b>|<\\/?u>|<\\/?sub>|<\\/?sup>|<\\/?pg>${extraTags}`, "gi")
     );
 
     for (const match of matchIterator) {
@@ -126,6 +127,7 @@ export function parseFormattedText(text: string, options?: IFormattingOptions): 
                 subscripted,
                 superscripted,
                 pronunciation,
+                ...anchor(pronunciationTarget),
             };
             result.push(formattedSlice);
         }
@@ -171,6 +173,14 @@ export function parseFormattedText(text: string, options?: IFormattingOptions): 
             case "</sup>":
                 superscripted = false;
                 break;
+            // YAPP2: marks the word(s) a nearby pronunciation guide covers. These are ordinary question words,
+            // so this only records the anchor; it never makes the text non-buzzable the way a guide does.
+            case "<pg>":
+                pronunciationTarget = true;
+                break;
+            case "</pg>":
+                pronunciationTarget = false;
+                break;
             default:
                 let pronunciationGuideMatched = false;
                 for (const pronunciationGuideMarker of pronunciationGuideMarkers) {
@@ -198,6 +208,7 @@ export function parseFormattedText(text: string, options?: IFormattingOptions): 
                         subscripted,
                         superscripted,
                         pronunciation: true,
+                        ...anchor(pronunciationTarget),
                     };
                     result.push(readerDirectiveText);
                     break;
@@ -224,6 +235,7 @@ export function parseFormattedText(text: string, options?: IFormattingOptions): 
             subscripted,
             superscripted,
             pronunciation,
+            ...anchor(pronunciationTarget),
         });
     }
 
@@ -273,6 +285,7 @@ export function splitFormattedTextIntoWords(text: string, options?: IFormattingO
                 subscripted: value.subscripted,
                 superscripted: value.superscripted,
                 pronunciation: value.pronunciation,
+                ...anchor(value.pronunciationTarget),
             });
             splitFormattedText.push(previousWord);
         }
@@ -292,6 +305,7 @@ export function splitFormattedTextIntoWords(text: string, options?: IFormattingO
                     subscripted: value.subscripted,
                     superscripted: value.superscripted,
                     pronunciation: value.pronunciation,
+                    ...anchor(value.pronunciationTarget),
                 };
                 splitFormattedText.push([formattedWord]);
             }
@@ -307,6 +321,7 @@ export function splitFormattedTextIntoWords(text: string, options?: IFormattingO
                 subscripted: value.subscripted,
                 superscripted: value.superscripted,
                 pronunciation: value.pronunciation,
+                ...anchor(value.pronunciationTarget),
             });
         }
     }
@@ -322,4 +337,32 @@ export function splitFormattedTextIntoWords(text: string, options?: IFormattingO
 // Taken from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
 function escapeRegExp(text: string) {
     return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
+}
+
+/**
+ * Spread into an `IFormattedText` to record a YAPP2 pronunciation guide anchor. The key is omitted entirely when
+ * there is no anchor, so text without one parses to exactly the same object as before YAPP2 existed.
+ */
+function anchor(pronunciationTarget: boolean | undefined): { pronunciationTarget?: true } {
+    return pronunciationTarget ? { pronunciationTarget: true } : {};
+}
+
+// Separate patterns on purpose: a /g/ regex advances lastIndex on test(), so sharing one between test and replace
+// would make repeated has-anchors checks alternate between true and false.
+const pronunciationAnchorTagTest = /<\/?pg>/i;
+const pronunciationAnchorTagReplace = /<\/?pg>/gi;
+
+/**
+ * `true` if the text carries YAPP2 `<pg>` pronunciation guide anchors.
+ */
+export function hasPronunciationAnchors(text: string | undefined): boolean {
+    return text != undefined && pronunciationAnchorTagTest.test(text);
+}
+
+/**
+ * Removes YAPP2 `<pg>` anchor tags, leaving the anchored words in place. Use this when writing text out somewhere
+ * that only understands plain YAPP, since `<pg>` would otherwise show up as literal text in those readers.
+ */
+export function stripPronunciationAnchors(text: string): string {
+    return text.replace(pronunciationAnchorTagReplace, "");
 }

@@ -90,6 +90,34 @@ describe("PacketStateTests", () => {
             expect(formattedSecondWord.underlined).to.be.false;
             expect(formattedSecondWord.pronunciation).to.be.false;
         });
+        // YAPP2 <pg> anchors: a guide is non-word, unbuzzable text, but the words the guide *covers* are ordinary
+        // question words. Conflating the two would shift every buzz point after the anchor.
+        it("anchored words stay buzzable and don't shift buzz points", () => {
+            const anchored: Tossup = new Tossup('Denis <pg>Diderot</pg> ("DID-er-OW") wrote this.', "Answer");
+            const plain: Tossup = new Tossup('Denis Diderot ("DID-er-OW") wrote this.', "Answer");
+
+            const anchoredWords = anchored.getWords(noPowersGameFormat);
+            const plainWords = plain.getWords(noPowersGameFormat);
+
+            // Same words, same buzzability, same indices as the identical question without the tag.
+            expect(anchoredWords.map((word) => word.word.map((segment) => segment.text).join(""))).to.deep.equal(
+                plainWords.map((word) => word.word.map((segment) => segment.text).join(""))
+            );
+            expect(anchoredWords.map((word) => word.canBuzzOn)).to.deep.equal(
+                plainWords.map((word) => word.canBuzzOn)
+            );
+            expect(anchoredWords.map((word) => (word.canBuzzOn ? word.wordIndex : -1))).to.deep.equal(
+                plainWords.map((word) => (word.canBuzzOn ? word.wordIndex : -1))
+            );
+
+            // The anchor itself is recorded, and the guide is still the unbuzzable part.
+            const diderot = anchoredWords[1];
+            expect(diderot.word[0].text).to.equal("Diderot");
+            expect(diderot.word[0].pronunciationTarget).to.be.true;
+            expect(diderot.canBuzzOn).to.be.true;
+            expect(anchoredWords[2].canBuzzOn).to.be.false;
+            expect(anchoredWords[2].word[0].pronunciation).to.be.true;
+        });
     });
 
     // Need tests for getBonusWords?

@@ -304,4 +304,115 @@ describe("PacketLoaderControllerTests", () => {
         expect(packet2.bonuses.length).to.equal(0);
         expect(packet2.name).to.equal(packet.name);
     });
+
+    // YAPP2: canonical fields stay tag-free so plain-YAPP readers are unaffected, and the anchored copies carry the
+    // <pg> pronunciation guide anchors. We understand the tag, so we prefer them. See YAPP2_FORMAT.md.
+    describe("YAPP2 anchored text", () => {
+        const question =
+            'Denis Diderot ("DID-er-OW") edited a famous encyclopedia. Name this French philosopher of the Enlightenment.';
+        const anchoredQuestion =
+            'Denis <pg>Diderot</pg> ("DID-er-OW") edited a famous encyclopedia. Name this French philosopher of the Enlightenment.';
+
+        it("anchored text is used when the packet declares YAPP2", () => {
+            const appState: AppState = initializeApp();
+            const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
+                version: "yapp2/1.0",
+                tossups: [{ question, answer: "Denis Diderot", anchored: { question: anchoredQuestion } }],
+            });
+
+            if (packet == undefined) {
+                assert.fail("Packet was undefined");
+            }
+
+            expect(packet.tossups[0].question).to.equal(anchoredQuestion);
+        });
+
+        it("anchored text is ignored without the version marker", () => {
+            // Without the marker this is a plain YAPP file, and <pg> isn't YAPP. Dropping the anchoring beats
+            // rendering a tag the file never said to expect.
+            const appState: AppState = initializeApp();
+            const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
+                tossups: [{ question, answer: "Denis Diderot", anchored: { question: anchoredQuestion } }],
+            });
+
+            if (packet == undefined) {
+                assert.fail("Packet was undefined");
+            }
+
+            expect(packet.tossups[0].question).to.equal(question);
+        });
+
+        it("a field with no anchored copy falls back to the canonical text", () => {
+            const appState: AppState = initializeApp();
+            const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
+                version: "yapp2/1.0",
+                tossups: [{ question, answer: "Denis Diderot", anchored: { question: anchoredQuestion } }],
+            });
+
+            if (packet == undefined) {
+                assert.fail("Packet was undefined");
+            }
+
+            expect(packet.tossups[0].answer).to.equal("Denis Diderot");
+        });
+
+        it("anchored bonus leadin, parts, and answers are used", () => {
+            const appState: AppState = initializeApp();
+            const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
+                version: "yapp2/1.0",
+                tossups: [validTossup],
+                bonuses: [
+                    {
+                        leadin: "Leadin",
+                        parts: ["Part one", "Part two"],
+                        answers: ["Answer one", "Answer two"],
+                        values: [10, 10],
+                        anchored: {
+                            leadin: "<pg>Leadin</pg>",
+                            parts: ["<pg>Part</pg> one", "Part two"],
+                            answers: ["<pg>Answer</pg> one", "Answer two"],
+                        },
+                    },
+                ],
+            });
+
+            if (packet == undefined) {
+                assert.fail("Packet was undefined");
+            }
+
+            expect(packet.bonuses[0].leadin).to.equal("<pg>Leadin</pg>");
+            expect(packet.bonuses[0].parts.map((part) => part.question)).to.deep.equal([
+                "<pg>Part</pg> one",
+                "Part two",
+            ]);
+            expect(packet.bonuses[0].parts.map((part) => part.answer)).to.deep.equal([
+                "<pg>Answer</pg> one",
+                "Answer two",
+            ]);
+        });
+
+        it("a mismatched anchored array is ignored rather than trusted", () => {
+            // Parts and answers are matched up by index, so a short array would silently pair the wrong strings.
+            const appState: AppState = initializeApp();
+            const packet: PacketState | undefined = PacketLoaderController.loadPacket(appState, {
+                version: "yapp2/1.0",
+                tossups: [validTossup],
+                bonuses: [
+                    {
+                        leadin: "Leadin",
+                        parts: ["Part one", "Part two"],
+                        answers: ["Answer one", "Answer two"],
+                        values: [10, 10],
+                        anchored: { parts: ["<pg>Part</pg> one"] },
+                    },
+                ],
+            });
+
+            if (packet == undefined) {
+                assert.fail("Packet was undefined");
+            }
+
+            expect(packet.bonuses[0].parts.map((part) => part.question)).to.deep.equal(["Part one", "Part two"]);
+        });
+    });
 });

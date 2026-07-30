@@ -1,36 +1,81 @@
 import { toJS } from "mobx";
 import { IStatus } from "../IStatus";
 import { IMatch } from "../qbj/QBJ";
+import { hasPronunciationAnchors, stripPronunciationAnchors } from "../parser/FormattedTextParser";
 
 import { ICycle } from "./Cycle";
 import { GameState } from "./GameState";
-import { IPacket } from "./IPacket";
+import { IAnchoredBonusText, IAnchoredTossupText, IPacket, yapp2Version } from "./IPacket";
 import { IPlayer } from "./TeamState";
 
+// A packet loaded from YAPP2 keeps its <pg> anchors in the question text, so the export has to split them back out:
+// canonical fields free of the tag (what a plain-YAPP consumer expects) plus the anchored copies, exactly as YAPP2
+// defines. Questions with no anchor are untouched and produce no `anchored` object.
+function anchoredTossupText(question: string, answer: string): IAnchoredTossupText | undefined {
+    const fields: IAnchoredTossupText = {};
+    if (hasPronunciationAnchors(question)) {
+        fields.question = question;
+    }
+    if (hasPronunciationAnchors(answer)) {
+        fields.answer = answer;
+    }
+    return Object.keys(fields).length > 0 ? fields : undefined;
+}
+
+function anchoredBonusText(leadin: string, parts: string[], answers: string[]): IAnchoredBonusText | undefined {
+    const fields: IAnchoredBonusText = {};
+    if (hasPronunciationAnchors(leadin)) {
+        fields.leadin = leadin;
+    }
+    if (parts.some(hasPronunciationAnchors)) {
+        fields.parts = parts;
+    }
+    if (answers.some(hasPronunciationAnchors)) {
+        fields.answers = answers;
+    }
+    return Object.keys(fields).length > 0 ? fields : undefined;
+}
+
 export function convertGameToExportFields(game: GameState): IExportFields {
+    let anchored = false;
+
+    const tossups = game.packet.tossups.map((tossup, index) => {
+        const anchoredText: IAnchoredTossupText | undefined = anchoredTossupText(tossup.question, tossup.answer);
+        anchored = anchored || anchoredText != undefined;
+        return toJS({
+            answer: stripPronunciationAnchors(tossup.answer),
+            question: stripPronunciationAnchors(tossup.question),
+            number: index + 1,
+            ...(anchoredText ? { anchored: anchoredText } : {}),
+        });
+    });
+
+    const bonuses = game.packet.bonuses?.map((bonus, index) => {
+        const parts: string[] = bonus.parts.map((part) => part.question);
+        const answers: string[] = bonus.parts.map((part) => part.answer);
+        const anchoredText: IAnchoredBonusText | undefined = anchoredBonusText(bonus.leadin, parts, answers);
+        anchored = anchored || anchoredText != undefined;
+        return {
+            leadin: stripPronunciationAnchors(bonus.leadin),
+            answers: answers.map(stripPronunciationAnchors),
+            number: index + 1,
+            parts: parts.map(stripPronunciationAnchors),
+            values: bonus.parts.map((part) => part.value),
+            difficultyModifiers: bonus.parts.every((part) => part.difficultyModifier != undefined)
+                ? bonus.parts.map((part) => part.difficultyModifier as string)
+                : undefined,
+            ...(anchoredText ? { anchored: anchoredText } : {}),
+        };
+    });
+
     return {
         cycles: toJS(game.cycles),
         players: toJS(game.players),
         packet: {
-            tossups: game.packet.tossups.map((tossup, index) => {
-                return toJS({
-                    answer: tossup.answer,
-                    question: tossup.question,
-                    number: index + 1,
-                });
-            }),
-            bonuses: game.packet.bonuses?.map((bonus, index) => {
-                return {
-                    leadin: bonus.leadin,
-                    answers: bonus.parts.map((part) => part.answer),
-                    number: index + 1,
-                    parts: bonus.parts.map((part) => part.question),
-                    values: bonus.parts.map((part) => part.value),
-                    difficultyModifiers: bonus.parts.every((part) => part.difficultyModifier != undefined)
-                        ? bonus.parts.map((part) => part.difficultyModifier as string)
-                        : undefined,
-                };
-            }),
+            // Only claim YAPP2 when something actually uses it; otherwise this stays a plain YAPP packet.
+            ...(anchored ? { version: yapp2Version } : {}),
+            tossups,
+            bonuses,
         },
     };
 }

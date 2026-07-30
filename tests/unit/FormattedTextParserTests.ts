@@ -1288,4 +1288,105 @@ describe("FormattedTextParserTests", () => {
             ]);
         });
     });
+
+    // YAPP2's <pg> tag: marks which word(s) a nearby pronunciation guide covers. See YAPP2_FORMAT.md.
+    describe("pronunciation guide anchors (YAPP2 <pg>)", () => {
+        it("No anchor leaves the flag off the segment entirely", () => {
+            // Asserted explicitly because consumers (and every other test here) compare whole objects: text without
+            // an anchor has to parse to exactly what it did before YAPP2 existed.
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText("Plain text.");
+            expect(result).to.deep.equal([
+                {
+                    text: "Plain text.",
+                    bolded: false,
+                    emphasized: false,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                },
+            ]);
+            expect("pronunciationTarget" in result[0]).to.be.false;
+        });
+        it("Anchor is flagged and the tag is removed", () => {
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText("Denis <pg>Diderot</pg> wrote");
+            expect(result.map((segment) => segment.text)).to.deep.equal(["Denis ", "Diderot", " wrote"]);
+            expect(result.map((segment) => segment.pronunciationTarget === true)).to.deep.equal([false, true, false]);
+        });
+        it("Anchor is not treated as a pronunciation guide", () => {
+            // The whole point: anchored words are read aloud, so they must not pick up the guide flag (which makes
+            // text unbuzzable and greys it out).
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText("<pg>Diderot</pg>");
+            expect(result).to.have.length(1);
+            expect(result[0].pronunciationTarget).to.be.true;
+            expect(result[0].pronunciation).to.be.false;
+        });
+        it("Anchor followed by its guide", () => {
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(
+                'Denis <pg>Diderot</pg> ("DID-er-OW") wrote'
+            );
+            const anchored: IFormattedText[] = result.filter((segment) => segment.pronunciationTarget === true);
+            const guide: IFormattedText[] = result.filter((segment) => segment.pronunciation === true);
+            expect(anchored.map((segment) => segment.text)).to.deep.equal(["Diderot"]);
+            expect(guide.map((segment) => segment.text).join("")).to.equal('("DID-er-OW")');
+            // No segment is both.
+            expect(result.some((segment) => segment.pronunciation && segment.pronunciationTarget)).to.be.false;
+        });
+        it("Anchor combines with other formatting", () => {
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText("<pg><em>Faust</em></pg>");
+            expect(result).to.deep.equal([
+                {
+                    text: "Faust",
+                    bolded: false,
+                    emphasized: true,
+                    underlined: false,
+                    subscripted: false,
+                    superscripted: false,
+                    pronunciation: false,
+                    pronunciationTarget: true,
+                },
+            ]);
+        });
+        it("Tag is case insensitive", () => {
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText("a <PG>b</PG> c");
+            expect(result.map((segment) => segment.text)).to.deep.equal(["a ", "b", " c"]);
+            expect(result[1].pronunciationTarget).to.be.true;
+        });
+        it("Multiple anchors in one question", () => {
+            const result: IFormattedText[] = FormattedTextParser.parseFormattedText(
+                'The <pg>Mahabharata</pg> ("m") names <pg>Arjuna</pg> ("a").'
+            );
+            expect(
+                result.filter((segment) => segment.pronunciationTarget === true).map((segment) => segment.text)
+            ).to.deep.equal(["Mahabharata", "Arjuna"]);
+        });
+        it("Anchored words are still words, and the anchor rides along on each", () => {
+            const result: IFormattedText[][] = FormattedTextParser.splitFormattedTextIntoWords(
+                "Denis <pg>Diderot and Jean</pg> wrote"
+            );
+            expect(result.map((word) => word.map((segment) => segment.text).join(""))).to.deep.equal([
+                "Denis",
+                "Diderot",
+                "and",
+                "Jean",
+                "wrote",
+            ]);
+            expect(result.map((word) => word.some((segment) => segment.pronunciationTarget === true))).to.deep.equal([
+                false,
+                true,
+                true,
+                true,
+                false,
+            ]);
+        });
+        it("Anchors don't change the word count", () => {
+            const withAnchors: number = FormattedTextParser.splitFormattedTextIntoWords(
+                'Denis <pg>Diderot</pg> ("DID-er-OW") edited this work.'
+            ).length;
+            const withoutAnchors: number = FormattedTextParser.splitFormattedTextIntoWords(
+                'Denis Diderot ("DID-er-OW") edited this work.'
+            ).length;
+            expect(withAnchors).to.equal(withoutAnchors);
+        });
+    });
 });
