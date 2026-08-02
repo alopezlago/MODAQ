@@ -67,7 +67,11 @@ export const ManualTeamEntry = observer(function ManualTeamEntry(props: IManualT
 
     // Use a focus zone so that we only tab to a team entry instead of everything tabbable within the team entry
     return (
-        <FocusZone direction={FocusZoneDirection.vertical} className={classes.teamEntry} onKeyDown={focusZoneKeyDown}>
+        <FocusZone
+            direction={FocusZoneDirection.vertical}
+            className={props.className == undefined ? classes.teamEntry : `${classes.teamEntry} ${props.className}`}
+            onKeyDown={focusZoneKeyDown}
+        >
             <TextField
                 className={teamEntryClassName}
                 label={props.teamLabel}
@@ -263,6 +267,7 @@ const getClassNames = (): ITeamEntryClassNames =>
     });
 
 export interface IManualTeamEntryProps {
+    className?: string;
     defaultTeamName: string;
     players: Player[];
     teamLabel: string;

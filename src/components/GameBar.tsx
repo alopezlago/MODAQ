@@ -232,7 +232,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         onClick: openHelpHandler,
     });
 
-    return <CommandBar items={items} overflowButtonProps={overflowProps} />;
+    return <CommandBar className="game-bar" items={items} overflowButtonProps={overflowProps} />;
 });
 
 async function exportToSheets(appState: AppState): Promise<void> {
