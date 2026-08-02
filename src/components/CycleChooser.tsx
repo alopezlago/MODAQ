@@ -58,6 +58,7 @@ export const CycleChooser = observer(function CycleChooser() {
             id={previousButtonTooltipId}
         >
             <DefaultButton
+                className="previous-question"
                 key="previousButton"
                 onClick={onPreviousClickHandler}
                 disabled={uiState.cycleIndex === 0}
@@ -75,6 +76,7 @@ export const CycleChooser = observer(function CycleChooser() {
         nextButtonTooltip = "Export";
         nextButton = (
             <PrimaryButton
+                className="next-question"
                 aria-describedby={nextButtonTooltip}
                 key="nextButton"
                 onClick={onNextClickHandler}
@@ -87,6 +89,7 @@ export const CycleChooser = observer(function CycleChooser() {
         nextButtonTooltip = "Next (N)";
         nextButton = (
             <DefaultButton
+                className="next-question"
                 aria-describedby={nextButtonTooltip}
                 key="nextButton"
                 onClick={onNextClickHandler}
@@ -109,6 +112,7 @@ export const CycleChooser = observer(function CycleChooser() {
     if (uiState.isEditingCycleIndex) {
         questionNumberViewer = (
             <TextField
+                inputClassName="question-number"
                 type="text"
                 defaultValue={questionNumber.toString()}
                 onBlur={onProposedQuestionNumberBlurHandler}
@@ -120,7 +124,12 @@ export const CycleChooser = observer(function CycleChooser() {
         );
     } else {
         questionNumberViewer = (
-            <Label key="questionViewer" styles={questionLableStyle} onDoubleClick={onQuestionLabelDoubleClickHandler}>
+            <Label
+                className="question-number"
+                key="questionViewer"
+                styles={questionLableStyle}
+                onDoubleClick={onQuestionLabelDoubleClickHandler}
+            >
                 Question #{questionNumber}
             </Label>
         );

@@ -29,7 +29,7 @@ export const PacketLoader = observer(function PacketLoader(props: IPacketLoaderP
     ));
 
     return (
-        <div>
+        <div className="packet-loader">
             <Stack>
                 <StackItem>
                     <FilePickerWithStatus

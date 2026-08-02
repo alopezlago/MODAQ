@@ -49,7 +49,7 @@ export const Scoreboard = observer(function Scoreboard() {
 
     const protestIndicator = <ProtestIndicator />;
     return (
-        <div className={classes.board}>
+        <div className={`${classes.board} scoreboard`}>
             <Stack>
                 <StackItem>{label}</StackItem>
                 {protestIndicator != undefined && (
