@@ -318,6 +318,20 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
         let latestBonusIndex: number = previousBonusIndex + 1;
         let latestTossupIndex: number = previousTossupIndex + 1;
 
+        // A protest replacement records the specific question that was actually read (e.g. the last tossup in the
+        // packet) in replacement_tossup_question, while tossup_question keeps the scheduled sequential number. A
+        // sequential (procedural) replacement instead advances both to the same number, so we only treat the
+        // replacement as a protest when the two differ. Sequential throw-outs are still inferred from gaps in the
+        // tossup_question numbers below.
+        const scheduledTossupIndex: number = question.tossup_question.question_number - 1;
+        const protestReplacementIndex: number | undefined =
+            question.replacement_tossup_question != undefined &&
+            question.replacement_tossup_question.question_number !== question.tossup_question.question_number
+                ? question.replacement_tossup_question.question_number - 1
+                : undefined;
+        // The tossup actually read (and buzzed on) is the protest replacement when present, otherwise the scheduled one.
+        const playedTossupIndex: number = protestReplacementIndex ?? scheduledTossupIndex;
+
         // The correct buzz needs to be added after throwing out any tossups, so we have to delay adding it to the cycle
         let addCorrectBuzzEvent: undefined | (() => void);
 
@@ -381,7 +395,7 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
                 buzzMarker.isLastWord = buzz.buzz_position.word_index >= tossupLength - 1;
             }
 
-            const tossupIndex: number = question.tossup_question.question_number - 1;
+            const tossupIndex: number = playedTossupIndex;
             latestTossupIndex = Math.max(tossupIndex, latestTossupIndex);
 
             if (buzz.result.value > 0) {
@@ -416,9 +430,16 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
             };
         }
 
-        for (let j = previousTossupIndex + 1; j < latestTossupIndex; j++) {
-            // We must have thrown out the other questions
-            cycle.addThrownOutTossup(j);
+        if (protestReplacementIndex != undefined) {
+            // The file explicitly recorded a protest replacement: the scheduled tossup was thrown out and a specific
+            // question was read instead. Reconstruct it directly so getTossupIndex returns that question. Protest
+            // replacements don't shift the sequential order, so we don't infer any gap throw-outs here.
+            cycle.addThrownOutTossup(scheduledTossupIndex, protestReplacementIndex);
+        } else {
+            for (let j = previousTossupIndex + 1; j < latestTossupIndex; j++) {
+                // We must have thrown out the other questions
+                cycle.addThrownOutTossup(j);
+            }
         }
 
         if (addCorrectBuzzEvent) {
@@ -453,7 +474,9 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
             }
         }
 
-        previousTossupIndex = latestTossupIndex;
+        // A protest replacement pulls a question out of sequence without consuming the sequential track, so advance
+        // by the scheduled index rather than the (possibly end-of-packet) replacement that was actually read.
+        previousTossupIndex = protestReplacementIndex != undefined ? scheduledTossupIndex : latestTossupIndex;
         previousBonusIndex = latestBonusIndex;
     }
 

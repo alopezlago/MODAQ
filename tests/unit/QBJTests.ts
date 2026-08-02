@@ -724,6 +724,38 @@ describe("QBJTests", () => {
 
             verifyFromQBJRoundtrip(game);
         });
+        it("Roundtrip with tossup protest replacement", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            // Protest replacement: throw out the first tossup and read the last tossup in the packet (index 3)
+            // instead of the next sequential one, then take a correct buzz on that replacement.
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addThrownOutTossup(0, 3);
+            firstCycle.addCorrectBuzz(
+                { player: firstTeamPlayers[0], points: 10, position: 1 },
+                3,
+                game.gameFormat,
+                0,
+                3
+            );
+
+            // Sanity check: the source game reads back the replacement question, not the original
+            expect(game.getTossupIndex(0)).to.equal(3);
+
+            // The full round trip preserves the thrown-out tossup (with its replacement index) and the correct buzz
+            verifyFromQBJRoundtrip(game);
+
+            // Loading the exported QBJ shows the replacement question, not the original or the next sequential one
+            const qbj: IMatch = QBJ.toQBJ(game, "Packet", 1);
+            const roundtripped: IResult<GameState> = QBJ.fromQBJ(qbj, game.packet, game.gameFormat);
+            if (!roundtripped.success) {
+                assert.fail(`Failed to parse the QBJ. Error: '${roundtripped.message}'`);
+            }
+            expect(roundtripped.value.getTossupIndex(0)).to.equal(3);
+        });
     });
     describe("toQBJ", () => {
         it("No buzz game", () => {
