@@ -12,15 +12,18 @@ function getScenario(
     questionType: ThrowOutQuestionType,
     gameFormat: IGameFormat
 ): ThrowOutScenario {
-    // Cycles 0 through regulationTossupCount - 1 are regulation, so any cycle at or beyond
-    // regulationTossupCount is an overtime tossup. minimumOvertimeQuestionCount === 1 identifies
-    // sudden-death overtime, which is played one tossup at a time, so every overtime tossup in those
-    // formats is a tiebreaker. Formats that play a fixed block of overtime questions (e.g. NAQT's three)
-    // aren't sudden death, so their overtime tossups fall through to the protest/procedural cases.
+    // Cycles 0 through regulationTossupCount - 1 are regulation, so any cycle at or beyond regulationTossupCount is
+    // an overtime tossup. A tiebreaker is a sudden-death tossup, played one at a time until the tie breaks:
+    // - Standard formats (minimumOvertimeQuestionCount <= 1) are sudden death from the first overtime tossup, so
+    //   every overtime tossup is a tiebreaker.
+    // - Fixed-block formats (e.g. NAQT's three) read a minimumOvertimeQuestionCount block regardless of the score
+    //   before going to sudden death, so tossups within that block fall through to the protest/procedural cases and
+    //   only tossups past the block are tiebreakers.
     const isTiebreakerTossup: boolean =
         questionType === "tossup" &&
         cycleIndex >= gameFormat.regulationTossupCount &&
-        gameFormat.minimumOvertimeQuestionCount === 1;
+        (gameFormat.minimumOvertimeQuestionCount <= 1 ||
+            cycleIndex >= gameFormat.regulationTossupCount + gameFormat.minimumOvertimeQuestionCount);
     if (isTiebreakerTossup) {
         return "tiebreaker";
     }

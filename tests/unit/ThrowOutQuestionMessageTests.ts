@@ -102,6 +102,23 @@ describe("ThrowOutQuestionMessageTests", () => {
             expect(message).to.not.contain("tiebreaker");
         });
 
+        it("Tiebreaker: a sudden-death tossup past the fixed overtime block is a tiebreaker", () => {
+            // regulationTossupCount 1 plus a fixed 2-question overtime block => cycles 1 and 2 are the block and
+            // cycle 3 is sudden death, so it's a tiebreaker even though the format isn't sudden death from the start.
+            const format: IGameFormat = {
+                ...GameFormats.ACFGameFormat,
+                regulationTossupCount: 1,
+                minimumOvertimeQuestionCount: 2,
+            };
+            const appState: AppState = createAppState(format);
+
+            const { message, replacementIndex } = getThrowOutQuestionPrompt(appState, 3, "tossup", 4);
+
+            expect(message).to.contain("tiebreaker tossup");
+            // Question 4 is the last in the packet, so there's nothing sequential to replace it with
+            expect(replacementIndex).to.equal(undefined);
+        });
+
         it("No replacement available when the packet has no more questions", () => {
             const appState: AppState = createAppState();
 
