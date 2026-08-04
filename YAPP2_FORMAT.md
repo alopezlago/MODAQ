@@ -4,10 +4,12 @@ YAPP2 is a backward-compatible superset of the packet JSON produced by
 [YetAnotherPacketParser](https://github.com/alopezlago/YetAnotherPacketParser) (YAPP)
 and consumed by the MODAQ reader.
 
-It exists to carry one thing plain YAPP cannot: **which words a pronunciation guide
-covers**.
+It exists to carry things plain YAPP cannot:
 
-Version: **`yapp2/1.0`**.
+- **which words a pronunciation guide covers** (1.0), and
+- **the order a packet is read in** when tossups and bonuses interlace (1.1).
+
+Version: **`yapp2/1.1`**.
 
 ## The problem
 
@@ -36,8 +38,12 @@ would have them, and the anchored variants live beside them.
 
 ```json
 {
-  "version": "yapp2/1.0",
+  "version": "yapp2/1.1",
   "name": "Round 1",
+  "readingOrder": [
+    {"type": "tossup", "index": 0},
+    {"type": "bonus", "index": 0}
+  ],
   "tossups": [
     {
       "number": 1,
@@ -64,18 +70,55 @@ would have them, and the anchored variants live beside them.
 }
 ```
 
-Everything except `version` and `anchored` is unchanged from YAPP.
+Everything except `version`, `readingOrder` and `anchored` is unchanged from YAPP.
 
 ### `version`
 
 A string, `"yapp2/<major>.<minor>"`. Its absence means the file is plain YAPP, and a
-reader must then ignore `anchored` entirely — a file that omits the marker has not
-promised that its canonical fields are tag-free, so trusting `anchored` there risks
-rendering a tag the file never declared.
+reader must then ignore `anchored` and `readingOrder` entirely — a file that omits the
+marker has not promised that its canonical fields are tag-free, so trusting `anchored`
+there risks rendering a tag the file never declared.
 
 Compare case-insensitively on the `yapp2/` prefix. A reader that understands
 `yapp2/1.0` should accept later `1.x` minor versions, since minor bumps only add
 optional fields.
+
+### `readingOrder`
+
+*Added in 1.1.* Optional, top level. The order the packet's questions are read, as an
+array of `{"type": "tossup" | "bonus", "index": <int>}` entries. `index` is a 0-based
+position in the canonical `tossups` / `bonuses` array.
+
+A packet whose tossups and bonuses interlace — tossup 1, bonus 1, tossup 2, bonus 2 —
+is written as:
+
+```json
+"readingOrder": [
+  {"type": "tossup", "index": 0},
+  {"type": "bonus", "index": 0},
+  {"type": "tossup", "index": 1},
+  {"type": "bonus", "index": 1}
+]
+```
+
+Rules:
+
+- **It reorders; it never adds, removes or edits.** Every question in `tossups` and
+  `bonuses` must appear exactly once. This is what keeps rule 1 intact: a reader that
+  ignores the field still gets the entire packet, just grouped the plain-YAPP way.
+- Omit it entirely for the ordinary all-tossups-then-all-bonuses packet. Its absence is
+  not "unknown order" — it means exactly that default.
+- A reader that finds it malformed — an index out of range, a duplicate, or any question
+  left out — must **discard the whole field** and fall back to the default order. A
+  partially-applied order would drop or repeat questions mid-packet, which is worse than
+  ignoring the hint.
+- It says nothing about numbering. Question numbers stay in each question's `number`
+  field, and interlacing does not renumber anything.
+
+Why an explicit list rather than an `"interlaced": true` flag: real packets aren't
+always strictly alternating (tiebreakers at the end, a bonus-less lightning round), and
+a list describes any arrangement while a boolean describes one. The alternating case is
+just the common shape of it.
 
 ### `anchored`
 
@@ -127,6 +170,10 @@ Emit both forms of a field, then drop the anchored one if it came out identical.
 producer that has no anchoring information should emit plain YAPP (no `version`) rather
 than a YAPP2 file with no `anchored` objects.
 
+Write `readingOrder` only when the packet really is read out of the default order.
+Emitting the default order explicitly is legal but pointless, and it invites a reader to
+treat "no `readingOrder`" as a different case from "the default `readingOrder`".
+
 ## Consuming YAPP2
 
 ```
@@ -135,8 +182,12 @@ if version starts with "yapp2/":
         for each field:
             use anchored[field] if present (and, for arrays, the same length)
             else use the canonical field
+    if readingOrder is present and covers every question exactly once:
+        present the questions in that order
+    else:
+        present all tossups, then all bonuses
 else:
-    read as plain YAPP; ignore anchored
+    read as plain YAPP; ignore anchored and readingOrder
 ```
 
 Because the two forms differ only by `<pg>`, a reader that understands the tag loses
@@ -146,7 +197,8 @@ nothing by always preferring the anchored text.
 
 - **QEMS** (producer): `qems2/qsub/yapp_export.py` writes it; `qems2/qsub/packet_set_importer.py`
   reads it back, mapping `<pg>` to QEMS's own `\P` markers. Exported from a set's page
-  via "Export Packetized YAPP2 JSON".
+  via "Export Packetized YAPP2 JSON", or from the export options form with
+  "Interlace tossups and bonuses" ticked to get a `readingOrder`.
 - **MODAQ** (consumer): `src/parser/FormattedTextParser.ts` parses `<pg>` into
   `IFormattedText.pronunciationTarget`; `src/components/PacketLoaderController.ts`
   prefers the `anchored` fields; `src/state/CustomExport.ts` writes YAPP2 back out.
