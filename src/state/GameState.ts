@@ -564,13 +564,14 @@ export class GameState {
     }
 
     public getTossupIndex(cycleIndex: number): number {
-        // If this cycle has a protest replacement, return that specific index directly.
+        // If this cycle has a protest replacement, return that specific index directly, or -1 if it points past the
+        // packet (e.g. a QBJ loaded with a smaller packet than the game used), matching getBonusIndex.
         const currentCycle: Cycle = this.cycles[cycleIndex];
         const protestReplacementIndex: number | undefined = currentCycle.thrownOutTossups?.find(
             (e) => e.replacementQuestionIndex != undefined
         )?.replacementQuestionIndex;
         if (protestReplacementIndex != undefined) {
-            return protestReplacementIndex;
+            return protestReplacementIndex >= this.packet.tossups.length ? -1 : protestReplacementIndex;
         }
 
         // Otherwise, offset by the number of sequential (non-protest) throw-outs up to and including this cycle.
