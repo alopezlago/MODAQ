@@ -755,6 +755,8 @@ describe("QBJTests", () => {
                 assert.fail(`Failed to parse the QBJ. Error: '${roundtripped.message}'`);
             }
             expect(roundtripped.value.getTossupIndex(0)).to.equal(3);
+            // The protest replacement doesn't shift later cycles: the next cycle still reads its sequential tossup
+            expect(roundtripped.value.getTossupIndex(1)).to.equal(1);
         });
         it("Roundtrip with bonus protest replacement", () => {
             const game: GameState = new GameState();
@@ -788,6 +790,8 @@ describe("QBJTests", () => {
                 assert.fail(`Failed to parse the QBJ. Error: '${roundtripped.message}'`);
             }
             expect(roundtripped.value.getBonusIndex(0)).to.equal(3);
+            // The protest replacement doesn't shift later cycles: the next cycle still reads its sequential bonus
+            expect(roundtripped.value.getBonusIndex(1)).to.equal(1);
         });
     });
     describe("toQBJ", () => {
