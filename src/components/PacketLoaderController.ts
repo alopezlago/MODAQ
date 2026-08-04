@@ -1,7 +1,7 @@
 import * as he from "he";
 
 import { AppState } from "../state/AppState";
-import { IBonus, IPacket, ITossup, yapp2VersionPrefix } from "../state/IPacket";
+import { IBonus, IPacket, IReadingOrderEntry, ITossup, yapp2VersionPrefix } from "../state/IPacket";
 import { Bonus, BonusPart, PacketState, Tossup } from "../state/PacketState";
 import { UIState } from "../state/UIState";
 
@@ -29,6 +29,51 @@ function anchoredOr(canonical: string, anchored: string | undefined, useAnchored
  */
 function anchoredArrayOr(canonical: string[], anchored: string[] | undefined, useAnchored: boolean): string[] {
     return useAnchored && anchored != undefined && anchored.length === canonical.length ? anchored : canonical;
+}
+
+/**
+ * The packet's `readingOrder` if it's one we can trust, else `undefined`.
+ *
+ * The field only ever reorders, so it has to name every question exactly once. Anything else — an index out of range,
+ * a duplicate, a question left out — is discarded whole rather than partly applied: half an order would drop or
+ * repeat questions in the middle of a packet, which is worse than falling back to the default reading order.
+ */
+export function validatedReadingOrder(
+    packet: IPacket,
+    useAnchored: boolean,
+    tossupCount: number,
+    bonusCount: number
+): IReadingOrderEntry[] | undefined {
+    const order: IReadingOrderEntry[] | undefined = packet.readingOrder;
+    if (!useAnchored || order == undefined) {
+        return undefined;
+    }
+
+    if (!Array.isArray(order) || order.length !== tossupCount + bonusCount) {
+        return undefined;
+    }
+
+    const seen: Set<string> = new Set<string>();
+    for (const entry of order) {
+        if (entry == undefined || (entry.type !== "tossup" && entry.type !== "bonus")) {
+            return undefined;
+        }
+
+        const limit: number = entry.type === "tossup" ? tossupCount : bonusCount;
+        if (!Number.isInteger(entry.index) || entry.index < 0 || entry.index >= limit) {
+            return undefined;
+        }
+
+        const key = `${entry.type}|${entry.index}`;
+        if (seen.has(key)) {
+            return undefined;
+        }
+
+        seen.add(key);
+    }
+
+    // Every slot filled and nothing repeated, so by counting it covers them all.
+    return order;
 }
 
 export function loadPacket(
@@ -101,6 +146,7 @@ export function loadPacket(
     const packet = new PacketState();
     packet.setTossups(tossups);
     packet.setBonuses(bonuses);
+    packet.setReadingOrder(validatedReadingOrder(parsedPacket, useAnchored, tossups.length, bonuses.length));
 
     const packetName: string | undefined = parsedPacket.name ?? uiState.packetFilename;
     const packetNameInQuotes: string = packetName != undefined ? `"${packetName}"` : "";

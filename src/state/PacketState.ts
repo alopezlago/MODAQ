@@ -4,6 +4,7 @@ import { format } from "mobx-sync";
 import * as FormattedTextParser from "../parser/FormattedTextParser";
 import type { IFormattedText } from "../parser/IFormattedText";
 import { IGameFormat } from "./IGameFormat";
+import type { IReadingOrderEntry } from "./IPacket";
 
 export class PacketState {
     // Anything with methods/computeds not at the top level needs to use @format to deserialize correctly
@@ -18,12 +19,20 @@ export class PacketState {
 
     public name: string | undefined;
 
+    /**
+     * YAPP2 1.1 `readingOrder`, when the loaded packet carried a valid one: the order the packet is read in, if it
+     * isn't all tossups then all bonuses. Kept so it survives a load/export round trip — MODAQ already plays a packet
+     * interlaced (tossup, then its bonus), so this doesn't change how a game runs.
+     */
+    public readingOrder: IReadingOrderEntry[] | undefined;
+
     constructor() {
         makeAutoObservable(this);
 
         this.tossups = [];
         this.bonuses = [];
         this.name = undefined;
+        this.readingOrder = undefined;
     }
 
     public setTossups(tossups: Tossup[]): void {
@@ -36,6 +45,10 @@ export class PacketState {
 
     public setName(name: string | undefined): void {
         this.name = name;
+    }
+
+    public setReadingOrder(readingOrder: IReadingOrderEntry[] | undefined): void {
+        this.readingOrder = readingOrder;
     }
 }
 

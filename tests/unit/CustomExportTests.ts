@@ -5,7 +5,7 @@ import * as GameFormats from "src/state/GameFormats";
 import { GameState } from "src/state/GameState";
 import { Bonus, PacketState, Tossup } from "src/state/PacketState";
 import { IExportFields } from "src/state/CustomExport";
-import { ITossup, IBonus } from "src/state/IPacket";
+import { ITossup, IBonus, IReadingOrderEntry, yapp2Version } from "src/state/IPacket";
 
 function exportPacket(packet: PacketState): IExportFields {
     const game: GameState = new GameState();
@@ -22,6 +22,35 @@ function packetWith(tossups: Tossup[], bonuses: Bonus[] = []): PacketState {
 }
 
 describe("CustomExportTests", () => {
+    // A reading order describes the packet, not the game, so it has to survive a load/export round trip — dropping it
+    // would quietly turn an interlaced packet into an ordinary one.
+    describe("YAPP2 reading order", () => {
+        it("a packet without one exports without one", () => {
+            const fields: IExportFields = exportPacket(packetWith([new Tossup("A question.", "An answer")]));
+
+            expect(fields.packet.readingOrder).to.be.undefined;
+            expect(fields.packet.version).to.be.undefined;
+        });
+
+        it("a reading order is written back out", () => {
+            const packet: PacketState = packetWith([
+                new Tossup("First question.", "A1"),
+                new Tossup("Second question.", "A2"),
+            ]);
+            const order: IReadingOrderEntry[] = [
+                { type: "tossup", index: 0 },
+                { type: "tossup", index: 1 },
+            ];
+            packet.setReadingOrder(order);
+
+            const fields: IExportFields = exportPacket(packet);
+
+            expect(fields.packet.readingOrder).to.deep.equal(order);
+            // It's a YAPP2-only field, so the file has to say so even with no anchors anywhere.
+            expect(fields.packet.version).to.equal(yapp2Version);
+        });
+    });
+
     // A packet loaded from YAPP2 keeps its <pg> anchors in the question text, so the export has to hand them back the
     // way YAPP2 defines: canonical fields free of the tag, anchors in a parallel `anchored` object.
     describe("YAPP2 pronunciation anchors", () => {
@@ -38,7 +67,7 @@ describe("CustomExportTests", () => {
                 packetWith([new Tossup('Denis <pg>Diderot</pg> ("DID-er-OW") wrote this.', "Denis Diderot")])
             );
 
-            expect(fields.packet.version).to.equal("yapp2/1.0");
+            expect(fields.packet.version).to.equal(yapp2Version);
 
             const tossup: ITossup = fields.packet.tossups[0];
             // Canonical text is what a plain-YAPP reader needs: no tag, words intact.
@@ -56,7 +85,7 @@ describe("CustomExportTests", () => {
                 ])
             );
 
-            expect(fields.packet.version).to.equal("yapp2/1.0");
+            expect(fields.packet.version).to.equal(yapp2Version);
             expect(fields.packet.tossups[0].anchored).to.be.undefined;
             expect(fields.packet.tossups[1].anchored?.question).to.equal("An <pg>anchor</pg> here.");
             expect(fields.packet.tossups[1].question).to.equal("An anchor here.");

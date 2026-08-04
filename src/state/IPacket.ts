@@ -4,8 +4,8 @@
  */
 export const yapp2VersionPrefix = "yapp2/";
 
-/** The YAPP2 version this code writes. */
-export const yapp2Version = "yapp2/1.0";
+/** The YAPP2 version this code writes. 1.1 added `readingOrder`. */
+export const yapp2Version = "yapp2/1.1";
 
 export interface IPacket {
     tossups: ITossup[];
@@ -17,6 +17,23 @@ export interface IPacket {
      * guide anchoring via the `anchored` fields below. See YAPP2_FORMAT.md.
      */
     version?: string;
+
+    /**
+     * YAPP2 1.1 only: the order the packet is read in, when it isn't all tossups followed by all bonuses. Each entry
+     * points at a question in the canonical `tossups` / `bonuses` arrays, and every question appears exactly once — it
+     * reorders, and never adds, removes or edits. Absent means the default order.
+     *
+     * A reader that finds it malformed must discard the whole field rather than apply part of it, since a partly
+     * applied order would drop or repeat questions mid-packet. See YAPP2_FORMAT.md.
+     */
+    readingOrder?: IReadingOrderEntry[];
+}
+
+export interface IReadingOrderEntry {
+    type: "tossup" | "bonus";
+
+    /** 0-based index into `IPacket.tossups` or `IPacket.bonuses`. */
+    index: number;
 }
 
 export interface ITossup {

@@ -68,14 +68,20 @@ export function convertGameToExportFields(game: GameState): IExportFields {
         };
     });
 
+    // A reading order the packet arrived with is written back out: it describes the packet, not the game, so dropping
+    // it would quietly turn an interlaced packet into an ordinary one on the next round trip.
+    const readingOrder = game.packet.readingOrder;
+    const isYapp2: boolean = anchored || readingOrder != undefined;
+
     return {
         cycles: toJS(game.cycles),
         players: toJS(game.players),
         packet: {
             // Only claim YAPP2 when something actually uses it; otherwise this stays a plain YAPP packet.
-            ...(anchored ? { version: yapp2Version } : {}),
+            ...(isYapp2 ? { version: yapp2Version } : {}),
             tossups,
             bonuses,
+            ...(readingOrder ? { readingOrder: toJS(readingOrder) } : {}),
         },
     };
 }

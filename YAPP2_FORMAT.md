@@ -174,6 +174,12 @@ Write `readingOrder` only when the packet really is read out of the default orde
 Emitting the default order explicitly is legal but pointless, and it invites a reader to
 treat "no `readingOrder`" as a different case from "the default `readingOrder`".
 
+**All-power tossups.** A producer that records "the whole stem is power" as a flag rather
+than a marker has to write the marker out anyway: YAPP and YAPP2 both locate the power
+boundary from the literal `(*)` in the question, so a stem without one scores no power at
+all. Put the marker after the last word — everything before it is power, which is the
+whole question. (QEMS does this; see `all_power_tail` in its `yapp_export`.)
+
 ## Consuming YAPP2
 
 ```
@@ -201,8 +207,11 @@ nothing by always preferring the anchored text.
   "Interlace tossups and bonuses" ticked to get a `readingOrder`.
 - **MODAQ** (consumer): `src/parser/FormattedTextParser.ts` parses `<pg>` into
   `IFormattedText.pronunciationTarget`; `src/components/PacketLoaderController.ts`
-  prefers the `anchored` fields; `src/state/CustomExport.ts` writes YAPP2 back out.
-  That repo carries a copy of this document.
+  prefers the `anchored` fields and validates `readingOrder` (keeping it only when it
+  covers every question exactly once); `src/state/CustomExport.ts` writes both back out.
+  MODAQ already plays a packet interlaced — a tossup, then its bonus — so `readingOrder`
+  does not change how a game runs there; it is kept so a load/export round trip doesn't
+  silently drop it. That repo carries a copy of this document.
 
 ## Why not other approaches
 
