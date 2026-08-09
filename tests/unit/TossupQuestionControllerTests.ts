@@ -23,11 +23,12 @@ describe("TossupQuestionControllerTests", () => {
 
             TossupQuestionController.throwOutTossup(appState, cycle, 1);
 
-            const messageDialog = appState.uiState.dialogState.messageDialog;
-            if (messageDialog == undefined || messageDialog.onOK == undefined) {
-                assert.fail("OK/Cancel dialog should've appeared");
+            const dialog = appState.uiState.dialogState.throwOutQuestionDialog;
+            if (dialog == undefined || dialog.onConfirm == undefined) {
+                assert.fail("Throw out question dialog should've appeared");
             }
-            messageDialog.onOK();
+            // defaultReplacementNumber is 1-based; onConfirm expects a 0-based packet index
+            dialog.onConfirm(dialog.defaultReplacementNumber != undefined ? dialog.defaultReplacementNumber - 1 : undefined);
 
             if (cycle.thrownOutTossups == undefined) {
                 assert.fail("ThrownOutTossups was undefined");

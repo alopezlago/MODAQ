@@ -724,6 +724,75 @@ describe("QBJTests", () => {
 
             verifyFromQBJRoundtrip(game);
         });
+        it("Roundtrip with tossup protest replacement", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            // Protest replacement: throw out the first tossup and read the last tossup in the packet (index 3)
+            // instead of the next sequential one, then take a correct buzz on that replacement.
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addThrownOutTossup(0, 3);
+            firstCycle.addCorrectBuzz(
+                { player: firstTeamPlayers[0], points: 10, position: 1 },
+                3,
+                game.gameFormat,
+                0,
+                3
+            );
+
+            // Sanity check: the source game reads back the replacement question, not the original
+            expect(game.getTossupIndex(0)).to.equal(3);
+
+            // The full round trip preserves the thrown-out tossup (with its replacement index) and the correct buzz
+            verifyFromQBJRoundtrip(game);
+
+            // Loading the exported QBJ shows the replacement question, not the original or the next sequential one
+            const qbj: IMatch = QBJ.toQBJ(game, "Packet", 1);
+            const roundtripped: IResult<GameState> = QBJ.fromQBJ(qbj, game.packet, game.gameFormat);
+            if (!roundtripped.success) {
+                assert.fail(`Failed to parse the QBJ. Error: '${roundtripped.message}'`);
+            }
+            expect(roundtripped.value.getTossupIndex(0)).to.equal(3);
+            // The protest replacement doesn't shift later cycles: the next cycle still reads its sequential tossup
+            expect(roundtripped.value.getTossupIndex(1)).to.equal(1);
+        });
+        it("Roundtrip with bonus protest replacement", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            // Get the tossup so the bonus comes into play, then throw out the bonus and read the last bonus in the
+            // packet (index 3) instead of the sequential one, answering the first part of that replacement.
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addCorrectBuzz(
+                { player: firstTeamPlayers[0], points: 10, position: 1 },
+                0,
+                game.gameFormat,
+                0,
+                3
+            );
+            firstCycle.addThrownOutBonus(0, 3);
+            firstCycle.setBonusPartAnswer(0, firstTeamPlayers[0].teamName, 10);
+
+            // Sanity check: the source game reads back the replacement bonus, not the original
+            expect(game.getBonusIndex(0)).to.equal(3);
+
+            // The full round trip preserves the thrown-out bonus (with its replacement index) and the bonus answer
+            verifyFromQBJRoundtrip(game);
+
+            // Loading the exported QBJ shows the replacement bonus
+            const qbj: IMatch = QBJ.toQBJ(game, "Packet", 1);
+            const roundtripped: IResult<GameState> = QBJ.fromQBJ(qbj, game.packet, game.gameFormat);
+            if (!roundtripped.success) {
+                assert.fail(`Failed to parse the QBJ. Error: '${roundtripped.message}'`);
+            }
+            expect(roundtripped.value.getBonusIndex(0)).to.equal(3);
+            // The protest replacement doesn't shift later cycles: the next cycle still reads its sequential bonus
+            expect(roundtripped.value.getBonusIndex(1)).to.equal(1);
+        });
     });
     describe("toQBJ", () => {
         it("No buzz game", () => {
@@ -1558,6 +1627,87 @@ describe("QBJTests", () => {
 
                     expect(replacementTossup.question_number).to.equal(2);
                     expect(replacementTossup.type).to.equal("tossup");
+                }
+            );
+        });
+        it("Thrown out tossup with protest replacement", () => {
+            verifyToQBJ(
+                (game) => {
+                    // Protest replacement: throw out the first tossup and replace it with the last tossup in the
+                    // packet (index 3) rather than the next sequential one.
+                    game.cycles[0].addThrownOutTossup(0, 3);
+                    game.cycles[0].addCorrectBuzz(
+                        {
+                            player: firstTeamPlayers[0],
+                            points: 10,
+                            position: 1,
+                            isLastWord: true,
+                        },
+                        3,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+                },
+                (match) => {
+                    const replacementTossup: QBJ.IQuestion | undefined =
+                        match.match_questions[0].replacement_tossup_question;
+                    if (replacementTossup == undefined) {
+                        assert.fail("Replacement tossup was undefined");
+                    }
+
+                    // The replacement points at the specific question that was read, not the next sequential one
+                    expect(replacementTossup.question_number).to.equal(4);
+                    expect(replacementTossup.type).to.equal("tossup");
+
+                    // A protest replacement doesn't shift the questions used by later cycles, so the tossup numbers
+                    // stay on the sequential track instead of drifting by one
+                    expect(match.match_questions.map((q) => q.tossup_question.question_number)).to.deep.equal([
+                        1, 2, 3, 4,
+                    ]);
+                }
+            );
+        });
+        it("Thrown out bonus with protest replacement", () => {
+            verifyToQBJ(
+                (game) => {
+                    // Protest replacement: get the tossup, then throw out the bonus and read the last bonus in the
+                    // packet (index 3) rather than the sequential one, answering its first part.
+                    game.cycles[0].addCorrectBuzz(
+                        { player: firstTeamPlayers[0], points: 10, position: 1 },
+                        0,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+                    game.cycles[0].addThrownOutBonus(0, 3);
+                    game.cycles[0].setBonusPartAnswer(0, firstTeamPlayers[0].teamName, 10);
+                },
+                (match) => {
+                    // The answered conversion lives on replacement_bonus (the bonus actually read), pointing at the
+                    // specific bonus that replaced the thrown-out one
+                    const replacementBonus: QBJ.IMatchQuestionBonus | undefined =
+                        match.match_questions[0].replacement_bonus;
+                    if (replacementBonus == undefined || replacementBonus.question == undefined) {
+                        assert.fail("Replacement bonus was undefined");
+                    }
+
+                    expect(replacementBonus.question.question_number).to.equal(4);
+                    expect(replacementBonus.question.type).to.equal("bonus");
+                    expect(replacementBonus.parts[0].controlled_points).to.equal(10);
+
+                    // bonus keeps the scheduled number as a bare marker with no conversion
+                    const scheduledBonus: QBJ.IMatchQuestionBonus | undefined = match.match_questions[0].bonus;
+                    if (scheduledBonus == undefined || scheduledBonus.question == undefined) {
+                        assert.fail("Scheduled bonus was undefined");
+                    }
+                    expect(scheduledBonus.question.question_number).to.equal(1);
+                    expect(scheduledBonus.parts).to.deep.equal([]);
+
+                    // A protest replacement doesn't shift later cycles, so the scheduled bonus numbers stay sequential
+                    expect(
+                        match.match_questions.map((q) => q.bonus?.question?.question_number)
+                    ).to.deep.equal([1, undefined, undefined, undefined]);
                 }
             );
         });

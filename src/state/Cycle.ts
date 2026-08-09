@@ -362,31 +362,33 @@ export class Cycle implements ICycle {
         this.updateIfNeeded();
     }
 
-    public addThrownOutBonus(bonusIndex: number): void {
+    public addThrownOutBonus(bonusIndex: number, replacementQuestionIndex?: number): void {
         if (this.thrownOutBonuses == undefined) {
             this.thrownOutBonuses = [];
         }
 
         this.thrownOutBonuses.push({
             questionIndex: bonusIndex,
+            replacementQuestionIndex,
         });
 
         // Clear the bonus answer event
         if (this.bonusAnswer != undefined) {
             this.resetBonusAnswer();
-            this.bonusAnswer.bonusIndex = bonusIndex + 1;
+            this.bonusAnswer.bonusIndex = replacementQuestionIndex ?? bonusIndex + 1;
         }
 
         this.updateIfNeeded();
     }
 
-    public addThrownOutTossup(tossupIndex: number): void {
+    public addThrownOutTossup(tossupIndex: number, replacementQuestionIndex?: number): void {
         if (this.thrownOutTossups == undefined) {
             this.thrownOutTossups = [];
         }
 
         this.thrownOutTossups.push({
             questionIndex: tossupIndex,
+            replacementQuestionIndex,
         });
 
         // If we threw out the tossup, then we can't have a correct buzz; otherwise the tossup would've been allowed to
