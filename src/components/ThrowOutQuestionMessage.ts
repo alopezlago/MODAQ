@@ -42,6 +42,9 @@ export interface IThrowOutQuestionPrompt {
     // The 0-based packet index of the replacement question, or undefined if no replacement is available
     // (i.e. the packet has no more questions).
     replacementIndex: number | undefined;
+    // Whether confirming the default replacement should record an explicit replacement question index.
+    // Protest replacements are explicit; sequential replacements are inferred by leaving the replacement undefined.
+    defaultReplacementIsExplicit: boolean;
 }
 
 // Builds the confirmation prompt shown before throwing out a question. Both the message and the replacement
@@ -60,15 +63,18 @@ export function getThrowOutQuestionPrompt(
     const gameFormat: IGameFormat = appState.activeGame.gameFormat;
     const nextQuestionNumber: number = currentQuestionNumber + 1;
     const totalQuestionCount: number =
-        questionType === "tossup" ? appState.activeGame.packet.tossups.length : appState.activeGame.packet.bonuses.length;
+        questionType === "tossup"
+            ? appState.activeGame.packet.tossups.length
+            : appState.activeGame.packet.bonuses.length;
     const needsMoreQuestions: boolean = nextQuestionNumber > totalQuestionCount;
 
     const scenario: ThrowOutScenario = getScenario(appState, cycleIndex, questionType, gameFormat);
+    const useExplicitProtestReplacement: boolean = scenario === "protest" && questionType === "tossup";
 
     let replacementIndex: number | undefined;
     if (needsMoreQuestions) {
         replacementIndex = undefined;
-    } else if (scenario === "protest") {
+    } else if (useExplicitProtestReplacement) {
         replacementIndex = totalQuestionCount - 1;
     } else {
         replacementIndex = nextQuestionNumber - 1;
@@ -95,5 +101,5 @@ export function getThrowOutQuestionPrompt(
               "which normally happens due to a moderator procedural error. Is that your intended action?";
     }
 
-    return { message, replacementIndex };
+    return { message, replacementIndex, defaultReplacementIsExplicit: useExplicitProtestReplacement };
 }

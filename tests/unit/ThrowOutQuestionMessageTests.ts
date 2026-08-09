@@ -132,10 +132,38 @@ describe("ThrowOutQuestionMessageTests", () => {
         it("Bonus throw-out uses the bonus wording and is never a tiebreaker", () => {
             const appState: AppState = createAppState();
 
-            const { message, replacementIndex } = getThrowOutQuestionPrompt(appState, 0, "bonus", 1);
+            const { message, replacementIndex, defaultReplacementIsExplicit } = getThrowOutQuestionPrompt(
+                appState,
+                0,
+                "bonus",
+                1
+            );
 
             expect(replacementIndex).to.equal(1);
+            expect(defaultReplacementIsExplicit).to.equal(false);
             expect(message).to.contain("replaced with bonus 2");
+        });
+
+        it("Bonus with game data after still defaults to sequential replacement", () => {
+            const appState: AppState = createAppState();
+
+            // Simulate later gameplay so scenario detection sees data after this cycle.
+            appState.game.cycles[1].addWrongBuzz(
+                { player: players[0], points: -5, position: 0 },
+                1,
+                appState.game.gameFormat
+            );
+
+            const { replacementIndex, defaultReplacementIsExplicit } = getThrowOutQuestionPrompt(
+                appState,
+                0,
+                "bonus",
+                1
+            );
+
+            // Bonus defaults should still move to the next sequential bonus.
+            expect(replacementIndex).to.equal(1);
+            expect(defaultReplacementIsExplicit).to.equal(false);
         });
     });
 });
