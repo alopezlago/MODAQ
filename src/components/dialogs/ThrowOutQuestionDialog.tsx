@@ -20,8 +20,7 @@ import { ModalDialog } from "./ModalDialog";
 
 export const ThrowOutQuestionDialog = observer(function ThrowOutQuestionDialog(): JSX.Element {
     const appState: AppState = useAppState();
-    const dialogState: IThrowOutQuestionDialogState | undefined =
-        appState.uiState.dialogState.throwOutQuestionDialog;
+    const dialogState: IThrowOutQuestionDialogState | undefined = appState.uiState.dialogState.throwOutQuestionDialog;
 
     const [replacementNumber, setReplacementNumber] = React.useState<number | undefined>(
         dialogState?.defaultReplacementNumber
@@ -43,44 +42,59 @@ export const ThrowOutQuestionDialog = observer(function ThrowOutQuestionDialog()
     const closeHandler = (): void => hideDialog(appState);
 
     const confirmHandler = (): void => {
-        // Convert 1-based display number to 0-based packet index
-        dialogState.onConfirm(replacementNumber != undefined ? replacementNumber - 1 : undefined);
+        const replacementIndex: number | undefined = getReplacementIndexForConfirmation(
+            replacementNumber,
+            showCustomInput,
+            dialogState.defaultReplacementIsExplicit
+        );
+        dialogState.onConfirm(replacementIndex);
         hideDialog(appState);
     };
 
-    const customInputSection: JSX.Element = dialogState.defaultReplacementNumber != undefined ? (
-        <SpinButton
-            label="Replacement question number"
-            min={1}
-            max={dialogState.maxQuestionNumber}
-            value={replacementNumber?.toString() ?? ""}
-            onValidate={(value) => {
-                const parsed = parseInt(value, 10);
-                if (!isNaN(parsed) && parsed >= 1 && parsed <= dialogState.maxQuestionNumber) {
-                    setReplacementNumber(parsed);
-                    return parsed.toString();
-                }
-                return (replacementNumber ?? dialogState.defaultReplacementNumber)?.toString() ?? "";
-            }}
-            onIncrement={(value) => {
-                const parsed = parseInt(value, 10);
-                const next = Math.min((isNaN(parsed) ? 1 : parsed) + 1, dialogState.maxQuestionNumber);
-                setReplacementNumber(next);
-                return next.toString();
-            }}
-            onDecrement={(value) => {
-                const parsed = parseInt(value, 10);
-                const prev = Math.max((isNaN(parsed) ? 1 : parsed) - 1, 1);
-                setReplacementNumber(prev);
-                return prev.toString();
-            }}
-            styles={spinButtonStyles}
-        />
-    ) : (
-        <Label styles={noReplacementLabelStyles}>
-            No replacement available — upload additional questions before confirming.
-        </Label>
-    );
+    const customInputSection: JSX.Element =
+        dialogState.defaultReplacementNumber != undefined ? (
+            <SpinButton
+                label="Replacement question number"
+                min={dialogState.minQuestionNumber}
+                max={dialogState.maxQuestionNumber}
+                value={replacementNumber?.toString() ?? ""}
+                onValidate={(value) => {
+                    const parsed = parseInt(value, 10);
+                    if (
+                        !isNaN(parsed) &&
+                        parsed >= dialogState.minQuestionNumber &&
+                        parsed <= dialogState.maxQuestionNumber
+                    ) {
+                        setReplacementNumber(parsed);
+                        return parsed.toString();
+                    }
+                    return (replacementNumber ?? dialogState.defaultReplacementNumber)?.toString() ?? "";
+                }}
+                onIncrement={(value) => {
+                    const parsed = parseInt(value, 10);
+                    const next = Math.min(
+                        (isNaN(parsed) ? dialogState.minQuestionNumber : parsed) + 1,
+                        dialogState.maxQuestionNumber
+                    );
+                    setReplacementNumber(next);
+                    return next.toString();
+                }}
+                onDecrement={(value) => {
+                    const parsed = parseInt(value, 10);
+                    const prev = Math.max(
+                        (isNaN(parsed) ? dialogState.minQuestionNumber : parsed) - 1,
+                        dialogState.minQuestionNumber
+                    );
+                    setReplacementNumber(prev);
+                    return prev.toString();
+                }}
+                styles={spinButtonStyles}
+            />
+        ) : (
+            <Label styles={noReplacementLabelStyles}>
+                No replacement available — upload additional questions before confirming.
+            </Label>
+        );
 
     return (
         <ModalDialog
@@ -109,6 +123,22 @@ export const ThrowOutQuestionDialog = observer(function ThrowOutQuestionDialog()
 
 function hideDialog(appState: AppState): void {
     appState.uiState.dialogState.hideThrowOutQuestionDialog();
+}
+
+export function getReplacementIndexForConfirmation(
+    replacementNumber: number | undefined,
+    showCustomInput: boolean,
+    defaultReplacementIsExplicit: boolean
+): number | undefined {
+    if (replacementNumber == undefined) {
+        return undefined;
+    }
+
+    if (!showCustomInput && !defaultReplacementIsExplicit) {
+        return undefined;
+    }
+
+    return replacementNumber - 1;
 }
 
 const classNames = mergeStyleSets({

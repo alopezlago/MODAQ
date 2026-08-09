@@ -52,6 +52,30 @@ describe("GameStateTests", () => {
             expect(game.getTossupIndex(thrownOutTossupCycleIndex)).to.equal(thrownOutTossupCycleIndex + 2);
             expect(game.getTossupIndex(thrownOutTossupCycleIndex + 1)).to.equal(thrownOutTossupCycleIndex + 3);
         });
+        it("Protest replacement tossup index in range", () => {
+            const game: GameState = createDefaultGame();
+            const thrownOutTossupCycleIndex = 1;
+            const replacementQuestionIndex = 3;
+            game.cycles[thrownOutTossupCycleIndex].addThrownOutTossup(
+                thrownOutTossupCycleIndex,
+                replacementQuestionIndex
+            );
+
+            expect(game.getTossupIndex(thrownOutTossupCycleIndex)).to.equal(replacementQuestionIndex);
+            expect(game.getTossupIndex(thrownOutTossupCycleIndex + 1)).to.equal(thrownOutTossupCycleIndex + 1);
+        });
+        it("Protest replacement tossup index past packet tossup count", () => {
+            const game: GameState = createDefaultGame();
+            const thrownOutTossupCycleIndex = defaultPacket.tossups.length - 1;
+            const outOfRangeReplacementIndex = defaultPacket.tossups.length;
+            game.cycles[thrownOutTossupCycleIndex].addThrownOutTossup(
+                thrownOutTossupCycleIndex,
+                outOfRangeReplacementIndex
+            );
+
+            expect(game.getTossupIndex(thrownOutTossupCycleIndex)).to.equal(-1);
+            expect(game.getTossupIndex(thrownOutTossupCycleIndex - 1)).to.equal(thrownOutTossupCycleIndex - 1);
+        });
     });
 });
 
