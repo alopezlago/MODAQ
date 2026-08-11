@@ -144,26 +144,32 @@ describe("ThrowOutQuestionMessageTests", () => {
             expect(message).to.contain("replaced with bonus 2");
         });
 
-        it("Bonus with game data after still defaults to sequential replacement", () => {
+        it("Bonus with game data after uses an explicit last-bonus protest replacement", () => {
             const appState: AppState = createAppState();
 
-            // Simulate later gameplay so scenario detection sees data after this cycle.
+            // Simulate later gameplay so scenario detection sees data after this cycle. This is a protest:
+            // the bonuses already read to other teams must not shift, so the replacement is explicit.
             appState.game.cycles[1].addWrongBuzz(
                 { player: players[0], points: -5, position: 0 },
                 1,
                 appState.game.gameFormat
             );
 
-            const { replacementIndex, defaultReplacementIsExplicit } = getThrowOutQuestionPrompt(
+            const { message, replacementIndex, defaultReplacementIsExplicit } = getThrowOutQuestionPrompt(
                 appState,
                 0,
                 "bonus",
                 1
             );
 
-            // Bonus defaults should still move to the next sequential bonus.
-            expect(replacementIndex).to.equal(1);
-            expect(defaultReplacementIsExplicit).to.equal(false);
+            // A protest bonus is replaced by the packet's last bonus (0-based index 3 in the 4-bonus packet),
+            // recorded explicitly so getBonusIndex does not shift subsequent cycles.
+            expect(replacementIndex).to.equal(3);
+            expect(defaultReplacementIsExplicit).to.equal(true);
+
+            // The message must match the replacement it describes, rather than naming a different bonus.
+            expect(message).to.contain("replaced with bonus 4");
+            expect(message).to.contain("protest resolution");
         });
     });
 });
