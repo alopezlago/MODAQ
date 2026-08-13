@@ -2168,6 +2168,148 @@ describe("QBJTests", () => {
                 }
             );
         });
+        it("Export without overtime leaves out overtime_tossups_read", () => {
+            verifyToQBJ(
+                (game) => {
+                    // The packet is shorter than regulation, so no question can be an overtime one
+                    game.setGameFormat(GameFormats.ACFGameFormat);
+                    game.cycles[0].addCorrectBuzz(
+                        { player: firstTeamPlayers[0], points: 10, position: 1 },
+                        0,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+                },
+                (match) => {
+                    expect(match.tossups_read).to.equal(defaultPacket.tossups.length);
+                    expect(match.overtime_tossups_read).to.be.undefined;
+
+                    // No overtime means no overtime breakdown for YellowFruit either
+                    expect(match.match_teams.every((team) => team.YfData == undefined)).to.be.true;
+                }
+            );
+        });
+        it("Export with sudden death overtime reports the overtime tossups", () => {
+            verifyToQBJ(
+                (game) => {
+                    // Regulation ends after 3 tossups, and overtime is sudden death, so the 4th tossup is overtime
+                    game.setGameFormat({ ...GameFormats.ACFGameFormat, regulationTossupCount: 3 });
+
+                    // Nobody buzzes in regulation, so the game is tied 0-0 and goes to overtime, where the first
+                    // team converts the tiebreaker
+                    game.cycles[3].addCorrectBuzz(
+                        { player: firstTeamPlayers[0], points: 10, position: 1 },
+                        3,
+                        game.gameFormat,
+                        3,
+                        3
+                    );
+                },
+                (match, game) => {
+                    expect(game.playableCycles.length).to.equal(4);
+
+                    // tossups_read includes the overtime tossup, and overtime_tossups_read says how many of those
+                    // weren't regulation questions
+                    expect(match.tossups_read).to.equal(4);
+                    expect(match.overtime_tossups_read).to.equal(1);
+
+                    // YellowFruit needs the overtime buzzes to see that regulation ended tied
+                    expect(match.match_teams[0].YfData?.overTimeBuzzes).to.deep.equal([
+                        { answer: { value: 10 }, number: 1 },
+                    ]);
+                    expect(match.match_teams[1].YfData?.overTimeBuzzes).to.deep.equal([]);
+                }
+            );
+        });
+        it("Export with fixed overtime block reports every overtime tossup", () => {
+            verifyToQBJ(
+                (game) => {
+                    // Regulation ends after 2 tossups, and overtime is played in blocks of 2
+                    game.setGameFormat({
+                        ...GameFormats.ACFGameFormat,
+                        regulationTossupCount: 2,
+                        minimumOvertimeQuestionCount: 2,
+                    });
+
+                    // The game is tied 0-0 after regulation, so both overtime tossups are played even though the
+                    // second team takes the lead on the last one
+                    game.cycles[3].addCorrectBuzz(
+                        { player: secondTeamPlayer, points: 10, position: 1 },
+                        3,
+                        game.gameFormat,
+                        3,
+                        3
+                    );
+                },
+                (match, game) => {
+                    expect(game.playableCycles.length).to.equal(4);
+                    expect(match.tossups_read).to.equal(4);
+                    expect(match.overtime_tossups_read).to.equal(2);
+
+                    // Both overtime tossups count, and only the second team buzzed in them
+                    expect(match.match_teams[0].YfData?.overTimeBuzzes).to.deep.equal([]);
+                    expect(match.match_teams[1].YfData?.overTimeBuzzes).to.deep.equal([
+                        { answer: { value: 10 }, number: 1 },
+                    ]);
+                }
+            );
+        });
+        it("Overtime buzzes include negs, ordered by descending point value", () => {
+            verifyToQBJ(
+                (game) => {
+                    // Regulation ends after 2 tossups, and both tossups of the overtime block are played
+                    game.setGameFormat({
+                        ...GameFormats.StandardPowersMACFGameFormat,
+                        regulationTossupCount: 2,
+                        minimumOvertimeQuestionCount: 2,
+                    });
+
+                    // Tied 0-0 after regulation. The first team negs on the first overtime tossup and converts the
+                    // second, so it has two kinds of overtime buzz
+                    game.cycles[2].addWrongBuzz(
+                        { player: firstTeamPlayers[0], points: -5, position: 0, isLastWord: false },
+                        2,
+                        game.gameFormat
+                    );
+                    game.cycles[3].addCorrectBuzz(
+                        { player: firstTeamPlayers[0], points: 10, position: 1 },
+                        3,
+                        game.gameFormat,
+                        3,
+                        3
+                    );
+                },
+                (match, game) => {
+                    expect(game.playableCycles.length).to.equal(4);
+                    expect(match.overtime_tossups_read).to.equal(2);
+
+                    // Powers first, negs last, matching how YellowFruit sorts answer counts
+                    expect(match.match_teams[0].YfData?.overTimeBuzzes).to.deep.equal([
+                        { answer: { value: 10 }, number: 1 },
+                        { answer: { value: -5 }, number: 1 },
+                    ]);
+                    expect(match.match_teams[1].YfData?.overTimeBuzzes).to.deep.equal([]);
+
+                    // The regulation score YellowFruit derives (total minus overtime) is tied, which is what stops
+                    // the "score wasn't tied after regulation" warning
+                    const regulationScores: number[] = match.match_teams.map((team) => {
+                        const total: number = team.match_players.reduce(
+                            (sum, player) =>
+                                sum +
+                                player.answer_counts.reduce((count, ac) => count + ac.answer.value * ac.number, 0),
+                            team.bonus_points
+                        );
+                        const overtimePoints: number = (team.YfData?.overTimeBuzzes ?? []).reduce(
+                            (sum, ac) => sum + ac.answer.value * ac.number,
+                            0
+                        );
+                        return total - overtimePoints;
+                    });
+                    expect(regulationScores[0]).to.equal(regulationScores[1]);
+                }
+            );
+        });
     });
     describe("parseRegistration", () => {
         function verifyRegistration(tournament: ITournament, verify: (players: Player[]) => void) {
