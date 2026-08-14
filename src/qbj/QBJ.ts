@@ -589,6 +589,9 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
     let bonusNumber = 1;
     const teamChangesInCycle: Set<string> = new Set<string>();
 
+    // Overtime buzzes, tracked per team and point value for YellowFruit (see IYellowFruitMatchTeamData)
+    const overtimeBuzzCounts: Map<string, Map<number, number>> = new Map<string, Map<number, number>>();
+
     // TODO: Loop until the end of the game, not the number of cycles
     for (let i = 0; i < game.playableCycles.length; i++) {
         const cycle: Cycle = game.playableCycles[i];
@@ -741,12 +744,18 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
             bonus: undefined,
         };
 
+        const isOvertimeCycle: boolean = i >= game.gameFormat.regulationTossupCount;
+
         let isFirstBuzz = true;
         for (const buzz of cycle.orderedBuzzes) {
             const matchBuzz: IMatchQuestionBuzz | undefined = getBuzz(game, teams, buzz, isFirstBuzz);
             if (matchBuzz != undefined) {
                 matchQuestion.buzzes.push(matchBuzz);
                 updateAnswerCount(matchTeams, matchBuzz);
+
+                if (isOvertimeCycle) {
+                    updateOvertimeBuzzCount(overtimeBuzzCounts, matchBuzz);
+                }
             }
 
             isFirstBuzz = false;
@@ -847,9 +856,38 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
         tossupNumber++;
     }
 
+    // tossups_read counts every tossup read, including overtime ones, so any cycle past the format's regulation
+    // length has to be reported in overtime_tossups_read too. Otherwise stats programs treat the whole game as
+    // regulation and flag it for running longer than the format allows (e.g. a game ending on question 21 in a
+    // 20 tossup format).
+    const overtimeTossupsRead: number = Math.max(
+        0,
+        game.playableCycles.length - game.gameFormat.regulationTossupCount
+    );
+
+    if (overtimeTossupsRead > 0) {
+        // Only include the overtime breakdown when there was overtime, so regular games export the same QBJ as before
+        for (const matchTeam of matchTeams.values()) {
+            const countsByValue: Map<number, number> | undefined = overtimeBuzzCounts.get(matchTeam.team.name);
+            const overTimeBuzzes: IPlayerAnswerCount[] = [];
+
+            // Skip 0 point buzzes. They don't affect the score, and YellowFruit drops them when its rule set has no
+            // matching answer type
+            for (const [value, count] of countsByValue ?? []) {
+                if (value !== 0) {
+                    overTimeBuzzes.push({ answer: { value }, number: count });
+                }
+            }
+
+            // Descending by point value, matching how YellowFruit sorts its own answer counts (powers first)
+            overTimeBuzzes.sort((left, right) => right.answer.value - left.answer.value);
+            matchTeam.YfData = { overTimeBuzzes };
+        }
+    }
+
     const match: IMatch = {
-        // TODO: This should take the format into account, based on how long regular matches should be, plus overtimes
         tossups_read: game.playableCycles.length,
+        overtime_tossups_read: overtimeTossupsRead > 0 ? overtimeTossupsRead : undefined,
         match_teams: [...matchTeams.values()],
         match_questions: matchQuestions,
         notes: noteworthyEvents.length > 0 ? noteworthyEvents.join("\n") : undefined,
@@ -973,10 +1011,24 @@ function updateAnswerCount(matchTeams: Map<string, IMatchTeam>, buzz: IMatchQues
     answerCount.number++;
 }
 
+function updateOvertimeBuzzCount(
+    overtimeBuzzCounts: Map<string, Map<number, number>>,
+    buzz: IMatchQuestionBuzz
+): void {
+    let countsByValue: Map<number, number> | undefined = overtimeBuzzCounts.get(buzz.team.name);
+    if (countsByValue == undefined) {
+        countsByValue = new Map<number, number>();
+        overtimeBuzzCounts.set(buzz.team.name, countsByValue);
+    }
+
+    const points: number = buzz.result.value;
+    countsByValue.set(points, (countsByValue.get(points) ?? 0) + 1);
+}
+
 // Adapted from https://schema.quizbowl.technology/match
 export interface IMatch {
-    tossups_read: number;
-    overtime_tossups_read?: number; //(leave empty for now, until formats are more integrated)
+    tossups_read: number; // Includes overtime tossups
+    overtime_tossups_read?: number; // How many of tossups_read were played in overtime. Omitted when there's no overtime
     match_teams: IMatchTeam[];
     match_questions: IMatchQuestion[];
     notes?: string; // For storing protest info and thrown out Qs
@@ -1000,6 +1052,17 @@ export interface IMatchTeam {
     bonus_bounceback_points?: number;
     match_players: IMatchPlayer[];
     lineups: ILineup[]; // Lineups seen. New entries happen when there are changes in the lineup
+    YfData?: IYellowFruitMatchTeamData;
+}
+
+// Not part of the QBJ spec. YellowFruit checks that an overtime game was tied at the end of regulation by
+// subtracting each team's overtime points from its total, and it only learns those points from this block: its
+// importer never derives them from match_questions, and it writes but never reads correct_tossups_without_bonuses.
+// Without this, every point looks like a regulation point and YellowFruit warns that the score wasn't tied after
+// regulation. See MatchTeam's YfData and FileParsing's parseMatchTeam in https://github.com/ANadig/YellowFruit.
+export interface IYellowFruitMatchTeamData {
+    // YellowFruit tracks these per team rather than per player, since it doesn't record who buzzed in overtime
+    overTimeBuzzes: IPlayerAnswerCount[];
 }
 
 export interface IMatchPlayer {
