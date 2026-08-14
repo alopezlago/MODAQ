@@ -105,7 +105,7 @@ describe("BonusQuestionControllerTests", () => {
             expect(appState.game.getBonusIndex(0)).to.equal(2);
         });
 
-        it("Allows multiple sequential thrown out bonuses with later gameplay already recorded", () => {
+        it("Protest bonus throw-out records an explicit replacement and does not shift later cycles", () => {
             const appState: AppState = new AppState();
             appState.game.addNewPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
 
@@ -133,37 +133,47 @@ describe("BonusQuestionControllerTests", () => {
                 3
             );
 
-            // Later gameplay exists, which used to force the bonus throw-out default to the last bonus.
-            appState.game.cycles[1].addWrongBuzz(
-                { player: appState.game.players[1], points: -5, position: 0 },
+            // A later cycle already has its own bonus recorded. Throwing out the first bonus is a protest: that
+            // bonus must be replaced from the end of the packet without disturbing the bonus this cycle answered.
+            const secondCycle: Cycle = appState.game.cycles[1];
+            secondCycle.addCorrectBuzz(
+                { player: appState.game.players[1], points: 10, position: 0 },
                 1,
-                GameFormats.UndefinedGameFormat
+                GameFormats.UndefinedGameFormat,
+                1,
+                3
             );
 
+            expect(appState.game.getBonusIndex(0)).to.equal(0);
+            expect(appState.game.getBonusIndex(1)).to.equal(1);
+
             BonusQuestionController.throwOutBonus(appState, firstCycle, 0);
-            const firstDialog = appState.uiState.dialogState.throwOutQuestionDialog;
-            if (firstDialog == undefined || firstDialog.onConfirm == undefined) {
-                assert.fail("First throw out question dialog should've appeared");
+            const dialog = appState.uiState.dialogState.throwOutQuestionDialog;
+            if (dialog == undefined || dialog.onConfirm == undefined) {
+                assert.fail("Throw out question dialog should've appeared");
             }
 
-            expect(firstDialog.defaultReplacementNumber).to.equal(2);
-            firstDialog.onConfirm(undefined);
-
-            BonusQuestionController.throwOutBonus(appState, firstCycle, 1);
-            const secondDialog = appState.uiState.dialogState.throwOutQuestionDialog;
-            if (secondDialog == undefined || secondDialog.onConfirm == undefined) {
-                assert.fail("Second throw out question dialog should've appeared");
+            // The protest default is the packet's last bonus, recorded explicitly.
+            expect(dialog.defaultReplacementIsExplicit).to.equal(true);
+            expect(dialog.minQuestionNumber).to.equal(2);
+            if (dialog.defaultReplacementNumber == undefined) {
+                assert.fail("Protest bonus throw-out should have a default replacement number");
             }
+            expect(dialog.defaultReplacementNumber).to.equal(4);
 
-            expect(secondDialog.defaultReplacementNumber).to.equal(3);
-            secondDialog.onConfirm(undefined);
+            // Confirming the explicit default sends the 0-based replacement index, as the dialog does.
+            dialog.onConfirm(dialog.defaultReplacementNumber - 1);
 
             if (firstCycle.thrownOutBonuses == undefined) {
                 assert.fail("ThrownOutBonuses was undefined");
             }
 
-            expect(firstCycle.thrownOutBonuses.map((bonus) => bonus.questionIndex)).to.deep.equal([0, 1]);
-            expect(appState.game.getBonusIndex(0)).to.equal(2);
+            expect(firstCycle.thrownOutBonuses[0].questionIndex).to.equal(0);
+            expect(firstCycle.thrownOutBonuses[0].replacementQuestionIndex).to.equal(3);
+
+            // The thrown-out cycle now shows the last bonus, and the later cycle's bonus is unchanged (no shift).
+            expect(appState.game.getBonusIndex(0)).to.equal(3);
+            expect(appState.game.getBonusIndex(1)).to.equal(1);
         });
     });
 });

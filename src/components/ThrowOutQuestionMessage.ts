@@ -69,7 +69,7 @@ export function getThrowOutQuestionPrompt(
     const needsMoreQuestions: boolean = nextQuestionNumber > totalQuestionCount;
 
     const scenario: ThrowOutScenario = getScenario(appState, cycleIndex, questionType, gameFormat);
-    const useExplicitProtestReplacement: boolean = scenario === "protest" && questionType === "tossup";
+    const useExplicitProtestReplacement: boolean = scenario === "protest";
 
     let replacementIndex: number | undefined;
     if (needsMoreQuestions) {
