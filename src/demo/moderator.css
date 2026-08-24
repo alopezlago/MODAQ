@@ -288,3 +288,104 @@ body {
     cursor: pointer;
     flex-shrink: 0;
 }
+
+/* --- MASSINGER pick/ban screen --- */
+.ms-screen {
+    max-width: 720px;
+}
+.ms-clockline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    background: #fff4ce;
+    border: 1px solid #e1dfdd;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+.ms-clockline.expired {
+    background: #fde7e9;
+    border-color: #d13438;
+    color: #a4262c;
+    animation: ms-blink 1s steps(2) infinite;
+}
+@keyframes ms-blink {
+    50% { opacity: 0.45; }
+}
+.ms-clock {
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.ms-turnrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.ms-turn.active {
+    background: #0b6a0b;
+    color: #fff;
+    border-color: #0b6a0b;
+}
+.ms-list {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0;
+}
+.ms-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #ececec;
+    padding: 5px 6px;
+}
+.ms-list li.banned .ms-label {
+    text-decoration: line-through;
+    color: #888;
+}
+.ms-list li.protected {
+    background: #f1faf1;
+}
+.ms-list .ms-label {
+    flex: 1;
+}
+.ms-list .ms-mark {
+    font-size: 0.82rem;
+    color: #666;
+    white-space: nowrap;
+}
+.ms-actions {
+    display: flex;
+    gap: 6px;
+}
+.ms-actions button,
+.ms-controls button {
+    cursor: pointer;
+    background: #fff;
+    border: 1px solid #8a8886;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.85rem;
+}
+.ms-actions button:hover {
+    background: #f3f2f1;
+}
+.ms-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+.ms-controls button.primary,
+.ms-controls .primary {
+    background: #0b6a0b;
+    color: #fff;
+    border-color: #0b6a0b;
+    font-weight: 600;
+}
+.ms-doneline {
+    font-weight: 700;
+    color: #0b6a0b;
+}

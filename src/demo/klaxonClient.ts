@@ -38,6 +38,29 @@ export interface IRoomSettings {
     modaqLite?: boolean;
 }
 
+// One subcategory on a MASSINGER pick/ban board. `indexes` are 0-based tossup
+// indexes into the round's packet; a ban removes the LAST remaining index (so
+// a two-question subcategory keeps its earlier question until banned again).
+export interface IMassingerSubcat {
+    label: string;
+    indexes: number[];
+    protectedBy: number | null; // team index, or null
+    banned: number; // how many of `indexes` are banned (from the end)
+}
+
+export interface IMassingerState {
+    round: string;
+    status: "active" | "done";
+    teams: [string, string];
+    turn: number; // team index currently picking (moderator-controlled)
+    timerSec: number;
+    target: number; // tossups that must remain (20 in MASSINGER)
+    turnStartedAt?: number;
+    deadline: number | null; // server ms; null = no timer / done
+    subcats: IMassingerSubcat[];
+    actions: { type: "protect" | "ban"; label: string; team: number; at: number }[];
+}
+
 export interface IPublicRoomState {
     code: string;
     name: string;
@@ -47,6 +70,8 @@ export interface IPublicRoomState {
     settings: IRoomSettings;
     // Server time of the buzz still waiting on the moderator (null when clear).
     lastBuzzAt?: number | null;
+    // MASSINGER pick/ban board (null outside the pick/ban phase).
+    massinger?: IMassingerState | null;
     queue: IBuzzQueueEntry[];
     members: IRoomMember[];
 }
@@ -234,6 +259,20 @@ export class KlaxonClient {
     public clearQueue(): void {
         this.socket?.emit("reader_action", { action: "clear_queue" });
     }
+
+    // MASSINGER pick/ban actions ride the staff-gated reader_action channel.
+    // Resolves with the server's ack so the UI can surface rule violations.
+    public massinger(payload: Record<string, unknown>): Promise<{ ok?: boolean; error?: string }> {
+        return new Promise((resolve) => {
+            if (this.socket == undefined) {
+                resolve({ error: "not_connected" });
+                return;
+            }
+            this.socket.emit("reader_action", payload, (resp: { ok?: boolean; error?: string } | undefined) =>
+                resolve(resp ?? {})
+            );
+        });
+    }
 }
 
 // --- REST helpers ----------------------------------------------------------
@@ -342,6 +381,10 @@ export const KlaxonApi = {
     getTournament(tcode: string): Promise<ITournamentInfo> {
         return rest("GET", `/api/tournaments/${tcode}`);
     },
+    // The persisted pick/ban board for a round (massinger: null when none).
+    getMassinger(code: string, token: string | null, round: string): Promise<{ massinger: IMassingerState | null }> {
+        return rest("GET", `/api/rooms/${code}/massinger/${encodeURIComponent(round)}?${q(token)}`);
+    },
 };
 
 export interface IServerErratum {
@@ -357,6 +400,9 @@ export interface IServerErratum {
 export interface ITournamentFormat {
     hasBonuses: boolean;
     tossupScheme: string; // "15/10/-5" | "20/15/10/-5" | "20/10/0"
+    // MASSINGER pick/ban before each game (subcategory protect/ban to 20).
+    massinger?: boolean;
+    massingerTimerSec?: number;
 }
 
 export interface ITournamentInfo {

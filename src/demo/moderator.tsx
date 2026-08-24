@@ -17,6 +17,7 @@ import { IStatus } from "../IStatus";
 import { BuzzPanel } from "./BuzzPanel";
 import {
     IDirectorMessage,
+    IMassingerState,
     IPublicRoomState,
     IServerErratum,
     ITournamentFormat,
@@ -55,6 +56,8 @@ function gameFormatFor(format: ITournamentFormat | undefined): IGameFormat | und
         ...GameFormats.ACFGameFormat,
         powers,
         negValue,
+        // A tournament without bonuses reads tossups only, so no bonus belongs on screen
+        tossupsOnly: !format.hasBonuses,
         displayName: format.tossupScheme + (format.hasBonuses ? "" : " (no bonuses)"),
     };
 }
@@ -88,6 +91,73 @@ function teamsFromRoster(players: IPlayer[]): string[] {
     return seen;
 }
 
+// --- MASSINGER pick/ban helpers -------------------------------------------
+
+const MASSINGER_TARGET = 20;
+
+// The subcategory of a tossup comes from its packet metadata, e.g.
+// "<Amogh Kulkarni, History - European>" or "Science - Biology": strip the
+// angle brackets and take the last comma-separated segment.
+function subcatOf(metadata: string | undefined): string {
+    let text = (metadata || "").trim().replace(/^</, "").replace(/>$/, "").trim();
+    const parts = text.split(",");
+    text = parts[parts.length - 1].trim();
+    return text || "Uncategorized";
+}
+
+// Group the packet's tossups by subcategory, in packet order.
+function deriveSubcats(packet: IPacket): { label: string; indexes: number[] }[] {
+    const byLabel = new Map<string, number[]>();
+    packet.tossups.forEach((tossup, index) => {
+        const label = subcatOf(tossup.metadata);
+        const list = byLabel.get(label);
+        if (list) {
+            list.push(index);
+        } else {
+            byLabel.set(label, [index]);
+        }
+    });
+    return Array.from(byLabel.entries()).map(([label, indexes]) => ({ label, indexes }));
+}
+
+// True when this game should run the pick/ban phase: the tournament format
+// asks for it, the packet is tagged with (multiple) subcategories, and there
+// is actually something to ban.
+function massingerApplies(format: ITournamentFormat | undefined, packet: IPacket): boolean {
+    return (
+        format?.massinger === true &&
+        packet.tossups.length > MASSINGER_TARGET &&
+        deriveSubcats(packet).length >= 2
+    );
+}
+
+// Apply a finished (or partial) board to the packet: each subcategory loses
+// its LAST `banned` questions. Bonuses are filtered in lockstep only when they
+// pair 1:1 with tossups; a custom readingOrder can't survive index changes, so
+// it is dropped (per the YAPP2 spec, discard the whole field).
+function applyMassinger(packet: IPacket, board: IMassingerState): IPacket {
+    const removed = new Set<number>();
+    for (const subcat of board.subcats) {
+        for (let i = 0; i < subcat.banned; i++) {
+            removed.add(subcat.indexes[subcat.indexes.length - 1 - i]);
+        }
+    }
+    const filtered: IPacket = {
+        ...packet,
+        tossups: packet.tossups.filter((_, index) => !removed.has(index)),
+    };
+    if (packet.bonuses && packet.bonuses.length === packet.tossups.length) {
+        filtered.bonuses = packet.bonuses.filter((_, index) => !removed.has(index));
+    }
+    if (filtered.readingOrder) {
+        delete filtered.readingOrder;
+    }
+    return filtered;
+}
+
+const massingerRemaining = (board: IMassingerState): number =>
+    board.subcats.reduce((sum, subcat) => sum + (subcat.indexes.length - subcat.banned), 0);
+
 function serverErratumToErratum(e: IServerErratum): IErratum {
     return {
         questionNumber: e.questionNumber,
@@ -100,7 +170,9 @@ function serverErratumToErratum(e: IServerErratum): IErratum {
 
 function Moderator(): JSX.Element {
     const clientRef = React.useRef<KlaxonClient | undefined>(undefined);
-    const [phase, setPhase] = React.useState<"connecting" | "error" | "setup" | "reading" | "lite" | "account">("connecting");
+    const [phase, setPhase] = React.useState<
+        "connecting" | "error" | "setup" | "pickban" | "reading" | "lite" | "account"
+    >("connecting");
     const [fatal, setFatal] = React.useState<string>("");
     // When the fix for an error is signing in, the error view offers the link.
     const [signInUrl, setSignInUrl] = React.useState<string | null>(null);
@@ -121,6 +193,11 @@ function Moderator(): JSX.Element {
     const [starting, setStarting] = React.useState<boolean>(false);
 
     const [config, setConfig] = React.useState<IReadingConfig | undefined>(undefined);
+
+    // MASSINGER: the loaded-but-not-yet-filtered packet waiting on pick/ban.
+    const [pickban, setPickban] = React.useState<
+        { round: string; packet: IPacket; rosters: IPlayer[] } | undefined
+    >(undefined);
 
     // Connect + bootstrap once.
     React.useEffect(() => {
@@ -256,9 +333,19 @@ function Moderator(): JSX.Element {
             return false;
         }
         try {
-            const packet = await KlaxonApi.getPacket<IPacket>(code, client.token, liveRound);
+            let packet = await KlaxonApi.getPacket<IPacket>(code, client.token, liveRound);
             if (!Array.isArray(packet.tossups)) {
                 return false;
+            }
+            // A MASSINGER game reads the pick/ban-filtered packet, so re-apply
+            // the round's persisted board when there is one.
+            try {
+                const { massinger } = await KlaxonApi.getMassinger(code, client.token, liveRound);
+                if (massinger && massinger.status === "done") {
+                    packet = applyMassinger(packet, massinger);
+                }
+            } catch {
+                /* no board (or fetch hiccup): read the full packet */
             }
             await enterReading(client, liveRound, packet, boot.rosterList, boot.format);
             return true;
@@ -392,7 +479,13 @@ function Moderator(): JSX.Element {
         try {
             const packet = await loadPacketForStart(client, roundLabel);
             const freshRoster = await refreshCentralRoster(client);
-            await enterReading(client, roundLabel, packet, freshRoster ?? rosterPlayers, tournamentFormat);
+            const rosters = freshRoster ?? rosterPlayers;
+            if (massingerApplies(tournamentFormat, packet)) {
+                setPickban({ round: roundLabel, packet, rosters });
+                setPhase("pickban");
+                return;
+            }
+            await enterReading(client, roundLabel, packet, rosters, tournamentFormat);
         } catch (error) {
             setSetupMsg((error as Error).message);
         } finally {
@@ -546,6 +639,36 @@ function Moderator(): JSX.Element {
         );
     }
 
+    if (phase === "pickban" && pickban) {
+        return (
+            <PickBan
+                code={code}
+                client={clientRef.current!}
+                round={pickban.round}
+                packet={pickban.packet}
+                teams={teamsFromRoster(pickban.rosters)}
+                timerSecDefault={tournamentFormat?.massingerTimerSec ?? 30}
+                roomState={roomState}
+                onCancel={() => {
+                    clientRef.current?.massinger({ action: "massinger_cancel", round: pickban.round });
+                    setPickban(undefined);
+                    setPhase("setup");
+                }}
+                onReady={async (board) => {
+                    const client = clientRef.current;
+                    if (!client) return;
+                    await enterReading(
+                        client,
+                        pickban.round,
+                        applyMassinger(pickban.packet, board),
+                        pickban.rosters,
+                        tournamentFormat
+                    );
+                }}
+            />
+        );
+    }
+
     // phase === "reading"
     return (
         <Reading
@@ -564,6 +687,243 @@ function Moderator(): JSX.Element {
                 setPhase("setup");
             }}
         />
+    );
+}
+
+// --- MASSINGER pick/ban screen ---------------------------------------------
+// The moderator drives the whole phase: which team is on the clock, applying
+// each spoken protect/ban, and enforcing the pick timer. The board itself is
+// server-authoritative (broadcast to players through room state), persisted
+// per room+round so a reload resumes it.
+function PickBan(props: {
+    code: string;
+    client: KlaxonClient;
+    round: string;
+    packet: IPacket;
+    teams: string[];
+    timerSecDefault: number;
+    roomState: IPublicRoomState | undefined;
+    onCancel: () => void;
+    onReady: (board: IMassingerState) => void;
+}): JSX.Element {
+    const { client, round, packet, teams, timerSecDefault, roomState, onCancel, onReady } = props;
+    const board: IMassingerState | undefined =
+        roomState?.massinger && roomState.massinger.round === round ? roomState.massinger : undefined;
+
+    const [teamA, setTeamA] = React.useState(teams[0] ?? "");
+    const [teamB, setTeamB] = React.useState(teams[1] ?? "");
+    const [timerSec, setTimerSec] = React.useState(timerSecDefault);
+    const [msg, setMsg] = React.useState("");
+    const [probed, setProbed] = React.useState(false);
+    const [starting, setStarting] = React.useState(false);
+
+    // Auto-resume a board persisted for this round (reload / server restart).
+    React.useEffect(() => {
+        client.massinger({ action: "massinger_start", round, resumeOnly: true }).then(() => setProbed(true));
+    }, [client, round]);
+
+    // Tick every 250ms while a deadline is live so the countdown moves.
+    const [, forceTick] = React.useReducer((n: number) => n + 1, 0);
+    React.useEffect(() => {
+        if (board?.status !== "active" || board.deadline == null) {
+            return;
+        }
+        const timer = setInterval(forceTick, 250);
+        return () => clearInterval(timer);
+    }, [board?.status, board?.deadline]);
+
+    const send = async (payload: Record<string, unknown>): Promise<void> => {
+        setMsg("");
+        const resp = await client.massinger(payload);
+        if (resp.error) {
+            setMsg("Server refused that: " + resp.error);
+        }
+    };
+
+    const begin = async (fresh: boolean): Promise<void> => {
+        setStarting(true);
+        setMsg("");
+        try {
+            const resp = await client.massinger({
+                action: "massinger_start",
+                fresh,
+                round,
+                subcats: deriveSubcats(packet),
+                teams: [teamA.trim() || "Team A", teamB.trim() || "Team B"],
+                timerSec,
+                target: MASSINGER_TARGET,
+            });
+            if (resp.error) {
+                setMsg("Couldn't start the pick/ban: " + resp.error);
+            }
+        } finally {
+            setStarting(false);
+        }
+    };
+
+    // --- start form (no board yet) ---
+    if (!board) {
+        return (
+            <div className="mod-center mod-setup">
+                <h1>MASSINGER pick/ban — Round {round}</h1>
+                <p className="hint">
+                    {packet.tossups.length} tossups in the packet. Teams alternate protecting and banning
+                    subcategories until {MASSINGER_TARGET} remain; you apply each team&apos;s calls below.
+                </p>
+                <label htmlFor="ms-team-a">Team picking first</label>
+                <input
+                    id="ms-team-a"
+                    type="text"
+                    list="ms-team-options"
+                    value={teamA}
+                    onChange={(e) => setTeamA(e.target.value)}
+                />
+                <label htmlFor="ms-team-b">Other team</label>
+                <input
+                    id="ms-team-b"
+                    type="text"
+                    list="ms-team-options"
+                    value={teamB}
+                    onChange={(e) => setTeamB(e.target.value)}
+                />
+                <datalist id="ms-team-options">
+                    {teams.map((team) => (
+                        <option key={team} value={team} />
+                    ))}
+                </datalist>
+                <label htmlFor="ms-timer">Seconds per pick (0 = no timer)</label>
+                <input
+                    id="ms-timer"
+                    type="number"
+                    min={0}
+                    max={300}
+                    value={timerSec}
+                    onChange={(e) => setTimerSec(Number(e.target.value))}
+                />
+                <div>
+                    <button className="primary" disabled={!probed || starting} onClick={() => begin(false)}>
+                        {probed ? "Begin pick/ban" : "Checking for a saved board…"}
+                    </button>{" "}
+                    <button onClick={onCancel}>Back to setup</button>
+                </div>
+                <p className="msg">{msg}</p>
+            </div>
+        );
+    }
+
+    // --- live board ---
+    const remaining = massingerRemaining(board);
+    const bansLeft = remaining - board.target;
+    const active = board.status === "active";
+    const secondsLeft =
+        board.deadline != null ? Math.max(0, Math.ceil((board.deadline - Date.now()) / 1000)) : null;
+    const expired = active && secondsLeft === 0;
+
+    return (
+        <div className="mod-center mod-setup ms-screen">
+            <h1>MASSINGER pick/ban — Round {round}</h1>
+
+            {active ? (
+                <>
+                    <div className={"ms-clockline" + (expired ? " expired" : "")}>
+                        <span>
+                            <strong>{board.teams[board.turn]}</strong> is picking — protect or ban a subcategory.
+                        </span>
+                        {secondsLeft != null && (
+                            <span className="ms-clock">{expired ? "TIME\u2019S UP" : `${secondsLeft}s`}</span>
+                        )}
+                    </div>
+                    <div className="ms-turnrow">
+                        <span className="hint">Team on the clock:</span>
+                        {[0, 1].map((team) => (
+                            <button
+                                key={team}
+                                className={board.turn === team ? "ms-turn active" : "ms-turn"}
+                                onClick={() => send({ action: "massinger_set_turn", team })}
+                            >
+                                {board.teams[team]}
+                            </button>
+                        ))}
+                    </div>
+                    <p className="hint">
+                        {remaining} questions remain — {bansLeft} more ban{bansLeft === 1 ? "" : "s"} to reach{" "}
+                        {board.target}. Protecting a subcategory makes every question in it unbannable; banning
+                        removes one question (a doubled subcategory keeps its other question).
+                    </p>
+                </>
+            ) : (
+                <p className="ms-doneline">
+                    Pick/ban complete — {remaining} questions remain.
+                </p>
+            )}
+
+            <ul className="ms-list">
+                {board.subcats.map((subcat) => {
+                    const left = subcat.indexes.length - subcat.banned;
+                    const isProtected = subcat.protectedBy != null;
+                    const gone = left === 0;
+                    const status = gone
+                        ? "\u2715 banned"
+                        : isProtected
+                        ? `\u{1F6E1} ${board.teams[subcat.protectedBy!]}`
+                        : subcat.banned > 0
+                        ? `${subcat.banned} of ${subcat.indexes.length} banned`
+                        : subcat.indexes.length > 1
+                        ? `\u00d7${subcat.indexes.length}`
+                        : "";
+                    return (
+                        <li key={subcat.label} className={gone ? "banned" : isProtected ? "protected" : ""}>
+                            <span className="ms-label">{subcat.label}</span>
+                            <span className="ms-mark">{status}</span>
+                            {active && !gone && !isProtected && (
+                                <span className="ms-actions">
+                                    <button
+                                        onClick={() =>
+                                            send({ action: "massinger_pick", type: "protect", label: subcat.label })
+                                        }
+                                    >
+                                        Protect
+                                    </button>
+                                    <button
+                                        onClick={() =>
+                                            send({ action: "massinger_pick", type: "ban", label: subcat.label })
+                                        }
+                                    >
+                                        Ban
+                                    </button>
+                                </span>
+                            )}
+                        </li>
+                    );
+                })}
+            </ul>
+
+            <div className="ms-controls">
+                {board.status === "done" ? (
+                    <button className="primary" onClick={() => onReady(board)}>
+                        Start reading ({remaining} questions)
+                    </button>
+                ) : (
+                    <button className={expired ? "primary" : ""} onClick={() => send({ action: "massinger_random_ban" })}>
+                        Random ban{expired ? " (time expired)" : ""}
+                    </button>
+                )}
+                <button disabled={board.actions.length === 0} onClick={() => send({ action: "massinger_undo" })}>
+                    Undo last
+                </button>
+                <button
+                    onClick={() => {
+                        if (window.confirm("Restart the pick/ban from scratch? All picks so far are lost.")) {
+                            begin(true);
+                        }
+                    }}
+                >
+                    Restart
+                </button>
+                <button onClick={onCancel}>Back to setup</button>
+            </div>
+            <p className="msg">{msg}</p>
+        </div>
     );
 }
 
