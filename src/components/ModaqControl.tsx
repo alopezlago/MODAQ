@@ -17,16 +17,17 @@ import {
     IPalette,
 } from "@fluentui/react";
 import { AsyncTrunk } from "mobx-sync";
-import { configure, reaction } from "mobx";
+import { comparer, configure, reaction } from "mobx";
 import { observer } from "mobx-react-lite";
 import he from "he";
 
+import * as CycleChooserController from "./CycleChooserController";
 import * as PacketLoaderController from "./PacketLoaderController";
 import * as TossupQuestionController from "./TossupQuestionController";
 import { StateProvider } from "../contexts/StateContext";
-import { ErrataContext, IErrataContextValue } from "../contexts/ErrataContext";
 import { IErratum } from "../state/IErratum";
 import { TiebreakerContext, ITiebreakerContextValue, ITiebreakerItem } from "../contexts/TiebreakerContext";
+import { NewGameNoticeContext, INewGameNoticeContextValue } from "../contexts/NewGameNoticeContext";
 import * as QBJ from "../qbj/QBJ";
 import { IMatch } from "../qbj/QBJ";
 import { AppState } from "../state/AppState";
@@ -105,63 +106,42 @@ const darkModePalette: Partial<IPalette> = {
 export const ModaqControl = observer(function ModaqControl(props: IModaqControlProps): JSX.Element {
     const [appState]: [AppState, React.Dispatch<React.SetStateAction<AppState>>] = React.useState(() => new AppState());
 
-    // Errata are host-owned (persisted to the tournament by the embedder), kept
-    // in plain React state so they're independent of the game/persistence.
-    const [errata, setErrata] = React.useState<IErratum[]>(props.errata ?? []);
-    const onErrataChange = props.onErrataChange;
-
-    // Adopt errata the host passes in (e.g. loaded from the server) when that
-    // reference changes.
+    // Errata the host owns (e.g. loaded from its server): adopt them whenever
+    // that reference changes. Starting a new game clears errata, since they
+    // describe the packet that was just played, so re-seed the host's when that
+    // happens -- they're the host's to keep, not the game's.
+    const hostErrata: IErratum[] | undefined = props.errata;
     React.useEffect(() => {
-        if (props.errata != undefined) {
-            setErrata(props.errata);
+        if (hostErrata == undefined) {
+            return;
         }
-    }, [props.errata]);
 
-    const setErratum = React.useCallback(
-        (erratum: IErratum): void => {
-            setErrata((previous) => {
-                const next: IErratum[] = [
-                    ...previous.filter(
-                        (existing) =>
-                            !(
-                                existing.questionNumber === erratum.questionNumber &&
-                                existing.questionType === erratum.questionType
-                            )
-                    ),
-                    { ...erratum, at: erratum.at ?? Date.now() },
-                ];
-                if (onErrataChange) {
-                    onErrataChange(next);
+        appState.errata.setErrata(hostErrata);
+        return reaction(
+            () => appState.game.isLoaded,
+            (isLoaded) => {
+                if (isLoaded && appState.errata.errata.length === 0) {
+                    appState.errata.setErrata(hostErrata);
                 }
-                return next;
-            });
-        },
-        [onErrataChange]
-    );
+            }
+        );
+    }, [appState, hostErrata]);
 
-    const removeErratum = React.useCallback(
-        (questionNumber: number, questionType: "tossup" | "bonus"): void => {
-            setErrata((previous) => {
-                const next: IErratum[] = previous.filter(
-                    (existing) =>
-                        !(existing.questionNumber === questionNumber && existing.questionType === questionType)
-                );
-                if (onErrataChange) {
-                    onErrataChange(next);
-                }
-                return next;
-            });
-        },
-        [onErrataChange]
-    );
+    // Hand the host every change the moderator makes, so it can save errata with
+    // the tournament.
+    const onErrataChange = props.onErrataChange;
+    React.useEffect(() => {
+        if (onErrataChange == undefined) {
+            return;
+        }
 
-    // Only expose the errata context (and thus the errata UI) when the host opts
-    // in by providing an onErrataChange handler.
-    const errataValue: IErrataContextValue | undefined = React.useMemo(
-        () => (onErrataChange ? { errata, setErratum, removeErratum } : undefined),
-        [onErrataChange, errata, setErratum, removeErratum]
-    );
+        return reaction(
+            () => appState.errata.errata.map((erratum) => ({ ...erratum })),
+            (errata) => onErrataChange(errata),
+            // Otherwise adopting the host's own errata (above) would echo them right back at it
+            { equals: comparer.structural }
+        );
+    }, [appState, onErrataChange]);
 
     // Tiebreakers: append the chosen question to the packet (so the next/thrown-
     // out tossup reads it) and report which teams heard it.
@@ -343,21 +323,26 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
         [appState.uiState.useDarkMode]
     );
 
+    const newGameNoticeValue: INewGameNoticeContextValue = React.useMemo(
+        () => ({ notice: props.newGameNotice }),
+        [props.newGameNotice]
+    );
+
     const applyTo = props.applyStylingToRoot ? "body" : "element";
 
     return (
         <ErrorBoundary appState={appState}>
             <StateProvider appState={appState}>
-                <ErrataContext.Provider value={errataValue}>
-                    <TiebreakerContext.Provider value={tiebreakerValue}>
-                        <ThemeProvider theme={theme} applyTo={applyTo}>
-                            <div className="modaq-control">
-                                <GameViewer />
-                                <ModalDialogContainer />
-                            </div>
-                        </ThemeProvider>
-                    </TiebreakerContext.Provider>
-                </ErrataContext.Provider>
+                <NewGameNoticeContext.Provider value={newGameNoticeValue}>
+                <TiebreakerContext.Provider value={tiebreakerValue}>
+                    <ThemeProvider theme={theme} applyTo={applyTo}>
+                        <div className="modaq-control">
+                            <GameViewer />
+                            <ModalDialogContainer />
+                        </div>
+                    </ThemeProvider>
+                </TiebreakerContext.Provider>
+                </NewGameNoticeContext.Provider>
             </StateProvider>
         </ErrorBoundary>
     );
@@ -389,8 +374,9 @@ export interface IModaqControlProps {
     errata?: IErratum[];
 
     /**
-     * Called whenever the moderator adds, edits, or removes an erratum, with the full new errata list. Providing this
-     * handler is what enables the errata UI.
+     * Called whenever the moderator adds, edits, or removes an erratum, with the full new errata list. The errata UI
+     * is always available; this is for hosts that want to save errata themselves instead of (or in addition to)
+     * having the moderator export them to a file.
      */
     onErrataChange?: (errata: IErratum[]) => void;
 
@@ -440,7 +426,23 @@ export interface IModaqControlProps {
      * dialog is opened prefilled with this packet and — when `rosters` is given — its player pool, so the host can use
      * MODAQ's native team/player entry (with reordering) instead of a custom form.
      */
-    newGameOnLoad?: { packet: IPacket; packetName?: string; rosters?: IPlayer[] };
+    newGameOnLoad?: {
+        packet: IPacket;
+        packetName?: string;
+        rosters?: IPlayer[];
+        /**
+         * Teams to prefill the dialog's manual entry with, so a host that already knows who is playing (e.g. it
+         * asked earlier in its own flow) doesn't make the moderator type them again. Takes precedence over
+         * `rosters`.
+         */
+        teams?: { name: string; players: string[] }[];
+    };
+
+    /**
+     * Content rendered at the top of the New Game dialog, for a host that wants the moderator to review (or go back
+     * and change) something it decided before the game starts.
+     */
+    newGameNotice?: React.ReactNode;
 
     /**
      * The packet for the current game. This should only be set once.
@@ -495,6 +497,18 @@ function maybeOpenHostNewGame(appState: AppState, props: IModaqControlProps): vo
     }
     if (spec.packetName != undefined) {
         appState.uiState.setPacketFilename(spec.packetName);
+    }
+
+    // Teams the host already knows: fill in MODAQ's manual entry so the moderator only has to confirm them.
+    const teams = (spec.teams ?? []).filter((team) => team != undefined && team.name !== "");
+    if (teams.length >= 2) {
+        appState.uiState.setPendingNewGameType(PendingGameType.Manual);
+        appState.uiState.setPendingNewGameManualTeams(
+            teams[0].players.map((name) => new Player(name, teams[0].name, /* isStarter */ true)),
+            teams[1].players.map((name) => new Player(name, teams[1].name, /* isStarter */ true))
+        );
+        appState.uiState.dialogState.showNewGameDialog();
+        return;
     }
 
     const rosters = (spec.rosters ?? []).filter((player) => player != undefined);
@@ -723,8 +737,9 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
             break;
 
         case "N":
-            if (appState.uiState.cycleIndex + 1 < appState.game.playableCycles.length) {
-                appState.uiState.nextCycle();
+            // Same step-by-step order the Next button follows, so the shortcut doesn't skip a bonus
+            if (!CycleChooserController.isOnLastStep(appState)) {
+                CycleChooserController.next(appState);
             }
             event.preventDefault();
             event.stopPropagation();
@@ -732,7 +747,7 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
             break;
 
         case "P":
-            appState.uiState.previousCycle();
+            CycleChooserController.previous(appState);
             event.preventDefault();
             event.stopPropagation();
             break;

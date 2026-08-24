@@ -1,5 +1,6 @@
 import { assertNever } from "@fluentui/react";
 
+import * as GameFormats from "../state/GameFormats";
 import * as PlayerToColumnMap from "./PlayerToColumnMap";
 import { UIState } from "../state/UIState";
 import { ExportState, LoadingState, SheetType } from "../state/SheetState";
@@ -227,6 +228,7 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
 
         const buzzPoints: number[] = [];
 
+        const negsForEveryWrongBuzz: boolean = GameFormats.negsForEveryWrongBuzz(game.gameFormat);
         if (cycle.wrongBuzzes) {
             const orderedWrongBuzzes: ITossupAnswerEvent[] = cycle.orderedBuzzes.slice(0, cycle.wrongBuzzes.length);
 
@@ -234,8 +236,9 @@ export async function exportToSheet(appState: AppState, sheetsApi: ISheetsApi = 
             for (const buzz of orderedWrongBuzzes) {
                 let points: number = game.getBuzzValue(buzz);
 
-                // Until the game format can handle multiple negs, only treat the first incorrect buzz as a neg
-                if (!isFirstBuzz && points == game.gameFormat.negValue) {
+                // Most formats only treat the first incorrect buzz as a neg; formats like IPNCT neg every
+                // player who buzzes early
+                if (!isFirstBuzz && points == game.gameFormat.negValue && !negsForEveryWrongBuzz) {
                     points = 0;
                 }
 

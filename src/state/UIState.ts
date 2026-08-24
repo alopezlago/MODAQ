@@ -30,6 +30,10 @@ import { IPacketParseStatus } from "./IPacketParseStatus";
 
 const DefaultFontFamily = "Times New Roman, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, serif";
 
+// How many blank competitor entries an individual game starts with. IPNCT rooms typically hold eight to ten
+// players, and the reader can add more (up to the format's maximum) or leave the extras blank.
+const defaultIndividualPlayerCount = 8;
+
 export class UIState {
     @ignore
     public buildVersion: string | undefined;
@@ -127,6 +131,23 @@ export class UIState {
     // to set the buzz point there, instead of opening the buzz menu at the detected position right away.
     public typeBuzzIndexMode: boolean;
 
+    // When true, the space above the words that the numbers use isn't held open while reading, so the question
+    // keeps its normal line spacing. The numbers still appear when the moderator presses Space, but showing them
+    // shifts the text down, which is what reserving the space avoids.
+    public collapseBuzzIndexSpacing: boolean;
+
+    // When true, YAPP2 pronunciation anchors (the <pg>-tagged words a guide is coming for) are drawn like any
+    // other word, instead of being colored maroon. The guides themselves still read as usual.
+    public hidePronunciationAnchors: boolean;
+
+    // When true, the reader sees one question at a time -- the tossup, then its bonus only if the tossup was
+    // converted -- instead of the tossup and bonus together. Previous/Next walk that reading order.
+    public oneQuestionAtATime: boolean;
+
+    // In that mode, whether the current step is the cycle's bonus rather than its tossup. Meaningless when the
+    // cycle has no bonus to read, so read it through CycleChooserController rather than on its own.
+    public showingBonus: boolean;
+
     // When true, microphone tracking transcribes with OpenAI's Whisper running in the browser (transformers.js)
     // instead of the Web Speech API / Vosk. More accurate, fully on-device, but heavier (model download) and
     // slower, and not streaming. Requires reloading the tossup (toggling mic tracking) to take effect.
@@ -135,6 +156,12 @@ export class UIState {
     // Whether we're currently waiting for the user to type a word number (after pressing Space in the mode above)
     @ignore
     public isEnteringBuzzIndex: boolean;
+
+    // Whether the numbers above the words are showing. They only appear once the moderator presses Space, and
+    // stay up through the buzz menu that word-number entry opens, so the numbers aren't a constant distraction
+    // while reading.
+    @ignore
+    public buzzIndexesVisible: boolean;
 
     // The digits typed so far while entering a word number
     @ignore
@@ -220,7 +247,12 @@ export class UIState {
         this.instantReaderHighlight = false;
         this.buzzPointWordOffset = 0;
         this.typeBuzzIndexMode = false;
+        this.collapseBuzzIndexSpacing = false;
+        this.hidePronunciationAnchors = false;
+        this.oneQuestionAtATime = false;
+        this.showingBonus = false;
         this.isEnteringBuzzIndex = false;
+        this.buzzIndexesVisible = false;
         this.buzzIndexEntryValue = "";
         this.useWhisperWebEngine = false;
         this.showReaderFollowerDebug = true;
@@ -241,6 +273,29 @@ export class UIState {
         this.sheetsState = new SheetState();
     }
 
+    // Individual games start with the smallest roster the rules allow, and the reader adds the rest
+    private static createIndividualPlayers(): Player[] {
+        const players: Player[] = [];
+        for (let i = 0; i < defaultIndividualPlayerCount; i++) {
+            players.push(new Player("", "", /* isStarter */ true));
+        }
+
+        return players;
+    }
+
+    // Replace both manual rosters at once, for a host that already knows the teams (see ModaqControl's
+    // newGameOnLoad.teams). Creates the pending game if there isn't one, so it can be called before the dialog opens.
+    public setPendingNewGameManualTeams(firstTeamPlayers: Player[], secondTeamPlayers: Player[]): void {
+        if (this.pendingNewGame == undefined) {
+            this.createPendingNewGame();
+        }
+        if (this.pendingNewGame?.type !== PendingGameType.Manual) {
+            return;
+        }
+        this.pendingNewGame.manual.firstTeamPlayers = firstTeamPlayers;
+        this.pendingNewGame.manual.secondTeamPlayers = secondTeamPlayers;
+    }
+
     // TODO: Feels off. Could generalize to array of teams
     public addPlayerToFirstTeamInPendingNewGame(player: Player): void {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
@@ -251,6 +306,28 @@ export class UIState {
     public addPlayerToSecondTeamInPendingNewGame(player: Player): void {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
             this.pendingNewGame.manual.secondTeamPlayers.push(player);
+        }
+    }
+
+    // Each competitor in an individual game is their own one-player team, so their team name follows their name
+    public addIndividualPlayerToPendingNewGame(): void {
+        if (this.pendingNewGame?.type !== PendingGameType.Manual) {
+            return;
+        }
+
+        const individualPlayers: Player[] = this.pendingNewGame.manual.individualPlayers;
+        if (individualPlayers.length >= GameFormats.getMaximumTeamCount(this.pendingNewGame.gameFormat)) {
+            return;
+        }
+
+        individualPlayers.push(new Player("", "", /* isStarter */ true));
+    }
+
+    public removeIndividualPlayerFromPendingNewGame(player: Player): void {
+        if (this.pendingNewGame?.type === PendingGameType.Manual) {
+            this.pendingNewGame.manual.individualPlayers = this.pendingNewGame.manual.individualPlayers.filter(
+                (p) => p !== player
+            );
         }
     }
 
@@ -282,6 +359,7 @@ export class UIState {
                 manual: {
                     firstTeamPlayers,
                     secondTeamPlayers,
+                    individualPlayers: UIState.createIndividualPlayers(),
                 },
             };
         } else {
@@ -296,6 +374,9 @@ export class UIState {
                         ...this.pendingNewGame,
                         manual: {
                             ...this.pendingNewGame.manual,
+                            // Older persisted pending games predate individual formats
+                            individualPlayers:
+                                this.pendingNewGame.manual.individualPlayers ?? UIState.createIndividualPlayers(),
                             cycles: undefined,
                         },
                     };
@@ -498,6 +579,38 @@ export class UIState {
         }
     }
 
+    // Adds or removes a roster player from an individual game's field. Competitors play for themselves, so the
+    // player is copied with their own name as their team name rather than the school they registered under.
+    public toggleRegistrationIndividualPlayer(player: Player): void {
+        if (this.pendingNewGame?.type !== PendingGameType.QBJRegistration) {
+            return;
+        }
+
+        const registration = this.pendingNewGame.registration;
+        const selected: Player[] = registration.individualPlayers ?? [];
+        const existing: Player | undefined = selected.find((p) => p.name === player.name);
+
+        if (existing != undefined) {
+            registration.individualPlayers = selected.filter((p) => p !== existing);
+            return;
+        }
+
+        if (selected.length >= GameFormats.getMaximumTeamCount(this.pendingNewGame.gameFormat)) {
+            return;
+        }
+
+        registration.individualPlayers = selected.concat(
+            new Player(player.name, player.name, /* isStarter */ true)
+        );
+    }
+
+    // Sets the competitors of an individual game, where each player is their own one-player team
+    public setPendingNewGameIndividualPlayers(players: Player[]): void {
+        if (this.pendingNewGame?.type === PendingGameType.Manual) {
+            this.pendingNewGame.manual.individualPlayers = players;
+        }
+    }
+
     public setPendingNewGameFirstTeamPlayers(players: Player[]): void {
         if (this.pendingNewGame?.type == undefined) {
             return;
@@ -558,11 +671,16 @@ export class UIState {
         if (newIndex >= 0) {
             this.cycleIndex = newIndex;
 
+            // Every way of changing questions lands on that question's tossup; the bonus step is only reached by
+            // going forward through it (see CycleChooserController)
+            this.showingBonus = false;
+
             // Clear the selected words, since it's not relevant to the next question
             this.selectedWordIndex = -1;
 
             // Any in-progress word-number entry belongs to the previous question
             this.endBuzzIndexEntry();
+            this.hideBuzzIndexes();
         }
     }
 
@@ -719,7 +837,29 @@ export class UIState {
         // Don't leave a half-finished entry around if the mode is turned off mid-entry
         if (!this.typeBuzzIndexMode) {
             this.endBuzzIndexEntry();
+            this.hideBuzzIndexes();
         }
+    }
+
+    public toggleCollapseBuzzIndexSpacing(): void {
+        this.collapseBuzzIndexSpacing = !this.collapseBuzzIndexSpacing;
+    }
+
+    public togglePronunciationAnchors(): void {
+        this.hidePronunciationAnchors = !this.hidePronunciationAnchors;
+    }
+
+    public toggleOneQuestionAtATime(): void {
+        this.oneQuestionAtATime = !this.oneQuestionAtATime;
+
+        // Leaving the mode shows both questions again, so the bonus step doesn't outlive it
+        if (!this.oneQuestionAtATime) {
+            this.showingBonus = false;
+        }
+    }
+
+    public setShowingBonus(showingBonus: boolean): void {
+        this.showingBonus = showingBonus;
     }
 
     public toggleUseWhisperWebEngine(): void {
@@ -728,7 +868,14 @@ export class UIState {
 
     public startBuzzIndexEntry(): void {
         this.isEnteringBuzzIndex = true;
+        this.buzzIndexesVisible = true;
         this.buzzIndexEntryValue = "";
+    }
+
+    // Hides the numbers above the words. Entry ending doesn't hide them on its own, since committing a number
+    // opens the buzz menu and the numbers should stay up until that menu closes.
+    public hideBuzzIndexes(): void {
+        this.buzzIndexesVisible = false;
     }
 
     public setBuzzIndexEntryValue(value: string): void {
@@ -819,6 +966,9 @@ export class UIState {
     public hideBuzzMenu(): void {
         this.buzzMenuState.visible = false;
         this.buzzMenuState.selectedPlayerIndex = undefined;
+
+        // The buzz is marked (or the menu was dismissed), so the word numbers have done their job
+        this.hideBuzzIndexes();
     }
 
     public setBuzzMenuSelectedPlayerIndex(index: number | undefined): void {

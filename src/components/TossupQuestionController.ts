@@ -7,14 +7,42 @@ import { IGameFormat } from "../state/IGameFormat";
 import { Player } from "../state/TeamState";
 import { IBuzzMarker } from "../state/IBuzzMarker";
 import { ITossupAnswerEvent } from "../state/Events";
+import * as GameFormats from "../state/GameFormats";
 import * as PlayerUtils from "../state/PlayerUtils";
+
+/**
+ * The point value of an incorrect buzz at this word. Buzzing at the end of the question never costs points. In
+ * standard formats only the first neg counts, so a later buzz from another team is a no-penalty buzz; in
+ * individual formats like IPNCT every player who buzzes early is penalized.
+ */
+export function getWrongBuzzPoints(
+    cycle: Cycle,
+    gameFormat: IGameFormat,
+    tossup: Tossup,
+    wordIndex: number,
+    player: Player
+): number {
+    const pointsAtPosition: number = tossup.getPointsAtPosition(gameFormat, wordIndex, /* isCorrect */ false);
+    if (pointsAtPosition >= 0) {
+        return 0;
+    }
+
+    if (GameFormats.negsForEveryWrongBuzz(gameFormat)) {
+        return pointsAtPosition;
+    }
+
+    const negBuzz: ITossupAnswerEvent | undefined = cycle.wrongBuzzes?.find((buzz) => buzz.marker.points < 0);
+    return negBuzz == undefined || negBuzz.marker.player.teamName === player.teamName ? pointsAtPosition : 0;
+}
 
 export function selectWordFromClick(appState: AppState, event: React.MouseEvent<HTMLDivElement>): void {
     const target = event.target as HTMLDivElement;
 
     // I'd like to avoid looking for a specific HTML element instead of a class. This would mean giving QuestionWord a
     // fixed class.
-    const questionWord: HTMLSpanElement | null = target.closest("span");
+    // Match on data-index rather than the nearest span: words can have spans of their own inside them (a YAPP2
+    // pronunciation anchor, or the guide itself), and clicking one of those used to find that inner span and stop.
+    const questionWord: HTMLSpanElement | null = target.closest("span[data-index]");
     if (questionWord == undefined || questionWord.getAttribute == undefined) {
         return;
     }
@@ -281,6 +309,8 @@ export function commitBuzzIndexEntry(appState: AppState): void {
     uiState.endBuzzIndexEntry();
 
     if (wordIndex < 0) {
+        // No buzz menu is opening, so nothing else will take the numbers down
+        uiState.hideBuzzIndexes();
         return;
     }
 
@@ -295,6 +325,7 @@ export function cancelBuzzIndexEntry(appState: AppState): void {
     const uiState: UIState = appState.uiState;
     clearBuzzIndexAutoCommit();
     uiState.endBuzzIndexEntry();
+    uiState.hideBuzzIndexes();
     uiState.setSelectedWordIndex(-1);
 }
 
@@ -370,7 +401,8 @@ export function markKeyboardSelectedPlayerBuzz(appState: AppState, isCorrect: bo
         } else {
             // Don't include a bonus index if there should be no bonus for this correct buzz
             const bonusIndex: number | undefined =
-                gameFormat.overtimeIncludesBonuses || uiState.cycleIndex < gameFormat.regulationTossupCount
+                GameFormats.hasBonuses(gameFormat) &&
+                (gameFormat.overtimeIncludesBonuses || uiState.cycleIndex < gameFormat.regulationTossupCount)
                     ? appState.game.getBonusIndex(uiState.cycleIndex)
                     : undefined;
 
@@ -407,20 +439,8 @@ export function markKeyboardSelectedPlayerBuzz(appState: AppState, isCorrect: bo
                 isLastWord: wordIndex === lastBuzzableIndex,
                 player,
                 position: wordIndex,
-                points: 0,
+                points: getWrongBuzzPoints(cycle, gameFormat, tossup, wordIndex, player),
             };
-
-            // If we're at the end of the question, or if there's already been a neg from a different team, then
-            // make it a no penalty buzz
-            const pointsAtPosition: number = tossup.getPointsAtPosition(gameFormat, wordIndex, false);
-            if (pointsAtPosition < 0) {
-                const negBuzz: ITossupAnswerEvent | undefined = cycle.wrongBuzzes?.find(
-                    (buzz) => buzz.marker.points < 0
-                );
-                if (negBuzz == undefined || negBuzz.marker.player.teamName === player.teamName) {
-                    marker.points = pointsAtPosition;
-                }
-            }
 
             cycle.addWrongBuzz(marker, tossupIndex, gameFormat);
         }

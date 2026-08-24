@@ -4,6 +4,7 @@ import { DefaultButton, IButtonStyles, PrimaryButton } from "@fluentui/react/lib
 import { TextField, ITextFieldStyles } from "@fluentui/react/lib/TextField";
 import { useId } from "@fluentui/react-hooks";
 
+import * as CycleChooserController from "./CycleChooserController";
 import { UIState } from "../state/UIState";
 import { AppState } from "../state/AppState";
 import { ILabelStyles, Label, TooltipHost } from "@fluentui/react";
@@ -60,7 +61,7 @@ export const CycleChooser = observer(function CycleChooser() {
             <DefaultButton
                 key="previousButton"
                 onClick={onPreviousClickHandler}
-                disabled={uiState.cycleIndex === 0}
+                disabled={!CycleChooserController.canGoPrevious(appState)}
                 styles={previousButtonStyle}
             >
                 &larr; Previous
@@ -119,9 +120,16 @@ export const CycleChooser = observer(function CycleChooser() {
             />
         );
     } else {
+        // Reading one question at a time, the label says which half of the question is up, since only one of them
+        // is on screen
+        const questionLabel: string = uiState.oneQuestionAtATime
+            ? CycleChooserController.isOnBonus(appState)
+                ? "Bonus"
+                : "Tossup"
+            : "Question";
         questionNumberViewer = (
             <Label key="questionViewer" styles={questionLableStyle} onDoubleClick={onQuestionLabelDoubleClickHandler}>
-                Question #{questionNumber}
+                {questionLabel} #{questionNumber}
             </Label>
         );
     }
@@ -136,8 +144,7 @@ export const CycleChooser = observer(function CycleChooser() {
 });
 
 function shouldNextButtonExport(appState: AppState): boolean {
-    const nextCycleIndex: number = appState.uiState.cycleIndex + 1;
-    return nextCycleIndex >= appState.game.playableCycles.length;
+    return CycleChooserController.isOnLastStep(appState);
 }
 
 function onProposedQuestionNumberBlur(event: React.FocusEvent<HTMLInputElement>, appState: AppState): void {
@@ -161,12 +168,12 @@ function onNextClick(appState: AppState): void {
             appState.uiState.dialogState.showExportToJsonDialog();
         }
     } else {
-        appState.uiState.nextCycle();
+        CycleChooserController.next(appState);
     }
 }
 
 function onPreviousClick(appState: AppState): void {
-    appState.uiState.previousCycle();
+    CycleChooserController.previous(appState);
 }
 
 function onQuestionLabelDoubleClick(appState: AppState): void {

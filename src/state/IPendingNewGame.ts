@@ -32,6 +32,11 @@ export interface IPendingQBJRegistrationNewGame extends IBasePendingNewGame {
 export interface IPendingManualNewGameState {
     firstTeamPlayers: Player[];
     secondTeamPlayers: Player[];
+
+    // Competitors in an individual format (e.g. IPNCT), where each player is their own one-player team. Kept
+    // separate from the team rosters so switching formats back and forth doesn't lose what was typed.
+    individualPlayers: Player[];
+
     cycles?: Cycle[];
 }
 
@@ -53,6 +58,10 @@ export interface IPendingQBJRegistrationNewGameState {
     players: Player[];
     firstTeamPlayers: Player[] | undefined;
     secondTeamPlayers: Player[] | undefined;
+
+    // Competitors picked out of the roster for an individual format, where each one is their own team
+    individualPlayers?: Player[];
+
     cycles?: Cycle[];
     errorMessage?: string;
 }

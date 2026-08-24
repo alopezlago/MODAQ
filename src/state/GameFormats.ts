@@ -37,6 +37,30 @@ export const StandardPowersMACFGameFormat: IGameFormat = {
     displayName: "mACF with powers",
 };
 
+// The most competitors an individual game can have. IPNCT rooms hold three or more players (typically eight to
+// ten), and this is the ceiling MODAQ supports.
+export const maximumIndividualPlayerCount = 16;
+
+// NAQT's Individual Player National Championship Tournament: players compete on their own, games are tossups
+// only, and every incorrect buzz before the end of the question is a neg (not just the first one).
+export const IPNCTGameFormat: IGameFormat = {
+    bonusesBounceBack: false,
+    displayName: "IPNCT (individual)",
+    minimumOvertimeQuestionCount: 1,
+    overtimeIncludesBonuses: false,
+    negValue: -5,
+    powers: [{ marker: "(*)", points: 15 }],
+    regulationTossupCount: 20,
+    timeoutsAllowed: 0,
+    pronunciationGuideMarkers: ['("', '")'],
+    pairTossupsBonuses: false,
+    isIndividualFormat: true,
+    maximumPlayerCount: maximumIndividualPlayerCount,
+    negsForEveryWrongBuzz: true,
+    tossupsOnly: true,
+    version: currentVersion,
+};
+
 export const UndefinedGameFormat: IGameFormat = {
     bonusesBounceBack: false,
     displayName: "Freeform format",
@@ -51,8 +75,36 @@ export const UndefinedGameFormat: IGameFormat = {
     version: currentVersion,
 };
 
+// The freeform format has to stay last, since the format picker falls back to the last option when the current
+// format doesn't match a known one
 export function getKnownFormats(): IGameFormat[] {
-    return [ACFGameFormat, StandardPowersMACFGameFormat, PACEGameFormat, UndefinedGameFormat];
+    return [ACFGameFormat, StandardPowersMACFGameFormat, PACEGameFormat, IPNCTGameFormat, UndefinedGameFormat];
+}
+
+// Whether players compete on their own instead of on teams. Individual games treat each player as a
+// one-player team, so they can have more than two competitors.
+export function isIndividualFormat(format: IGameFormat): boolean {
+    return format.isIndividualFormat === true;
+}
+
+// The most competitors (teams, or players in an individual format) a game in this format can have
+export function getMaximumTeamCount(format: IGameFormat): number {
+    if (!isIndividualFormat(format)) {
+        return 2;
+    }
+
+    // Clamp to what the rest of the app can handle, in case a hand-edited format asks for more
+    return Math.max(2, Math.min(maximumIndividualPlayerCount, format.maximumPlayerCount ?? maximumIndividualPlayerCount));
+}
+
+// Whether every incorrect buzz before the end of a tossup is a neg, rather than just the first one
+export function negsForEveryWrongBuzz(format: IGameFormat): boolean {
+    return format.negsForEveryWrongBuzz === true;
+}
+
+// Whether tossups are followed by bonuses. Individual formats like IPNCT are tossups only.
+export function hasBonuses(format: IGameFormat): boolean {
+    return format.tossupsOnly !== true;
 }
 
 export function createMACFGameFormat(powers: IPowerMarker[]): IGameFormat {

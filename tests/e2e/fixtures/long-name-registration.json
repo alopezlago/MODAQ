@@ -1,0 +1,20 @@
+[
+    {
+        "name": "Registration",
+        "teams": [
+            {
+                "name": "A Special Offer from America's 12 Most Famous Artists Who Painted Portraits",
+                "players": [{ "name": "Tony Chen" }, { "name": "Henry Atkins" }, { "name": "Mattias Ehatamm" }]
+            },
+            {
+                "name": "ANSWER: museums are a battlefield [accept answers clearly linking museums and a battlefield like \"Is the Museum a Battlefield?\"]",
+                "players": [
+                    { "name": "Vivian Malouf" },
+                    { "name": "Ariel Faeder" },
+                    { "name": "Rob Carson" },
+                    { "name": "William Golden" }
+                ]
+            }
+        ]
+    }
+]

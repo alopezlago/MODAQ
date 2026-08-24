@@ -389,3 +389,204 @@ body {
     font-weight: 700;
     color: #0b6a0b;
 }
+
+/* --- MASSINGER: teams step, connected players, dialog summary --- */
+.ms-teamsbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    background: #f3f9f3;
+    border: 1px solid #0b6a0b;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+.ms-players h3 {
+    margin: 0 0 6px;
+    font-size: 0.95rem;
+}
+.ms-players ul {
+    margin: 0 0 8px;
+    padding: 0;
+    list-style: none;
+}
+.ms-players li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    border-bottom: 1px solid #ececec;
+    padding: 4px 2px;
+    font-size: 0.85rem;
+}
+.ms-players li.gone {
+    opacity: 0.5;
+}
+.ms-player-name {
+    flex: 1;
+}
+.ms-alias {
+    color: #888;
+    font-size: 0.78rem;
+}
+.ms-player-team {
+    color: #666;
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+.ms-player-team.picking {
+    color: #0b6a0b;
+    font-weight: 700;
+}
+.ms-unlinked {
+    color: #a4262c;
+    font-weight: 400;
+    font-size: 0.8rem;
+}
+.ms-last {
+    margin: 0 0 10px;
+    font-size: 0.85rem;
+    color: #444;
+}
+.ms-summary {
+    border: 1px solid #0b6a0b;
+    border-radius: 8px;
+    background: #f3f9f3;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+}
+.ms-summary-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+.ms-summary-edit {
+    cursor: pointer;
+    background: #fff;
+    border: 1px solid #0b6a0b;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.82rem;
+}
+.ms-summary-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    font-size: 0.85rem;
+}
+.ms-summary-cols h4 {
+    margin: 0 0 4px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #555;
+}
+.ms-summary-cols ul {
+    margin: 0;
+    padding-left: 18px;
+}
+.ms-summary-cols p {
+    margin: 0;
+    color: #777;
+}
+.ms-summary-by {
+    color: #666;
+}
+
+/* --- packet chooser on the setup screen --- */
+.packet-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+.packet-choice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    text-align: left;
+    background: #fff;
+    border: 1px solid #8a8886;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+}
+.packet-choice:hover {
+    background: #f3f2f1;
+}
+.packet-choice.selected {
+    border-color: #0b6a0b;
+    border-width: 2px;
+    background: #f1faf1;
+}
+.packet-choice-check {
+    color: #0b6a0b;
+    font-size: 1rem;
+}
+.packet-choice-sub {
+    display: block;
+    color: #666;
+    font-size: 0.78rem;
+}
+.packet-status {
+    background: #fff4ce;
+    border: 1px solid #e1dfdd;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin: 6px 0 4px;
+    font-size: 0.85rem;
+}
+.packet-status.ready {
+    background: #f1faf1;
+    border-color: #0b6a0b;
+}
+.mod-setup .chip.selected,
+.mod-setup .schedule-rounds button.selected {
+    background: #0b6a0b;
+    color: #fff;
+    border-color: #0b6a0b;
+    font-weight: 600;
+}
+
+/* --- lobby: players connect before teams / pick-ban --- */
+.lobby-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #faf9f8;
+    border: 1px solid #e1dfdd;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+}
+.lobby-link code {
+    flex: 1;
+    font-size: 0.95rem;
+    word-break: break-all;
+}
+.lobby-link button {
+    cursor: pointer;
+    background: #fff;
+    border: 1px solid #8a8886;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+.lobby-count {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+}
+.lobby-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0b6a0b;
+    line-height: 1;
+}

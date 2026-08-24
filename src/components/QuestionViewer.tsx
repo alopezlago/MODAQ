@@ -1,6 +1,7 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 
+import * as CycleChooserController from "./CycleChooserController";
 import { UIState } from "../state/UIState";
 import { GameState } from "../state/GameState";
 import { TossupQuestion } from "./TossupQuestion";
@@ -19,6 +20,7 @@ import {
 import { AppState } from "../state/AppState";
 import { useAppState } from "../contexts/StateContext";
 import { useTiebreakers } from "../contexts/TiebreakerContext";
+import * as GameFormats from "../state/GameFormats";
 
 const separatorStyles: Partial<ISeparatorStyles> = {
     root: {
@@ -47,9 +49,19 @@ export const QuestionViewer = observer(function QuestionViewer() {
         },
     };
 
+    // Reading one question at a time, the reader sees either the tossup or its bonus, never both. Which one is up
+    // is the step Previous/Next left them on.
+    const oneQuestionAtATime: boolean = uiState.oneQuestionAtATime;
+    const isOnBonus: boolean = CycleChooserController.isOnBonus(appState);
+    const showTossup: boolean = !oneQuestionAtATime || !isOnBonus;
+    // Tossup-only formats like IPNCT have no bonus, so neither it nor the separator above it belongs on screen
+    const showBonus: boolean = (!oneQuestionAtATime || isOnBonus) && GameFormats.hasBonuses(game.gameFormat);
+
     let bonus: JSX.Element | null = null;
     const bonusInPlay: boolean = cycle.correctBuzz != undefined;
-    if (bonusIndex < 0 || bonusIndex >= game.packet.bonuses.length) {
+    if (!showBonus) {
+        bonus = null;
+    } else if (bonusIndex < 0 || bonusIndex >= game.packet.bonuses.length) {
         // TODO: Allow users to add more bonuses (maybe by appending to a packet)
         bonus = (
             <div>
@@ -74,7 +86,9 @@ export const QuestionViewer = observer(function QuestionViewer() {
     }
 
     let tossup: JSX.Element | null = null;
-    if (tossupIndex >= 0 && tossupIndex < game.packet.tossups.length) {
+    if (!showTossup) {
+        tossup = null;
+    } else if (tossupIndex >= 0 && tossupIndex < game.packet.tossups.length) {
         tossup = (
             <TossupQuestion
                 appState={appState}
@@ -109,11 +123,14 @@ export const QuestionViewer = observer(function QuestionViewer() {
     return (
         <div className={classes.questionViewer}>
             <Stack>
-                <StackItem styles={stackItemStyles}>{tossup}</StackItem>
-                <StackItem>
-                    <Separator styles={separatorStyles} />
-                </StackItem>
-                <StackItem styles={stackItemStyles}>{bonus}</StackItem>
+                {showTossup && <StackItem styles={stackItemStyles}>{tossup}</StackItem>}
+                {/* The separator divides the two questions, so it only belongs when both are on screen */}
+                {showTossup && showBonus && (
+                    <StackItem>
+                        <Separator styles={separatorStyles} />
+                    </StackItem>
+                )}
+                {showBonus && <StackItem styles={stackItemStyles}>{bonus}</StackItem>}
             </Stack>
         </div>
     );

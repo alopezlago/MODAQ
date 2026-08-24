@@ -1,4 +1,5 @@
 import { CustomizeGameFormatState } from "../state/CustomizeGameFormatState";
+import { maximumIndividualPlayerCount } from "../state/GameFormats";
 import { IGameFormat, IPowerMarker } from "../state/IGameFormat";
 
 const customFormatName = "Custom";
@@ -89,6 +90,50 @@ export function changePairTossupsBonuses(customizeGameFormatState: CustomizeGame
     }
 
     customizeGameFormatState?.updateGameFormat({ pairTossupsBonuses: checked });
+}
+
+export function changeNegsForEveryWrongBuzz(
+    customizeGameFormatState: CustomizeGameFormatState,
+    checked?: boolean
+): void {
+    if (checked == undefined) {
+        return;
+    }
+
+    customizeGameFormatState.updateGameFormat({ negsForEveryWrongBuzz: checked });
+}
+
+export function changeIndividualFormat(customizeGameFormatState: CustomizeGameFormatState, checked?: boolean): void {
+    if (checked == undefined) {
+        return;
+    }
+
+    // Individual games are between players rather than teams, so they need a player cap; tossup-only play stays
+    // a separate setting, since not every individual format has to skip bonuses
+    customizeGameFormatState.updateGameFormat({
+        isIndividualFormat: checked,
+        maximumPlayerCount: checked
+            ? customizeGameFormatState.gameFormat.maximumPlayerCount ?? maximumIndividualPlayerCount
+            : undefined,
+    });
+}
+
+export function changeMaximumPlayerCount(
+    customizeGameFormatState: CustomizeGameFormatState,
+    newValue?: string | undefined
+): void {
+    const maximumPlayerCount: number | undefined = getNumberOrUndefined(newValue);
+    if (maximumPlayerCount != undefined) {
+        customizeGameFormatState.updateGameFormat({ maximumPlayerCount });
+    }
+}
+
+export function changeTossupsOnly(customizeGameFormatState: CustomizeGameFormatState, checked?: boolean): void {
+    if (checked == undefined) {
+        return;
+    }
+
+    customizeGameFormatState.updateGameFormat({ tossupsOnly: checked });
 }
 
 export function isGameFormatValid(state: CustomizeGameFormatState): boolean {

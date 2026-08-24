@@ -1,0 +1,226 @@
+{
+  "tossups_read": 2,
+  "match_teams": [
+    {
+      "bonus_points": 0,
+      "lineups": [
+        {
+          "first_question": 1,
+          "players": [
+            {
+              "name": "Alice"
+            }
+          ]
+        }
+      ],
+      "match_players": [
+        {
+          "player": {
+            "name": "Alice"
+          },
+          "answer_counts": [
+            {
+              "answer": {
+                "value": -5
+              },
+              "number": 1
+            }
+          ],
+          "tossups_heard": 2
+        }
+      ],
+      "team": {
+        "name": "Alice",
+        "players": [
+          {
+            "name": "Alice"
+          }
+        ]
+      }
+    },
+    {
+      "bonus_points": 0,
+      "lineups": [
+        {
+          "first_question": 1,
+          "players": [
+            {
+              "name": "Bob"
+            }
+          ]
+        }
+      ],
+      "match_players": [
+        {
+          "player": {
+            "name": "Bob"
+          },
+          "answer_counts": [
+            {
+              "answer": {
+                "value": -5
+              },
+              "number": 1
+            }
+          ],
+          "tossups_heard": 2
+        }
+      ],
+      "team": {
+        "name": "Bob",
+        "players": [
+          {
+            "name": "Bob"
+          }
+        ]
+      }
+    },
+    {
+      "bonus_points": 0,
+      "lineups": [
+        {
+          "first_question": 1,
+          "players": [
+            {
+              "name": "Carol"
+            }
+          ]
+        }
+      ],
+      "match_players": [
+        {
+          "player": {
+            "name": "Carol"
+          },
+          "answer_counts": [
+            {
+              "answer": {
+                "value": 10
+              },
+              "number": 1
+            }
+          ],
+          "tossups_heard": 2
+        }
+      ],
+      "team": {
+        "name": "Carol",
+        "players": [
+          {
+            "name": "Carol"
+          }
+        ]
+      }
+    },
+    {
+      "bonus_points": 0,
+      "lineups": [
+        {
+          "first_question": 1,
+          "players": [
+            {
+              "name": "Dave"
+            }
+          ]
+        }
+      ],
+      "match_players": [
+        {
+          "player": {
+            "name": "Dave"
+          },
+          "answer_counts": [],
+          "tossups_heard": 2
+        }
+      ],
+      "team": {
+        "name": "Dave",
+        "players": [
+          {
+            "name": "Dave"
+          }
+        ]
+      }
+    }
+  ],
+  "match_questions": [
+    {
+      "question_number": 1,
+      "buzzes": [
+        {
+          "buzz_position": {
+            "word_index": 1
+          },
+          "player": {
+            "name": "Alice"
+          },
+          "team": {
+            "name": "Alice",
+            "players": [
+              {
+                "name": "Alice"
+              }
+            ]
+          },
+          "result": {
+            "value": -5
+          }
+        },
+        {
+          "buzz_position": {
+            "word_index": 2
+          },
+          "player": {
+            "name": "Bob"
+          },
+          "team": {
+            "name": "Bob",
+            "players": [
+              {
+                "name": "Bob"
+              }
+            ]
+          },
+          "result": {
+            "value": -5
+          }
+        },
+        {
+          "buzz_position": {
+            "word_index": 4
+          },
+          "player": {
+            "name": "Carol"
+          },
+          "team": {
+            "name": "Carol",
+            "players": [
+              {
+                "name": "Carol"
+              }
+            ]
+          },
+          "result": {
+            "value": 10
+          }
+        }
+      ],
+      "tossup_question": {
+        "parts": 1,
+        "type": "tossup",
+        "question_number": 1
+      }
+    },
+    {
+      "question_number": 2,
+      "buzzes": [],
+      "tossup_question": {
+        "parts": 1,
+        "type": "tossup",
+        "question_number": 2
+      }
+    }
+  ],
+  "_round": 1,
+  "packets": "Test Packet"
+}

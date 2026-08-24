@@ -1,4 +1,5 @@
 import * as FormattedTextParser from "../parser/FormattedTextParser";
+import * as GameFormats from "../state/GameFormats";
 import { Player } from "../state/TeamState";
 import { Cycle } from "../state/Cycle";
 import { IBonusAnswerPart, ITossupAnswerEvent } from "../state/Events";
@@ -142,14 +143,26 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
             success: false,
             message: "No match teams found in the QBJ file",
         };
-    } else if (qbj.match_teams.length !== 2) {
+    }
+
+    // Team games are always head-to-head; individual formats like IPNCT have one one-player team per competitor
+    const maximumTeamCount: number = GameFormats.getMaximumTeamCount(gameFormat);
+    if (qbj.match_teams.length < 2) {
         return {
             success: false,
-            message: "There must be 2 teams in the QBJ file",
+            message: `There must be at least 2 ${
+                GameFormats.isIndividualFormat(gameFormat) ? "players" : "teams"
+            } in the QBJ file, but only ${qbj.match_teams.length} were found`,
+        };
+    } else if (qbj.match_teams.length > maximumTeamCount) {
+        return {
+            success: false,
+            message: GameFormats.isIndividualFormat(gameFormat)
+                ? `This format allows at most ${maximumTeamCount} players, but the QBJ file has ${qbj.match_teams.length}`
+                : `There must be 2 teams in the QBJ file, but ${qbj.match_teams.length} were found. Pick an individual format to read a game with more than two competitors.`,
         };
     }
 
-    // We'll only have two entries, so we don't really need a set
     const teamNames: string[] = [];
     const players: Player[] = [];
     const playerMap: Map<string, Player> = new Map<string, Player>();
@@ -787,11 +800,14 @@ function getBuzz(
 ): IMatchQuestionBuzz | undefined {
     const team: ITeam | undefined = teams.find((team) => team.name === buzz.marker.player.teamName);
 
-    // Negs only happen on the first incorrect buzz (for now), so reset the value to 0 if they were wrong
+    // Most formats only neg the first incorrect buzz, so reset the value to 0 for later wrong answers. Formats
+    // like IPNCT neg every player who buzzes early, so their buzzes keep their value.
     let buzzPoints: number = game.getBuzzValue(buzz);
-    if (buzzPoints === game.gameFormat.negValue && !isFirstBuzz) {
-        // TODO: This should probably come from a game format setting. For now, if it's not the first wrong answer, it's
-        //  not a neg. Reset its value to 0.
+    if (
+        buzzPoints === game.gameFormat.negValue &&
+        !isFirstBuzz &&
+        !GameFormats.negsForEveryWrongBuzz(game.gameFormat)
+    ) {
         buzzPoints = 0;
     }
 

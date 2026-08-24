@@ -289,4 +289,66 @@ describe("TossupQuestionControllerTests", () => {
             expect(scheduled, "commit should clear the timer").to.be.undefined;
         });
     });
+
+    describe("word number visibility", () => {
+        function createAppStateWithPacket(): AppState {
+            const appState: AppState = new AppState();
+            appState.game.addNewPlayers([new Player("Alice", "Alpha", true)]);
+
+            const packet: PacketState = new PacketState();
+            packet.setTossups([new Tossup("one two three four five", "Answer")]);
+            appState.game.loadPacket(packet);
+            return appState;
+        }
+
+        it("Numbers are hidden until entry starts", () => {
+            const appState: AppState = createAppStateWithPacket();
+            appState.uiState.toggleTypeBuzzIndexMode();
+
+            expect(appState.uiState.buzzIndexesVisible, "turning the mode on shouldn't show the numbers").to.be
+                .false;
+
+            TossupQuestionController.startBuzzIndexEntry(appState);
+            expect(appState.uiState.buzzIndexesVisible).to.be.true;
+        });
+
+        it("Numbers stay up through the buzz menu and go away when it closes", () => {
+            const appState: AppState = createAppStateWithPacket();
+            TossupQuestionController.startBuzzIndexEntry(appState);
+            TossupQuestionController.appendBuzzIndexDigit(appState, "3");
+            TossupQuestionController.commitBuzzIndexEntry(appState);
+
+            expect(appState.uiState.buzzMenuState.visible).to.be.true;
+            expect(appState.uiState.buzzIndexesVisible, "numbers should stay up while the menu is open").to.be.true;
+
+            appState.uiState.hideBuzzMenu();
+            expect(appState.uiState.buzzIndexesVisible).to.be.false;
+        });
+
+        it("Committing with nothing typed hides the numbers", () => {
+            const appState: AppState = createAppStateWithPacket();
+            TossupQuestionController.startBuzzIndexEntry(appState);
+            TossupQuestionController.commitBuzzIndexEntry(appState);
+
+            expect(appState.uiState.buzzMenuState.visible).to.be.false;
+            expect(appState.uiState.buzzIndexesVisible).to.be.false;
+        });
+
+        it("Canceling entry hides the numbers", () => {
+            const appState: AppState = createAppStateWithPacket();
+            TossupQuestionController.startBuzzIndexEntry(appState);
+            TossupQuestionController.appendBuzzIndexDigit(appState, "2");
+            TossupQuestionController.cancelBuzzIndexEntry(appState);
+
+            expect(appState.uiState.buzzIndexesVisible).to.be.false;
+        });
+
+        it("Moving to the next question hides the numbers", () => {
+            const appState: AppState = createAppStateWithPacket();
+            TossupQuestionController.startBuzzIndexEntry(appState);
+            appState.uiState.nextCycle();
+
+            expect(appState.uiState.buzzIndexesVisible).to.be.false;
+        });
+    });
 });

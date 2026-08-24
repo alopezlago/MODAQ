@@ -9,6 +9,7 @@ import { ImportGameDialog } from "./dialogs/ImportGameDialog";
 import { FontDialog } from "./dialogs/FontDialog";
 import { HelpDialog } from "./dialogs/HelpDialog";
 import { CustomizeGameFormatDialog } from "./dialogs/CustomizeGameFormatDialog";
+import { ErrataDialog } from "./dialogs/ErrataDialog";
 import { AddQuestionsDialog } from "./dialogs/AddQuestionsDialog";
 import { MessageDialog } from "./dialogs/MessageDialog";
 import { RenamePlayerDialog } from "./dialogs/RenamePlayerDialog";
@@ -32,6 +33,7 @@ export const ModalDialogContainer = observer(function ModalDialogContainer() {
             <AddPlayerDialog />
             <AddQuestionsDialog />
             <CustomizeGameFormatDialog />
+            <ErrataDialog />
             <ExportToJsonDialog />
             <ExportToSheetsDialog />
             <FontDialog />

@@ -415,6 +415,15 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             onClick: () => appState.uiState.toggleTypeBuzzIndexMode(),
         },
         {
+            key: "reserveBuzzIndexSpace",
+            text: "Reserve space for word numbers",
+            title: "Hold the space above each word open so the numbers appearing doesn't move the question text. Turn this off to keep the question's normal line spacing; the numbers then push the text down while they show.",
+            canCheck: true,
+            checked: !appState.uiState.collapseBuzzIndexSpacing,
+            disabled: !appState.uiState.typeBuzzIndexMode,
+            onClick: () => appState.uiState.toggleCollapseBuzzIndexSpacing(),
+        },
+        {
             key: "useWhisperWebEngine",
             text: "Use in-browser Whisper (more accurate, on-device)",
             title: "Transcribe with OpenAI's Whisper running locally in the browser instead of the Web Speech API. More accurate and fully on-device, but downloads a model on first use and is slower. Toggle microphone tracking off and on to apply.",
@@ -461,11 +470,30 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             onClick: () => appState.uiState.togglePacketNameVisibility(),
         },
         {
+            key: "oneQuestionAtATime",
+            text: "One question at a time",
+            title: "Show only the tossup, then only its bonus if the tossup was converted. Previous and Next follow that reading order.",
+            canCheck: true,
+            checked: appState.uiState.oneQuestionAtATime,
+            onClick: () => appState.uiState.toggleOneQuestionAtATime(),
+        },
+        {
             key: "showBonusAlways",
             text: "Always show bonus",
+            title: "Show the bonus even when the tossup went dead",
             canCheck: true,
             checked: !appState.uiState.hideBonusOnDeadTossup,
+            // One question at a time already decides when the bonus is on screen
+            disabled: appState.uiState.oneQuestionAtATime,
             onClick: () => appState.uiState.toggleHideBonusOnDeadTossup(),
+        },
+        {
+            key: "showPronunciationAnchors",
+            text: "Pronunciation anchors",
+            title: "Color the words a pronunciation guide is coming for maroon. Turn this off to read those words like any other word.",
+            canCheck: true,
+            checked: !appState.uiState.hidePronunciationAnchors,
+            onClick: () => appState.uiState.togglePronunciationAnchors(),
         },
     ];
 

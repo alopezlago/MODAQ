@@ -20,6 +20,7 @@ import {
     IStackItemStyles,
 } from "@fluentui/react";
 
+import * as GameFormats from "../../state/GameFormats";
 import * as NewGameValidator from "../../state/NewGameValidator";
 import * as PendingNewGameUtils from "../../state/PendingNewGameUtils";
 import * as PlayerUtils from "../../state/PlayerUtils";
@@ -29,6 +30,8 @@ import { UIState } from "../../state/UIState";
 import { PacketLoader } from "../PacketLoader";
 import { GameState } from "../../state/GameState";
 import { PacketState } from "../../state/PacketState";
+import { IndividualPlayersEntry } from "../IndividualPlayersEntry";
+import { IndividualRosterEntry } from "../IndividualRosterEntry";
 import { ManualTeamEntry } from "../ManualTeamEntry";
 import { Player } from "../../state/TeamState";
 import {
@@ -45,6 +48,7 @@ import { useAppState } from "../../contexts/StateContext";
 import { IGameFormat } from "../../state/IGameFormat";
 import { FilePicker } from "../FilePicker";
 import { ModalVisibilityStatus } from "../../state/ModalVisibilityStatus";
+import { NewGameNoticeContext } from "../../contexts/NewGameNoticeContext";
 import { IResult } from "../../IResult";
 
 const enum PivotKey {
@@ -119,6 +123,13 @@ export const NewGameDialog = observer(function NewGameDialog(): JSX.Element {
     );
 });
 
+// Whatever the host wants the moderator to see before starting the game (see NewGameNoticeContext) — for Klaxon,
+// the MASSINGER pick/ban result and a way back to it.
+function HostNotice(): JSX.Element | null {
+    const { notice } = React.useContext(NewGameNoticeContext);
+    return notice == undefined ? null : <div className="modaq-new-game-notice">{notice}</div>;
+}
+
 const NewGameDialogBody = observer(function NewGameDialogBody(props: INewGameDialogBodyProps): JSX.Element {
     const appState: AppState = props.appState;
     const classes: INewGameDialogBodyClassNames = getClassNames();
@@ -173,6 +184,7 @@ const NewGameDialogBody = observer(function NewGameDialogBody(props: INewGameDia
     // TODO: Have a selector for the format. Will need a way to specify a custom format
     return (
         <>
+            <HostNotice />
             <Pivot
                 aria-label="Game type"
                 onLinkClick={pivotClickHandler}
@@ -224,6 +236,13 @@ const ManualNewGamePivotBody = observer(function ManualNewGamePivotBody(props: I
         },
         [props.appState]
     );
+    const addIndividualPlayerHandler = React.useCallback(() => uiState.addIndividualPlayerToPendingNewGame(), [
+        uiState,
+    ]);
+    const removeIndividualPlayerHandler = React.useCallback(
+        (player: Player) => uiState.removeIndividualPlayerFromPendingNewGame(player),
+        [uiState]
+    );
     const teamNameValidationHandler = React.useCallback((): string | undefined => {
         if (uiState.pendingNewGame == undefined || uiState.pendingNewGame.type !== PendingGameType.Manual) {
             return undefined;
@@ -241,6 +260,20 @@ const ManualNewGamePivotBody = observer(function ManualNewGamePivotBody(props: I
     }
 
     const manualState: IPendingManualNewGameState = pendingNewGame.manual;
+
+    if (GameFormats.isIndividualFormat(pendingNewGame.gameFormat)) {
+        // Individual formats like IPNCT have no teams, so the reader just lists the players in the room
+        return (
+            <Stack>
+                <IndividualPlayersEntry
+                    maximumPlayerCount={GameFormats.getMaximumTeamCount(pendingNewGame.gameFormat)}
+                    players={manualState.individualPlayers}
+                    onAddPlayerClick={addIndividualPlayerHandler}
+                    onRemovePlayerClick={removeIndividualPlayerHandler}
+                />
+            </Stack>
+        );
+    }
 
     const teamNameErrorMessage = NewGameValidator.playerTeamsUnique(
         manualState.firstTeamPlayers,
@@ -501,6 +534,11 @@ const FromQBJRegistrationNewGameBody = observer(function FromQBJRegistrationNewG
 
     const firstTeamPlayers: Player[] = pendingNewGame.registration.firstTeamPlayers ?? [];
     const secondTeamPlayers: Player[] = pendingNewGame.registration.secondTeamPlayers ?? [];
+    const isIndividualFormat: boolean = GameFormats.isIndividualFormat(pendingNewGame.gameFormat);
+
+    // Dereference this here rather than inside the ThemeContext.Consumer below: mobx's observer only tracks reads
+    // made directly in this function, so reading it in the Consumer's callback would leave the picker stale
+    const individualPlayers: Player[] = pendingNewGame.registration.individualPlayers ?? [];
 
     // We should only do this if we have any players from the rosters
     const teamNameErrorMessage = NewGameValidator.playerTeamsUnique(firstTeamPlayers, secondTeamPlayers);
@@ -524,6 +562,16 @@ const FromQBJRegistrationNewGameBody = observer(function FromQBJRegistrationNewG
                         <Label styles={{ root: { color: theme?.palette.red } }}>{registrationErrorMessage}</Label>
                     </StackItem>
                     <Separator />
+                    {isIndividualFormat ? (
+                        <StackItem>
+                            <IndividualRosterEntry
+                                maximumPlayerCount={GameFormats.getMaximumTeamCount(pendingNewGame.gameFormat)}
+                                playerPool={playersFromRosters}
+                                selectedPlayers={individualPlayers}
+                                onTogglePlayer={(player) => uiState.toggleRegistrationIndividualPlayer(player)}
+                            />
+                        </StackItem>
+                    ) : (
                     <StackItem>
                         <div className={props.classes.teamEntriesContainer}>
                             <FromRostersTeamEntry
@@ -572,6 +620,7 @@ const FromQBJRegistrationNewGameBody = observer(function FromQBJRegistrationNewG
                             />
                         </div>
                     </StackItem>
+                    )}
                 </Stack>
             )}
         </ThemeContext.Consumer>
@@ -632,13 +681,16 @@ function onSubmit(appState: AppState): void {
 
     const pendingNewGame: IPendingNewGame = uiState.pendingNewGame;
 
-    const [firstTeamPlayers, secondTeamPlayers]: Player[][] = PendingNewGameUtils.getPendingNewGamePlayers(
-        pendingNewGame
-    );
+    const teams: Player[][] = PendingNewGameUtils.getPendingNewGamePlayers(pendingNewGame);
 
-    // Trim all the player names now
-    for (const player of firstTeamPlayers.concat(secondTeamPlayers)) {
+    // Trim all the player names now. In an individual format the player is their own team, so the team name has
+    // to be trimmed to match.
+    const isIndividualFormat: boolean = GameFormats.isIndividualFormat(pendingNewGame.gameFormat);
+    for (const player of teams.flat()) {
         player.setName(player.name.trim());
+        if (isIndividualFormat) {
+            player.setTeamName(player.name);
+        }
     }
 
     // TODO: Improve validation by return an error message specifying which field is bad. For example, no players in
@@ -650,8 +702,13 @@ function onSubmit(appState: AppState): void {
     // We need to set the game's packet, players, etc. to the values in the uiState
     const game: GameState = appState.game;
     game.clear();
-    game.addNewPlayers(firstTeamPlayers.filter((player) => player.name !== ""));
-    game.addNewPlayers(secondTeamPlayers.filter((player) => player.name !== ""));
+
+    // Errata belong to the packet that was just played, so they shouldn't follow the moderator into the next game
+    appState.errata.clear();
+    for (const teamPlayers of teams) {
+        game.addNewPlayers(teamPlayers.filter((player) => player.name !== ""));
+    }
+
     game.loadPacket(pendingNewGame.packet);
 
     game.setGameFormat(pendingNewGame.gameFormat);
@@ -705,7 +762,9 @@ const getClassNames = (): INewGameDialogBodyClassNames =>
         teamEntriesContainer: {
             // Grid should be more resize friendly than flex if we ever do responsive design
             display: "grid",
-            gridTemplateColumns: "5fr 1fr 5fr",
+            // minmax(0, ...) keeps a long team name from blowing its column past its share of the dialog, which
+            // would push the other team's entry off the edge
+            gridTemplateColumns: "minmax(0, 5fr) 1fr minmax(0, 5fr)",
             marginBottom: 20,
             minHeight: "25vh",
         },

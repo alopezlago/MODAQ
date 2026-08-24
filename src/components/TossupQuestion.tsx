@@ -9,6 +9,7 @@ import { QuestionWord } from "./QuestionWord";
 import { Cycle } from "../state/Cycle";
 import { BuzzMenu } from "./BuzzMenu";
 import { Answer } from "./Answer";
+import { ErrataButton } from "./ErrataButton";
 import type { IFormattedText } from "../parser/IFormattedText";
 import { TossupProtestDialog } from "./dialogs/TossupProtestDialog";
 import { CancelButton } from "./CancelButton";
@@ -141,10 +142,16 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
 
     const words: ITossupWord[] = props.tossup.getWords(props.appState.game.gameFormat);
 
-    // In type-word-number mode, give the question number the same reserved space above it as the words, so it
-    // lines up with them instead of floating higher
+    // In type-word-number mode, the space for the numbers is held open above every word so the numbers appearing
+    // doesn't shift the question text. Moderators who'd rather keep the question's normal line spacing can turn
+    // that off, and the space only opens up while the numbers are actually showing.
+    const reserveIndexSpace: boolean =
+        props.appState.uiState.typeBuzzIndexMode && !props.appState.uiState.collapseBuzzIndexSpacing;
+
+    // Give the question number the same space above it as the words, so it lines up with them instead of floating
+    // higher
     let questionWords: JSX.Element[] = [
-        props.appState.uiState.typeBuzzIndexMode ? (
+        reserveIndexSpace || props.appState.uiState.buzzIndexesVisible ? (
             <span key="tuNumber" className={classes.questionNumberStacked}>
                 <span className={classes.indexSpacePlaceholder}>&nbsp;</span>
                 {props.tossupNumber}.&nbsp;
@@ -161,6 +168,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
                 correctBuzzIndex={correctBuzzIndex}
                 index={word.canBuzzOn ? word.wordIndex : undefined}
                 isLastWord={word.canBuzzOn && word.isLastWord}
+                reserveIndexSpace={reserveIndexSpace}
                 selectedWordRef={selectedWordRef}
                 word={word.word}
                 wrongBuzzIndexes={wrongBuzzIndexes}
@@ -194,20 +202,6 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
         <div className={classes.tossupContainer}>
             <TossupProtestDialog appState={props.appState} cycle={props.cycle} />
             <div ref={tossupTextRef}>
-                {/* Rendered whenever the mode is on (not just while typing) so pressing Space doesn't shift the
-                    tossup down. The text only fills in once the user starts entering a number. */}
-                {props.appState.uiState.typeBuzzIndexMode && (
-                    <div className={classes.buzzIndexBanner}>
-                        {props.appState.uiState.isEnteringBuzzIndex ? (
-                            <>
-                                Type a word&apos;s number, then Enter to buzz there (Esc to cancel):{" "}
-                                <strong>{props.appState.uiState.buzzIndexEntryValue || "—"}</strong>
-                            </>
-                        ) : (
-                            <>Press Space, then type a word&apos;s number to set the buzz point.</>
-                        )}
-                    </div>
-                )}
                 <FocusZone
                     as="div"
                     className={classes.tossupQuestionText}
@@ -223,7 +217,8 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
                 <PostQuestionMetadata metadata={props.tossup.metadata} />
                 <ReaderFollowerDebug appState={props.appState} />
             </div>
-            <div>
+            <div className={classes.questionButtons}>
+                <ErrataButton questionNumber={props.tossupNumber} questionType="tossup" />
                 <CancelButton
                     disabled={disableThrowOutButton}
                     tooltip={throwOutButtonTooltip}
@@ -257,13 +252,14 @@ const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuesti
         <>
             <QuestionWord
                 index={props.index}
-                // In "type word number to buzz" mode, always show each buzzable word's 1-based number above it,
-                // and reserve that space above every word (including non-buzzable ones) so spacing stays even
+                // In "type word number to buzz" mode, show each buzzable word's 1-based number above it once the
+                // moderator presses Space, and keep it up until the buzz menu closes. The space above every word
+                // (including non-buzzable ones) is reserved the whole time, so the numbers appearing and
+                // disappearing doesn't shift the text around.
                 displayIndex={
-                    uiState.typeBuzzIndexMode && props.index != undefined ? props.index + 1 : undefined
+                    uiState.buzzIndexesVisible && props.index != undefined ? props.index + 1 : undefined
                 }
-                reserveIndexSpace={uiState.typeBuzzIndexMode}
-                indexActive={uiState.isEnteringBuzzIndex}
+                reserveIndexSpace={props.reserveIndexSpace}
                 word={props.word}
                 selected={props.index === uiState.selectedWordIndex}
                 correct={props.index === props.correctBuzzIndex}
@@ -291,6 +287,7 @@ interface IQuestionWordWrapperProps {
     cycle: Cycle;
     index?: number;
     isLastWord: boolean;
+    reserveIndexSpace: boolean;
     selectedWordRef: React.MutableRefObject<null>;
     tossup: Tossup;
     tossupNumber: number;
@@ -301,7 +298,7 @@ interface IQuestionWordWrapperProps {
 interface ITossupQuestionClassNames {
     tossupContainer: string;
     tossupQuestionText: string;
-    buzzIndexBanner: string;
+    questionButtons: string;
     questionNumberStacked: string;
     indexSpacePlaceholder: string;
 }
@@ -313,13 +310,15 @@ const getClassNames = (): ITossupQuestionClassNames =>
             display: "flex",
             justifyContent: "space-between",
         },
+        // Keeps the errata and throw-out buttons together in the question's top-right corner
+        questionButtons: {
+            display: "flex",
+            alignItems: "flex-start",
+            whiteSpace: "nowrap",
+        },
         tossupQuestionText: {
             display: "inline-block",
             marginBottom: "0.5em",
-        },
-        buzzIndexBanner: {
-            marginBottom: "0.5em",
-            fontSize: "0.9em",
         },
         // Stacks an (empty) index row above the question number so it lines up with the numbered words
         questionNumberStacked: {

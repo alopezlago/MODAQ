@@ -11,6 +11,7 @@ import * as React from "react";
 import { observer } from "mobx-react-lite";
 import { ContextualMenu, ContextualMenuItemType, IContextualMenuItem } from "@fluentui/react/lib/ContextualMenu";
 
+import * as GameFormats from "../state/GameFormats";
 import * as PlayerUtils from "../state/PlayerUtils";
 import * as TossupQuestionController from "./TossupQuestionController";
 import { Player } from "../state/TeamState";
@@ -18,8 +19,41 @@ import { Cycle } from "../state/Cycle";
 import { Tossup } from "../state/PacketState";
 import { IBuzzMarker } from "../state/IBuzzMarker";
 import { AppState } from "../state/AppState";
-import { ITossupAnswerEvent } from "../state/Events";
-import { Theme, ThemeContext } from "@fluentui/react";
+import { IContextualMenuStyles, IStyle, Theme, ThemeContext } from "@fluentui/react";
+
+// Team names come from registration files and can be long enough to stretch the menu across the question. The menu
+// only has to be wide enough to pick a player, so cap it and crop the names that don't fit.
+const maxBuzzMenuWidth = 400;
+
+const croppedItemText: IStyle = {
+    selectors: {
+        // The text sits in a flex row, which won't shrink below its content unless the items can
+        ".ms-ContextualMenu-linkContent": { minWidth: 0 },
+        ".ms-ContextualMenu-itemText": {
+            display: "block",
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+        },
+    },
+};
+
+const buzzMenuStyles: Partial<IContextualMenuStyles> = {
+    container: { maxWidth: maxBuzzMenuWidth },
+    root: { maxWidth: maxBuzzMenuWidth },
+    // The team name section headers are what get long, but a long player name shouldn't stretch it either
+    header: croppedItemText,
+    list: croppedItemText,
+    subComponentStyles: {
+        // The menu lives in a callout, which is what actually sizes itself to the widest item
+        callout: {
+            root: { maxWidth: maxBuzzMenuWidth },
+            calloutMain: { maxWidth: maxBuzzMenuWidth },
+        },
+        menuItem: {},
+    },
+};
 
 export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps) {
     const onHideBuzzMenu: () => void = React.useCallback(() => onBuzzMenuDismissed(props), [props]);
@@ -68,6 +102,7 @@ export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps) {
                         onDismiss={onHideBuzzMenu}
                         shouldFocusOnMount={true}
                         shouldUpdateWhenHidden={true}
+                        styles={buzzMenuStyles}
                     />
                 );
             }}
@@ -211,8 +246,9 @@ function onCorrectClicked(
         // Don't include a bonus index if there should be no bonus for this correct buzz
         // TODO: This is an example of logic that should be moved out of the view layer
         const bonusIndex: number | undefined =
-            props.appState.game.gameFormat.overtimeIncludesBonuses ||
-            props.appState.uiState.cycleIndex < props.appState.game.gameFormat.regulationTossupCount
+            GameFormats.hasBonuses(props.appState.game.gameFormat) &&
+            (props.appState.game.gameFormat.overtimeIncludesBonuses ||
+                props.appState.uiState.cycleIndex < props.appState.game.gameFormat.regulationTossupCount)
                 ? props.bonusIndex
                 : undefined;
 
@@ -254,24 +290,14 @@ function onWrongClicked(
             isLastWord: props.isLastWord,
             player,
             position: props.wordIndex,
-            points: 0,
+            points: TossupQuestionController.getWrongBuzzPoints(
+                props.cycle,
+                props.appState.game.gameFormat,
+                props.tossup,
+                props.wordIndex,
+                player
+            ),
         };
-
-        // If we're at the end of the question, or if there's already been a neg from a different team, then make it a
-        // no penalty buzz
-        const pointsAtPosition: number = props.tossup.getPointsAtPosition(
-            props.appState.game.gameFormat,
-            props.wordIndex,
-            false
-        );
-        if (pointsAtPosition < 0) {
-            const negBuzz: ITossupAnswerEvent | undefined = props.cycle.wrongBuzzes?.find(
-                (buzz) => buzz.marker.points < 0
-            );
-            if (negBuzz == undefined || negBuzz.marker.player.teamName === player.teamName) {
-                marker.points = pointsAtPosition;
-            }
-        }
 
         props.cycle.addWrongBuzz(marker, props.tossupNumber - 1, props.appState.game.gameFormat);
     }

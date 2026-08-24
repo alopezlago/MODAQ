@@ -12,8 +12,10 @@ import {
     IModalProps,
 } from "@fluentui/react";
 
+import * as ErrataExport from "../../state/ErrataExport";
 import * as QBJ from "../../qbj/QBJ";
 import { AppState } from "../../state/AppState";
+import { IErrataExport } from "../../state/ErrataExport";
 import { GameState } from "../../state/GameState";
 import { useAppState } from "../../contexts/StateContext";
 import { RoundSelector } from "../RoundSelector";
@@ -71,8 +73,11 @@ export const ExportToJsonDialog = observer(function ExportToJsonDialog(): JSX.El
             maxWidth="40vw"
             onDismiss={cancelHandler}
         >
-            <Label>To export the whole game (packet, players, and events), click on &quot;Export game&quot;.</Label>
-            <Label>To only export the events, click on &quot;Export events&quot;.</Label>
+            <Label>To export the game, click on &quot;Export QBJ&quot;.</Label>
+            <Label>
+                Any errata you noted on questions come down alongside it, in a file of their own, so they don&apos;t
+                interfere with importing the game elsewhere.
+            </Label>
             <RoundSelector
                 roundNumber={roundNumber}
                 onRoundNumberChange={(newValue) => appState.uiState.setExportRoundNumber(newValue)}
@@ -90,40 +95,62 @@ const ExportToJsonDialogFooter = observer(function ExportToJsonDialogFooter(
     const roundNumber: number | undefined = props.roundNumber;
 
     const cancelHandler = (): void => hideDialog(appState);
-    const exportHandler = (): void => exportGame(appState);
 
     const joinedTeamNames: string = game.teamNames.join("_");
 
-    const cyclesJson: Blob = new Blob([JSON.stringify(game.cycles, null, 2)], { type: "application/json" });
-    const cyclesHref: string = URL.createObjectURL(cyclesJson);
-    const cyclesFilename = `Round_${roundNumber}_${joinedTeamNames}_Events.json`;
-
-    const gameJson: Blob = new Blob([JSON.stringify(game, null, 2)], { type: "application/json" });
-    const gameHref: string = URL.createObjectURL(gameJson);
-    const gameFilename = `Round_${roundNumber}_${joinedTeamNames}_Game.json`;
-
-    const qbjJson: Blob = new Blob(
-        [QBJ.toQBJString(game, game.packet.name ?? appState.uiState.packetFilename, roundNumber)],
-        {
-            type: "application/json",
-        }
-    );
-    const qbjHref: string = URL.createObjectURL(qbjJson);
     const qbjFilename = `Round_${roundNumber}_${joinedTeamNames}.qbj`;
+
+    // Errata get their own file so the QBJ stays exactly what stats programs (e.g. YellowFruit) expect, but the
+    // moderator shouldn't have to remember a second button for them
+    const errataExport: IErrataExport | undefined = ErrataExport.createErrataExport(appState, roundNumber);
+    const errataCount: number = errataExport?.errata.length ?? 0;
+
+    const exportHandler = (): void => {
+        downloadJson(
+            QBJ.toQBJString(game, game.packet.name ?? appState.uiState.packetFilename, roundNumber),
+            qbjFilename
+        );
+
+        if (errataExport != undefined) {
+            downloadJson(
+                JSON.stringify(errataExport, null, 2),
+                ErrataExport.getErrataFilename(appState, roundNumber)
+            );
+        }
+
+        appState.game.markUpdateComplete();
+        hideDialog(appState);
+    };
 
     return (
         <DialogFooter>
-            <PrimaryButton text="Export game" onClick={exportHandler} href={gameHref} download={gameFilename} />
-            <PrimaryButton text="Export events" onClick={exportHandler} href={cyclesHref} download={cyclesFilename} />
-            <PrimaryButton text="Export QBJ" onClick={exportHandler} href={qbjHref} download={qbjFilename} />
+            <PrimaryButton
+                text={errataCount > 0 ? `Export QBJ (+ ${errataCount} errata)` : "Export QBJ"}
+                title={
+                    errataCount > 0
+                        ? "Download the QBJ and, as a separate file, the errata noted on questions"
+                        : "Download the QBJ"
+                }
+                onClick={exportHandler}
+            />
             <DefaultButton text="Cancel" onClick={cancelHandler} />
         </DialogFooter>
     );
 });
 
-function exportGame(appState: AppState): void {
-    appState.game.markUpdateComplete();
-    hideDialog(appState);
+// Downloading through a temporary link (instead of an href on the button) lets one click bring down both the QBJ
+// and the errata file.
+function downloadJson(contents: string, filename: string): void {
+    const url: string = URL.createObjectURL(new Blob([contents], { type: "application/json" }));
+    const link: HTMLAnchorElement = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Revoking immediately can cancel the download in some browsers, so give it a moment
+    window.setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 function hideDialog(appState: AppState) {

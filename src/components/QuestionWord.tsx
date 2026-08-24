@@ -9,14 +9,17 @@ export const QuestionWord = observer(function QuestionWord(props: IQuestionWordP
     return (
         <ThemeContext.Consumer>
             {(theme) => {
+                // The space above the word is held open while numbering is on, so numbers appearing don't shift
+                // the text. When the moderator would rather keep the line spacing tight, it isn't reserved, and
+                // the row only shows up for the words that have a number to show.
+                const showIndexLabel: boolean = props.reserveIndexSpace === true || props.displayIndex != undefined;
                 const classes = getClassNames(
                     theme,
                     props.selected,
                     props.correct,
                     props.wrong,
                     props.index != undefined,
-                    props.reserveIndexSpace === true,
-                    props.indexActive === true
+                    showIndexLabel
                 );
                 return (
                     <span
@@ -25,7 +28,7 @@ export const QuestionWord = observer(function QuestionWord(props: IQuestionWordP
                         data-is-focusable="true"
                         className={classes.word}
                     >
-                        {props.reserveIndexSpace && (
+                        {showIndexLabel && (
                             // Render the number for buzzable words, or a blank placeholder otherwise, so every
                             // word (and the question number / power mark) reserves the same space above it
                             <span className={classes.indexLabel}>
@@ -48,8 +51,6 @@ interface IQuestionWordProps {
     // When true, reserve the space above the word for the number, even if this word has no number, so every
     // word (and the question number / power mark) keeps consistent vertical spacing
     reserveIndexSpace?: boolean;
-    // When true, the user is actively typing a number, so the numbers are shown a bit darker
-    indexActive?: boolean;
     selected?: boolean;
     correct?: boolean;
     wrong?: boolean;
@@ -70,28 +71,21 @@ const getClassNames = memoizeFunction(
         correct: boolean | undefined,
         wrong: boolean | undefined,
         isIndexDefined: boolean,
-        reserveIndexSpace: boolean,
-        indexActive: boolean
+        showIndexLabel: boolean
     ): IQuestionWordClassNames =>
         mergeStyleSets({
             indexLabel: {
-                // Small, non-bold number sitting directly above the word. Very light while idle so it barely
-                // distracts; darker once the user starts typing a number, to make the choice easier to read.
+                // Small, non-bold number sitting directly above the word. The numbers only show while the
+                // moderator is marking a buzz, so they're dark enough to read at a glance.
                 fontSize: "0.7em",
                 lineHeight: 1,
                 fontWeight: "normal",
-                color: indexActive
-                    ? theme
-                        ? theme.palette.neutralSecondary
-                        : "rgb(96, 96, 96)"
-                    : theme
-                    ? theme.palette.neutralQuaternaryAlt
-                    : "rgb(215, 215, 215)",
+                color: theme ? theme.palette.neutralSecondary : "rgb(96, 96, 96)",
                 userSelect: "none",
             },
             word: [
                 // While numbering words, stack the number on top of the word; otherwise lay words out inline
-                reserveIndexSpace
+                showIndexLabel
                     ? { display: "inline-flex", flexDirection: "column", alignItems: "center" }
                     : { display: "inline-flex" },
                 selected && {

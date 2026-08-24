@@ -8,11 +8,26 @@ import { AppState } from "../state/AppState";
 
 export const FormattedText = observer(function FormattedText(props: IFormattedTextProps): JSX.Element {
     const appState: AppState = useAppState();
-    const classes: IFormattedTextClassNames = useStyles(appState.uiState.pronunciationGuideColor, props.disabled);
+    const classes: IFormattedTextClassNames = useStyles(
+        appState.uiState.pronunciationGuideColor,
+        props.disabled,
+        appState.uiState.useDarkMode
+    );
+
+    // Moderators who find the anchor highlighting distracting can turn it off; the anchored words then read like
+    // any other word
+    const showPronunciationAnchors = !appState.uiState.hidePronunciationAnchors;
 
     const elements: JSX.Element[] = [];
     for (let i = 0; i < props.segments.length; i++) {
-        elements.push(<FormattedSegment key={`segment_${i}`} classNames={classes} segment={props.segments[i]} />);
+        elements.push(
+            <FormattedSegment
+                key={`segment_${i}`}
+                classNames={classes}
+                segment={props.segments[i]}
+                showPronunciationAnchors={showPronunciationAnchors}
+            />
+        );
     }
 
     const className: string = props.className ? `${classes.text} ${props.className}` : classes.text;
@@ -52,10 +67,9 @@ const FormattedSegment = observer(function FormattedSegment(props: IFormattedSeg
         );
     }
 
-    // YAPP2: the word(s) a nearby pronunciation guide covers. These are read aloud like any other words, so they
-    // keep the normal text color; only the dotted underline ties them to the guide. Checked before `pronunciation`
-    // so that a guide inside an anchor still renders as a guide.
-    if (props.segment.pronunciationTarget && !props.segment.pronunciation) {
+    // YAPP2: the word(s) a nearby pronunciation guide covers. Checked before `pronunciation` so that a guide
+    // inside an anchor still renders as a guide.
+    if (props.segment.pronunciationTarget && !props.segment.pronunciation && props.showPronunciationAnchors) {
         element = <span className={props.classNames.pronunciationTarget}>{element}</span>;
     }
 
@@ -75,6 +89,7 @@ export interface IFormattedTextProps {
 interface IFormattedSegmentProps {
     segment: IFormattedText;
     classNames: IFormattedTextClassNames;
+    showPronunciationAnchors: boolean;
 }
 
 interface IFormattedTextClassNames {
@@ -83,8 +98,17 @@ interface IFormattedTextClassNames {
     pronunciationTarget: string;
 }
 
+// The anchored words are colored maroon, matching QEMS3, so a reader spots the word a guide is coming for at a
+// glance. True maroon disappears into the dark mode background, so that gets a lighter tint of the same hue.
+const pronunciationTargetColor = "#800000";
+const darkModePronunciationTargetColor = "#c46a6a";
+
 const useStyles = memoizeFunction(
-    (pronunciationGuideColor: string | undefined, disabled: boolean | undefined): IFormattedTextClassNames =>
+    (
+        pronunciationGuideColor: string | undefined,
+        disabled: boolean | undefined,
+        useDarkMode: boolean
+    ): IFormattedTextClassNames =>
         mergeStyleSets({
             text: {
                 display: "inline",
@@ -95,11 +119,14 @@ const useStyles = memoizeFunction(
                 color: disabled ? undefined : pronunciationGuideColor ?? "#777777",
             },
             pronunciationTarget: {
-                // Tie the anchored word(s) to their guide with a dotted underline in the guide's color, leaving the
-                // text color alone: these words are read aloud, so coloring them like a guide would mislead a reader.
-                textDecoration: "underline dotted",
-                textDecorationColor: disabled ? undefined : pronunciationGuideColor ?? "#777777",
-                textUnderlineOffset: "0.15em",
+                // The color alone marks the anchored word(s) -- no underline, which competes with the underlining
+                // the answer line and the packet's own formatting use.
+                // Don't override the color if it's disabled; the container has that responsibility
+                color: disabled
+                    ? undefined
+                    : useDarkMode
+                    ? darkModePronunciationTargetColor
+                    : pronunciationTargetColor,
             },
         })
 );

@@ -133,6 +133,31 @@ function onLoad(event: ProgressEvent<FileReader>, appState: AppState): void {
     // then it has to be manual.
     uiState.setPendingNewGameType(PendingGameType.Manual);
 
+    // The format has to be read before the rosters, since it decides how many teams the game can have
+    if (parsedGame.gameFormat == undefined) {
+        uiState.setImportGameStatus({
+            isError: true,
+            status: "Unexpected error. Couldn't find the game format to use.",
+        });
+        return;
+    }
+
+    let gameFormat: IGameFormat;
+    try {
+        gameFormat = GameFormats.getUpgradedFormatVersion(parsedGame.gameFormat);
+        uiState.setPendingNewGameFormat(gameFormat);
+    } catch (e) {
+        const error: Error = e as Error;
+        uiState.setImportGameStatus({
+            isError: true,
+            status: error.message,
+        });
+        return;
+    }
+
+    const isIndividualFormat: boolean = GameFormats.isIndividualFormat(gameFormat);
+    const maximumTeamCount: number = GameFormats.getMaximumTeamCount(gameFormat);
+
     const playersMap: Map<string, Player[]> = new Map<string, Player[]>();
     for (const serializedPlayer of parsedGame.players) {
         if (serializedPlayer.name == undefined || serializedPlayer.name.trim() === "") {
@@ -146,8 +171,11 @@ function onLoad(event: ProgressEvent<FileReader>, appState: AppState): void {
         const player: Player = new Player(serializedPlayer.name, serializedPlayer.teamName, serializedPlayer.isStarter);
         if (!playersMap.has(player.teamName)) {
             playersMap.set(player.teamName, []);
-            if (playersMap.size > 2) {
-                setInvalidGameStatus(uiState, "This game has more than 2 teams.");
+            if (playersMap.size > maximumTeamCount) {
+                setInvalidGameStatus(
+                    uiState,
+                    `This game has more than ${maximumTeamCount} ${isIndividualFormat ? "players" : "teams"}.`
+                );
                 return;
             }
         }
@@ -156,23 +184,46 @@ function onLoad(event: ProgressEvent<FileReader>, appState: AppState): void {
         teamPlayers?.push(player);
     }
 
-    if (playersMap.size !== 2) {
+    if (playersMap.size < 2) {
+        setInvalidGameStatus(
+            uiState,
+            `Games need at least 2 ${isIndividualFormat ? "players" : "teams"}, but this one has ${playersMap.size}.`
+        );
+        return;
+    } else if (!isIndividualFormat && playersMap.size !== 2) {
         setInvalidGameStatus(uiState, `Games should have 2 teams, but this one has ${playersMap.size}.`);
         return;
     }
 
     const allPlayers: Player[][] = [...playersMap.values()];
 
-    if (allPlayers[0].length === 0) {
-        setInvalidGameStatus(uiState, "First team doesn't have any players.");
-        return;
-    } else if (allPlayers[1].length === 0) {
-        setInvalidGameStatus(uiState, "Second team doesn't have any players.");
-        return;
-    }
+    if (isIndividualFormat) {
+        // Each competitor is their own one-player team, so a team with more than one player isn't an
+        // individual game
+        const teamWithTooManyPlayers: Player[] | undefined = allPlayers.find(
+            (teamPlayers) => teamPlayers.length !== 1
+        );
+        if (teamWithTooManyPlayers != undefined) {
+            setInvalidGameStatus(
+                uiState,
+                `In an individual game, every player competes on their own, but "${teamWithTooManyPlayers[0].teamName}" has ${teamWithTooManyPlayers.length} players.`
+            );
+            return;
+        }
 
-    uiState.setPendingNewGameFirstTeamPlayers(allPlayers[0]);
-    uiState.setPendingNewGameSecondTeamPlayers(allPlayers[1]);
+        uiState.setPendingNewGameIndividualPlayers(allPlayers.map((teamPlayers) => teamPlayers[0]));
+    } else {
+        if (allPlayers[0].length === 0) {
+            setInvalidGameStatus(uiState, "First team doesn't have any players.");
+            return;
+        } else if (allPlayers[1].length === 0) {
+            setInvalidGameStatus(uiState, "Second team doesn't have any players.");
+            return;
+        }
+
+        uiState.setPendingNewGameFirstTeamPlayers(allPlayers[0]);
+        uiState.setPendingNewGameSecondTeamPlayers(allPlayers[1]);
+    }
 
     // Need to set up packet and cycles... but we can't set the packet until later, when we load it in the game...?
     // set it directly
@@ -199,26 +250,6 @@ function onLoad(event: ProgressEvent<FileReader>, appState: AppState): void {
         packet.setBonuses(bonuses);
     }
 
-    if (parsedGame.gameFormat == undefined) {
-        uiState.setImportGameStatus({
-            isError: true,
-            status: "Unexpected error. Couldn't find the game format to use.",
-        });
-        return;
-    }
-
-    try {
-        const gameFormat: IGameFormat = GameFormats.getUpgradedFormatVersion(parsedGame.gameFormat);
-        uiState.setPendingNewGameFormat(gameFormat);
-    } catch (e) {
-        const error: Error = e as Error;
-        uiState.setImportGameStatus({
-            isError: true,
-            status: error.message,
-        });
-        return;
-    }
-
     if (uiState.pendingNewGame == undefined) {
         uiState.setImportGameStatus({
             isError: true,
@@ -235,7 +266,9 @@ function onLoad(event: ProgressEvent<FileReader>, appState: AppState): void {
     // Format: "Valid game. X tossup(s), X bonus(es). Team1 vs Team2."
     uiState.setImportGameStatus({
         isError: false,
-        status: `Valid game. ${packet.tossups.length} tossup(s), ${packet.bonuses.length} bonus(es). Game between "${allPlayers[0][0].teamName}" and "${allPlayers[1][0].teamName}".`,
+        status: `Valid game. ${packet.tossups.length} tossup(s), ${packet.bonuses.length} bonus(es). Game between ${allPlayers
+            .map((teamPlayers) => `"${teamPlayers[0].teamName}"`)
+            .join(", ")}.`,
     });
 }
 
@@ -262,20 +295,20 @@ function onSubmit(appState: AppState): void {
         return;
     }
 
-    const [firstTeamPlayers, secondTeamPlayers]: Player[][] = PendingNewGameUtils.getPendingNewGamePlayers(
-        pendingNewGame
-    );
+    const teams: Player[][] = PendingNewGameUtils.getPendingNewGamePlayers(pendingNewGame);
 
     // Trim all the player names now
-    for (const player of firstTeamPlayers.concat(secondTeamPlayers)) {
+    for (const player of teams.flat()) {
         player.setName(player.name.trim());
     }
 
     // We need to set the game's packet, players, etc. to the values in the uiState
     game.clear();
     game.setGameFormat(pendingNewGame.gameFormat);
-    game.addNewPlayers(firstTeamPlayers.filter((player) => player.name !== ""));
-    game.addNewPlayers(secondTeamPlayers.filter((player) => player.name !== ""));
+    for (const teamPlayers of teams) {
+        game.addNewPlayers(teamPlayers.filter((player) => player.name !== ""));
+    }
+
     game.loadPacket(pendingNewGame.packet);
     game.setCycles(pendingNewGame.manual.cycles ?? []);
 

@@ -12,6 +12,7 @@ import {
     TextField,
 } from "@fluentui/react";
 import * as CustomizeGameFormatFormController from "./CustomizeGameFormatFormController";
+import * as GameFormats from "../state/GameFormats";
 import { AppState } from "../state/AppState";
 import { IGameFormat } from "../state/IGameFormat";
 import { CustomizeGameFormatState } from "../state/CustomizeGameFormatState";
@@ -67,6 +68,9 @@ export const CustomizeGameFormatForm = observer(function CustomizeGameFormatDial
                     </PivotItem>
                     <PivotItem headerText="Bonuses" itemKey="B">
                         <BonusSettings {...settingsProps} />
+                    </PivotItem>
+                    <PivotItem headerText="Players" itemKey="P">
+                        <PlayerSettings {...settingsProps} />
                     </PivotItem>
                 </Pivot>
             </StackItem>
@@ -126,6 +130,12 @@ const ScoringSettings = observer(function ScoringSettings(props: ISettingProps):
         [state]
     );
 
+    const negsForEveryWrongBuzzChangeHandler = React.useCallback(
+        (ev?: React.FormEvent<HTMLInputElement | HTMLElement>, checked?: boolean) =>
+            CustomizeGameFormatFormController.changeNegsForEveryWrongBuzz(state, checked),
+        [state]
+    );
+
     const powerMarkersHandler = React.useCallback(
         (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) =>
             CustomizeGameFormatFormController.changePowerMarkers(state, newValue),
@@ -170,6 +180,13 @@ const ScoringSettings = observer(function ScoringSettings(props: ISettingProps):
                     step={5}
                     incrementButtonAriaLabel={"Increase neg value by 5"}
                     decrementButtonAriaLabel={"Decrease neg value by 5"}
+                />
+            </StackItem>
+            <StackItem>
+                <Checkbox
+                    label="Every wrong buzz negs (multiple negs per tossup)"
+                    checked={gameFormat.negsForEveryWrongBuzz === true}
+                    onChange={negsForEveryWrongBuzzChangeHandler}
                 />
             </StackItem>
             <StackItem>
@@ -218,6 +235,12 @@ const BonusSettings = observer(function BonusSettings(props: ISettingProps): JSX
         [state]
     );
 
+    const tossupsOnlyChangeHandler = React.useCallback(
+        (ev?: React.FormEvent<HTMLInputElement | HTMLElement>, checked?: boolean) =>
+            CustomizeGameFormatFormController.changeTossupsOnly(state, checked),
+        [state]
+    );
+
     const pairTossupsBonusesChangeHandler = React.useCallback(
         (ev?: React.FormEvent<HTMLInputElement | HTMLElement>, checked?: boolean) =>
             CustomizeGameFormatFormController.changePairTossupsBonuses(state, checked),
@@ -226,6 +249,13 @@ const BonusSettings = observer(function BonusSettings(props: ISettingProps): JSX
 
     return (
         <Stack tokens={settingsStackTokens}>
+            <StackItem>
+                <Checkbox
+                    label="Tossups only (no bonuses)"
+                    checked={props.gameFormat.tossupsOnly === true}
+                    onChange={tossupsOnlyChangeHandler}
+                />
+            </StackItem>
             <StackItem>
                 <Checkbox
                     label="Bonuses bounce back"
@@ -245,6 +275,48 @@ const BonusSettings = observer(function BonusSettings(props: ISettingProps): JSX
                     label="Pair tossups with bonuses"
                     checked={props.gameFormat.pairTossupsBonuses}
                     onChange={pairTossupsBonusesChangeHandler}
+                />
+            </StackItem>
+        </Stack>
+    );
+});
+
+const PlayerSettings = observer(function PlayerSettings(props: ISettingProps): JSX.Element {
+    const { state, gameFormat } = props;
+
+    const individualFormatChangeHandler = React.useCallback(
+        (ev?: React.FormEvent<HTMLInputElement | HTMLElement>, checked?: boolean) =>
+            CustomizeGameFormatFormController.changeIndividualFormat(state, checked),
+        [state]
+    );
+
+    const maximumPlayerCountChangeHandler = React.useCallback(
+        (event: React.SyntheticEvent<HTMLElement, Event>, newValue?: string | undefined) =>
+            CustomizeGameFormatFormController.changeMaximumPlayerCount(state, newValue),
+        [state]
+    );
+
+    const isIndividualFormat: boolean = GameFormats.isIndividualFormat(gameFormat);
+
+    return (
+        <Stack tokens={settingsStackTokens}>
+            <StackItem>
+                <Checkbox
+                    label="Individual play (each player competes on their own)"
+                    checked={isIndividualFormat}
+                    onChange={individualFormatChangeHandler}
+                />
+            </StackItem>
+            <StackItem>
+                <SpinButton
+                    label="Maximum players"
+                    disabled={!isIndividualFormat}
+                    onChange={maximumPlayerCountChangeHandler}
+                    value={GameFormats.getMaximumTeamCount(gameFormat).toString()}
+                    min={2}
+                    max={GameFormats.maximumIndividualPlayerCount}
+                    incrementButtonAriaLabel={"Increase the maximum number of players by 1"}
+                    decrementButtonAriaLabel={"Decrease the maximum number of players by 1"}
                 />
             </StackItem>
         </Stack>

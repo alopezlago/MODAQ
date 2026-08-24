@@ -82,12 +82,30 @@ export const GameFormatPicker = observer(function GameFormatPicker(props: IGameF
                                 <li>
                                     <Text>{`Has powers: ${formatBoolean(props.gameFormat.powers.length > 0)}`}</Text>
                                 </li>
-                                <li>
-                                    <Text>{`Bonuses bounce back: ${formatBoolean(
-                                        props.gameFormat.bonusesBounceBack
-                                    )}`}</Text>
-                                    {bouncebackWarning}
-                                </li>
+                                {GameFormats.hasBonuses(props.gameFormat) ? (
+                                    <li>
+                                        <Text>{`Bonuses bounce back: ${formatBoolean(
+                                            props.gameFormat.bonusesBounceBack
+                                        )}`}</Text>
+                                        {bouncebackWarning}
+                                    </li>
+                                ) : (
+                                    <li>
+                                        <Text>Tossups only (no bonuses)</Text>
+                                    </li>
+                                )}
+                                {GameFormats.isIndividualFormat(props.gameFormat) && (
+                                    <li>
+                                        <Text>{`Individual play: up to ${GameFormats.getMaximumTeamCount(
+                                            props.gameFormat
+                                        )} players`}</Text>
+                                    </li>
+                                )}
+                                {GameFormats.negsForEveryWrongBuzz(props.gameFormat) && (
+                                    <li>
+                                        <Text>Every wrong buzz negs</Text>
+                                    </li>
+                                )}
                             </ul>
                         </StackItem>
                     </Stack>

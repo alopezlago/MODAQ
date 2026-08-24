@@ -19,10 +19,14 @@ const playerNameStyle: Partial<ITextFieldStyles> = {
     },
 };
 
+// Names come from rosters and registration files, so they can be far longer than the row. Let them wrap instead of
+// pushing the starter checkbox and the reorder buttons out of the row.
 const playerNameLabelStyle: Partial<ILabelStyles> = {
     root: {
         marginRight: 20,
         fontSize: playerNameFontSize,
+        minWidth: 0,
+        overflowWrap: "anywhere",
     },
 };
 
@@ -31,6 +35,8 @@ const fillPlayerNameLabelStyle: Partial<ILabelStyles> = {
         marginRight: 20,
         flexGrow: 1,
         fontSize: playerNameFontSize,
+        minWidth: 0,
+        overflowWrap: "anywhere",
     },
 };
 
@@ -38,6 +44,7 @@ const starterCheckboxStyle: Partial<ICheckboxStyles> = {
     root: {
         alignItems: "center",
         marginRight: 5,
+        flexShrink: 0,
     },
 };
 
@@ -81,7 +88,12 @@ export const PlayerEntry = observer(function PlayerEntry(props: React.PropsWithC
         );
     } else {
         playerName = (
-            <Label styles={props.fillWidth ? fillPlayerNameLabelStyle : playerNameLabelStyle}>{props.player.name}</Label>
+            <Label
+                styles={props.fillWidth ? fillPlayerNameLabelStyle : playerNameLabelStyle}
+                title={props.player.name}
+            >
+                {props.player.name}
+            </Label>
         );
     }
 

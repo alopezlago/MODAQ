@@ -10,8 +10,8 @@ import { AppState } from "../state/AppState";
 import { useAppState } from "../contexts/StateContext";
 import { Clock } from "./Clock";
 import { ExportStatus } from "./ExportStatus";
-import { ErrataControl } from "./ErrataControl";
 import { PacketNameLabel } from "./PacketNameLabel";
+import { BuzzIndexPrompt } from "./BuzzIndexPrompt";
 
 const scoreboardAndQuestionViewerTokens: IStackTokens = { childrenGap: 20 };
 
@@ -53,12 +53,12 @@ export const GameViewer = observer(function GameViewer() {
                         <StackItem>
                             <QuestionViewerContainer />
                         </StackItem>
+                        {/* Not wrapped in a StackItem: that renders a div even with nothing in it, which would
+                            leave the stack's gap below the question box for everyone not using the mode */}
+                        <BuzzIndexPrompt />
                         <StackItem>{packetName}</StackItem>
                         <StackItem>
-                            <Stack horizontal tokens={{ childrenGap: 10 }} verticalAlign="center">
-                                <ErrataControl />
-                                <ExportStatus />
-                            </Stack>
+                            <ExportStatus />
                         </StackItem>
                     </Stack>
                 </StackItem>
@@ -97,7 +97,10 @@ const getClassNames = (gameLoaded: boolean, isEventLogHidden: boolean, isClockHi
         questionViewerContainer: {},
         scoreboardContainer: {
             display: "grid",
-            gridTemplateColumns: isClockHidden ? "1fr" : "1fr 1fr 1fr",
+            // The clock only needs its own width, so give the rest to the scoreboard -- team names out of a
+            // registration file can be long, and a third of the window wraps them over many lines. The two outer
+            // tracks stay equal so the scoreboard is still centered.
+            gridTemplateColumns: isClockHidden ? "1fr" : "minmax(90px, 1fr) minmax(0, 8fr) minmax(90px, 1fr)",
             alignItems: "center",
         },
     });

@@ -2,6 +2,7 @@ import { observable, action, computed, makeObservable } from "mobx";
 import { format } from "mobx-sync";
 
 import * as Events from "./Events";
+import * as GameFormats from "./GameFormats";
 import * as PlayerUtils from "./PlayerUtils";
 import { IBuzzMarker } from "./IBuzzMarker";
 import { IGameFormat } from "./IGameFormat";
@@ -142,6 +143,21 @@ export class Cycle implements ICycle {
         return negBuzz;
     }
 
+    // The incorrect buzzes that cost their player points. Standard formats only penalize the first one; formats
+    // like IPNCT penalize every buzz made before the end of the question.
+    public getNegBuzzes(gameFormat: IGameFormat): Events.ITossupAnswerEvent[] {
+        if (this.wrongBuzzes == undefined || this.wrongBuzzes.length === 0) {
+            return [];
+        }
+
+        if (GameFormats.negsForEveryWrongBuzz(gameFormat)) {
+            return this.wrongBuzzes.filter((buzz) => buzz.marker.isLastWord !== true);
+        }
+
+        const firstWrongBuzz: Events.ITossupAnswerEvent | undefined = this.firstWrongBuzz;
+        return firstWrongBuzz == undefined ? [] : [firstWrongBuzz];
+    }
+
     public get orderedBuzzes(): Events.ITossupAnswerEvent[] {
         // Sort by tossupIndex, then by position. Tie breaker: negs before no penalties, negs/no penalties before correct
         const buzzes: Events.ITossupAnswerEvent[] = this.wrongBuzzes ? [...this.wrongBuzzes] : [];
@@ -268,6 +284,11 @@ export class Cycle implements ICycle {
             this.wrongBuzzes.push(event);
             this.wrongBuzzes = this.wrongBuzzes.concat(laterBuzzes);
 
+            this.updateNeg(gameFormat);
+        }
+
+        if (GameFormats.negsForEveryWrongBuzz(gameFormat)) {
+            // Every wrong buzz is scored the same way, so a buzz appended to the end still needs its neg
             this.updateNeg(gameFormat);
         }
 
@@ -674,11 +695,23 @@ export class Cycle implements ICycle {
     // If we changed the order of wrongBuzzes, it may be that the first wrong buzz is different, so we need to
     // reset the point values for the wrong ubzzes
     private updateNeg(gameFormat: IGameFormat): void {
-        if (
-            this.wrongBuzzes != undefined &&
-            this.wrongBuzzes.length > 0 &&
-            this.wrongBuzzes[0].marker.isLastWord === false
-        ) {
+        if (this.wrongBuzzes == undefined || this.wrongBuzzes.length === 0) {
+            return;
+        }
+
+        if (GameFormats.negsForEveryWrongBuzz(gameFormat)) {
+            // Every buzz before the end of the question is penalized, so the order of the buzzes doesn't change
+            // what anyone gets. Buzzes at the end of the question are never negs.
+            for (const buzz of this.wrongBuzzes) {
+                if (buzz.marker.isLastWord === false) {
+                    buzz.marker.points = gameFormat.negValue;
+                }
+            }
+
+            return;
+        }
+
+        if (this.wrongBuzzes[0].marker.isLastWord === false) {
             this.wrongBuzzes[0].marker.points = gameFormat.negValue;
             for (let i = 1; i < this.wrongBuzzes.length; i++) {
                 this.wrongBuzzes[i].marker.points = 0;

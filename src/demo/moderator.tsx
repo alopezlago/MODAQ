@@ -69,11 +69,21 @@ initializeIcons();
 
 const code: string = (new URLSearchParams(location.search).get("room") || "").toUpperCase();
 
+export interface IGameTeam {
+    name: string;
+    players: string[];
+}
+
 interface IReadingConfig {
     packet: IPacket;
     // Roster player pool passed to MODAQ's New Game dialog (its "From QBJ
     // Registration" tab); teams and player order are chosen there natively.
     rosters: IPlayer[];
+    // In MASSINGER the teams were already chosen (before the pick/ban), so the
+    // final dialog is prefilled with them and shows the pick/ban result.
+    teams?: IGameTeam[];
+    board?: IMassingerState;
+    onEditPickBan?: () => void;
     round: string;
     errata: IErratum[];
     tiebreakers: ITiebreakerItem[];
@@ -158,6 +168,41 @@ function applyMassinger(packet: IPacket, board: IMassingerState): IPacket {
 const massingerRemaining = (board: IMassingerState): number =>
     board.subcats.reduce((sum, subcat) => sum + (subcat.indexes.length - subcat.banned), 0);
 
+// The teams (and their players, in order) out of a match QBJ — this is how the
+// teams the moderator entered in MODAQ's New Game dialog reach Klaxon, both to
+// seed the pick/ban and to link every buzzer to a real player.
+function teamsFromMatch(match: IMatch): IGameTeam[] {
+    return (match.match_teams ?? []).map((matchTeam) => ({
+        name: matchTeam.team?.name ?? "",
+        players: (matchTeam.match_players ?? [])
+            .map((matchPlayer) => matchPlayer.player?.name ?? "")
+            .filter((name) => name !== ""),
+    }));
+}
+
+const teamsKey = (teams: IGameTeam[]): string => teams.map((t) => `${t.name}:${t.players.join("|")}`).join("/");
+
+// Push the game's teams to Klaxon so buzzes are attributed to MODAQ players.
+// Called in every mode, and only when the teams actually changed.
+function useTeamSync(client: KlaxonClient): (match: IMatch) => void {
+    const lastKey = React.useRef<string>("");
+    return React.useCallback(
+        (match: IMatch) => {
+            const teams = teamsFromMatch(match).filter((t) => t.name !== "" && t.players.length > 0);
+            if (teams.length < 2) {
+                return;
+            }
+            const key = teamsKey(teams);
+            if (key === lastKey.current) {
+                return;
+            }
+            lastKey.current = key;
+            client.massinger({ action: "set_modaq_teams", teams });
+        },
+        [client]
+    );
+}
+
 function serverErratumToErratum(e: IServerErratum): IErratum {
     return {
         questionNumber: e.questionNumber,
@@ -171,7 +216,7 @@ function serverErratumToErratum(e: IServerErratum): IErratum {
 function Moderator(): JSX.Element {
     const clientRef = React.useRef<KlaxonClient | undefined>(undefined);
     const [phase, setPhase] = React.useState<
-        "connecting" | "error" | "setup" | "pickban" | "reading" | "lite" | "account"
+        "connecting" | "error" | "setup" | "lobby" | "teams" | "pickban" | "reading" | "lite" | "account"
     >("connecting");
     const [fatal, setFatal] = React.useState<string>("");
     // When the fix for an error is signing in, the error view offers the link.
@@ -194,9 +239,10 @@ function Moderator(): JSX.Element {
 
     const [config, setConfig] = React.useState<IReadingConfig | undefined>(undefined);
 
-    // MASSINGER: the loaded-but-not-yet-filtered packet waiting on pick/ban.
+    // MASSINGER: the loaded-but-not-yet-filtered packet, and the teams chosen in
+    // MODAQ's New Game dialog before the pick/ban starts.
     const [pickban, setPickban] = React.useState<
-        { round: string; packet: IPacket; rosters: IPlayer[] } | undefined
+        { round: string; packet: IPacket; rosters: IPlayer[]; teams?: IGameTeam[] } | undefined
     >(undefined);
 
     // Connect + bootstrap once.
@@ -418,7 +464,8 @@ function Moderator(): JSX.Element {
         roundLabel: string,
         packet: IPacket,
         rosters: IPlayer[],
-        format: ITournamentFormat | undefined
+        format: ITournamentFormat | undefined,
+        massinger?: { teams: IGameTeam[]; board: IMassingerState; onEdit: () => void }
     ): Promise<void> {
         let errata: IErratum[] = [];
         try {
@@ -444,6 +491,9 @@ function Moderator(): JSX.Element {
         setConfig({
             packet,
             rosters,
+            teams: massinger?.teams,
+            board: massinger?.board,
+            onEditPickBan: massinger?.onEdit,
             round: roundLabel,
             errata,
             tiebreakers,
@@ -481,8 +531,11 @@ function Moderator(): JSX.Element {
             const freshRoster = await refreshCentralRoster(client);
             const rosters = freshRoster ?? rosterPlayers;
             if (massingerApplies(tournamentFormat, packet)) {
+                // Players first: they make their own picks, so they have to be
+                // in the room (and linked to their MODAQ player) before the
+                // pick/ban can run. Lobby -> teams -> pick/ban.
                 setPickban({ round: roundLabel, packet, rosters });
-                setPhase("pickban");
+                setPhase("lobby");
                 return;
             }
             await enterReading(client, roundLabel, packet, rosters, tournamentFormat);
@@ -549,23 +602,39 @@ function Moderator(): JSX.Element {
 
     if (phase === "setup") {
         const scheduledRounds = (tournament?.schedule || []).filter((r) => r.room === code).map((r) => r.round);
-        const packetReady = !!packetFile || serverPackets.indexOf(round.trim()) >= 0;
+        const trimmed = round.trim();
+        const releasedForRound = serverPackets.indexOf(trimmed) >= 0;
+        // A file the moderator picked themselves wins over the tournament's
+        // packet for this round, so say plainly which one will actually be read.
+        const packetReady = !!packetFile || releasedForRound;
         const canStart = !starting && packetReady;
+
+        const chooseRound = (r: string): void => {
+            setRound(r);
+            setPacketFile(undefined);   // going back to the tournament packet
+            setSetupMsg("");
+        };
+
         return (
             <div className="mod-center mod-setup">
                 <h1>MODAQ moderator — room {code}</h1>
                 {clientRef.current ? <DirectorMessages client={clientRef.current} /> : undefined}
                 <p className="hint">
-                    Pick the round and packet, then set teams in MODAQ&apos;s New Game dialog and read with the Klaxon
-                    buzzer on the right.
+                    Choose the round and its packet, then start — teams are set in MODAQ&apos;s New Game dialog, and
+                    you read with the Klaxon buzzer on the right.
                 </p>
 
                 {scheduledRounds.length > 0 && (
                     <>
-                        <label>Scheduled rounds for this room</label>
+                        <label>This room&apos;s scheduled rounds</label>
                         <div className="schedule-rounds">
                             {scheduledRounds.map((r) => (
-                                <button key={r} onClick={() => setRound(r)}>
+                                <button
+                                    key={r}
+                                    className={trimmed === r ? "chip selected" : "chip"}
+                                    aria-pressed={trimmed === r}
+                                    onClick={() => chooseRound(r)}
+                                >
                                     Round {r}
                                 </button>
                             ))}
@@ -573,21 +642,67 @@ function Moderator(): JSX.Element {
                     </>
                 )}
 
-                <label htmlFor="round">Round label</label>
-                <input id="round" type="text" value={round} onChange={(e) => setRound(e.target.value)} />
-
-                {serverPackets.length > 0 && (
-                    <>
-                        <label>Released rounds (packet ready)</label>
-                        <div className="schedule-rounds">
-                            {serverPackets.map((r) => (
-                                <button key={r} onClick={() => setRound(r)}>
-                                    {r}
+                <label>Packet</label>
+                {serverPackets.length > 0 ? (
+                    <div className="packet-choices">
+                        {serverPackets.map((r) => {
+                            const active = !packetFile && trimmed === r;
+                            return (
+                                <button
+                                    key={r}
+                                    className={active ? "packet-choice selected" : "packet-choice"}
+                                    aria-pressed={active}
+                                    onClick={() => chooseRound(r)}
+                                >
+                                    <span className="packet-choice-check">{active ? "●" : "○"}</span>
+                                    <span>
+                                        <strong>Round {r}</strong>
+                                        <span className="packet-choice-sub">tournament packet</span>
+                                    </span>
                                 </button>
-                            ))}
-                        </div>
-                    </>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <p className="hint">
+                        The director hasn&apos;t released a packet to this room yet — choose your own file below.
+                    </p>
                 )}
+
+                <label htmlFor="packet">
+                    {serverPackets.length > 0 ? "…or read your own packet file (JSON)" : "Packet file (JSON)"}
+                </label>
+                <input
+                    id="packet"
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={(e) => {
+                        setPacketFile(e.target.files?.[0]);
+                        setSetupMsg("");
+                    }}
+                />
+
+                <label htmlFor="round">Round label</label>
+                <input
+                    id="round"
+                    type="text"
+                    value={round}
+                    onChange={(e) => setRound(e.target.value)}
+                />
+                <p className="hint">
+                    What this game is filed under in the tournament&apos;s stats. Picking a released round above sets
+                    it for you.
+                </p>
+
+                <p className={packetReady ? "packet-status ready" : "packet-status"}>
+                    {packetFile
+                        ? `Reading “${packetFile.name}” — it will be saved as the packet for round “${trimmed}”.`
+                        : releasedForRound
+                        ? `Reading the tournament packet for round “${trimmed}”.`
+                        : serverPackets.length > 0
+                        ? `No packet for round “${trimmed}” — pick a released round above, or choose your own file.`
+                        : "Choose a packet file to start."}
+                </p>
 
                 {centralRoster ? (
                     <p className="hint">
@@ -611,24 +726,6 @@ function Moderator(): JSX.Element {
                     </>
                 )}
 
-                {serverPackets.length > 0 ? (
-                    <p className="hint">
-                        {serverPackets.indexOf(round.trim()) >= 0
-                            ? `Using the tournament packet for round “${round.trim()}”.`
-                            : "Choose one of the released rounds above."}
-                    </p>
-                ) : (
-                    <>
-                        <label htmlFor="packet">Packet for this round (JSON)</label>
-                        <input
-                            id="packet"
-                            type="file"
-                            accept=".json,application/json"
-                            onChange={(e) => setPacketFile(e.target.files?.[0])}
-                        />
-                    </>
-                )}
-
                 <div>
                     <button className="primary" disabled={!canStart} onClick={onStart}>
                         {starting ? "Starting…" : "Start reading"}
@@ -639,6 +736,45 @@ function Moderator(): JSX.Element {
         );
     }
 
+    if (phase === "lobby" && pickban) {
+        return (
+            <Lobby
+                code={code}
+                client={clientRef.current!}
+                round={pickban.round}
+                roomState={roomState}
+                onCancel={() => {
+                    setPickban(undefined);
+                    setPhase("setup");
+                }}
+                onContinue={() => setPhase("teams")}
+            />
+        );
+    }
+
+    if (phase === "teams" && pickban) {
+        return (
+            <TeamPicker
+                code={code}
+                client={clientRef.current!}
+                round={pickban.round}
+                packet={pickban.packet}
+                rosters={pickban.rosters}
+                gameFormat={gameFormatFor(tournamentFormat)}
+                roomState={roomState}
+                onCancel={() => {
+                    setPickban(undefined);
+                    setPhase("setup");
+                }}
+                onBack={() => setPhase("lobby")}
+                onTeams={(teams) => {
+                    setPickban({ ...pickban, teams });
+                    setPhase("pickban");
+                }}
+            />
+        );
+    }
+
     if (phase === "pickban" && pickban) {
         return (
             <PickBan
@@ -646,7 +782,7 @@ function Moderator(): JSX.Element {
                 client={clientRef.current!}
                 round={pickban.round}
                 packet={pickban.packet}
-                teams={teamsFromRoster(pickban.rosters)}
+                gameTeams={pickban.teams ?? []}
                 timerSecDefault={tournamentFormat?.massingerTimerSec ?? 30}
                 roomState={roomState}
                 onCancel={() => {
@@ -654,6 +790,7 @@ function Moderator(): JSX.Element {
                     setPickban(undefined);
                     setPhase("setup");
                 }}
+                onBackToTeams={() => setPhase("teams")}
                 onReady={async (board) => {
                     const client = clientRef.current;
                     if (!client) return;
@@ -662,7 +799,8 @@ function Moderator(): JSX.Element {
                         pickban.round,
                         applyMassinger(pickban.packet, board),
                         pickban.rosters,
-                        tournamentFormat
+                        tournamentFormat,
+                        { teams: pickban.teams ?? [], board, onEdit: () => setPhase("pickban") }
                     );
                 }}
             />
@@ -690,6 +828,211 @@ function Moderator(): JSX.Element {
     );
 }
 
+// Who is connected to the room, and which MODAQ player each buzzer is linked
+// to. Shown beside the pick/ban so the moderator can see that both teams are
+// actually here (and able to make their own picks) before the phase runs.
+function ConnectedPlayers(props: {
+    roomState: IPublicRoomState | undefined;
+    teams?: string[];
+    // Before the teams exist there is nothing to link to, so the "not linked"
+    // warning would just be noise.
+    preTeams?: boolean;
+}): JSX.Element {
+    const members = (props.roomState?.members ?? []).filter((m) => m.role === "player");
+    const unlinked = props.preTeams ? 0 : members.filter((m) => !m.rosterPlayer).length;
+    return (
+        <div className="ms-players">
+            <h3>
+                Connected players ({members.length})
+                {unlinked > 0 && <span className="ms-unlinked"> · {unlinked} not linked</span>}
+            </h3>
+            {members.length === 0 ? (
+                <p className="hint">Nobody has joined the room yet. They open the player link to buzz and pick.</p>
+            ) : (
+                <ul>
+                    {members.map((member) => {
+                        const team = member.rosterTeam || member.team || "";
+                        const onClock = props.teams != undefined && props.teams.length > 0 && team === props.teams[0];
+                        return (
+                            <li key={member.id} className={member.connected ? "" : "gone"}>
+                                <span className="ms-player-name">
+                                    {member.rosterPlayer || member.name}
+                                    {member.rosterPlayer && member.rosterPlayer !== member.name && (
+                                        <span className="ms-alias"> (joined as {member.name})</span>
+                                    )}
+                                </span>
+                                <span className={onClock ? "ms-player-team picking" : "ms-player-team"}>
+                                    {team || "no team"}
+                                </span>
+                                {!member.connected && <span className="ms-player-team">offline</span>}
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
+            {unlinked > 0 && (
+                <p className="hint">
+                    A buzzer that isn&apos;t linked to a MODAQ player still buzzes, but reports the name they typed.
+                    Link them from the buzzer options page.
+                </p>
+            )}
+        </div>
+    );
+}
+
+// Before anything else in a MASSINGER game: get the players into the room. They
+// make their own protect/ban picks, so the moderator needs them connected (and
+// visible) before setting teams — and the team/player names entered next are
+// what each buzzer gets linked to.
+function Lobby(props: {
+    code: string;
+    client: KlaxonClient;
+    round: string;
+    roomState: IPublicRoomState | undefined;
+    onCancel: () => void;
+    onContinue: () => void;
+}): JSX.Element {
+    const { code, client, round, roomState, onCancel, onContinue } = props;
+    const [copied, setCopied] = React.useState(false);
+    const players = (roomState?.members ?? []).filter((m) => m.role === "player");
+    const connected = players.filter((m) => m.connected);
+    const teamsSeen = Array.from(new Set(connected.map((m) => m.team || "").filter((t) => t !== "")));
+
+    const link = `${location.origin}/r/${code}`;
+    const copyLink = async (): Promise<void> => {
+        try {
+            await navigator.clipboard.writeText(link);
+        } catch {
+            /* clipboard may be blocked */
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1400);
+    };
+
+    return (
+        <div className="mod-shell">
+            <div className="mod-main">
+                <div className="mod-center mod-setup">
+                    <h1>Waiting for players — room {code}</h1>
+                    <p className="hint">
+                        Round {round}. In a MASSINGER game each team makes its own protects and bans, so get both
+                        teams into the room first. Send them this link:
+                    </p>
+                    <div className="lobby-link">
+                        <code>{link}</code>
+                        <button onClick={copyLink}>{copied ? "Copied!" : "Copy player link"}</button>
+                    </div>
+
+                    <div className="lobby-count">
+                        <span className="lobby-number">{connected.length}</span>
+                        <span>
+                            {connected.length === 1 ? "player connected" : "players connected"}
+                            {teamsSeen.length > 0 && ` · ${teamsSeen.join(", ")}`}
+                        </span>
+                    </div>
+
+                    {connected.length === 0 ? (
+                        <p className="hint">
+                            Nobody has joined yet. You can still continue — the moderator can make every pick — but
+                            the teams won&apos;t be able to pick for themselves.
+                        </p>
+                    ) : (
+                        <p className="hint">
+                            Next you&apos;ll set the teams and players in MODAQ&apos;s New Game dialog; each buzzer
+                            here is linked to its player by name, so ask them to join under the name on the roster.
+                        </p>
+                    )}
+
+                    <div>
+                        <button className="primary" onClick={onContinue}>
+                            Continue to teams →
+                        </button>{" "}
+                        <button onClick={onCancel}>Back to setup</button>
+                    </div>
+                </div>
+            </div>
+            <div className="mod-side">
+                <ConnectedPlayers roomState={roomState} preTeams={true} />
+                <BuzzPanel client={client} state={roomState} />
+            </div>
+        </div>
+    );
+}
+
+// Step one of a MASSINGER game: the teams and players, entered in MODAQ's own
+// New Game dialog. The game that gets created here is a scratch one (its own
+// store) — it exists only to capture the teams, which then seed the pick/ban
+// and get pushed to Klaxon so every buzzer is linked to a real player. The
+// game that is actually read is started later, from the filtered packet.
+function TeamPicker(props: {
+    code: string;
+    client: KlaxonClient;
+    round: string;
+    packet: IPacket;
+    rosters: IPlayer[];
+    gameFormat: IGameFormat | undefined;
+    roomState: IPublicRoomState | undefined;
+    onCancel: () => void;
+    onBack: () => void;
+    onTeams: (teams: IGameTeam[]) => void;
+}): JSX.Element {
+    const { code, client, round, packet, rosters, gameFormat, roomState, onCancel, onBack, onTeams } = props;
+    const [teams, setTeams] = React.useState<IGameTeam[]>([]);
+    const syncTeams = useTeamSync(client);
+
+    const onGameUpdate = React.useCallback(
+        (match: IMatch) => {
+            const found = teamsFromMatch(match).filter((t) => t.name !== "" && t.players.length > 0);
+            if (found.length >= 2) {
+                setTeams(found);
+                syncTeams(match);   // link the buzzers now, so players can pick as themselves
+            }
+        },
+        [syncTeams]
+    );
+
+    return (
+        <div className="mod-shell">
+            <div className="mod-main">
+                <RoomToolbar code={code} label={`Room ${code} · Round ${round} · teams`}>
+                    <button onClick={onBack}>← Players</button>
+                    <button onClick={onCancel}>Back to setup</button>
+                </RoomToolbar>
+                <DirectorMessages client={client} />
+                <div className="ms-teamsbar">
+                    {teams.length >= 2 ? (
+                        <>
+                            <span>
+                                Teams set: <strong>{teams[0].name}</strong> vs <strong>{teams[1].name}</strong>
+                            </span>
+                            <button className="primary" onClick={() => onTeams(teams)}>
+                                Continue to pick/ban →
+                            </button>
+                        </>
+                    ) : (
+                        <span>
+                            Set the two teams and their players in MODAQ&apos;s New Game dialog, then start it — the
+                            pick/ban comes next.
+                        </span>
+                    )}
+                </div>
+                <ModaqControl
+                    applyStylingToRoot={false}
+                    buildVersion={__BUILD_VERSION__}
+                    newGameOnLoad={{ packet, packetName: `Round ${round}`, rosters }}
+                    gameFormat={gameFormat}
+                    persistState={true}
+                    storeName={`klaxon-${code}-${round}-teams`}
+                    onGameUpdate={onGameUpdate}
+                />
+            </div>
+            <div className="mod-side">
+                <ConnectedPlayers roomState={roomState} />
+            </div>
+        </div>
+    );
+}
+
 // --- MASSINGER pick/ban screen ---------------------------------------------
 // The moderator drives the whole phase: which team is on the clock, applying
 // each spoken protect/ban, and enforcing the pick timer. The board itself is
@@ -700,29 +1043,39 @@ function PickBan(props: {
     client: KlaxonClient;
     round: string;
     packet: IPacket;
-    teams: string[];
+    gameTeams: IGameTeam[];
     timerSecDefault: number;
     roomState: IPublicRoomState | undefined;
     onCancel: () => void;
+    onBackToTeams: () => void;
     onReady: (board: IMassingerState) => void;
 }): JSX.Element {
-    const { client, round, packet, teams, timerSecDefault, roomState, onCancel, onReady } = props;
+    const { code, client, round, packet, gameTeams, timerSecDefault, roomState, onCancel, onBackToTeams, onReady } =
+        props;
     const board: IMassingerState | undefined =
         roomState?.massinger && roomState.massinger.round === round ? roomState.massinger : undefined;
 
-    const [teamA, setTeamA] = React.useState(teams[0] ?? "");
-    const [teamB, setTeamB] = React.useState(teams[1] ?? "");
     const [timerSec, setTimerSec] = React.useState(timerSecDefault);
+    // Which of the two teams picks first, chosen from a list of the actual team
+    // names — never typed, so a pick/ban can't run against a misspelled team
+    // that matches nobody's buzzer.
+    const [firstIndex, setFirstIndex] = React.useState(0);
+    const teamOptions: string[] =
+        gameTeams.length >= 2
+            ? gameTeams.map((team) => team.name)
+            : roomState?.roster?.teamNames?.slice(0, 2) ?? [];
     const [msg, setMsg] = React.useState("");
     const [probed, setProbed] = React.useState(false);
     const [starting, setStarting] = React.useState(false);
+    const [editing, setEditing] = React.useState(false);
 
     // Auto-resume a board persisted for this round (reload / server restart).
     React.useEffect(() => {
         client.massinger({ action: "massinger_start", round, resumeOnly: true }).then(() => setProbed(true));
     }, [client, round]);
 
-    // Tick every 250ms while a deadline is live so the countdown moves.
+    // Tick while a deadline is live so the countdown moves. The server is what
+    // actually enforces it — this is only the display.
     const [, forceTick] = React.useReducer((n: number) => n + 1, 0);
     React.useEffect(() => {
         if (board?.status !== "active" || board.deadline == null) {
@@ -749,7 +1102,7 @@ function PickBan(props: {
                 fresh,
                 round,
                 subcats: deriveSubcats(packet),
-                teams: [teamA.trim() || "Team A", teamB.trim() || "Team B"],
+                teams: [teamOptions[firstIndex], teamOptions[1 - firstIndex]],
                 timerSec,
                 target: MASSINGER_TARGET,
             });
@@ -764,49 +1117,65 @@ function PickBan(props: {
     // --- start form (no board yet) ---
     if (!board) {
         return (
-            <div className="mod-center mod-setup">
-                <h1>MASSINGER pick/ban — Round {round}</h1>
-                <p className="hint">
-                    {packet.tossups.length} tossups in the packet. Teams alternate protecting and banning
-                    subcategories until {MASSINGER_TARGET} remain; you apply each team&apos;s calls below.
-                </p>
-                <label htmlFor="ms-team-a">Team picking first</label>
-                <input
-                    id="ms-team-a"
-                    type="text"
-                    list="ms-team-options"
-                    value={teamA}
-                    onChange={(e) => setTeamA(e.target.value)}
-                />
-                <label htmlFor="ms-team-b">Other team</label>
-                <input
-                    id="ms-team-b"
-                    type="text"
-                    list="ms-team-options"
-                    value={teamB}
-                    onChange={(e) => setTeamB(e.target.value)}
-                />
-                <datalist id="ms-team-options">
-                    {teams.map((team) => (
-                        <option key={team} value={team} />
-                    ))}
-                </datalist>
-                <label htmlFor="ms-timer">Seconds per pick (0 = no timer)</label>
-                <input
-                    id="ms-timer"
-                    type="number"
-                    min={0}
-                    max={300}
-                    value={timerSec}
-                    onChange={(e) => setTimerSec(Number(e.target.value))}
-                />
-                <div>
-                    <button className="primary" disabled={!probed || starting} onClick={() => begin(false)}>
-                        {probed ? "Begin pick/ban" : "Checking for a saved board…"}
-                    </button>{" "}
-                    <button onClick={onCancel}>Back to setup</button>
+            <div className="mod-shell">
+                <div className="mod-main">
+                    <div className="mod-center mod-setup">
+                        <h1>MASSINGER pick/ban — Round {round}</h1>
+                        <p className="hint">
+                            {packet.tossups.length} tossups in the packet. {teamOptions[0] ?? "The two teams"} and{" "}
+                            {teamOptions[1] ?? "their opponent"} alternate protecting and banning subcategories until{" "}
+                            {MASSINGER_TARGET} remain. Each team picks from their own room page; you can pick for them
+                            (and undo or edit anything) here.
+                        </p>
+                        <label htmlFor="ms-first">Which team picks first?</label>
+                        <select
+                            id="ms-first"
+                            value={firstIndex}
+                            onChange={(e) => setFirstIndex(Number(e.target.value))}
+                        >
+                            {teamOptions.map((name, index) => (
+                                <option key={name} value={index}>
+                                    {name}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="hint">
+                            The other team ({teamOptions[1 - firstIndex] ?? "—"}) picks second, and they alternate
+                            from there. You can change whose turn it is at any point once the board is running.
+                        </p>
+                        <label htmlFor="ms-timer">Seconds per pick (0 = no timer)</label>
+                        <input
+                            id="ms-timer"
+                            type="number"
+                            min={0}
+                            max={300}
+                            value={timerSec}
+                            onChange={(e) => setTimerSec(Number(e.target.value))}
+                        />
+                        <p className="hint">
+                            When the timer runs out the server bans a random subcategory for the team on the clock.
+                        </p>
+                        <div>
+                            <button
+                                className="primary"
+                                disabled={!probed || starting || teamOptions.length < 2}
+                                onClick={() => begin(false)}
+                            >
+                                {teamOptions.length < 2
+                                    ? "Set the teams first"
+                                    : probed
+                                    ? "Begin pick/ban"
+                                    : "Checking for a saved board…"}
+                            </button>{" "}
+                            <button onClick={onBackToTeams}>Back to teams</button>{" "}
+                            <button onClick={onCancel}>Back to setup</button>
+                        </div>
+                        <p className="msg">{msg}</p>
+                    </div>
                 </div>
-                <p className="msg">{msg}</p>
+                <div className="mod-side">
+                    <ConnectedPlayers roomState={roomState} />
+                </div>
             </div>
         );
     }
@@ -818,111 +1187,166 @@ function PickBan(props: {
     const secondsLeft =
         board.deadline != null ? Math.max(0, Math.ceil((board.deadline - Date.now()) / 1000)) : null;
     const expired = active && secondsLeft === 0;
+    const lastAction = board.actions[board.actions.length - 1];
 
     return (
-        <div className="mod-center mod-setup ms-screen">
-            <h1>MASSINGER pick/ban — Round {round}</h1>
+        <div className="mod-shell">
+            <div className="mod-main">
+                <div className="mod-center mod-setup ms-screen">
+                    <h1>MASSINGER pick/ban — Round {round}</h1>
 
-            {active ? (
-                <>
-                    <div className={"ms-clockline" + (expired ? " expired" : "")}>
-                        <span>
-                            <strong>{board.teams[board.turn]}</strong> is picking — protect or ban a subcategory.
-                        </span>
-                        {secondsLeft != null && (
-                            <span className="ms-clock">{expired ? "TIME\u2019S UP" : `${secondsLeft}s`}</span>
-                        )}
-                    </div>
-                    <div className="ms-turnrow">
-                        <span className="hint">Team on the clock:</span>
-                        {[0, 1].map((team) => (
-                            <button
-                                key={team}
-                                className={board.turn === team ? "ms-turn active" : "ms-turn"}
-                                onClick={() => send({ action: "massinger_set_turn", team })}
-                            >
-                                {board.teams[team]}
-                            </button>
-                        ))}
-                    </div>
-                    <p className="hint">
-                        {remaining} questions remain — {bansLeft} more ban{bansLeft === 1 ? "" : "s"} to reach{" "}
-                        {board.target}. Protecting a subcategory makes every question in it unbannable; banning
-                        removes one question (a doubled subcategory keeps its other question).
-                    </p>
-                </>
-            ) : (
-                <p className="ms-doneline">
-                    Pick/ban complete — {remaining} questions remain.
-                </p>
-            )}
-
-            <ul className="ms-list">
-                {board.subcats.map((subcat) => {
-                    const left = subcat.indexes.length - subcat.banned;
-                    const isProtected = subcat.protectedBy != null;
-                    const gone = left === 0;
-                    const status = gone
-                        ? "\u2715 banned"
-                        : isProtected
-                        ? `\u{1F6E1} ${board.teams[subcat.protectedBy!]}`
-                        : subcat.banned > 0
-                        ? `${subcat.banned} of ${subcat.indexes.length} banned`
-                        : subcat.indexes.length > 1
-                        ? `\u00d7${subcat.indexes.length}`
-                        : "";
-                    return (
-                        <li key={subcat.label} className={gone ? "banned" : isProtected ? "protected" : ""}>
-                            <span className="ms-label">{subcat.label}</span>
-                            <span className="ms-mark">{status}</span>
-                            {active && !gone && !isProtected && (
-                                <span className="ms-actions">
-                                    <button
-                                        onClick={() =>
-                                            send({ action: "massinger_pick", type: "protect", label: subcat.label })
-                                        }
-                                    >
-                                        Protect
-                                    </button>
-                                    <button
-                                        onClick={() =>
-                                            send({ action: "massinger_pick", type: "ban", label: subcat.label })
-                                        }
-                                    >
-                                        Ban
-                                    </button>
+                    {active ? (
+                        <>
+                            <div className={"ms-clockline" + (expired ? " expired" : "")}>
+                                <span>
+                                    <strong>{board.teams[board.turn]}</strong> is picking — protect or ban a
+                                    subcategory.
                                 </span>
-                            )}
-                        </li>
-                    );
-                })}
-            </ul>
+                                {secondsLeft != null && (
+                                    <span className="ms-clock">{expired ? "TIME’S UP" : `${secondsLeft}s`}</span>
+                                )}
+                            </div>
+                            <div className="ms-turnrow">
+                                <span className="hint">Team on the clock:</span>
+                                {[0, 1].map((team) => (
+                                    <button
+                                        key={team}
+                                        className={board.turn === team ? "ms-turn active" : "ms-turn"}
+                                        onClick={() => send({ action: "massinger_set_turn", team })}
+                                    >
+                                        {board.teams[team]}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="hint">
+                                {remaining} questions remain — {bansLeft} more ban{bansLeft === 1 ? "" : "s"} to reach{" "}
+                                {board.target}. The team picks on their own page; use the buttons below to pick for
+                                them. Protecting makes every question in a subcategory unbannable; banning removes one
+                                question (a doubled subcategory keeps its other question).
+                            </p>
+                        </>
+                    ) : (
+                        <p className="ms-doneline">Pick/ban complete — {remaining} questions remain.</p>
+                    )}
 
-            <div className="ms-controls">
-                {board.status === "done" ? (
-                    <button className="primary" onClick={() => onReady(board)}>
-                        Start reading ({remaining} questions)
-                    </button>
-                ) : (
-                    <button className={expired ? "primary" : ""} onClick={() => send({ action: "massinger_random_ban" })}>
-                        Random ban{expired ? " (time expired)" : ""}
-                    </button>
-                )}
-                <button disabled={board.actions.length === 0} onClick={() => send({ action: "massinger_undo" })}>
-                    Undo last
-                </button>
-                <button
-                    onClick={() => {
-                        if (window.confirm("Restart the pick/ban from scratch? All picks so far are lost.")) {
-                            begin(true);
-                        }
-                    }}
-                >
-                    Restart
-                </button>
-                <button onClick={onCancel}>Back to setup</button>
+                    {lastAction && (
+                        <p className="ms-last">
+                            Last: {board.teams[lastAction.team]} {lastAction.type === "protect" ? "protected" : "banned"}{" "}
+                            <strong>{lastAction.label}</strong>
+                            {lastAction.by === "timeout"
+                                ? " (random — time expired)"
+                                : lastAction.by && lastAction.by !== "moderator" && lastAction.by !== "random"
+                                ? ` (by ${lastAction.by})`
+                                : " (by you)"}
+                        </p>
+                    )}
+
+                    <ul className="ms-list">
+                        {board.subcats.map((subcat) => {
+                            const left = subcat.indexes.length - subcat.banned;
+                            const isProtected = subcat.protectedBy != null;
+                            const gone = left === 0;
+                            const status = gone
+                                ? "✕ banned"
+                                : isProtected
+                                ? `🛡 ${board.teams[subcat.protectedBy!]}`
+                                : subcat.banned > 0
+                                ? `${subcat.banned} of ${subcat.indexes.length} banned`
+                                : subcat.indexes.length > 1
+                                ? `×${subcat.indexes.length}`
+                                : "";
+                            const touched = isProtected || subcat.banned > 0;
+                            return (
+                                <li key={subcat.label} className={gone ? "banned" : isProtected ? "protected" : ""}>
+                                    <span className="ms-label">{subcat.label}</span>
+                                    <span className="ms-mark">{status}</span>
+                                    {editing && touched ? (
+                                        <span className="ms-actions">
+                                            <button
+                                                onClick={() =>
+                                                    send({ action: "massinger_reset_subcat", label: subcat.label })
+                                                }
+                                            >
+                                                Clear
+                                            </button>
+                                        </span>
+                                    ) : (
+                                        active &&
+                                        !gone &&
+                                        !isProtected && (
+                                            <span className="ms-actions">
+                                                <button
+                                                    onClick={() =>
+                                                        send({
+                                                            action: "massinger_pick",
+                                                            type: "protect",
+                                                            label: subcat.label,
+                                                        })
+                                                    }
+                                                >
+                                                    Protect
+                                                </button>
+                                                <button
+                                                    onClick={() =>
+                                                        send({
+                                                            action: "massinger_pick",
+                                                            type: "ban",
+                                                            label: subcat.label,
+                                                        })
+                                                    }
+                                                >
+                                                    Ban
+                                                </button>
+                                            </span>
+                                        )
+                                    )}
+                                </li>
+                            );
+                        })}
+                    </ul>
+
+                    <div className="ms-controls">
+                        {board.status === "done" ? (
+                            <button className="primary" onClick={() => onReady(board)}>
+                                Continue to the game ({remaining} questions)
+                            </button>
+                        ) : (
+                            <button
+                                className={expired ? "primary" : ""}
+                                onClick={() => send({ action: "massinger_random_ban" })}
+                            >
+                                Random ban{expired ? " (time expired)" : ""}
+                            </button>
+                        )}
+                        <button disabled={board.actions.length === 0} onClick={() => send({ action: "massinger_undo" })}>
+                            Undo last
+                        </button>
+                        <button className={editing ? "ms-turn active" : ""} onClick={() => setEditing(!editing)}>
+                            {editing ? "Done editing" : "Edit picks"}
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (window.confirm("Restart the pick/ban from scratch? All picks so far are lost.")) {
+                                    begin(true);
+                                }
+                            }}
+                        >
+                            Restart
+                        </button>
+                        <button onClick={onCancel}>Back to setup</button>
+                    </div>
+                    {editing && (
+                        <p className="hint">
+                            Editing: “Clear” undoes everything done to that subcategory (its protect and any bans),
+                            without unwinding the picks made after it.
+                        </p>
+                    )}
+                    <p className="msg">{msg}</p>
+                </div>
             </div>
-            <p className="msg">{msg}</p>
+            <div className="mod-side">
+                <ConnectedPlayers roomState={roomState} teams={active ? [board.teams[board.turn]] : undefined} />
+            </div>
         </div>
     );
 }
@@ -1026,6 +1450,11 @@ function Reading(props: {
     // as soon as the reader REACHES the last question, so removing it here would
     // lose resume while that question is still being read. Only a deliberate
     // exit clears it: the explicit export or "Change round / teams".
+    // Every mode links MODAQ's players to the connected buzzers: the teams from
+    // the loaded game become the room's roster, so a buzz reports the player
+    // MODAQ is scoring rather than whatever name they typed to join.
+    const syncTeams = useTeamSync(client);
+
     const onGameUpdate = React.useCallback(
         (qbj: IMatch, inProgress?: boolean, currentQuestion?: number) => {
             try {
@@ -1033,11 +1462,12 @@ function Reading(props: {
             } catch {
                 /* storage may be unavailable; resume is best-effort */
             }
+            syncTeams(qbj);
             KlaxonApi.saveExport(code, token, round, qbj, inProgress === true, currentQuestion).catch(() => {
                 /* transient failures self-heal on the next change */
             });
         },
-        [code, token, round]
+        [code, token, round, syncTeams]
     );
 
     const onTiebreakerUsed = React.useCallback(
@@ -1088,7 +1518,13 @@ function Reading(props: {
                         packet: config.packet,
                         packetName: `Round ${round}`,
                         rosters: config.rosters,
+                        teams: config.teams,
                     }}
+                    newGameNotice={
+                        config.board ? (
+                            <PickBanSummary board={config.board} onEdit={config.onEditPickBan} />
+                        ) : undefined
+                    }
                     gameFormat={config.gameFormat}
                     persistState={true}
                     storeName={`klaxon-${code}-${round}`}
@@ -1108,6 +1544,58 @@ function Reading(props: {
     );
 }
 
+// The pick/ban result, shown inside MODAQ's New Game dialog so the moderator
+// confirms what will actually be read before starting — and can go back and
+// fix the board if something is wrong.
+function PickBanSummary(props: { board: IMassingerState; onEdit?: () => void }): JSX.Element {
+    const { board, onEdit } = props;
+    const banned = board.subcats.filter((s) => s.banned > 0);
+    const guarded = board.subcats.filter((s) => s.protectedBy != null);
+    return (
+        <div className="ms-summary">
+            <div className="ms-summary-head">
+                <strong>MASSINGER pick/ban — {massingerRemaining(board)} questions will be read</strong>
+                {onEdit && (
+                    <button className="ms-summary-edit" onClick={onEdit}>
+                        Back to pick/ban
+                    </button>
+                )}
+            </div>
+            <div className="ms-summary-cols">
+                <div>
+                    <h4>Banned</h4>
+                    {banned.length === 0 ? (
+                        <p>Nothing banned.</p>
+                    ) : (
+                        <ul>
+                            {banned.map((s) => (
+                                <li key={s.label}>
+                                    {s.label}
+                                    {s.banned < s.indexes.length ? ` (1 of ${s.indexes.length} — one still in)` : ""}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+                <div>
+                    <h4>Protected</h4>
+                    {guarded.length === 0 ? (
+                        <p>Nothing protected.</p>
+                    ) : (
+                        <ul>
+                            {guarded.map((s) => (
+                                <li key={s.label}>
+                                    {s.label} <span className="ms-summary-by">— {board.teams[s.protectedBy!]}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // Lightweight MODAQ view: just the native MODAQ reader (its own New Game, packet
 // loader, and export) beside the Klaxon buzz panel. No server roster/packets/
 // exports/errata — nothing tournament-related.
@@ -1118,6 +1606,9 @@ function LiteReading(props: {
 }): JSX.Element {
     const { code, client, roomState } = props;
     const onBuzzJudged = React.useCallback(() => client.resetBuzzer(), [client]);
+    // Lite mode has no tournament roster, but the teams entered in MODAQ's own
+    // New Game dialog still link the buzzers to real players.
+    const syncTeams = useTeamSync(client);
     return (
         <div className="mod-shell">
             <div className="mod-main">
@@ -1128,6 +1619,7 @@ function LiteReading(props: {
                     buildVersion={__BUILD_VERSION__}
                     persistState={true}
                     storeName={`klaxon-lite-${code}`}
+                    onGameUpdate={syncTeams}
                     onBuzzJudged={onBuzzJudged}
                 />
             </div>

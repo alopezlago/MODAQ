@@ -259,6 +259,8 @@ const getClassNames = (): ITeamEntryClassNames =>
             display: "flex",
             flexDirection: "column",
             padding: "5px 20px",
+            // Keeps a long team or player name from widening this column past its share of the dialog
+            minWidth: 0,
         },
     });
 

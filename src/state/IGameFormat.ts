@@ -23,6 +23,22 @@ export interface IGameFormat {
     timeoutsAllowed: number;
     displayName: string;
 
+    // Available after 2026-08-19
+    // Individual formats (e.g. NAQT's IPNCT) have players compete on their own instead of on teams. Each
+    // competitor is treated as a one-player team, so a game can have more than the usual two competitors.
+    // Undefined or false means the standard team game.
+    isIndividualFormat?: boolean;
+
+    // The most competitors a game can have. Only meaningful for individual formats; team games always have two.
+    maximumPlayerCount?: number;
+
+    // Standard formats only penalize the first incorrect buzz on a tossup. When this is true, every incorrect
+    // buzz made before the end of the question is a neg (IPNCT).
+    negsForEveryWrongBuzz?: boolean;
+
+    // Tossup-only formats (IPNCT) have no bonuses, so the reader shouldn't be shown one.
+    tossupsOnly?: boolean;
+
     // Available after 2021-07-11
     // An array representing the start and ending markers for a pronunciation guide, e.g. ["(", ")"] if guides look
     // like ("LIE-kuh")

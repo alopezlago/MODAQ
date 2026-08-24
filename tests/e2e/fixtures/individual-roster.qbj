@@ -1,0 +1,48 @@
+{
+  "version": "2.1.1",
+  "objects": [
+    {
+      "type": "Tournament",
+      "name": "Individual Test Tournament",
+      "registrations": [
+        {
+          "name": "Test Club",
+          "teams": [
+            {
+              "name": "Alice",
+              "players": [
+                {
+                  "name": "Alice"
+                }
+              ]
+            },
+            {
+              "name": "Bob",
+              "players": [
+                {
+                  "name": "Bob"
+                }
+              ]
+            },
+            {
+              "name": "Carol",
+              "players": [
+                {
+                  "name": "Carol"
+                }
+              ]
+            },
+            {
+              "name": "Dave",
+              "players": [
+                {
+                  "name": "Dave"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

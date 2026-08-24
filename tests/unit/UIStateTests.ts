@@ -120,4 +120,37 @@ describe("UIStateTests", () => {
             expect(pendingProtest.reason).to.equal("alpha reason");
         });
     });
+
+    // Both of these are on by default: the reader sees pronunciation anchors and keeps the space for the word
+    // numbers held open, and can turn either off
+    describe("display toggles", () => {
+        it("pronunciation anchors show by default and can be turned off", () => {
+            const appState: AppState = new AppState();
+
+            expect(appState.uiState.hidePronunciationAnchors).to.be.false;
+
+            appState.uiState.togglePronunciationAnchors();
+            expect(appState.uiState.hidePronunciationAnchors).to.be.true;
+
+            appState.uiState.togglePronunciationAnchors();
+            expect(appState.uiState.hidePronunciationAnchors).to.be.false;
+        });
+
+        it("the space for word numbers is reserved by default and can be collapsed", () => {
+            const appState: AppState = new AppState();
+
+            expect(appState.uiState.collapseBuzzIndexSpacing).to.be.false;
+
+            appState.uiState.toggleCollapseBuzzIndexSpacing();
+            expect(appState.uiState.collapseBuzzIndexSpacing).to.be.true;
+
+            // Turning word numbering off and on doesn't undo the moderator's spacing choice
+            appState.uiState.toggleTypeBuzzIndexMode();
+            appState.uiState.toggleTypeBuzzIndexMode();
+            expect(appState.uiState.collapseBuzzIndexSpacing).to.be.true;
+
+            appState.uiState.toggleCollapseBuzzIndexSpacing();
+            expect(appState.uiState.collapseBuzzIndexSpacing).to.be.false;
+        });
+    });
 });

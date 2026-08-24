@@ -1,9 +1,28 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { Dropdown, IDropdownOption, mergeStyleSets } from "@fluentui/react";
+import { Dropdown, IDropdownOption, IDropdownStyles, mergeStyleSets } from "@fluentui/react";
 
 import { Player } from "../state/TeamState";
 import { PlayerRoster } from "./PlayerRoster";
+
+// Team names come from whatever the registration file has, which can be much longer than the space for them. Keep
+// the closed dropdown to one line (the full name is in its tooltip), and let the open list wrap so the moderator
+// can still tell two long names apart.
+const teamDropdownStyles: Partial<IDropdownStyles> = {
+    dropdown: { minWidth: 0 },
+    title: {
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+    },
+    dropdownItem: { height: "auto", minHeight: 32 },
+    dropdownItemSelected: { height: "auto", minHeight: 32 },
+    dropdownOptionText: {
+        overflow: "visible",
+        whiteSpace: "normal",
+        wordBreak: "break-word",
+    },
+};
 
 export const FromRostersTeamEntry = observer(function FromRostersTeamEntry(props: IFromRostersTeamEntryProps) {
     const classes: ITeamEntryClassNames = getClassNames();
@@ -28,6 +47,7 @@ export const FromRostersTeamEntry = observer(function FromRostersTeamEntry(props
         teamOptions.push({
             key: teamName,
             text: teamName,
+            title: teamName,
         });
     }
 
@@ -39,6 +59,8 @@ export const FromRostersTeamEntry = observer(function FromRostersTeamEntry(props
                 selectedKey={selectedTeamName}
                 onChange={partChangeHandler}
                 errorMessage={props.teamNameErrorMessage}
+                styles={teamDropdownStyles}
+                title={selectedTeamName}
             />
             <div className={classes.playerListContainer}>
                 <PlayerRoster
@@ -64,6 +86,9 @@ const getClassNames = (): ITeamEntryClassNames =>
             display: "flex",
             flexDirection: "column",
             padding: "5px 8px",
+            // Without this, a long team name sets the column's minimum width and pushes the other team (and the
+            // starter checkboxes) off the edge of the dialog
+            minWidth: 0,
         },
     });
 

@@ -1,6 +1,9 @@
+import path from "path";
 import { test, expect } from "@playwright/test";
 import { openNewGameDialog, startGame, TEAM_ALPHA, TEAM_BETA, PLAYER_ALICE, PLAYER_BOB } from "./game.fixture";
 import { SAMPLE_PACKET_PATH } from "./game.fixture";
+
+const LONG_NAME_REGISTRATION_PATH = path.join(__dirname, "fixtures", "long-name-registration.json");
 
 test.describe("new game dialog", () => {
     test("dialog opens and closes", async ({ page }) => {
@@ -69,5 +72,30 @@ test.describe("new game dialog", () => {
 
         await expect(page.getByText("Red Team")).toBeVisible();
         await expect(page.getByText("Blue Team")).toBeVisible();
+    });
+
+    // Registration files can carry team names far longer than the space for them. They used to widen their column
+    // until the other team's entry (and the starter checkboxes) hung off the edge of the dialog.
+    test("a very long team name stays inside the dialog", async ({ page }) => {
+        await page.goto("/");
+        await openNewGameDialog(page);
+        await page.getByRole("tab", { name: "From QBJ Registration" }).click();
+        await page.locator('input[type="file"]').first().setInputFiles(LONG_NAME_REGISTRATION_PATH);
+
+        const secondTeam = page.getByLabel("Second team");
+        await secondTeam.click();
+        await page.getByRole("option", { name: /ANSWER: museums/ }).click();
+
+        const dialogBox = await page.locator(".ms-Dialog-main").first().boundingBox();
+        const secondTeamBox = await secondTeam.boundingBox();
+        if (dialogBox == undefined || secondTeamBox == undefined) {
+            throw new Error("The dialog or the team dropdown wasn't laid out");
+        }
+
+        expect(secondTeamBox.x + secondTeamBox.width).toBeLessThanOrEqual(dialogBox.x + dialogBox.width);
+
+        // The starter checkboxes for that team have to stay reachable
+        const starterBox = await page.getByRole("checkbox", { name: "Starter" }).last().boundingBox();
+        expect((starterBox?.x ?? 0) + (starterBox?.width ?? 0)).toBeLessThanOrEqual(dialogBox.x + dialogBox.width);
     });
 });

@@ -26,6 +26,11 @@ export interface IRoomMember {
     role: string;
     team: string | null;
     connected: boolean;
+    // The MODAQ player this buzzer is linked to (set from the game's teams, or
+    // by the reader), and that player's team. What buzzes are reported as.
+    rosterTeam?: string | null;
+    rosterPlayer?: string | null;
+    displayName?: string;
 }
 
 export interface IRoomSettings {
@@ -58,7 +63,9 @@ export interface IMassingerState {
     turnStartedAt?: number;
     deadline: number | null; // server ms; null = no timer / done
     subcats: IMassingerSubcat[];
-    actions: { type: "protect" | "ban"; label: string; team: number; at: number }[];
+    // `by` records who made the pick: a player's name, "moderator", or
+    // "timeout" when the clock ran out and the server banned at random.
+    actions: { type: "protect" | "ban"; label: string; team: number; at: number; by?: string }[];
 }
 
 export interface IPublicRoomState {
@@ -72,6 +79,9 @@ export interface IPublicRoomState {
     lastBuzzAt?: number | null;
     // MASSINGER pick/ban board (null outside the pick/ban phase).
     massinger?: IMassingerState | null;
+    // The room's buzzer roster: the teams playing here and their players (set
+    // from the MODAQ game's teams), which is what buzzers are linked to.
+    roster?: { name?: string; teamNames: string[]; teams: { name: string; players: string[] }[] } | null;
     queue: IBuzzQueueEntry[];
     members: IRoomMember[];
 }

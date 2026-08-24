@@ -75,6 +75,7 @@ describe("NewGameValidatorTests", () => {
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
+                    individualPlayers: [],
                     firstTeamPlayers: [],
                     secondTeamPlayers: [new Player("b", "2", true)],
                 },
@@ -86,6 +87,7 @@ describe("NewGameValidatorTests", () => {
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
+                    individualPlayers: [],
                     firstTeamPlayers: [new Player("a", "1", true)],
                     secondTeamPlayers: [],
                 },
@@ -97,6 +99,7 @@ describe("NewGameValidatorTests", () => {
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
+                    individualPlayers: [],
                     firstTeamPlayers: [new Player("", "1", true)],
                     secondTeamPlayers: [new Player("b", "2", true)],
                 },
@@ -108,6 +111,7 @@ describe("NewGameValidatorTests", () => {
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
+                    individualPlayers: [],
                     firstTeamPlayers: [new Player("a", "1", true)],
                     secondTeamPlayers: [new Player("", "2", true)],
                 },
@@ -119,6 +123,7 @@ describe("NewGameValidatorTests", () => {
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
+                    individualPlayers: [],
                     firstTeamPlayers: [
                         new Player("a", "1", true),
                         new Player("aa", "1", true),
@@ -134,6 +139,7 @@ describe("NewGameValidatorTests", () => {
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
+                    individualPlayers: [],
                     firstTeamPlayers: [new Player("a", "1", true)],
                     secondTeamPlayers: [
                         new Player("b", "2", true),
@@ -149,6 +155,7 @@ describe("NewGameValidatorTests", () => {
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
+                    individualPlayers: [],
                     firstTeamPlayers: [new Player("a", "1", false)],
                     secondTeamPlayers: [new Player("b", "2", true)],
                 },
@@ -160,6 +167,7 @@ describe("NewGameValidatorTests", () => {
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
+                    individualPlayers: [],
                     firstTeamPlayers: [new Player("a", "1", true)],
                     secondTeamPlayers: [new Player("b", "2", false)],
                 },
@@ -171,6 +179,7 @@ describe("NewGameValidatorTests", () => {
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
+                    individualPlayers: [],
                     firstTeamPlayers: [new Player("a", "1", true)],
                     secondTeamPlayers: [new Player("b", "2", true)],
                 },
@@ -182,6 +191,7 @@ describe("NewGameValidatorTests", () => {
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
+                    individualPlayers: [],
                     cycles: [],
                     firstTeamPlayers: [new Player("a", "1", true)],
                     secondTeamPlayers: [new Player("b", "2", true)],
@@ -194,6 +204,7 @@ describe("NewGameValidatorTests", () => {
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
+                    individualPlayers: [],
                     firstTeamPlayers: [new Player("a", "1", true)],
                     secondTeamPlayers: [new Player("b", "2", true)],
                 },
@@ -207,6 +218,7 @@ describe("NewGameValidatorTests", () => {
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
+                    individualPlayers: [],
                     cycles: defaultPacket.tossups.map(() => new Cycle()),
                     firstTeamPlayers: [new Player("a", "1", true)],
                     secondTeamPlayers: [new Player("b", "2", true)],
