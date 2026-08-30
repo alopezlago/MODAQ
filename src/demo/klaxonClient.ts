@@ -129,6 +129,17 @@ export interface IDirectorMessage {
 type MessageListener = (message: IDirectorMessage) => void;
 
 // A player in this room reporting that the buzzer was never cleared.
+// The shared MODAQ game (see the server's modaq_state): the serialized game
+// one moderator's MODAQ persisted, as the others should apply it.
+export interface ISharedGame {
+    seq: number;
+    round: string;
+    json: string | null;
+    by?: string;
+    at?: number;
+}
+type SharedGameListener = (s: ISharedGame) => void;
+
 export interface IStuckAlert {
     playerId: string;
     name: string;
@@ -147,6 +158,8 @@ export class KlaxonClient {
     private readonly listeners: StateListener[] = [];
     private readonly messageListeners: MessageListener[] = [];
     private readonly stuckListeners: StuckListener[] = [];
+    private readonly sharedGameListeners: SharedGameListener[] = [];
+    private joinedOnce = false;
     public lastState: IPublicRoomState | undefined;
     public messages: IDirectorMessage[] = [];
 
@@ -193,6 +206,12 @@ export class KlaxonClient {
                 for (const l of this.stuckListeners) l(a);
             });
 
+            socket.on("modaq_state", (...args: unknown[]) => {
+                const s = args[0] as ISharedGame;
+                if (!s || typeof s.seq !== "number") return;
+                for (const l of this.sharedGameListeners) l(s);
+            });
+
             const join = (): void => {
                 socket.emit(
                     "join",
@@ -212,6 +231,7 @@ export class KlaxonClient {
                         staffDenied?: boolean;
                         denyReason?: string;
                         error?: string;
+                        modaqState?: { seq: number; round: string; hasGame: boolean } | null;
                     }) => {
                         if (!resp || !resp.ok) {
                             const message =
@@ -230,6 +250,13 @@ export class KlaxonClient {
                             reject(error);
                             return;
                         }
+                        // A rejoin after a dropped connection may have missed the
+                        // other moderator's changes: fetch the current shared game
+                        // and let the listeners decide whether it's newer.
+                        if (this.joinedOnce && resp.modaqState?.hasGame && this.sharedGameListeners.length > 0) {
+                            this.refreshSharedGame();
+                        }
+                        this.joinedOnce = true;
                         if (resp.state) {
                             this.lastState = resp.state;
                             for (const l of this.listeners) l(resp.state);
@@ -267,6 +294,35 @@ export class KlaxonClient {
             const i = this.stuckListeners.indexOf(listener);
             if (i >= 0) this.stuckListeners.splice(i, 1);
         };
+    }
+
+    // Changes to the shared MODAQ game made on another moderator's screen.
+    public onSharedGame(listener: SharedGameListener): () => void {
+        this.sharedGameListeners.push(listener);
+        return () => {
+            const i = this.sharedGameListeners.indexOf(listener);
+            if (i >= 0) this.sharedGameListeners.splice(i, 1);
+        };
+    }
+
+    // Push this screen's serialized game (null = we left the game). Resolves
+    // with the sequence number the server minted for it.
+    public pushSharedGame(round: string, json: string | null): Promise<{ ok?: boolean; seq?: number; error?: string }> {
+        return this.massinger({ action: "modaq_state", round, json }) as Promise<{
+            ok?: boolean;
+            seq?: number;
+            error?: string;
+        }>;
+    }
+
+    private refreshSharedGame(): void {
+        KlaxonApi.getSharedGame(this.code, this.token)
+            .then(({ state }) => {
+                if (state) for (const l of this.sharedGameListeners) l(state);
+            })
+            .catch(() => {
+                /* best-effort; the next change will bring us up to date */
+            });
     }
 
     public resetBuzzer(): void {
@@ -336,6 +392,10 @@ const q = (token: string | null): string =>
 export const KlaxonApi = {
     getRoster(code: string, token: string | null): Promise<{ roster: string | null }> {
         return rest("GET", `/api/rooms/${code}/roster?${q(token)}`);
+    },
+    // The room's shared MODAQ game (null when no moderator has one open).
+    getSharedGame(code: string, token: string | null): Promise<{ state: ISharedGame | null }> {
+        return rest("GET", `/api/rooms/${code}/modaq-state?${q(token)}`);
     },
     listPackets(code: string, token: string | null): Promise<{ packets: string[] }> {
         return rest("GET", `/api/rooms/${code}/packets?${q(token)}`);

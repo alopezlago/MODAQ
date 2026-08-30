@@ -16,7 +16,7 @@ import {
     Theme,
     IPalette,
 } from "@fluentui/react";
-import { AsyncTrunk } from "mobx-sync";
+import { AsyncTrunk, parseStore } from "mobx-sync";
 import { comparer, configure, reaction } from "mobx";
 import { observer } from "mobx-react-lite";
 import he from "he";
@@ -195,7 +195,38 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
 
     // We only want to run this effect once, which requires passing in an empty array of dependencies
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    React.useEffect(() => initializeControl(appState, { ...props, persistState: props.persistState ?? true }), []);
+    // Shared state: hand every persisted snapshot to the host, except the one that merely echoes a snapshot the
+    // host just asked us to apply (otherwise two synced moderators would bounce the same game back and forth).
+    const persistedStateRef = React.useRef(props.onPersistedState);
+    persistedStateRef.current = props.onPersistedState;
+    const lastAppliedRef = React.useRef<string | undefined>(undefined);
+    React.useEffect(
+        () =>
+            initializeControl(appState, {
+                ...props,
+                persistState: props.persistState ?? true,
+                onPersistedState: (json: string) => {
+                    if (json === lastAppliedRef.current) {
+                        return;
+                    }
+                    persistedStateRef.current?.(json);
+                },
+            }),
+        []
+    );
+
+    const remoteState = props.remoteState;
+    React.useEffect(() => {
+        if (remoteState == undefined) {
+            return;
+        }
+        try {
+            parseStore(appState, JSON.parse(remoteState.json), false);
+            lastAppliedRef.current = JSON.stringify(appState);
+        } catch {
+            /* a bad snapshot from the host must not take down the reader */
+        }
+    }, [appState, remoteState]);
 
     React.useEffect(() => update(appState, props), [appState, props]);
 
@@ -396,6 +427,19 @@ export interface IModaqControlProps {
     onBuzzJudged?: () => void;
 
     /**
+     * Called with MODAQ's serialized state (the same JSON it persists to localStorage) each time it is persisted,
+     * so a host can keep a shared copy that another device — or a second moderator — can pick up. Requires
+     * persistState. Not called for the persist that immediately follows applying `remoteState`.
+     */
+    onPersistedState?: (json: string) => void;
+
+    /**
+     * A serialized state from the host to apply in place (a change made on another moderator's screen). Applied
+     * whenever a new object is passed.
+     */
+    remoteState?: { json: string; seq: number };
+
+    /**
      * Tiebreaker questions the moderator can sub in from the Add Questions dialog.
      */
     tiebreakers?: ITiebreakerItem[];
@@ -529,7 +573,20 @@ function maybeOpenHostNewGame(appState: AppState, props: IModaqControlProps): vo
 function initializeControl(appState: AppState, props: IModaqControlProps): () => void {
     if (props.persistState) {
         configure({ enforceActions: "observed", computedRequiresReaction: true });
-        const trunk = new AsyncTrunk(appState, { storage: localStorage, storageKey: props.storeName, delay: 200 });
+        // When the host wants the snapshots, wrap localStorage so it sees every write.
+        const onPersistedState = props.onPersistedState;
+        const storage =
+            onPersistedState == undefined
+                ? localStorage
+                : {
+                      getItem: (key: string): string | null => localStorage.getItem(key),
+                      removeItem: (key: string): void => localStorage.removeItem(key),
+                      setItem: (key: string, value: string): void => {
+                          localStorage.setItem(key, value);
+                          onPersistedState(value);
+                      },
+                  };
+        const trunk = new AsyncTrunk(appState, { storage, storageKey: props.storeName, delay: 200 });
         trunk.init(appState).then(() => {
             // Need to check if game is old and prompt the user if they want to restart the game.
             // Date subtraction gives you the number of milliseconds

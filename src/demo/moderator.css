@@ -707,3 +707,66 @@ body {
     font-weight: 400;
     font-size: 0.82rem;
 }
+
+/* Klaxon bar above the MODAQ reader (mirrors the room page's header). */
+.kx-bar {
+    --kx-ink: #17130d;
+    --kx-muted: #6d6456;
+    --kx-soft: #ddd5c5;
+    --kx-accent: #d8401f;
+    --kx-surface: #fffdf7;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: var(--kx-surface);
+    border-bottom: 2px solid var(--kx-ink);
+    font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    color: var(--kx-ink);
+}
+.kx-crumbs {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.kx-crumb {
+    color: var(--kx-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+a.kx-crumb:hover {
+    color: var(--kx-ink);
+    text-decoration: underline;
+}
+.kx-mark {
+    font-family: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+    font-weight: 700;
+    color: var(--kx-ink);
+    font-size: 1rem;
+    letter-spacing: -0.01em;
+}
+.kx-sep {
+    color: var(--kx-soft);
+}
+.kx-code {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-weight: 600;
+    color: var(--kx-accent);
+    letter-spacing: 0.12em;
+}
+.kx-right {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.kx-pill {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.72rem;
+    padding: 0.2em 0.55em;
+    border: 1.5px solid var(--kx-ink);
+    border-radius: 4px;
+    background: var(--kx-surface);
+    color: var(--kx-muted);
+}

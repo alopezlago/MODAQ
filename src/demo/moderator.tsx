@@ -26,6 +26,7 @@ import {
     ITournamentInfo,
     KlaxonApi,
     KlaxonClient,
+    readCredentials,
     sessionToken,
 } from "./klaxonClient";
 
@@ -208,6 +209,98 @@ function useGameSync(client: KlaxonClient): (match: IMatch, inProgress?: boolean
     );
 }
 
+// --- Shared game -------------------------------------------------------------
+// MODAQ persists its whole game to localStorage; Klaxon keeps a copy of that
+// snapshot per room. Every moderator screen pushes its snapshot on each change
+// and applies the others' as they arrive, so a reload on any device resumes
+// at the same question with the same scores, and a co-reader can score the
+// same game. Last write wins at whole-game granularity — fine for a reader
+// and a scorekeeper who aren't clicking the same thing in the same second.
+const sharedSeqKey = (code: string): string => "bz_modaqSeq:" + code;
+const readSharedSeq = (code: string): number => Number(localStorage.getItem(sharedSeqKey(code))) || 0;
+const writeSharedSeq = (code: string, seq: number): void => {
+    try {
+        localStorage.setItem(sharedSeqKey(code), String(seq));
+    } catch {
+        /* ignore */
+    }
+};
+
+// Before MODAQ mounts: if the server's copy of the game is newer than what
+// this device saw last, write it into the localStorage store MODAQ will read.
+// Returns the round the shared game is for (undefined when there is none).
+async function seedSharedGame(
+    client: KlaxonClient,
+    storeNameFor: (round: string) => string
+): Promise<{ round: string } | undefined> {
+    try {
+        const { state } = await KlaxonApi.getSharedGame(client.code, client.token);
+        if (!state || !state.json) {
+            return undefined;
+        }
+        if (state.seq > readSharedSeq(client.code)) {
+            localStorage.setItem(storeNameFor(state.round), state.json);
+            writeSharedSeq(client.code, state.seq);
+        }
+        return { round: state.round };
+    } catch {
+        return undefined;
+    }
+}
+
+function useSharedGame(
+    client: KlaxonClient,
+    round: string
+): {
+    remoteState: { json: string; seq: number } | undefined;
+    onPersistedState: (json: string) => void;
+} {
+    const [remoteState, setRemoteState] = React.useState<{ json: string; seq: number } | undefined>(undefined);
+    const seqRef = React.useRef<number>(readSharedSeq(client.code));
+    const lastJsonRef = React.useRef<string | undefined>(undefined);
+
+    React.useEffect(
+        () =>
+            client.onSharedGame((s) => {
+                if (s.seq <= seqRef.current) {
+                    return; // older than (or the same as) what we have
+                }
+                seqRef.current = s.seq;
+                writeSharedSeq(client.code, s.seq);
+                if (s.json == null) {
+                    return; // the other moderator left the game; ours stays open
+                }
+                if (s.round !== round) {
+                    // They moved on to another round: follow them (the boot
+                    // path seeds the new game and resumes into it).
+                    location.reload();
+                    return;
+                }
+                lastJsonRef.current = s.json;
+                setRemoteState({ json: s.json, seq: s.seq });
+            }),
+        [client, round]
+    );
+
+    const onPersistedState = React.useCallback(
+        (json: string) => {
+            if (json === lastJsonRef.current) {
+                return;
+            }
+            lastJsonRef.current = json;
+            client.pushSharedGame(round, json).then((r) => {
+                if (typeof r.seq === "number" && r.seq > seqRef.current) {
+                    seqRef.current = r.seq;
+                    writeSharedSeq(client.code, r.seq);
+                }
+            });
+        },
+        [client, round]
+    );
+
+    return { remoteState, onPersistedState };
+}
+
 // MODAQ's New Game dialog only shows its packet file picker when a parse
 // service is configured (JSON packets are parsed in the browser; only .docx
 // files go to the service). Same public YAPP instance as MODAQ's own demo.
@@ -223,7 +316,43 @@ function serverErratumToErratum(e: IServerErratum): IErratum {
     };
 }
 
+// The Klaxon bar every page carries, so the moderator knows where they are and
+// can get back to the room or start another game.
+function KlaxonHeader(props: { code: string }): JSX.Element {
+    const creds = readCredentials(props.code);
+    return (
+        <header className="kx-bar">
+            <nav className="kx-crumbs" aria-label="Breadcrumb">
+                <a className="kx-crumb kx-mark" href="/">
+                    Klaxon
+                </a>
+                <span className="kx-sep">›</span>
+                <a className="kx-crumb" href="/" title="Create or join another game">
+                    New game
+                </a>
+                <span className="kx-sep">›</span>
+                <span className="kx-code">{props.code}</span>
+                <span className="kx-crumb" aria-current="page">
+                    MODAQ reader
+                </span>
+            </nav>
+            <div className="kx-right">
+                <span className="kx-pill">{creds.role === "co-reader" ? "co-reader" : "reader"}</span>
+            </div>
+        </header>
+    );
+}
+
 function Moderator(): JSX.Element {
+    return (
+        <>
+            <KlaxonHeader code={code} />
+            <ModeratorBody />
+        </>
+    );
+}
+
+function ModeratorBody(): JSX.Element {
     const clientRef = React.useRef<KlaxonClient | undefined>(undefined);
     const [phase, setPhase] = React.useState<
         "connecting" | "error" | "setup" | "lobby" | "pickban" | "reading" | "lite" | "account"
@@ -286,6 +415,7 @@ function Moderator(): JSX.Element {
                 // gets MODAQ (with its own New Game / packet loader / export) next
                 // to the Klaxon buzzer.
                 if (state.settings?.modaqLite) {
+                    await seedSharedGame(client, () => `klaxon-lite-${code}`);
                     setPhase("lite");
                     return;
                 }
@@ -384,7 +514,17 @@ function Moderator(): JSX.Element {
     // fetch its packet/errata/tiebreakers from the server and let MODAQ's
     // persisted state restore the game at the exact question.
     async function tryResume(client: KlaxonClient, boot: IBootstrapData): Promise<boolean> {
-        const liveRound = localStorage.getItem("bz_modaqLive:" + code);
+        // The shared game (another device, or the other moderator) wins over
+        // this device's own marker: it's the game the room is actually playing.
+        const shared = await seedSharedGame(client, (r) => `klaxon-${code}-${r}`);
+        if (shared) {
+            try {
+                localStorage.setItem("bz_modaqLive:" + code, shared.round);
+            } catch {
+                /* ignore */
+            }
+        }
+        const liveRound = shared?.round || localStorage.getItem("bz_modaqLive:" + code);
         if (!liveRound) {
             return false;
         }
@@ -821,8 +961,10 @@ function Moderator(): JSX.Element {
                 } catch {
                     /* ignore */
                 }
-                // The players' scoresheet belongs to the game being left.
+                // The players' scoresheet belongs to the game being left, and
+                // so does the shared copy other moderators would resume into.
                 clientRef.current?.massinger({ action: "modaq_game", qbj: null });
+                clientRef.current?.pushSharedGame(round, null);
                 setPhase("setup");
             }}
         />
@@ -1684,6 +1826,7 @@ function Reading(props: {
     // the loaded game become the room's roster, so a buzz reports the player
     // MODAQ is scoring rather than whatever name they typed to join.
     const syncGame = useGameSync(client);
+    const shared = useSharedGame(client, round);
 
     const onGameUpdate = React.useCallback(
         (qbj: IMatch, inProgress?: boolean, currentQuestion?: number) => {
@@ -1763,6 +1906,8 @@ function Reading(props: {
                     onErrataChange={onErrataChange}
                     onGameUpdate={onGameUpdate}
                     onBuzzJudged={onBuzzJudged}
+                    onPersistedState={shared.onPersistedState}
+                    remoteState={shared.remoteState}
                     tiebreakers={config.tiebreakers}
                     onTiebreakerUsed={onTiebreakerUsed}
                     customExport={customExport}
@@ -1841,6 +1986,7 @@ function LiteReading(props: {
     // New Game dialog still link the buzzers to real players, and the room
     // still gets the live scoresheet.
     const syncGame = useGameSync(client);
+    const shared = useSharedGame(client, "lite");
     return (
         <div className="mod-shell">
             <div className="mod-main">
@@ -1854,6 +2000,8 @@ function LiteReading(props: {
                     storeName={`klaxon-lite-${code}`}
                     onGameUpdate={syncGame}
                     onBuzzJudged={onBuzzJudged}
+                    onPersistedState={shared.onPersistedState}
+                    remoteState={shared.remoteState}
                 />
             </div>
             <div className="mod-side">
