@@ -590,3 +590,120 @@ body {
     color: #0b6a0b;
     line-height: 1;
 }
+
+/* --- team assignment + captains in the players panel --- */
+.ms-player-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+.ms-players li {
+    flex-wrap: wrap;
+}
+.ms-team-select {
+    border: 1px solid #8a8886;
+    border-radius: 5px;
+    background: #fff;
+    padding: 2px 4px;
+    font-size: 0.78rem;
+    max-width: 46%;
+}
+.ms-team-select.picking {
+    border-color: #0b6a0b;
+    background: #f1faf1;
+    font-weight: 700;
+}
+.ms-captain {
+    cursor: pointer;
+    background: #fff;
+    border: 1px solid #8a8886;
+    border-radius: 999px;
+    padding: 1px 8px;
+    margin-left: auto;
+    font-size: 0.72rem;
+    color: #666;
+}
+.ms-captain.is-captain {
+    background: #fff4ce;
+    border-color: #b58a00;
+    color: #6b4e00;
+    font-weight: 700;
+}
+.ms-control-live {
+    border: 1px solid #8a8886;
+    border-radius: 6px;
+    background: #fff;
+    padding: 3px 6px;
+    font-size: 0.82rem;
+}
+.ms-captain-name {
+    color: #6b4e00;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+.ms-warn {
+    background: #fde7e9;
+    border: 1px solid #d13438;
+    border-radius: 6px;
+    padding: 7px 10px;
+    margin: 4px 0;
+    font-size: 0.85rem;
+    color: #a4262c;
+}
+.ms-warn-inline {
+    color: #a4262c;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+.ms-player-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-left: auto;
+}
+.ms-remove {
+    cursor: pointer;
+    background: #fff;
+    border: 1px solid #d13438;
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 0.72rem;
+    color: #a4262c;
+}
+.ms-remove:hover {
+    background: #fde7e9;
+}
+
+/* --- lobby team building --- */
+.lobby-teams {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 6px 0 10px;
+}
+.lobby-team {
+    border: 1px solid #e1dfdd;
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #faf9f8;
+}
+.lobby-team h3 {
+    margin: 0 0 4px;
+    font-size: 0.92rem;
+}
+.lobby-team ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 0.85rem;
+}
+.lobby-cap {
+    color: #6b4e00;
+    font-weight: 700;
+    font-size: 0.78rem;
+}
+.mod-setup .muted-count {
+    color: #777;
+    font-weight: 400;
+    font-size: 0.82rem;
+}

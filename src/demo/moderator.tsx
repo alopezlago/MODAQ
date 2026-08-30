@@ -18,6 +18,8 @@ import { BuzzPanel } from "./BuzzPanel";
 import {
     IDirectorMessage,
     IMassingerState,
+    IRoomMember,
+    MassingerControl,
     IPublicRoomState,
     IServerErratum,
     ITournamentFormat,
@@ -182,12 +184,15 @@ function teamsFromMatch(match: IMatch): IGameTeam[] {
 
 const teamsKey = (teams: IGameTeam[]): string => teams.map((t) => `${t.name}:${t.players.join("|")}`).join("/");
 
-// Push the game's teams to Klaxon so buzzes are attributed to MODAQ players.
-// Called in every mode, and only when the teams actually changed.
-function useTeamSync(client: KlaxonClient): (match: IMatch) => void {
+// Push the game to Klaxon on every change: the teams (so buzzes are attributed
+// to MODAQ players — sent only when they actually change) and the match itself,
+// which the server cuts down to the player-safe scoresheet the room shows.
+// Called in every mode.
+function useGameSync(client: KlaxonClient): (match: IMatch, inProgress?: boolean, currentQuestion?: number) => void {
     const lastKey = React.useRef<string>("");
     return React.useCallback(
-        (match: IMatch) => {
+        (match: IMatch, _inProgress?: boolean, currentQuestion?: number) => {
+            client.massinger({ action: "modaq_game", qbj: match, currentQuestion });
             const teams = teamsFromMatch(match).filter((t) => t.name !== "" && t.players.length > 0);
             if (teams.length < 2) {
                 return;
@@ -216,7 +221,7 @@ function serverErratumToErratum(e: IServerErratum): IErratum {
 function Moderator(): JSX.Element {
     const clientRef = React.useRef<KlaxonClient | undefined>(undefined);
     const [phase, setPhase] = React.useState<
-        "connecting" | "error" | "setup" | "lobby" | "teams" | "pickban" | "reading" | "lite" | "account"
+        "connecting" | "error" | "setup" | "lobby" | "pickban" | "reading" | "lite" | "account"
     >("connecting");
     const [fatal, setFatal] = React.useState<string>("");
     // When the fix for an error is signing in, the error view offers the link.
@@ -738,36 +743,24 @@ function Moderator(): JSX.Element {
 
     if (phase === "lobby" && pickban) {
         return (
-            <Lobby
+            <TeamLobby
                 code={code}
                 client={clientRef.current!}
                 round={pickban.round}
                 roomState={roomState}
+                captainsWanted={(tournamentFormat?.massingerControl ?? "captain") === "captain"}
+                initialTeams={pickban.teams}
                 onCancel={() => {
                     setPickban(undefined);
                     setPhase("setup");
                 }}
-                onContinue={() => setPhase("teams")}
-            />
-        );
-    }
-
-    if (phase === "teams" && pickban) {
-        return (
-            <TeamPicker
-                code={code}
-                client={clientRef.current!}
-                round={pickban.round}
-                packet={pickban.packet}
-                rosters={pickban.rosters}
-                gameFormat={gameFormatFor(tournamentFormat)}
-                roomState={roomState}
-                onCancel={() => {
-                    setPickban(undefined);
-                    setPhase("setup");
-                }}
-                onBack={() => setPhase("lobby")}
-                onTeams={(teams) => {
+                onReady={(teams) => {
+                    // The teams the room now agrees on: push them so buzzes are
+                    // attributed, then run the pick/ban. (A game set up before
+                    // anyone joins has nobody to attribute yet.)
+                    if (teams.every((team) => team.players.length > 0)) {
+                        clientRef.current?.massinger({ action: "set_modaq_teams", teams });
+                    }
                     setPickban({ ...pickban, teams });
                     setPhase("pickban");
                 }}
@@ -784,13 +777,14 @@ function Moderator(): JSX.Element {
                 packet={pickban.packet}
                 gameTeams={pickban.teams ?? []}
                 timerSecDefault={tournamentFormat?.massingerTimerSec ?? 30}
+                controlDefault={tournamentFormat?.massingerControl ?? "captain"}
                 roomState={roomState}
                 onCancel={() => {
                     clientRef.current?.massinger({ action: "massinger_cancel", round: pickban.round });
                     setPickban(undefined);
                     setPhase("setup");
                 }}
-                onBackToTeams={() => setPhase("teams")}
+                onBackToTeams={() => setPhase("lobby")}
                 onReady={async (board) => {
                     const client = clientRef.current;
                     if (!client) return;
@@ -822,6 +816,8 @@ function Moderator(): JSX.Element {
                 } catch {
                     /* ignore */
                 }
+                // The players' scoresheet belongs to the game being left.
+                clientRef.current?.massinger({ action: "modaq_game", qbj: null });
                 setPhase("setup");
             }}
         />
@@ -833,70 +829,173 @@ function Moderator(): JSX.Element {
 // actually here (and able to make their own picks) before the phase runs.
 function ConnectedPlayers(props: {
     roomState: IPublicRoomState | undefined;
-    teams?: string[];
+    client?: KlaxonClient;
+    // The two teams to offer, when they're known (after team entry).
+    teamNames?: string[];
+    // The team on the clock, highlighted during the pick/ban.
+    picking?: string;
+    // Captains only matter when the board is captain-controlled.
+    showCaptains?: boolean;
+    // Offer to remove someone from the room (a wrong room, a spectator who
+    // joined as a player, a stale tab holding a name the real player needs).
+    allowRemove?: boolean;
     // Before the teams exist there is nothing to link to, so the "not linked"
     // warning would just be noise.
     preTeams?: boolean;
 }): JSX.Element {
-    const members = (props.roomState?.members ?? []).filter((m) => m.role === "player");
-    const unlinked = props.preTeams ? 0 : members.filter((m) => !m.rosterPlayer).length;
+    const { roomState, client, teamNames, picking, showCaptains, preTeams, allowRemove } = props;
+    const members = (roomState?.members ?? []).filter((m) => m.role === "player");
+    const teams = teamNames ?? [];
+    const normTeam = (v: string | null | undefined): string =>
+        (v ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const unplaced = preTeams
+        ? 0
+        : teams.length >= 2
+        ? members.filter((m) => !teams.some((name) => normTeam(name) === normTeam(m.effectiveTeam))).length
+        : members.filter((m) => !m.rosterPlayer && !m.assignedTeam).length;
+
+    const setTeam = (playerId: string, team: string): void => {
+        client?.massinger({ action: "set_member_team", playerId, team });
+    };
+    const setCaptain = (playerId: string, captain: boolean): void => {
+        client?.massinger({ action: "set_captain", playerId, captain });
+    };
+    const remove = (playerId: string, who: string): void => {
+        if (window.confirm(`Remove ${who} from the room? They can rejoin from the player link.`)) {
+            client?.massinger({ action: "remove_player", playerId });
+        }
+    };
+
+    const same = (a: string | null | undefined, b: string | null | undefined): boolean => {
+        const norm = (v: string | null | undefined): string =>
+            (v ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+        return norm(a) !== "" && norm(a) === norm(b);
+    };
+
     return (
         <div className="ms-players">
             <h3>
                 Connected players ({members.length})
-                {unlinked > 0 && <span className="ms-unlinked"> · {unlinked} not linked</span>}
+                {unplaced > 0 && <span className="ms-unlinked"> · {unplaced} without a team</span>}
             </h3>
             {members.length === 0 ? (
                 <p className="hint">Nobody has joined the room yet. They open the player link to buzz and pick.</p>
             ) : (
                 <ul>
                     {members.map((member) => {
-                        const team = member.rosterTeam || member.team || "";
-                        const onClock = props.teams != undefined && props.teams.length > 0 && team === props.teams[0];
+                        const team = member.effectiveTeam || member.team || "";
+                        const onClock = picking != undefined && same(team, picking);
                         return (
                             <li key={member.id} className={member.connected ? "" : "gone"}>
-                                <span className="ms-player-name">
-                                    {member.rosterPlayer || member.name}
-                                    {member.rosterPlayer && member.rosterPlayer !== member.name && (
-                                        <span className="ms-alias"> (joined as {member.name})</span>
+                                <div className="ms-player-row">
+                                    <span className="ms-player-name">
+                                        {member.rosterPlayer || member.name}
+                                        {member.rosterPlayer && member.rosterPlayer !== member.name && (
+                                            <span className="ms-alias"> (joined as {member.name})</span>
+                                        )}
+                                        {!member.connected && <span className="ms-player-team"> · offline</span>}
+                                    </span>
+                                    {teams.length >= 2 && client ? (
+                                        <select
+                                            className={onClock ? "ms-team-select picking" : "ms-team-select"}
+                                            aria-label={`Team for ${member.rosterPlayer || member.name}`}
+                                            value={teams.find((t) => same(t, team)) ?? ""}
+                                            onChange={(e) => setTeam(member.id, e.target.value)}
+                                        >
+                                            <option value="">no team</option>
+                                            {teams.map((name) => (
+                                                <option key={name} value={name}>
+                                                    {name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <span className={onClock ? "ms-player-team picking" : "ms-player-team"}>
+                                            {team || "no team"}
+                                        </span>
                                     )}
-                                </span>
-                                <span className={onClock ? "ms-player-team picking" : "ms-player-team"}>
-                                    {team || "no team"}
-                                </span>
-                                {!member.connected && <span className="ms-player-team">offline</span>}
+                                </div>
+                                {((showCaptains && team !== "") || allowRemove) && client && (
+                                    <div className="ms-player-actions">
+                                        {showCaptains && team !== "" && (
+                                            <button
+                                                className={member.isCaptain ? "ms-captain is-captain" : "ms-captain"}
+                                                aria-pressed={member.isCaptain === true}
+                                                onClick={() => setCaptain(member.id, !member.isCaptain)}
+                                            >
+                                                {member.isCaptain ? "★ captain" : "make captain"}
+                                            </button>
+                                        )}
+                                        {allowRemove && (
+                                            <button
+                                                className="ms-remove"
+                                                title="Remove from the room"
+                                                onClick={() => remove(member.id, member.rosterPlayer || member.name)}
+                                            >
+                                                Remove
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </li>
                         );
                     })}
                 </ul>
             )}
-            {unlinked > 0 && (
+            {unplaced > 0 && (
                 <p className="hint">
-                    A buzzer that isn&apos;t linked to a MODAQ player still buzzes, but reports the name they typed.
-                    Link them from the buzzer options page.
+                    A buzzer with no team still buzzes, but can&apos;t make its team&apos;s picks — put it on a team
+                    above.
                 </p>
             )}
         </div>
     );
 }
 
-// Before anything else in a MASSINGER game: get the players into the room. They
-// make their own protect/ban picks, so the moderator needs them connected (and
-// visible) before setting teams — and the team/player names entered next are
-// what each buzzer gets linked to.
-function Lobby(props: {
+// The waiting room, which is also where the game is set up. Everything the
+// pick/ban needs is decided here: the two teams, and which connected buzzer is
+// on each of them. That is what ties the web players to the teams MODAQ will
+// score — MODAQ's own New Game comes later, prefilled from these choices, for
+// the moderator to confirm.
+function TeamLobby(props: {
     code: string;
     client: KlaxonClient;
     round: string;
     roomState: IPublicRoomState | undefined;
+    captainsWanted: boolean;
+    initialTeams?: IGameTeam[];
     onCancel: () => void;
-    onContinue: () => void;
+    onReady: (teams: IGameTeam[]) => void;
 }): JSX.Element {
-    const { code, client, round, roomState, onCancel, onContinue } = props;
+    const { code, client, round, roomState, captainsWanted, initialTeams, onCancel, onReady } = props;
+
+    // Team names come from the roster when the room has one, so they match what
+    // the director registered (and what players picked when they joined).
+    const rosterTeams = roomState?.roster?.teamNames ?? [];
+    const [teamA, setTeamA] = React.useState(initialTeams?.[0]?.name ?? rosterTeams[0] ?? "");
+    const [teamB, setTeamB] = React.useState(initialTeams?.[1]?.name ?? rosterTeams[1] ?? "");
     const [copied, setCopied] = React.useState(false);
+
     const players = (roomState?.members ?? []).filter((m) => m.role === "player");
     const connected = players.filter((m) => m.connected);
-    const teamsSeen = Array.from(new Set(connected.map((m) => m.team || "").filter((t) => t !== "")));
+
+    const norm = (v: string | null | undefined): string =>
+        (v ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const teamNames = [teamA.trim(), teamB.trim()].filter((n) => n !== "");
+    const namesReady = teamNames.length === 2 && norm(teamA) !== norm(teamB);
+
+    const onTeam = (name: string): IRoomMember[] =>
+        connected.filter((m) => norm(m.effectiveTeam) === norm(name));
+    const unassigned = connected.filter(
+        (m) => !teamNames.some((name) => norm(name) === norm(m.effectiveTeam))
+    );
+
+    const missingCaptains = captainsWanted
+        ? teamNames.filter((name) => !onTeam(name).some((m) => m.isCaptain))
+        : [];
+    const emptyTeams = namesReady ? teamNames.filter((name) => onTeam(name).length === 0) : [];
+    const canStart =
+        namesReady && unassigned.length === 0 && (connected.length === 0 || emptyTeams.length === 0);
 
     const link = `${location.origin}/r/${code}`;
     const copyLink = async (): Promise<void> => {
@@ -909,129 +1008,168 @@ function Lobby(props: {
         setTimeout(() => setCopied(false), 1400);
     };
 
+    const teamField = (value: string, set: (v: string) => void, id: string, label: string): JSX.Element => (
+        <>
+            <label htmlFor={id}>{label}</label>
+            {rosterTeams.length > 0 ? (
+                <select id={id} value={rosterTeams.includes(value) ? value : ""} onChange={(e) => set(e.target.value)}>
+                    <option value="">Choose a team…</option>
+                    {rosterTeams.map((name) => (
+                        <option key={name} value={name}>
+                            {name}
+                        </option>
+                    ))}
+                </select>
+            ) : (
+                <input id={id} type="text" value={value} onChange={(e) => set(e.target.value)} />
+            )}
+        </>
+    );
+
     return (
         <div className="mod-shell">
             <div className="mod-main">
                 <div className="mod-center mod-setup">
-                    <h1>Waiting for players — room {code}</h1>
+                    <h1>Set up the game — room {code}</h1>
                     <p className="hint">
-                        Round {round}. In a MASSINGER game each team makes its own protects and bans, so get both
-                        teams into the room first. Send them this link:
+                        Round {round}. Pick the two teams and put every connected player on one of them; the pick/ban
+                        runs next, and MODAQ opens after it with these teams already filled in.
                     </p>
+
                     <div className="lobby-link">
                         <code>{link}</code>
                         <button onClick={copyLink}>{copied ? "Copied!" : "Copy player link"}</button>
                     </div>
 
+                    {teamField(teamA, setTeamA, "lobby-team-a", "First team")}
+                    {teamField(teamB, setTeamB, "lobby-team-b", "Second team")}
+                    {!namesReady && (
+                        <p className="hint">
+                            {teamNames.length < 2 ? "Choose both teams." : "The two teams have to be different."}
+                        </p>
+                    )}
+
                     <div className="lobby-count">
                         <span className="lobby-number">{connected.length}</span>
-                        <span>
-                            {connected.length === 1 ? "player connected" : "players connected"}
-                            {teamsSeen.length > 0 && ` · ${teamsSeen.join(", ")}`}
-                        </span>
+                        <span>{connected.length === 1 ? "player connected" : "players connected"}</span>
                     </div>
 
-                    {connected.length === 0 ? (
+                    {namesReady && (
+                        <div className="lobby-teams">
+                            {teamNames.map((name) => {
+                                const roster = onTeam(name);
+                                return (
+                                    <div key={name} className="lobby-team">
+                                        <h3>
+                                            {name} <span className="muted-count">({roster.length})</span>
+                                        </h3>
+                                        {roster.length === 0 ? (
+                                            <p className="hint">Nobody on this team yet.</p>
+                                        ) : (
+                                            <ul>
+                                                {roster.map((m) => (
+                                                    <li key={m.id}>
+                                                        {m.rosterPlayer || m.name}
+                                                        {m.isCaptain && <span className="lobby-cap"> ★ captain</span>}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {namesReady && unassigned.length > 0 && (
+                        <div className="ms-warn">
+                            {unassigned.length} player{unassigned.length === 1 ? "" : "s"} still need a team — set
+                            them on the right, or remove them from the room.
+                        </div>
+                    )}
+                    {namesReady && connected.length > 0 && unassigned.length === 0 && emptyTeams.length > 0 && (
+                        <div className="ms-warn">
+                            Nobody is on {emptyTeams.join(" or ")} yet.
+                        </div>
+                    )}
+                    {canStart && missingCaptains.length > 0 && (
+                        <div className="ms-warn">
+                            No captain for {missingCaptains.join(" or ")} — the picks are captain-controlled, so mark
+                            one on the right (or you can make their picks yourself).
+                        </div>
+                    )}
+                    {connected.length === 0 && (
                         <p className="hint">
-                            Nobody has joined yet. You can still continue — the moderator can make every pick — but
-                            the teams won&apos;t be able to pick for themselves.
-                        </p>
-                    ) : (
-                        <p className="hint">
-                            Next you&apos;ll set the teams and players in MODAQ&apos;s New Game dialog; each buzzer
-                            here is linked to its player by name, so ask them to join under the name on the roster.
+                            Nobody has joined yet. Send them the link above — a game can be set up without them, but
+                            then every pick has to come from you.
                         </p>
                     )}
 
                     <div>
-                        <button className="primary" onClick={onContinue}>
-                            Continue to teams →
+                        <button
+                            className="primary"
+                            disabled={!canStart}
+                            onClick={() => {
+                                // Commit what the lobby shows: a player who
+                                // merely typed the right team name is only
+                                // vouched for once the moderator's assignment
+                                // says so, and that's what lets them pick.
+                                for (const name of teamNames) {
+                                    for (const member of onTeam(name)) {
+                                        if (member.assignedTeam !== name) {
+                                            client.massinger({
+                                                action: "set_member_team",
+                                                playerId: member.id,
+                                                team: name,
+                                            });
+                                        }
+                                    }
+                                }
+                                onReady(
+                                    teamNames.map((name) => ({
+                                        name,
+                                        players: onTeam(name).map((m) => m.rosterPlayer || m.name),
+                                    }))
+                                );
+                            }}
+                        >
+                            Continue to pick/ban →
                         </button>{" "}
                         <button onClick={onCancel}>Back to setup</button>
                     </div>
                 </div>
             </div>
             <div className="mod-side">
-                <ConnectedPlayers roomState={roomState} preTeams={true} />
+                <ConnectedPlayers
+                    roomState={roomState}
+                    client={client}
+                    teamNames={namesReady ? teamNames : undefined}
+                    showCaptains={captainsWanted && namesReady}
+                    allowRemove={true}
+                />
                 <BuzzPanel client={client} state={roomState} />
             </div>
         </div>
     );
 }
 
-// Step one of a MASSINGER game: the teams and players, entered in MODAQ's own
-// New Game dialog. The game that gets created here is a scratch one (its own
-// store) — it exists only to capture the teams, which then seed the pick/ban
-// and get pushed to Klaxon so every buzzer is linked to a real player. The
-// game that is actually read is started later, from the filtered packet.
-function TeamPicker(props: {
-    code: string;
-    client: KlaxonClient;
-    round: string;
-    packet: IPacket;
-    rosters: IPlayer[];
-    gameFormat: IGameFormat | undefined;
-    roomState: IPublicRoomState | undefined;
-    onCancel: () => void;
-    onBack: () => void;
-    onTeams: (teams: IGameTeam[]) => void;
-}): JSX.Element {
-    const { code, client, round, packet, rosters, gameFormat, roomState, onCancel, onBack, onTeams } = props;
-    const [teams, setTeams] = React.useState<IGameTeam[]>([]);
-    const syncTeams = useTeamSync(client);
-
-    const onGameUpdate = React.useCallback(
-        (match: IMatch) => {
-            const found = teamsFromMatch(match).filter((t) => t.name !== "" && t.players.length > 0);
-            if (found.length >= 2) {
-                setTeams(found);
-                syncTeams(match);   // link the buzzers now, so players can pick as themselves
-            }
-        },
-        [syncTeams]
-    );
-
-    return (
-        <div className="mod-shell">
-            <div className="mod-main">
-                <RoomToolbar code={code} label={`Room ${code} · Round ${round} · teams`}>
-                    <button onClick={onBack}>← Players</button>
-                    <button onClick={onCancel}>Back to setup</button>
-                </RoomToolbar>
-                <DirectorMessages client={client} />
-                <div className="ms-teamsbar">
-                    {teams.length >= 2 ? (
-                        <>
-                            <span>
-                                Teams set: <strong>{teams[0].name}</strong> vs <strong>{teams[1].name}</strong>
-                            </span>
-                            <button className="primary" onClick={() => onTeams(teams)}>
-                                Continue to pick/ban →
-                            </button>
-                        </>
-                    ) : (
-                        <span>
-                            Set the two teams and their players in MODAQ&apos;s New Game dialog, then start it — the
-                            pick/ban comes next.
-                        </span>
-                    )}
-                </div>
-                <ModaqControl
-                    applyStylingToRoot={false}
-                    buildVersion={__BUILD_VERSION__}
-                    newGameOnLoad={{ packet, packetName: `Round ${round}`, rosters }}
-                    gameFormat={gameFormat}
-                    persistState={true}
-                    storeName={`klaxon-${code}-${round}-teams`}
-                    onGameUpdate={onGameUpdate}
-                />
-            </div>
-            <div className="mod-side">
-                <ConnectedPlayers roomState={roomState} />
-            </div>
-        </div>
-    );
-}
+const CONTROL_LABELS: { value: MassingerControl; label: string; hint: string }[] = [
+    {
+        value: "captain",
+        label: "Each team's captain",
+        hint: "Only the player you mark as captain picks for their team.",
+    },
+    {
+        value: "anyone",
+        label: "Anyone on the team",
+        hint: "Any player the room knows to be on the team can pick for it.",
+    },
+    {
+        value: "moderator",
+        label: "Moderator only",
+        hint: "Players just watch the board; you make every pick from here.",
+    },
+];
 
 // --- MASSINGER pick/ban screen ---------------------------------------------
 // The moderator drives the whole phase: which team is on the clock, applying
@@ -1045,21 +1183,42 @@ function PickBan(props: {
     packet: IPacket;
     gameTeams: IGameTeam[];
     timerSecDefault: number;
+    controlDefault: MassingerControl;
     roomState: IPublicRoomState | undefined;
     onCancel: () => void;
     onBackToTeams: () => void;
     onReady: (board: IMassingerState) => void;
 }): JSX.Element {
-    const { code, client, round, packet, gameTeams, timerSecDefault, roomState, onCancel, onBackToTeams, onReady } =
-        props;
+    const {
+        code,
+        client,
+        round,
+        packet,
+        gameTeams,
+        timerSecDefault,
+        controlDefault,
+        roomState,
+        onCancel,
+        onBackToTeams,
+        onReady,
+    } = props;
     const board: IMassingerState | undefined =
         roomState?.massinger && roomState.massinger.round === round ? roomState.massinger : undefined;
 
     const [timerSec, setTimerSec] = React.useState(timerSecDefault);
+    const [control, setControl] = React.useState<MassingerControl>(controlDefault);
     // Which of the two teams picks first, chosen from a list of the actual team
     // names — never typed, so a pick/ban can't run against a misspelled team
     // that matches nobody's buzzer.
     const [firstIndex, setFirstIndex] = React.useState(0);
+    const captainOf = (team: string): IRoomMember | undefined =>
+        (roomState?.members ?? []).find(
+            (m) =>
+                m.isCaptain === true &&
+                (m.effectiveTeam ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() ===
+                    team.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+        );
+
     const teamOptions: string[] =
         gameTeams.length >= 2
             ? gameTeams.map((team) => team.name)
@@ -1068,6 +1227,8 @@ function PickBan(props: {
     const [probed, setProbed] = React.useState(false);
     const [starting, setStarting] = React.useState(false);
     const [editing, setEditing] = React.useState(false);
+
+    const missingCaptains = teamOptions.filter((name) => captainOf(name) == undefined);
 
     // Auto-resume a board persisted for this round (reload / server restart).
     React.useEffect(() => {
@@ -1104,6 +1265,7 @@ function PickBan(props: {
                 subcats: deriveSubcats(packet),
                 teams: [teamOptions[firstIndex], teamOptions[1 - firstIndex]],
                 timerSec,
+                control,
                 target: MASSINGER_TARGET,
             });
             if (resp.error) {
@@ -1143,6 +1305,30 @@ function PickBan(props: {
                             The other team ({teamOptions[1 - firstIndex] ?? "—"}) picks second, and they alternate
                             from there. You can change whose turn it is at any point once the board is running.
                         </p>
+                        <label htmlFor="ms-control">Who makes the picks?</label>
+                        <select
+                            id="ms-control"
+                            value={control}
+                            onChange={(e) => setControl(e.target.value as MassingerControl)}
+                        >
+                            {CONTROL_LABELS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="hint">
+                            {CONTROL_LABELS.find((o) => o.value === control)?.hint}
+                            {control !== "moderator" &&
+                                " You can always pick on a team's behalf, and change this once the board is running."}
+                        </p>
+                        {control === "captain" && missingCaptains.length > 0 && (
+                            <p className="ms-warn">
+                                No captain yet for {missingCaptains.join(" or ")} — mark one in the players list on
+                                the right (or their picks will have to come from you).
+                            </p>
+                        )}
+
                         <label htmlFor="ms-timer">Seconds per pick (0 = no timer)</label>
                         <input
                             id="ms-timer"
@@ -1167,14 +1353,20 @@ function PickBan(props: {
                                     ? "Begin pick/ban"
                                     : "Checking for a saved board…"}
                             </button>{" "}
-                            <button onClick={onBackToTeams}>Back to teams</button>{" "}
+                            <button onClick={onBackToTeams}>Back to teams &amp; players</button>{" "}
                             <button onClick={onCancel}>Back to setup</button>
                         </div>
                         <p className="msg">{msg}</p>
                     </div>
                 </div>
                 <div className="mod-side">
-                    <ConnectedPlayers roomState={roomState} />
+                    <ConnectedPlayers
+                        roomState={roomState}
+                        client={client}
+                        teamNames={teamOptions}
+                        showCaptains={control === "captain"}
+                        allowRemove={true}
+                    />
                 </div>
             </div>
         );
@@ -1205,6 +1397,32 @@ function PickBan(props: {
                                 {secondsLeft != null && (
                                     <span className="ms-clock">{expired ? "TIME’S UP" : `${secondsLeft}s`}</span>
                                 )}
+                            </div>
+                            <div className="ms-turnrow">
+                                <span className="hint">Picks made by:</span>
+                                <select
+                                    className="ms-control-live"
+                                    aria-label="Who makes the picks"
+                                    value={board.control}
+                                    onChange={(e) => send({ action: "massinger_set_control", control: e.target.value })}
+                                >
+                                    {CONTROL_LABELS.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                {board.control === "captain" &&
+                                    (captainOf(board.teams[board.turn]) ? (
+                                        <span className="ms-captain-name">
+                                            ★ {captainOf(board.teams[board.turn])?.rosterPlayer ||
+                                                captainOf(board.teams[board.turn])?.name}
+                                        </span>
+                                    ) : (
+                                        <span className="ms-warn-inline">
+                                            no captain for {board.teams[board.turn]}
+                                        </span>
+                                    ))}
                             </div>
                             <div className="ms-turnrow">
                                 <span className="hint">Team on the clock:</span>
@@ -1345,7 +1563,14 @@ function PickBan(props: {
                 </div>
             </div>
             <div className="mod-side">
-                <ConnectedPlayers roomState={roomState} teams={active ? [board.teams[board.turn]] : undefined} />
+                <ConnectedPlayers
+                    roomState={roomState}
+                    client={client}
+                    teamNames={board.teams}
+                    picking={active ? board.teams[board.turn] : undefined}
+                    showCaptains={board.control === "captain"}
+                    allowRemove={true}
+                />
             </div>
         </div>
     );
@@ -1453,7 +1678,7 @@ function Reading(props: {
     // Every mode links MODAQ's players to the connected buzzers: the teams from
     // the loaded game become the room's roster, so a buzz reports the player
     // MODAQ is scoring rather than whatever name they typed to join.
-    const syncTeams = useTeamSync(client);
+    const syncGame = useGameSync(client);
 
     const onGameUpdate = React.useCallback(
         (qbj: IMatch, inProgress?: boolean, currentQuestion?: number) => {
@@ -1462,12 +1687,12 @@ function Reading(props: {
             } catch {
                 /* storage may be unavailable; resume is best-effort */
             }
-            syncTeams(qbj);
+            syncGame(qbj, inProgress, currentQuestion);
             KlaxonApi.saveExport(code, token, round, qbj, inProgress === true, currentQuestion).catch(() => {
                 /* transient failures self-heal on the next change */
             });
         },
-        [code, token, round, syncTeams]
+        [code, token, round, syncGame]
     );
 
     const onTiebreakerUsed = React.useCallback(
@@ -1607,8 +1832,9 @@ function LiteReading(props: {
     const { code, client, roomState } = props;
     const onBuzzJudged = React.useCallback(() => client.resetBuzzer(), [client]);
     // Lite mode has no tournament roster, but the teams entered in MODAQ's own
-    // New Game dialog still link the buzzers to real players.
-    const syncTeams = useTeamSync(client);
+    // New Game dialog still link the buzzers to real players, and the room
+    // still gets the live scoresheet.
+    const syncGame = useGameSync(client);
     return (
         <div className="mod-shell">
             <div className="mod-main">
@@ -1619,7 +1845,7 @@ function LiteReading(props: {
                     buildVersion={__BUILD_VERSION__}
                     persistState={true}
                     storeName={`klaxon-lite-${code}`}
-                    onGameUpdate={syncTeams}
+                    onGameUpdate={syncGame}
                     onBuzzJudged={onBuzzJudged}
                 />
             </div>

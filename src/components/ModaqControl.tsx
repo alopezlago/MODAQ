@@ -503,10 +503,14 @@ function maybeOpenHostNewGame(appState: AppState, props: IModaqControlProps): vo
     const teams = (spec.teams ?? []).filter((team) => team != undefined && team.name !== "");
     if (teams.length >= 2) {
         appState.uiState.setPendingNewGameType(PendingGameType.Manual);
-        appState.uiState.setPendingNewGameManualTeams(
-            teams[0].players.map((name) => new Player(name, teams[0].name, /* isStarter */ true)),
-            teams[1].players.map((name) => new Player(name, teams[1].name, /* isStarter */ true))
-        );
+        // The team name lives on its players, so a team with nobody in it still
+        // needs one (blank) row — which is also where the host expects the
+        // moderator to fill the players in.
+        const rows = (team: { name: string; players: string[] }): Player[] =>
+            team.players.length > 0
+                ? team.players.map((name) => new Player(name, team.name, /* isStarter */ true))
+                : [new Player("", team.name, /* isStarter */ true)];
+        appState.uiState.setPendingNewGameManualTeams(rows(teams[0]), rows(teams[1]));
         appState.uiState.dialogState.showNewGameDialog();
         return;
     }

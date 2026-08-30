@@ -31,6 +31,12 @@ export interface IRoomMember {
     rosterTeam?: string | null;
     rosterPlayer?: string | null;
     displayName?: string;
+    // A team the moderator put this buzzer on, the team it counts as being on
+    // (roster link > moderator's call > what they typed), and whether they're
+    // their team's captain for the pick/ban.
+    assignedTeam?: string | null;
+    effectiveTeam?: string | null;
+    isCaptain?: boolean;
 }
 
 export interface IRoomSettings {
@@ -46,6 +52,8 @@ export interface IRoomSettings {
 // One subcategory on a MASSINGER pick/ban board. `indexes` are 0-based tossup
 // indexes into the round's packet; a ban removes the LAST remaining index (so
 // a two-question subcategory keeps its earlier question until banned again).
+export type MassingerControl = "moderator" | "captain" | "anyone";
+
 export interface IMassingerSubcat {
     label: string;
     indexes: number[];
@@ -60,6 +68,9 @@ export interface IMassingerState {
     turn: number; // team index currently picking (moderator-controlled)
     timerSec: number;
     target: number; // tossups that must remain (20 in MASSINGER)
+    // Who may make a pick: the moderator alone, each team's captain, or anyone
+    // the room knows to be on the team.
+    control: MassingerControl;
     turnStartedAt?: number;
     deadline: number | null; // server ms; null = no timer / done
     subcats: IMassingerSubcat[];
@@ -413,6 +424,7 @@ export interface ITournamentFormat {
     // MASSINGER pick/ban before each game (subcategory protect/ban to 20).
     massinger?: boolean;
     massingerTimerSec?: number;
+    massingerControl?: MassingerControl;
 }
 
 export interface ITournamentInfo {
