@@ -187,9 +187,23 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                         .sort((a, b) => Number(a.connected) - Number(b.connected))
                         .map((player) => (
                             <li key={player.id} className={player.connected ? "" : "gone"}>
-                                {player.name}
-                                {player.team ? ` · ${player.team}` : ""}
-                                {!player.connected && <span className="klaxon-offline"> OFFLINE</span>}
+                                <span className="klaxon-player-name">
+                                    {player.name}
+                                    {player.team ? ` · ${player.team}` : ""}
+                                    {!player.connected && <span className="klaxon-offline"> OFFLINE</span>}
+                                </span>
+                                <button
+                                    className="klaxon-remove"
+                                    title={`Remove ${player.name} from the room`}
+                                    aria-label={`Remove ${player.name} from the room`}
+                                    onClick={() => {
+                                        if (window.confirm(`Remove ${player.name} from the room? They can rejoin from the player link.`)) {
+                                            client.massinger({ action: "remove_player", playerId: player.id });
+                                        }
+                                    }}
+                                >
+                                    ×
+                                </button>
                             </li>
                         ))}
                 </ul>

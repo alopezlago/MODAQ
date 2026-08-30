@@ -215,6 +215,21 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
         []
     );
 
+    const onExported = props.onExported;
+    React.useEffect(() => {
+        if (onExported == undefined) {
+            return;
+        }
+        return reaction(
+            () => ({ isLoaded: appState.game.isLoaded, hasUpdates: appState.game.hasUpdates }),
+            (current, previous) => {
+                if (previous != undefined && previous.isLoaded && current.isLoaded && previous.hasUpdates && !current.hasUpdates) {
+                    onExported();
+                }
+            }
+        );
+    }, [appState, onExported]);
+
     const remoteState = props.remoteState;
     React.useEffect(() => {
         if (remoteState == undefined) {
@@ -425,6 +440,12 @@ export interface IModaqControlProps {
      * (like Klaxon) can use this to clear the buzz queue once the buzz is resolved.
      */
     onBuzzJudged?: () => void;
+
+    /**
+     * Called when the game is exported (MODAQ's own JSON/Sheets export or a custom export succeeding) — i.e. whenever
+     * the game's pending updates are marked complete while a game is loaded.
+     */
+    onExported?: () => void;
 
     /**
      * Called with MODAQ's serialized state (the same JSON it persists to localStorage) each time it is persisted,

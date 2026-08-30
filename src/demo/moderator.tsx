@@ -301,6 +301,31 @@ function useSharedGame(
     return { remoteState, onPersistedState };
 }
 
+// After the game is exported, "End game" hands the room back to the plain
+// Klaxon reader view (settings, players, invite links): MODAQ mode is turned
+// off for the room, and the shared game and the players' scoresheet are
+// retired with it. Re-entering MODAQ later is one click on that page.
+function useEndGame(client: KlaxonClient, round: string): { exported: boolean; onExported: () => void; endGame: () => void } {
+    const [exported, setExported] = React.useState(false);
+    const onExported = React.useCallback(() => setExported(true), []);
+    const endGame = React.useCallback(() => {
+        if (!window.confirm("End this game and go back to the buzzer page? The room leaves MODAQ mode; you can start MODAQ again from there.")) {
+            return;
+        }
+        try {
+            localStorage.removeItem("bz_modaqLive:" + client.code);
+        } catch {
+            /* ignore */
+        }
+        client.massinger({ action: "modaq_game", qbj: null });
+        client.pushSharedGame(round, null);
+        client.massinger({ action: "set_options", options: { modaqMode: false, modaqLite: false } }).then(() => {
+            location.href = `/r/${client.code}`;
+        });
+    }, [client, round]);
+    return { exported, onExported, endGame };
+}
+
 // MODAQ's New Game dialog only shows its packet file picker when a parse
 // service is configured (JSON packets are parsed in the browser; only .docx
 // files go to the service). Same public YAPP instance as MODAQ's own demo.
@@ -1827,6 +1852,7 @@ function Reading(props: {
     // MODAQ is scoring rather than whatever name they typed to join.
     const syncGame = useGameSync(client);
     const shared = useSharedGame(client, round);
+    const ending = useEndGame(client, round);
 
     const onGameUpdate = React.useCallback(
         (qbj: IMatch, inProgress?: boolean, currentQuestion?: number) => {
@@ -1882,6 +1908,11 @@ function Reading(props: {
             <div className="mod-main">
                 <RoomToolbar code={code} label={`Room ${code} · Round ${round}`}>
                     <button onClick={onChange}>Change round / teams</button>
+                    {ending.exported && (
+                        <button className="mod-endgame" onClick={ending.endGame} title="Back to the buzzer page (settings, players)">
+                            End game →
+                        </button>
+                    )}
                 </RoomToolbar>
                 <DirectorMessages client={client} />
                 <ModaqControl
@@ -1906,6 +1937,7 @@ function Reading(props: {
                     onErrataChange={onErrataChange}
                     onGameUpdate={onGameUpdate}
                     onBuzzJudged={onBuzzJudged}
+                    onExported={ending.onExported}
                     onPersistedState={shared.onPersistedState}
                     remoteState={shared.remoteState}
                     tiebreakers={config.tiebreakers}
@@ -1987,10 +2019,17 @@ function LiteReading(props: {
     // still gets the live scoresheet.
     const syncGame = useGameSync(client);
     const shared = useSharedGame(client, "lite");
+    const ending = useEndGame(client, "lite");
     return (
         <div className="mod-shell">
             <div className="mod-main">
-                <RoomToolbar code={code} label={`Room ${code} · MODAQ lite`} />
+                <RoomToolbar code={code} label={`Room ${code} · MODAQ lite`}>
+                    {ending.exported && (
+                        <button className="mod-endgame" onClick={ending.endGame} title="Back to the buzzer page (settings, players)">
+                            End game →
+                        </button>
+                    )}
+                </RoomToolbar>
                 <DirectorMessages client={client} />
                 <ModaqControl
                     applyStylingToRoot={false}
@@ -2000,6 +2039,7 @@ function LiteReading(props: {
                     storeName={`klaxon-lite-${code}`}
                     onGameUpdate={syncGame}
                     onBuzzJudged={onBuzzJudged}
+                    onExported={ending.onExported}
                     onPersistedState={shared.onPersistedState}
                     remoteState={shared.remoteState}
                 />

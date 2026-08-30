@@ -770,3 +770,33 @@ a.kx-crumb:hover {
     background: var(--kx-surface);
     color: var(--kx-muted);
 }
+
+/* Remove a player straight from the buzz panel. */
+.klaxon-players li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.klaxon-players .klaxon-player-name {
+    flex: 1;
+    min-width: 0;
+}
+.klaxon-remove {
+    border: 1px solid #c8c6c4;
+    background: #fff;
+    color: #605e5c;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 2px 6px;
+    cursor: pointer;
+}
+.klaxon-remove:hover {
+    color: #a4262c;
+    border-color: #a4262c;
+}
+.mod-endgame {
+    font-weight: 600;
+    border-color: #0078d4 !important;
+    color: #0078d4;
+}
