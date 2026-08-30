@@ -800,3 +800,43 @@ a.kx-crumb:hover {
     border-color: #0078d4 !important;
     color: #0078d4;
 }
+
+/* Previous games in this room (non-tournament rooms). */
+.mod-prev {
+    margin: 14px 0 8px;
+    padding: 10px 12px;
+    border: 1px solid #e1dfdd;
+    border-radius: 6px;
+    background: #faf9f8;
+}
+.mod-prev h3 {
+    margin: 0 0 6px;
+    font-size: 0.95rem;
+}
+.mod-prev ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.mod-prev li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid #edebe9;
+}
+.mod-prev-label {
+    flex: 1;
+    min-width: 0;
+}
+.mod-prev-when {
+    color: #605e5c;
+    font-size: 0.85rem;
+}
+.mod-prev button {
+    padding: 4px 10px;
+    border: 1px solid #8a8886;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+}

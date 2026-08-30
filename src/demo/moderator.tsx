@@ -25,6 +25,7 @@ import {
     ITournamentFormat,
     ITournamentInfo,
     KlaxonApi,
+    IArchivedGame,
     KlaxonClient,
     readCredentials,
     sessionToken,
@@ -191,9 +192,17 @@ const teamsKey = (teams: IGameTeam[]): string => teams.map((t) => `${t.name}:${t
 // Called in every mode.
 function useGameSync(client: KlaxonClient): (match: IMatch, inProgress?: boolean, currentQuestion?: number) => void {
     const lastKey = React.useRef<string>("");
+    const hadEvents = React.useRef<boolean>(false);
     return React.useCallback(
         (match: IMatch, _inProgress?: boolean, currentQuestion?: number) => {
             client.massinger({ action: "modaq_game", qbj: match, currentQuestion });
+            // A game with no events after one that had some is a new game, not
+            // an edit of the loaded one: stop overwriting that archive.
+            const events = (match.match_questions ?? []).reduce((n, q) => n + (q.buzzes?.length ?? 0), 0);
+            if (events === 0 && hadEvents.current) {
+                writeGameId(client.code, null);
+            }
+            hadEvents.current = events > 0;
             const teams = teamsFromMatch(match).filter((t) => t.name !== "" && t.players.length > 0);
             if (teams.length < 2) {
                 return;
@@ -301,6 +310,113 @@ function useSharedGame(
     return { remoteState, onPersistedState };
 }
 
+// --- Previous games ----------------------------------------------------------
+// Outside a tournament there is no director keeping the exports, so the room
+// itself remembers the games read in it. Leaving a game (End game, Change
+// round, loading another) files the shared snapshot; loading one puts it back
+// into MODAQ to fix a score or re-export. The id of a loaded game is kept so
+// filing it again overwrites its entry rather than adding a duplicate; a new
+// game (no events yet, after one that had some) drops the id.
+const gameIdKey = (code: string): string => "bz_modaqGameId:" + code;
+const readGameId = (code: string): string | null => localStorage.getItem(gameIdKey(code));
+const writeGameId = (code: string, id: string | null): void => {
+    try {
+        if (id == null) {
+            localStorage.removeItem(gameIdKey(code));
+        } else {
+            localStorage.setItem(gameIdKey(code), id);
+        }
+    } catch {
+        /* ignore */
+    }
+};
+
+async function archiveCurrentGame(client: KlaxonClient): Promise<void> {
+    try {
+        await client.archiveGame(readGameId(client.code));
+    } catch {
+        /* best-effort */
+    }
+    writeGameId(client.code, null);
+}
+
+// Fetch a previous game and stage it for MODAQ: its snapshot goes into the
+// localStorage store MODAQ reads on mount, and becomes the room's shared game
+// so a co-reader (or a reload) picks it up too.
+async function stagePreviousGame(
+    client: KlaxonClient,
+    id: string,
+    storeNameFor: (round: string) => string
+): Promise<IArchivedGame & { json: string }> {
+    const { game } = await KlaxonApi.getGame(client.code, client.token, id);
+    localStorage.setItem(storeNameFor(game.round), game.json);
+    writeGameId(client.code, game.id);
+    const r = await client.pushSharedGame(game.round, game.json);
+    if (typeof r.seq === "number") {
+        writeSharedSeq(client.code, r.seq);
+    }
+    return game;
+}
+
+function describeGame(g: IArchivedGame): string {
+    const teams = g.teams.length === 2 ? `${g.teams[0]} ${g.scores[0]} – ${g.teams[1]} ${g.scores[1]}` : "(teams not set)";
+    const progress = g.total > 0 ? ` · Q${Math.min(g.current, g.total)}/${g.total}` : "";
+    return `${teams}${progress}`;
+}
+
+function PreviousGames(props: {
+    client: KlaxonClient;
+    showRound: boolean;
+    onLoad: (game: IArchivedGame) => Promise<void>;
+}): JSX.Element | null {
+    const { client, showRound, onLoad } = props;
+    const [games, setGames] = React.useState<IArchivedGame[]>([]);
+    const [busy, setBusy] = React.useState<string | null>(null);
+    const [msg, setMsg] = React.useState("");
+    React.useEffect(() => {
+        KlaxonApi.listGames(client.code, client.token)
+            .then((r) => setGames(r.games))
+            .catch(() => setGames([]));
+    }, [client]);
+    if (games.length === 0) {
+        return null;
+    }
+    return (
+        <div className="mod-prev">
+            <h3>Previous games in this room</h3>
+            <ul>
+                {games.map((g) => (
+                    <li key={g.id}>
+                        <span className="mod-prev-label">
+                            {showRound && g.round !== "lite" ? `Round ${g.round} · ` : ""}
+                            {describeGame(g)}
+                            <span className="mod-prev-when"> · {new Date(g.at).toLocaleString()}</span>
+                        </span>
+                        <button
+                            disabled={busy != null}
+                            onClick={async () => {
+                                setBusy(g.id);
+                                setMsg("");
+                                try {
+                                    await onLoad(g);
+                                } catch (error) {
+                                    setMsg((error as Error).message);
+                                } finally {
+                                    setBusy(null);
+                                }
+                            }}
+                        >
+                            {busy === g.id ? "Loading…" : "Load"}
+                        </button>
+                    </li>
+                ))}
+            </ul>
+            <p className="hint">Load a game to correct a score or export it again; it becomes the room&apos;s current game.</p>
+            {msg && <p className="msg">{msg}</p>}
+        </div>
+    );
+}
+
 // After the game is exported, "End game" hands the room back to the plain
 // Klaxon reader view (settings, players, invite links): MODAQ mode is turned
 // off for the room, and the shared game and the players' scoresheet are
@@ -317,9 +433,11 @@ function useEndGame(client: KlaxonClient, round: string): { exported: boolean; o
         } catch {
             /* ignore */
         }
-        client.massinger({ action: "modaq_game", qbj: null });
-        client.pushSharedGame(round, null);
-        client.massinger({ action: "set_options", options: { modaqMode: false, modaqLite: false } }).then(() => {
+        archiveCurrentGame(client).then(() => {
+            client.massinger({ action: "modaq_game", qbj: null });
+            client.pushSharedGame(round, null);
+            return client.massinger({ action: "set_options", options: { modaqMode: false, modaqLite: false } });
+        }).then(() => {
             location.href = `/r/${client.code}`;
         });
     }, [client, round]);
@@ -907,6 +1025,31 @@ function ModeratorBody(): JSX.Element {
                     </button>
                 </div>
                 <p className="msg">{setupMsg}</p>
+                {clientRef.current && !roomState?.tournamentCode && (
+                    <PreviousGames
+                        client={clientRef.current}
+                        showRound={true}
+                        onLoad={async (g) => {
+                            const client = clientRef.current!;
+                            const game = await stagePreviousGame(client, g.id, (r) => `klaxon-${code}-${r}`);
+                            try {
+                                localStorage.setItem("bz_modaqLive:" + code, game.round);
+                            } catch {
+                                /* ignore */
+                            }
+                            // The snapshot carries its own packet; the server's copy
+                            // (if the round's file is still there) is only a fallback.
+                            let packet: IPacket = { tossups: [], bonuses: [] } as unknown as IPacket;
+                            try {
+                                packet = await KlaxonApi.getPacket<IPacket>(code, client.token, game.round);
+                            } catch {
+                                /* fine */
+                            }
+                            setRound(game.round);
+                            await enterReading(client, game.round, packet, rosterPlayers, tournamentFormat);
+                        }}
+                    />
+                )}
             </div>
         );
     }
@@ -987,9 +1130,15 @@ function ModeratorBody(): JSX.Element {
                     /* ignore */
                 }
                 // The players' scoresheet belongs to the game being left, and
-                // so does the shared copy other moderators would resume into.
-                clientRef.current?.massinger({ action: "modaq_game", qbj: null });
-                clientRef.current?.pushSharedGame(round, null);
+                // so does the shared copy other moderators would resume into;
+                // the game itself is filed under previous games first.
+                const c = clientRef.current;
+                if (c) {
+                    archiveCurrentGame(c).then(() => {
+                        c.massinger({ action: "modaq_game", qbj: null });
+                        c.pushSharedGame(round, null);
+                    });
+                }
                 setPhase("setup");
             }}
         />
@@ -2020,10 +2169,14 @@ function LiteReading(props: {
     const syncGame = useGameSync(client);
     const shared = useSharedGame(client, "lite");
     const ending = useEndGame(client, "lite");
+    const [showPrev, setShowPrev] = React.useState(false);
+    // Loading a previous game remounts MODAQ so it reads the staged snapshot.
+    const [gameKey, setGameKey] = React.useState(0);
     return (
         <div className="mod-shell">
             <div className="mod-main">
                 <RoomToolbar code={code} label={`Room ${code} · MODAQ lite`}>
+                    <button onClick={() => setShowPrev((v) => !v)}>{showPrev ? "Hide previous games" : "Previous games"}</button>
                     {ending.exported && (
                         <button className="mod-endgame" onClick={ending.endGame} title="Back to the buzzer page (settings, players)">
                             End game →
@@ -2031,7 +2184,23 @@ function LiteReading(props: {
                     )}
                 </RoomToolbar>
                 <DirectorMessages client={client} />
+                {showPrev && (
+                    <PreviousGames
+                        client={client}
+                        showRound={false}
+                        onLoad={async (g) => {
+                            // The game on screen is filed first, so nothing is lost.
+                            if (client.lastState?.scoresheet) {
+                                await archiveCurrentGame(client);
+                            }
+                            await stagePreviousGame(client, g.id, () => `klaxon-lite-${code}`);
+                            setShowPrev(false);
+                            setGameKey((k) => k + 1);
+                        }}
+                    />
+                )}
                 <ModaqControl
+                    key={gameKey}
                     applyStylingToRoot={false}
                     buildVersion={__BUILD_VERSION__}
                     yappServiceUrl={YAPP_SERVICE_URL}

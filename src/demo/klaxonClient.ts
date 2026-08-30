@@ -90,6 +90,7 @@ export interface IPublicRoomState {
     lastBuzzAt?: number | null;
     // MASSINGER pick/ban board (null outside the pick/ban phase).
     massinger?: IMassingerState | null;
+    scoresheet?: unknown;
     // The room's buzzer roster: the teams playing here and their players (set
     // from the MODAQ game's teams), which is what buzzers are linked to.
     roster?: { name?: string; teamNames: string[]; teams: { name: string; players: string[] }[] } | null;
@@ -139,6 +140,19 @@ export interface ISharedGame {
     at?: number;
 }
 type SharedGameListener = (s: ISharedGame) => void;
+
+// A previous game of the room (see the server's modaq_archive): summary for
+// the list, plus the serialized game when fetched individually.
+export interface IArchivedGame {
+    id: string;
+    round: string;
+    at: number;
+    teams: string[];
+    scores: number[];
+    current: number;
+    total: number;
+    json?: string;
+}
 
 export interface IStuckAlert {
     playerId: string;
@@ -315,6 +329,16 @@ export class KlaxonClient {
         }>;
     }
 
+    // File the room's current shared game under previous games. Passing the id
+    // of a game loaded from that list overwrites its entry instead of adding one.
+    public archiveGame(id: string | null): Promise<{ ok?: boolean; id?: string; error?: string }> {
+        return this.massinger({ action: "modaq_archive", id: id ?? undefined }) as Promise<{
+            ok?: boolean;
+            id?: string;
+            error?: string;
+        }>;
+    }
+
     private refreshSharedGame(): void {
         KlaxonApi.getSharedGame(this.code, this.token)
             .then(({ state }) => {
@@ -392,6 +416,12 @@ const q = (token: string | null): string =>
 export const KlaxonApi = {
     getRoster(code: string, token: string | null): Promise<{ roster: string | null }> {
         return rest("GET", `/api/rooms/${code}/roster?${q(token)}`);
+    },
+    listGames(code: string, token: string | null): Promise<{ games: IArchivedGame[] }> {
+        return rest("GET", `/api/rooms/${code}/games?${q(token)}`);
+    },
+    getGame(code: string, token: string | null, id: string): Promise<{ game: IArchivedGame & { json: string } }> {
+        return rest("GET", `/api/rooms/${code}/games/${encodeURIComponent(id)}?${q(token)}`);
     },
     // The room's shared MODAQ game (null when no moderator has one open).
     getSharedGame(code: string, token: string | null): Promise<{ state: ISharedGame | null }> {
