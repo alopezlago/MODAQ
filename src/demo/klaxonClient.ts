@@ -173,6 +173,7 @@ export class KlaxonClient {
     private readonly messageListeners: MessageListener[] = [];
     private readonly stuckListeners: StuckListener[] = [];
     private readonly sharedGameListeners: SharedGameListener[] = [];
+    private readonly buzzPendingListeners: ((cycleNo: number) => void)[] = [];
     private joinedOnce = false;
     public lastState: IPublicRoomState | undefined;
     public messages: IDirectorMessage[] = [];
@@ -218,6 +219,11 @@ export class KlaxonClient {
                 const a = args[0] as IStuckAlert;
                 if (!a || typeof a.playerId !== "string") return;
                 for (const l of this.stuckListeners) l(a);
+            });
+
+            socket.on("buzz_pending", (...args: unknown[]) => {
+                const p = args[0] as { cycleNo?: number };
+                for (const l of this.buzzPendingListeners) l(p?.cycleNo ?? -1);
             });
 
             socket.on("modaq_state", (...args: unknown[]) => {
@@ -307,6 +313,15 @@ export class KlaxonClient {
         return () => {
             const i = this.stuckListeners.indexOf(listener);
             if (i >= 0) this.stuckListeners.splice(i, 1);
+        };
+    }
+
+    // A buzz just landed (before the reconcile window resolves who won it).
+    public onBuzzPending(listener: (cycleNo: number) => void): () => void {
+        this.buzzPendingListeners.push(listener);
+        return () => {
+            const i = this.buzzPendingListeners.indexOf(listener);
+            if (i >= 0) this.buzzPendingListeners.splice(i, 1);
         };
     }
 
@@ -416,6 +431,10 @@ const q = (token: string | null): string =>
 export const KlaxonApi = {
     getRoster(code: string, token: string | null): Promise<{ roster: string | null }> {
         return rest("GET", `/api/rooms/${code}/roster?${q(token)}`);
+    },
+    // Download URL for the room's full buzz log (every buzz attempt, ordered).
+    fullBuzzUrl(code: string, token: string | null): string {
+        return `/api/rooms/${code}/fullbuzz?${q(token)}`;
     },
     listGames(code: string, token: string | null): Promise<{ games: IArchivedGame[] }> {
         return rest("GET", `/api/rooms/${code}/games?${q(token)}`);

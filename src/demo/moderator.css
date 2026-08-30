@@ -840,3 +840,66 @@ a.kx-crumb:hover {
     background: #fff;
     cursor: pointer;
 }
+
+/* Buzz-sound mute toggle in the panel title. */
+.klaxon-buzz-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.klaxon-sound-toggle {
+    border: 1px solid #c8c6c4;
+    background: #fff;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 3px 6px;
+    cursor: pointer;
+}
+
+/* Moderator-only 5s bonus timer. */
+.klaxon-timer {
+    text-align: center;
+    font-size: 2.6rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #0078d4;
+    margin: 4px 0 8px;
+    line-height: 1.1;
+}
+.klaxon-timer.done {
+    color: #a4262c;
+    animation: klaxon-timer-blink 0.5s steps(2) infinite;
+}
+@keyframes klaxon-timer-blink {
+    50% { opacity: 0.25; }
+}
+/* Unlinked buzzers + the picker that fixes them. */
+.klaxon-unlinked {
+    color: #a4262c;
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin-left: 6px;
+    white-space: nowrap;
+}
+.klaxon-link-select {
+    margin-left: 6px;
+    max-width: 12em;
+    font-size: 0.8rem;
+}
+.klaxon-queue li {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.klaxon-fullbuzz {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: #0078d4;
+    text-decoration: none;
+}
+.klaxon-fullbuzz-hint {
+    margin-top: 2px;
+}

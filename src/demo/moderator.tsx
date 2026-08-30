@@ -190,12 +190,14 @@ const teamsKey = (teams: IGameTeam[]): string => teams.map((t) => `${t.name}:${t
 // to MODAQ players — sent only when they actually change) and the match itself,
 // which the server cuts down to the player-safe scoresheet the room shows.
 // Called in every mode.
-function useGameSync(client: KlaxonClient): (match: IMatch, inProgress?: boolean, currentQuestion?: number) => void {
+function useGameSync(
+    client: KlaxonClient
+): (match: IMatch, inProgress?: boolean, currentQuestion?: number, hasBonuses?: boolean) => void {
     const lastKey = React.useRef<string>("");
     const hadEvents = React.useRef<boolean>(false);
     return React.useCallback(
-        (match: IMatch, _inProgress?: boolean, currentQuestion?: number) => {
-            client.massinger({ action: "modaq_game", qbj: match, currentQuestion });
+        (match: IMatch, _inProgress?: boolean, currentQuestion?: number, hasBonuses?: boolean) => {
+            client.massinger({ action: "modaq_game", qbj: match, currentQuestion, hasBonuses: hasBonuses !== false });
             // A game with no events after one that had some is a new game, not
             // an edit of the loaded one: stop overwriting that archive.
             const events = (match.match_questions ?? []).reduce((n, q) => n + (q.buzzes?.length ?? 0), 0);
@@ -2004,13 +2006,13 @@ function Reading(props: {
     const ending = useEndGame(client, round);
 
     const onGameUpdate = React.useCallback(
-        (qbj: IMatch, inProgress?: boolean, currentQuestion?: number) => {
+        (qbj: IMatch, inProgress?: boolean, currentQuestion?: number, hasBonuses?: boolean) => {
             try {
                 localStorage.setItem("bz_modaqLive:" + code, round);
             } catch {
                 /* storage may be unavailable; resume is best-effort */
             }
-            syncGame(qbj, inProgress, currentQuestion);
+            syncGame(qbj, inProgress, currentQuestion, hasBonuses);
             KlaxonApi.saveExport(code, token, round, qbj, inProgress === true, currentQuestion).catch(() => {
                 /* transient failures self-heal on the next change */
             });

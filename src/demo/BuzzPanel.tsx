@@ -1,5 +1,5 @@
 import * as React from "react";
-import { IPublicRoomState, IStuckAlert, KlaxonClient } from "./klaxonClient";
+import { IPublicRoomState, IRoomMember, IStuckAlert, KlaxonApi, KlaxonClient } from "./klaxonClient";
 
 // The native Klaxon buzz panel shown beside the MODAQ reader. It renders the
 // latency-fair buzz queue the Klaxon server resolves and gives the moderator the
@@ -52,6 +52,37 @@ function playStuckSound(): void {
     }
 }
 
+// The buzz itself, played the moment the server hears a press — BEFORE the
+// reconcile window decides who won it (no name is shown until then).
+function playBuzzBeep(): void {
+    try {
+        const Ctor = (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext })
+            .AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (Ctor == undefined) return;
+        const ctx = new Ctor();
+        const master = ctx.createGain();
+        master.gain.value = 0.9;
+        master.connect(ctx.destination);
+        const t = ctx.currentTime;
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(1175, t);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.9, t + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+        o.connect(g).connect(master);
+        o.start(t);
+        o.stop(t + 0.4);
+        setTimeout(() => void ctx.close(), 800);
+    } catch {
+        /* audio unavailable */
+    }
+}
+
+const BUZZ_SOUND_KEY = "bz_modaqBuzzSound";
+const buzzSoundOn = (): boolean => localStorage.getItem(BUZZ_SOUND_KEY) !== "0";
+
 function notifyStuck(code: string, who: string): void {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
     try {
@@ -71,6 +102,22 @@ function notifyStuck(code: string, who: string): void {
 export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState | undefined }): JSX.Element {
     const { client, state } = props;
     const [stuck, setStuck] = React.useState<IStuckAlert | undefined>(undefined);
+
+    // Instant buzz sound: fires on the server's buzz_pending (sent the moment a
+    // press lands, before the reconcile window names the winner). One per cycle.
+    const [soundOn, setSoundOn] = React.useState(buzzSoundOn());
+    const soundedCycle = React.useRef<number | null>(null);
+    React.useEffect(() => {
+        return client.onBuzzPending((cycleNo) => {
+            if (soundedCycle.current === cycleNo) {
+                return;
+            }
+            soundedCycle.current = cycleNo;
+            if (buzzSoundOn()) {
+                playBuzzBeep();
+            }
+        });
+    }, [client]);
 
     // A player says the buzzer was never cleared: banner + sound + a browser
     // notification, so a moderator reading in another tab still catches it.
@@ -102,8 +149,29 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
         };
     }, []);
 
+    // Bonus timer: a 5-second countdown only this screen sees, for pacing
+    // bonus answers. Starts (or restarts) from the button or the "t" key.
+    const [timerEnd, setTimerEnd] = React.useState<number | null>(null);
+    const [, forceTick] = React.useReducer((x: number) => x + 1, 0);
+    React.useEffect(() => {
+        if (timerEnd == null) {
+            return;
+        }
+        const iv = setInterval(() => {
+            if (Date.now() > timerEnd + 1500) {
+                setTimerEnd(null); // "TIME" has been shown; clear it
+            } else {
+                forceTick();
+            }
+        }, 100);
+        return () => clearInterval(iv);
+    }, [timerEnd]);
+    const startTimer = React.useCallback(() => setTimerEnd(Date.now() + 5000), []);
+    const timerLeft = timerEnd == null ? null : (timerEnd - Date.now()) / 1000;
+
     // In MODAQ mode Space drives the MODAQ buzz menu, so "r" resets the Klaxon
-    // buzzer (matching Space-to-reset in the plain reader view).
+    // buzzer (matching Space-to-reset in the plain reader view), and "t" runs
+    // the bonus timer.
     React.useEffect(() => {
         const onKey = (event: KeyboardEvent): void => {
             if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) {
@@ -113,10 +181,14 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                 event.preventDefault();
                 client.resetBuzzer();
             }
+            if ((event.key === "t" || event.key === "T") && !isTextEntry(event.target)) {
+                event.preventDefault();
+                startTimer();
+            }
         };
         document.addEventListener("keydown", onKey);
         return () => document.removeEventListener("keydown", onKey);
-    }, [client]);
+    }, [client, startTimer]);
 
     const queue = state?.queue ?? [];
     const buzzed = queue.length > 0;
@@ -132,9 +204,63 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
     const players = (state?.members ?? []).filter((m) => m.role === "player");
     const offline = players.filter((p) => !p.connected).length;
 
+    // Buzzes are shown as the MODAQ player they're linked to (name + team from
+    // the game being scored), so the panel and the scoresheet always agree.
+    // An unlinked buzzer is flagged and gets a picker right where it's needed.
+    const roster = state?.roster;
+    const memberOf = (playerId: string): IRoomMember | undefined => players.find((p) => p.id === playerId);
+    const modaqLabel = (m: IRoomMember | undefined, fallback: string): string =>
+        m?.rosterPlayer ? `${m.rosterPlayer}${m.rosterTeam ? ` (${m.rosterTeam})` : ""}` : fallback;
+    const linkPicker = (playerId: string): JSX.Element | null => {
+        if (!roster || roster.teams.length === 0) {
+            return null;
+        }
+        return (
+            <select
+                className="klaxon-link-select"
+                value=""
+                title="Link this buzzer to its MODAQ player"
+                onChange={(e) => {
+                    const [team, player] = e.target.value.split("\u0000");
+                    if (player) {
+                        client.massinger({ action: "assign_roster_player", playerId, team, player });
+                    }
+                }}
+            >
+                <option value="">link to MODAQ player…</option>
+                {roster.teams.map((t) => (
+                    <optgroup key={t.name} label={t.name}>
+                        {t.players.map((p) => (
+                            <option key={p} value={`${t.name}\u0000${p}`}>
+                                {p}
+                            </option>
+                        ))}
+                    </optgroup>
+                ))}
+            </select>
+        );
+    };
+
     return (
         <div className="klaxon-buzz">
-            <h2 className="klaxon-buzz-title">Buzzer</h2>
+            <h2 className="klaxon-buzz-title">
+                Buzzer
+                <button
+                    className="klaxon-sound-toggle"
+                    title={soundOn ? "Buzz sound on — click to mute" : "Buzz sound muted — click to unmute"}
+                    aria-pressed={!soundOn}
+                    onClick={() => {
+                        const next = !soundOn;
+                        setSoundOn(next);
+                        localStorage.setItem(BUZZ_SOUND_KEY, next ? "1" : "0");
+                        if (next) {
+                            playBuzzBeep();
+                        }
+                    }}
+                >
+                    {soundOn ? "\uD83D\uDD0A" : "\uD83D\uDD07"}
+                </button>
+            </h2>
 
             {stuck != undefined && (
                 <div className="klaxon-stuck" role="alert">
@@ -147,22 +273,39 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
             )}
 
             <div className={"klaxon-phase " + (buzzed ? "buzzed" : "ready")}>
-                {buzzed ? queue[0].name + (queue.length > 1 ? ` · ${queue.length - 1} more` : "") : "Ready to buzz"}
+                {buzzed
+                    ? modaqLabel(memberOf(queue[0].playerId), queue[0].name) +
+                      (queue.length > 1 ? ` · ${queue.length - 1} more` : "")
+                    : "Ready to buzz"}
             </div>
+
+            {timerLeft != null && (
+                <div className={"klaxon-timer" + (timerLeft <= 0 ? " done" : "")} aria-hidden="true">
+                    {timerLeft <= 0 ? "TIME" : timerLeft.toFixed(1)}
+                </div>
+            )}
 
             <ol className="klaxon-queue">
                 {queue.length === 0 && <li className="empty">No buzzes yet.</li>}
-                {queue.map((entry, index) => (
-                    <li key={entry.playerId} className={index === 0 ? "head" : ""}>
-                        <span className="qname">{entry.name}</span>
-                        {index > 0 && <span className="qmargin">+{entry.marginMs}ms</span>}
-                    </li>
-                ))}
+                {queue.map((entry, index) => {
+                    const m = memberOf(entry.playerId);
+                    return (
+                        <li key={entry.playerId} className={index === 0 ? "head" : ""}>
+                            <span className="qname">{modaqLabel(m, entry.name)}</span>
+                            {index > 0 && <span className="qmargin">+{entry.marginMs}ms</span>}
+                            {!m?.rosterPlayer && <span className="klaxon-unlinked">not in MODAQ</span>}
+                            {!m?.rosterPlayer && linkPicker(entry.playerId)}
+                        </li>
+                    );
+                })}
             </ol>
 
             <div className="klaxon-controls">
                 <button onClick={() => client.resetBuzzer()} disabled={!buzzed} title="Shortcut: r">
                     Reset buzzer (r)
+                </button>
+                <button onClick={startTimer} title="Shortcut: t — a 5-second countdown only you see">
+                    5s timer (t)
                 </button>
                 {queueMode && (
                     <button onClick={() => client.nextBuzz()} disabled={!buzzed}>
@@ -188,8 +331,8 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                         .map((player) => (
                             <li key={player.id} className={player.connected ? "" : "gone"}>
                                 <span className="klaxon-player-name">
-                                    {player.name}
-                                    {player.team ? ` · ${player.team}` : ""}
+                                    {modaqLabel(player, player.name + (player.team ? ` · ${player.team}` : ""))}
+                                    {!player.rosterPlayer && linkPicker(player.id)}
                                     {!player.connected && <span className="klaxon-offline"> OFFLINE</span>}
                                 </span>
                                 <button
@@ -208,6 +351,14 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                         ))}
                 </ul>
             </div>
+
+            <a className="klaxon-fullbuzz" href={KlaxonApi.fullBuzzUrl(client.code, client.token)}>
+                Download full buzz log
+            </a>
+            <p className="klaxon-hint klaxon-fullbuzz-hint">
+                Every buzz attempt this room heard — including buzzes behind the first — with question numbers, for
+                buzz-point tracking.
+            </p>
 
             <p className="klaxon-hint">
                 Buzzes are resolved with Klaxon&apos;s latency-fair timing. Judge the buzz in the MODAQ reader on the

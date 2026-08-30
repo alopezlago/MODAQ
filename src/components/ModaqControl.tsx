@@ -274,10 +274,14 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                             // Same condition as the Next button turning into Export.
                             const inProgress: boolean =
                                 appState.uiState.cycleIndex + 1 < appState.game.playableCycles.length;
+                            const hasBonuses: boolean =
+                                appState.game.gameFormat.tossupsOnly !== true &&
+                                appState.game.packet.bonuses.length > 0;
                             onGameUpdate(
                                 QBJ.toQBJ(appState.game, appState.uiState.packetFilename),
                                 inProgress,
-                                appState.uiState.cycleIndex + 1
+                                appState.uiState.cycleIndex + 1,
+                                hasBonuses
                             );
                         } catch {
                             /* a transient inconsistent state shouldn't crash the reader */
@@ -433,7 +437,7 @@ export interface IModaqControlProps {
      * avoid counting a half-played game as final. currentQuestion is the 1-based question the reader is on, so a
      * host can show live scoreboards with game progress.
      */
-    onGameUpdate?: (qbj: IMatch, inProgress?: boolean, currentQuestion?: number) => void;
+    onGameUpdate?: (qbj: IMatch, inProgress?: boolean, currentQuestion?: number, hasBonuses?: boolean) => void;
 
     /**
      * Called when the reader marks a buzz correct or wrong on the question being read. Hosts with their own buzzer
