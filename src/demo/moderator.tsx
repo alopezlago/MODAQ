@@ -208,6 +208,11 @@ function useGameSync(client: KlaxonClient): (match: IMatch, inProgress?: boolean
     );
 }
 
+// MODAQ's New Game dialog only shows its packet file picker when a parse
+// service is configured (JSON packets are parsed in the browser; only .docx
+// files go to the service). Same public YAPP instance as MODAQ's own demo.
+const YAPP_SERVICE_URL = "https://www.quizbowlreader.com/yapp/api/parse?modaq=true";
+
 function serverErratumToErratum(e: IServerErratum): IErratum {
     return {
         questionNumber: e.questionNumber,
@@ -1739,6 +1744,7 @@ function Reading(props: {
                 <ModaqControl
                     applyStylingToRoot={false}
                     buildVersion={__BUILD_VERSION__}
+                    yappServiceUrl={YAPP_SERVICE_URL}
                     newGameOnLoad={{
                         packet: config.packet,
                         packetName: `Round ${round}`,
@@ -1843,6 +1849,7 @@ function LiteReading(props: {
                 <ModaqControl
                     applyStylingToRoot={false}
                     buildVersion={__BUILD_VERSION__}
+                    yappServiceUrl={YAPP_SERVICE_URL}
                     persistState={true}
                     storeName={`klaxon-lite-${code}`}
                     onGameUpdate={syncGame}
