@@ -1348,7 +1348,7 @@ function TeamLobby(props: {
     const canStart =
         namesReady && unassigned.length === 0 && (connected.length === 0 || emptyTeams.length === 0);
 
-    const link = `${location.origin}/r/${code}`;
+    const link = `${location.origin}/${code}`;
     const copyLink = async (): Promise<void> => {
         try {
             await navigator.clipboard.writeText(link);
@@ -1964,7 +1964,7 @@ function RoomToolbar(props: { code: string; label: string; children?: React.Reac
     const [copied, setCopied] = React.useState(false);
     const copyLink = async (): Promise<void> => {
         try {
-            await navigator.clipboard.writeText(`${location.origin}/r/${props.code}`);
+            await navigator.clipboard.writeText(`${location.origin}/${props.code}`);
         } catch {
             /* clipboard may be blocked; ignore */
         }

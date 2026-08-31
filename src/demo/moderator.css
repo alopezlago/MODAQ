@@ -909,3 +909,23 @@ a.kx-crumb:hover {
     color: #107c10;
     font-weight: 600;
 }
+
+/* One-click cleanup of players left over from an earlier game. */
+.klaxon-stale {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    font-size: 0.85rem;
+}
+.klaxon-stale button {
+    padding: 4px 8px;
+    border: 1px solid #8a8886;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+}
+.klaxon-stale input {
+    width: 3.2em;
+    padding: 3px 4px;
+}

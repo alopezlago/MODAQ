@@ -204,6 +204,16 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
     const players = (state?.members ?? []).filter((m) => m.role === "player");
     const offline = players.filter((p) => !p.connected).length;
 
+    // Clearing out leftovers: players who joined longer than N minutes ago
+    // (a previous game's room-full) go in one click.
+    const [staleMins, setStaleMins] = React.useState("15");
+    const removeStale = (): void => {
+        const minutes = Math.max(1, Number(staleMins) || 15);
+        if (window.confirm(`Remove every player who joined more than ${minutes} minutes ago?`)) {
+            client.massinger({ action: "remove_stale_players", minutes });
+        }
+    };
+
     // Buzzes are shown as the MODAQ player they're linked to (name + team from
     // the game being scored), so the panel and the scoresheet always agree.
     // An unlinked buzzer is flagged and gets a picker right where it's needed.
@@ -353,6 +363,21 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                         ))}
                 </ul>
             </div>
+
+            {players.length > 0 && (
+                <div className="klaxon-stale">
+                    <button onClick={removeStale}>Remove players who joined over</button>
+                    <input
+                        type="number"
+                        min={1}
+                        max={999}
+                        value={staleMins}
+                        onChange={(e) => setStaleMins(e.target.value)}
+                        aria-label="Minutes"
+                    />
+                    <span>min ago</span>
+                </div>
+            )}
 
             <p className="klaxon-hint">
                 Buzzes are resolved with Klaxon&apos;s latency-fair timing. Judge the buzz in the MODAQ reader on the
