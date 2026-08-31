@@ -903,3 +903,9 @@ a.kx-crumb:hover {
 .klaxon-fullbuzz-hint {
     margin-top: 2px;
 }
+
+/* A buzzer linked to its MODAQ player reads in green; unlinked stays flagged red. */
+.klaxon-linked {
+    color: #107c10;
+    font-weight: 600;
+}

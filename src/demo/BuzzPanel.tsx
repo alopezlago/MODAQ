@@ -211,23 +211,23 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
     const memberOf = (playerId: string): IRoomMember | undefined => players.find((p) => p.id === playerId);
     const modaqLabel = (m: IRoomMember | undefined, fallback: string): string =>
         m?.rosterPlayer ? `${m.rosterPlayer}${m.rosterTeam ? ` (${m.rosterTeam})` : ""}` : fallback;
-    const linkPicker = (playerId: string): JSX.Element | null => {
+    const linkPicker = (member: IRoomMember | undefined, playerId: string): JSX.Element | null => {
         if (!roster || roster.teams.length === 0) {
             return null;
         }
+        const current = member?.rosterPlayer ? `${member.rosterTeam ?? ""}\u0000${member.rosterPlayer}` : "";
         return (
             <select
                 className="klaxon-link-select"
-                value=""
-                title="Link this buzzer to its MODAQ player"
+                value={current}
+                title="Which MODAQ player this buzzer is scored as — change it any time"
                 onChange={(e) => {
                     const [team, player] = e.target.value.split("\u0000");
-                    if (player) {
-                        client.massinger({ action: "assign_roster_player", playerId, team, player });
-                    }
+                    // An empty choice clears the link (back to the typed name).
+                    client.massinger({ action: "assign_roster_player", playerId, team: team || "", player: player || "" });
                 }}
             >
-                <option value="">link to MODAQ player…</option>
+                <option value="">{current ? "unlink (use typed name)" : "link to MODAQ player…"}</option>
                 {roster.teams.map((t) => (
                     <optgroup key={t.name} label={t.name}>
                         {t.players.map((p) => (
@@ -291,10 +291,12 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                     const m = memberOf(entry.playerId);
                     return (
                         <li key={entry.playerId} className={index === 0 ? "head" : ""}>
-                            <span className="qname">{modaqLabel(m, entry.name)}</span>
+                            <span className={"qname" + (m?.rosterPlayer ? " klaxon-linked" : "")}>
+                                {modaqLabel(m, entry.name)}
+                            </span>
                             {index > 0 && <span className="qmargin">+{entry.marginMs}ms</span>}
                             {!m?.rosterPlayer && <span className="klaxon-unlinked">not in MODAQ</span>}
-                            {!m?.rosterPlayer && linkPicker(entry.playerId)}
+                            {!m?.rosterPlayer && linkPicker(m, entry.playerId)}
                         </li>
                     );
                 })}
@@ -330,9 +332,9 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                         .sort((a, b) => Number(a.connected) - Number(b.connected))
                         .map((player) => (
                             <li key={player.id} className={player.connected ? "" : "gone"}>
-                                <span className="klaxon-player-name">
+                                <span className={"klaxon-player-name" + (player.rosterPlayer ? " klaxon-linked" : "")}>
                                     {modaqLabel(player, player.name + (player.team ? ` · ${player.team}` : ""))}
-                                    {!player.rosterPlayer && linkPicker(player.id)}
+                                    {linkPicker(player, player.id)}
                                     {!player.connected && <span className="klaxon-offline"> OFFLINE</span>}
                                 </span>
                                 <button
