@@ -277,11 +277,35 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                             const hasBonuses: boolean =
                                 appState.game.gameFormat.tossupsOnly !== true &&
                                 appState.game.packet.bonuses.length > 0;
+                            const protests: IGameUpdateProtest[] = [];
+                            appState.game.playableCycles.forEach((cycle, i) => {
+                                for (const p of cycle.tossupProtests ?? []) {
+                                    protests.push({
+                                        cycle: i + 1,
+                                        type: "tossup",
+                                        team: p.teamName,
+                                        question: p.questionIndex + 1,
+                                        position: p.position + 1,
+                                        givenAnswer: p.givenAnswer ?? "",
+                                    });
+                                }
+                                for (const p of cycle.bonusProtests ?? []) {
+                                    protests.push({
+                                        cycle: i + 1,
+                                        type: "bonus",
+                                        team: p.teamName,
+                                        question: p.questionIndex + 1,
+                                        part: p.partIndex + 1,
+                                        givenAnswer: p.givenAnswer ?? "",
+                                    });
+                                }
+                            });
                             onGameUpdate(
                                 QBJ.toQBJ(appState.game, appState.uiState.packetFilename),
                                 inProgress,
                                 appState.uiState.cycleIndex + 1,
-                                hasBonuses
+                                hasBonuses,
+                                protests
                             );
                         } catch {
                             /* a transient inconsistent state shouldn't crash the reader */
@@ -401,6 +425,19 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
 // We can't use observables here since the user could pass in different instances of IModaqControlProps
 // TODO: Should take a callback and settings for export (which ones are enabled, any new export options with a callback
 // of game state/QBJ file?)
+// A pending protest, as passed to onGameUpdate: everything the room already
+// heard out loud (who protested what, and the answer they gave) — never the
+// moderator's private notes.
+export interface IGameUpdateProtest {
+    cycle: number; // 1-based cycle the protest belongs to
+    type: "tossup" | "bonus";
+    team: string;
+    question: number; // 1-based question number as MODAQ shows it
+    part?: number; // 1-based bonus part
+    position?: number; // 1-based word index of the buzz (tossup protests)
+    givenAnswer: string;
+}
+
 export interface IModaqControlProps {
     /**
      * If `true`, applies theming to the body, so the background in dark mode will be black evne outside of MODAQ
@@ -437,7 +474,13 @@ export interface IModaqControlProps {
      * avoid counting a half-played game as final. currentQuestion is the 1-based question the reader is on, so a
      * host can show live scoreboards with game progress.
      */
-    onGameUpdate?: (qbj: IMatch, inProgress?: boolean, currentQuestion?: number, hasBonuses?: boolean) => void;
+    onGameUpdate?: (
+        qbj: IMatch,
+        inProgress?: boolean,
+        currentQuestion?: number,
+        hasBonuses?: boolean,
+        protests?: IGameUpdateProtest[]
+    ) => void;
 
     /**
      * Called when the reader marks a buzz correct or wrong on the question being read. Hosts with their own buzzer

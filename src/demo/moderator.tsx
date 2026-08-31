@@ -3,7 +3,7 @@ import * as ReactDOM from "react-dom";
 import { initializeIcons } from "@fluentui/react";
 
 import "./moderator.css";
-import { ModaqControl } from "../components/ModaqControl";
+import { IGameUpdateProtest, ModaqControl } from "../components/ModaqControl";
 import { IPacket } from "../state/IPacket";
 import { IPlayer } from "../state/TeamState";
 import { IErratum } from "../state/IErratum";
@@ -192,12 +192,24 @@ const teamsKey = (teams: IGameTeam[]): string => teams.map((t) => `${t.name}:${t
 // Called in every mode.
 function useGameSync(
     client: KlaxonClient
-): (match: IMatch, inProgress?: boolean, currentQuestion?: number, hasBonuses?: boolean) => void {
+): (
+    match: IMatch,
+    inProgress?: boolean,
+    currentQuestion?: number,
+    hasBonuses?: boolean,
+    protests?: IGameUpdateProtest[]
+) => void {
     const lastKey = React.useRef<string>("");
     const hadEvents = React.useRef<boolean>(false);
     return React.useCallback(
-        (match: IMatch, _inProgress?: boolean, currentQuestion?: number, hasBonuses?: boolean) => {
-            client.massinger({ action: "modaq_game", qbj: match, currentQuestion, hasBonuses: hasBonuses !== false });
+        (match: IMatch, _inProgress?: boolean, currentQuestion?: number, hasBonuses?: boolean, protests?: IGameUpdateProtest[]) => {
+            client.massinger({
+                action: "modaq_game",
+                qbj: match,
+                currentQuestion,
+                hasBonuses: hasBonuses !== false,
+                protests: protests ?? [],
+            });
             // A game with no events after one that had some is a new game, not
             // an edit of the loaded one: stop overwriting that archive.
             const events = (match.match_questions ?? []).reduce((n, q) => n + (q.buzzes?.length ?? 0), 0);
@@ -417,6 +429,22 @@ function PreviousGames(props: {
             {msg && <p className="msg">{msg}</p>}
         </div>
     );
+}
+
+// Exporting a game also hands the moderator the room's full buzz log
+// (*_full_buzz.json: every buzz attempt, late ones included, with question
+// numbers) alongside the match JSON, for buzz-point tracking.
+function downloadFullBuzz(client: KlaxonClient): void {
+    try {
+        const a = document.createElement("a");
+        a.href = KlaxonApi.fullBuzzUrl(client.code, client.token);
+        a.download = `klaxon_${client.code}_full_buzz.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    } catch {
+        /* best-effort */
+    }
 }
 
 // After the game is exported, "End game" hands the room back to the plain
@@ -1976,6 +2004,7 @@ function Reading(props: {
                 try {
                     // An explicit export is always final, even if the game ended early.
                     const result = await KlaxonApi.saveExport(code, token, round, qbj, false);
+                    downloadFullBuzz(client);
                     try {
                         localStorage.removeItem("bz_modaqLive:" + code);
                     } catch {
@@ -2006,13 +2035,13 @@ function Reading(props: {
     const ending = useEndGame(client, round);
 
     const onGameUpdate = React.useCallback(
-        (qbj: IMatch, inProgress?: boolean, currentQuestion?: number, hasBonuses?: boolean) => {
+        (qbj: IMatch, inProgress?: boolean, currentQuestion?: number, hasBonuses?: boolean, protests?: IGameUpdateProtest[]) => {
             try {
                 localStorage.setItem("bz_modaqLive:" + code, round);
             } catch {
                 /* storage may be unavailable; resume is best-effort */
             }
-            syncGame(qbj, inProgress, currentQuestion, hasBonuses);
+            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests);
             KlaxonApi.saveExport(code, token, round, qbj, inProgress === true, currentQuestion).catch(() => {
                 /* transient failures self-heal on the next change */
             });
@@ -2210,7 +2239,10 @@ function LiteReading(props: {
                     storeName={`klaxon-lite-${code}`}
                     onGameUpdate={syncGame}
                     onBuzzJudged={onBuzzJudged}
-                    onExported={ending.onExported}
+                    onExported={() => {
+                        ending.onExported();
+                        downloadFullBuzz(client);
+                    }}
                     onPersistedState={shared.onPersistedState}
                     remoteState={shared.remoteState}
                 />

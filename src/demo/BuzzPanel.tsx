@@ -1,5 +1,5 @@
 import * as React from "react";
-import { IPublicRoomState, IRoomMember, IStuckAlert, KlaxonApi, KlaxonClient } from "./klaxonClient";
+import { IPublicRoomState, IRoomMember, IStuckAlert, KlaxonClient } from "./klaxonClient";
 
 // The native Klaxon buzz panel shown beside the MODAQ reader. It renders the
 // latency-fair buzz queue the Klaxon server resolves and gives the moderator the
@@ -353,14 +353,6 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                         ))}
                 </ul>
             </div>
-
-            <a className="klaxon-fullbuzz" href={KlaxonApi.fullBuzzUrl(client.code, client.token)}>
-                Download full buzz log
-            </a>
-            <p className="klaxon-hint klaxon-fullbuzz-hint">
-                Every buzz attempt this room heard — including buzzes behind the first — with question numbers, for
-                buzz-point tracking.
-            </p>
 
             <p className="klaxon-hint">
                 Buzzes are resolved with Klaxon&apos;s latency-fair timing. Judge the buzz in the MODAQ reader on the
