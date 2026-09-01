@@ -214,6 +214,28 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
         }
     };
 
+    // A link the moderator just picked, shown before the server's state comes
+    // back so the select never appears to ignore the click. Dropped as soon as
+    // the room agrees (or corrects us).
+    const [pendingLinks, setPendingLinks] = React.useState<Record<string, string>>({});
+    const linkValue = (m: IRoomMember | undefined): string =>
+        m?.rosterPlayer ? `${m.rosterTeam ?? ""}\u0000${m.rosterPlayer}` : "";
+    React.useEffect(() => {
+        setPendingLinks((pending) => {
+            const next: Record<string, string> = {};
+            let changed = false;
+            for (const [id, value] of Object.entries(pending)) {
+                const member = (state?.members ?? []).find((x) => x.id === id);
+                if (member != undefined && linkValue(member) === value) {
+                    changed = true; // the room caught up
+                } else {
+                    next[id] = value;
+                }
+            }
+            return changed ? next : pending;
+        });
+    }, [state]);
+
     // Buzzes are shown as the MODAQ player they're linked to (name + team from
     // the game being scored), so the panel and the scoresheet always agree.
     // An unlinked buzzer is flagged and gets a picker right where it's needed.
@@ -221,18 +243,24 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
     const memberOf = (playerId: string): IRoomMember | undefined => players.find((p) => p.id === playerId);
     const modaqLabel = (m: IRoomMember | undefined, fallback: string): string =>
         m?.rosterPlayer ? `${m.rosterPlayer}${m.rosterTeam ? ` (${m.rosterTeam})` : ""}` : fallback;
+    // What this buzzer called itself when it joined — worth a tooltip once the
+    // panel is showing the MODAQ player's name instead.
+    const joinedAsTitle = (m: IRoomMember | undefined): string | undefined =>
+        m?.rosterPlayer ? `Joined as ${m.name}${m.team ? ` (${m.team})` : ""}` : undefined;
     const linkPicker = (member: IRoomMember | undefined, playerId: string): JSX.Element | null => {
         if (!roster || roster.teams.length === 0) {
             return null;
         }
-        const current = member?.rosterPlayer ? `${member.rosterTeam ?? ""}\u0000${member.rosterPlayer}` : "";
+        const current = pendingLinks[playerId] ?? linkValue(member);
         return (
             <select
                 className="klaxon-link-select"
                 value={current}
                 title="Which MODAQ player this buzzer is scored as — change it any time"
                 onChange={(e) => {
-                    const [team, player] = e.target.value.split("\u0000");
+                    const value = e.target.value;
+                    setPendingLinks((p) => ({ ...p, [playerId]: value }));
+                    const [team, player] = value.split("\u0000");
                     // An empty choice clears the link (back to the typed name).
                     client.massinger({ action: "assign_roster_player", playerId, team: team || "", player: player || "" });
                 }}
@@ -301,7 +329,10 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                     const m = memberOf(entry.playerId);
                     return (
                         <li key={entry.playerId} className={index === 0 ? "head" : ""}>
-                            <span className={"qname" + (m?.rosterPlayer ? " klaxon-linked" : "")}>
+                            <span
+                                className={"qname" + (m?.rosterPlayer ? " klaxon-linked" : "")}
+                                title={joinedAsTitle(m)}
+                            >
                                 {modaqLabel(m, entry.name)}
                             </span>
                             {index > 0 && <span className="qmargin">+{entry.marginMs}ms</span>}
@@ -342,7 +373,10 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                         .sort((a, b) => Number(a.connected) - Number(b.connected))
                         .map((player) => (
                             <li key={player.id} className={player.connected ? "" : "gone"}>
-                                <span className={"klaxon-player-name" + (player.rosterPlayer ? " klaxon-linked" : "")}>
+                                <span
+                                    className={"klaxon-player-name" + (player.rosterPlayer ? " klaxon-linked" : "")}
+                                    title={joinedAsTitle(player)}
+                                >
                                     {modaqLabel(player, player.name + (player.team ? ` · ${player.team}` : ""))}
                                     {linkPicker(player, player.id)}
                                     {!player.connected && <span className="klaxon-offline"> OFFLINE</span>}

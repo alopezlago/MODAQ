@@ -232,6 +232,36 @@ function useGameSync(
     );
 }
 
+// The MODAQ player behind the buzz the room is waiting on: the head of the
+// latency-fair queue, once it's linked to a player in the game. Undefined until
+// the buzz resolves, so nothing is ever shown before the server has decided.
+function useBuzzedInPlayer(roomState: IPublicRoomState | undefined): { name: string; teamName: string } | undefined {
+    const head = roomState?.queue?.[0];
+    const member = head ? (roomState?.members ?? []).find((m) => m.id === head.playerId) : undefined;
+    const name = member?.rosterPlayer ?? "";
+    const teamName = member?.rosterTeam ?? "";
+    return React.useMemo(
+        () => (name === "" ? undefined : { name, teamName }),
+        [name, teamName]
+    );
+}
+
+// Judging a buzz resolves it: clear the Klaxon buzzer, or — a wrong answer in
+// queue mode — hand the buzzer to whoever is next in the queue.
+function useJudgedHandler(client: KlaxonClient, roomState: IPublicRoomState | undefined): (correct: boolean) => void {
+    const queueMode = roomState?.settings?.queueMode === true;
+    return React.useCallback(
+        (correct: boolean) => {
+            if (!correct && queueMode) {
+                client.nextBuzz();
+            } else {
+                client.resetBuzzer();
+            }
+        },
+        [client, queueMode]
+    );
+}
+
 // --- Shared game -------------------------------------------------------------
 // MODAQ persists its whole game to localStorage; Klaxon keeps a copy of that
 // snapshot per room. Every moderator screen pushes its snapshot on each change
@@ -381,19 +411,36 @@ function describeGame(g: IArchivedGame): string {
 function PreviousGames(props: {
     client: KlaxonClient;
     showRound: boolean;
+    showWhenEmpty?: boolean;
     onLoad: (game: IArchivedGame) => Promise<void>;
 }): JSX.Element | null {
-    const { client, showRound, onLoad } = props;
+    const { client, showRound, showWhenEmpty, onLoad } = props;
     const [games, setGames] = React.useState<IArchivedGame[]>([]);
+    const [loaded, setLoaded] = React.useState(false);
     const [busy, setBusy] = React.useState<string | null>(null);
     const [msg, setMsg] = React.useState("");
     React.useEffect(() => {
         KlaxonApi.listGames(client.code, client.token)
             .then((r) => setGames(r.games))
-            .catch(() => setGames([]));
+            .catch(() => setGames([]))
+            .finally(() => setLoaded(true));
     }, [client]);
     if (games.length === 0) {
-        return null;
+        // On the setup screen an empty list is just noise; when the moderator
+        // asked for the panel it has to answer them.
+        if (!showWhenEmpty) {
+            return null;
+        }
+        return (
+            <div className="mod-prev">
+                <h3>Previous games in this room</h3>
+                <p className="hint">
+                    {loaded
+                        ? "No games finished in this room yet. A game is filed here when you export it, change round, or end it."
+                        : "Loading…"}
+                </p>
+            </div>
+        );
     }
     return (
         <div className="mod-prev">
@@ -2063,9 +2110,10 @@ function Reading(props: {
         [code, token, round]
     );
 
-    // Judging a buzz in MODAQ (correct or wrong) resolves the current buzz, so
-    // clear the Klaxon buzzer — same as pressing "r" in the panel.
-    const onBuzzJudged = React.useCallback(() => client.resetBuzzer(), [client]);
+    // Judging a buzz in MODAQ resolves it: clear the Klaxon buzzer (or pass to
+    // the next queued buzzer when a queue-mode answer was wrong).
+    const onBuzzJudged = useJudgedHandler(client, roomState);
+    const buzzedInPlayer = useBuzzedInPlayer(roomState);
 
     const onErrataChange = React.useCallback(
         (errata: IErratum[]) => {
@@ -2117,6 +2165,7 @@ function Reading(props: {
                     onErrataChange={onErrataChange}
                     onGameUpdate={onGameUpdate}
                     onBuzzJudged={onBuzzJudged}
+                    buzzedInPlayer={buzzedInPlayer}
                     onExported={ending.onExported}
                     onPersistedState={shared.onPersistedState}
                     remoteState={shared.remoteState}
@@ -2193,7 +2242,8 @@ function LiteReading(props: {
     roomState: IPublicRoomState | undefined;
 }): JSX.Element {
     const { code, client, roomState } = props;
-    const onBuzzJudged = React.useCallback(() => client.resetBuzzer(), [client]);
+    const onBuzzJudged = useJudgedHandler(client, roomState);
+    const buzzedInPlayer = useBuzzedInPlayer(roomState);
     // Lite mode has no tournament roster, but the teams entered in MODAQ's own
     // New Game dialog still link the buzzers to real players, and the room
     // still gets the live scoresheet.
@@ -2219,6 +2269,7 @@ function LiteReading(props: {
                     <PreviousGames
                         client={client}
                         showRound={false}
+                        showWhenEmpty={true}
                         onLoad={async (g) => {
                             // The game on screen is filed first, so nothing is lost.
                             if (client.lastState?.scoresheet) {
@@ -2239,6 +2290,7 @@ function LiteReading(props: {
                     storeName={`klaxon-lite-${code}`}
                     onGameUpdate={syncGame}
                     onBuzzJudged={onBuzzJudged}
+                    buzzedInPlayer={buzzedInPlayer}
                     onExported={() => {
                         ending.onExported();
                         downloadFullBuzz(client);

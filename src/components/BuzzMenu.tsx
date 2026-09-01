@@ -72,6 +72,29 @@ export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps) {
             {(theme) => {
                 const menuItems: IContextualMenuItem[] = [];
 
+                // The host's buzzer knows who is answering: offer them first, so the reader doesn't hunt through
+                // the roster for a name they already have. The regular per-team listing is untouched below, and
+                // the number-key shortcuts still belong to it.
+                const buzzedIn = props.appState.uiState.buzzedInPlayer;
+                if (buzzedIn != undefined) {
+                    const player = [
+                        ...props.appState.game.getActivePlayers(buzzedIn.teamName, props.appState.uiState.cycleIndex),
+                    ].find((p) => p.name === buzzedIn.name);
+                    if (player != undefined) {
+                        menuItems.push({
+                            key: "BuzzedIn_Section",
+                            itemType: ContextualMenuItemType.Section,
+                            sectionProps: {
+                                bottomDivider: true,
+                                title: "Buzzed in",
+                                items: [
+                                    buildPlayerMenuItem(props, theme, player, buzzedIn.teamName, -1, undefined, "BuzzedIn_"),
+                                ],
+                            },
+                        });
+                    }
+                }
+
                 // Number the players across both teams so number keys can pick them while the menu is open
                 let playerOffset = 0;
                 for (const teamName of teamNames) {
@@ -125,7 +148,29 @@ function getPlayerMenuItems(
 
     let index = 0;
     for (const player of players.values()) {
-        const topLevelKey = `Team_${teamName}_Player_${index}`;
+        menuItems.push(buildPlayerMenuItem(props, theme, player, teamName, playerOffset + index, selectedPlayerIndex));
+        index++;
+    }
+
+    return menuItems;
+}
+
+// One player's entry (with its Correct / Wrong / Protest submenu). `globalIndex` is the player's position across both
+// teams, used for the number-key shortcut and the element id; pass -1 for an extra listing (the buzzed-in shortcut at
+// the top of the menu) so it is neither numbered nor a duplicate id.
+function buildPlayerMenuItem(
+    props: IBuzzMenuProps,
+    theme: Theme | undefined,
+    player: Player,
+    teamName: string,
+    globalIndex: number,
+    selectedPlayerIndex: number | undefined,
+    keyPrefix = ""
+): IContextualMenuItem {
+    const numbered = globalIndex >= 0;
+    {
+        const index = numbered ? globalIndex : 0;
+        const topLevelKey = `${keyPrefix}Team_${teamName}_Player_${index}`;
         const isCorrectChecked: boolean =
             props.cycle.correctBuzz != undefined &&
             PlayerUtils.playersEqual(props.cycle.correctBuzz.marker.player, player) &&
@@ -184,13 +229,12 @@ function getPlayerMenuItems(
         // do without folding this back into the render method)
         // The first nine players across both teams can be picked with number keys; show the number, and
         // highlight the player picked that way (C marks them correct, W marks them wrong)
-        const globalIndex: number = playerOffset + index;
-        const isKeyboardSelected: boolean = selectedPlayerIndex === globalIndex;
+        const isKeyboardSelected: boolean = numbered && selectedPlayerIndex === globalIndex;
 
-        menuItems.push({
-            key: `Team_${teamName}_Player_${index}`,
-            id: TossupQuestionController.getBuzzMenuPlayerElementId(globalIndex),
-            text: globalIndex < 9 ? `${globalIndex + 1}. ${player.name}` : player.name,
+        return {
+            key: topLevelKey,
+            id: numbered ? TossupQuestionController.getBuzzMenuPlayerElementId(globalIndex) : undefined,
+            text: numbered && globalIndex < 9 ? `${globalIndex + 1}. ${player.name}` : player.name,
             style: {
                 // + "20" makes the background translucent by 32/255 ~15%
                 background: isKeyboardSelected
@@ -210,12 +254,8 @@ function getPlayerMenuItems(
             subMenuProps: {
                 items: subMenuItems,
             },
-        });
-
-        index++;
+        };
     }
-
-    return menuItems;
 }
 
 function onBuzzMenuDismissed(props: IBuzzMenuProps): void {

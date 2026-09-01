@@ -38,6 +38,12 @@ export class UIState {
     @ignore
     public buildVersion: string | undefined;
 
+    // The player the host's buzzer says is answering right now (Klaxon's
+    // latency-fair winner, linked to a MODAQ player). Purely a convenience for
+    // the buzz menu, which lists them first; the full roster stays listed.
+    @ignore
+    public buzzedInPlayer: { name: string; teamName: string } | undefined;
+
     // TODO: Should we also include the Cycle? This would simplify anything that needs access to the cycle
     public cycleIndex: number;
 
@@ -702,6 +708,10 @@ export class UIState {
 
     public setExportRoundNumber(newRoundNumber: number): void {
         this.exportRoundNumber = newRoundNumber;
+    }
+
+    public setBuzzedInPlayer(player: { name: string; teamName: string } | undefined): void {
+        this.buzzedInPlayer = player;
     }
 
     public setHideNewGame(value: boolean): void {

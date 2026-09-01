@@ -338,13 +338,14 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                 const cycleIndex: number = appState.uiState.cycleIndex;
                 const cycle: Cycle | undefined =
                     cycleIndex < appState.game.cycles.length ? appState.game.cycles[cycleIndex] : undefined;
-                const judgedCount: number =
-                    cycle == undefined ? 0 : (cycle.correctBuzz ? 1 : 0) + (cycle.wrongBuzzes?.length ?? 0);
+                const correctCount: number = cycle?.correctBuzz ? 1 : 0;
+                const judgedCount: number = cycle == undefined ? 0 : correctCount + (cycle.wrongBuzzes?.length ?? 0);
                 return {
                     isLoaded: appState.game.isLoaded,
                     lastUpdate: appState.game.lastUpdate,
                     cycleIndex,
                     judgedCount,
+                    correctCount,
                 };
             },
             (current, previous) => {
@@ -356,7 +357,7 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                     current.cycleIndex === previous.cycleIndex &&
                     current.judgedCount > previous.judgedCount
                 ) {
-                    onBuzzJudged();
+                    onBuzzJudged(current.correctCount > previous.correctCount);
                 }
             }
         );
@@ -483,10 +484,16 @@ export interface IModaqControlProps {
     ) => void;
 
     /**
-     * Called when the reader marks a buzz correct or wrong on the question being read. Hosts with their own buzzer
-     * (like Klaxon) can use this to clear the buzz queue once the buzz is resolved.
+     * Called when the reader marks a buzz correct or wrong on the question being read. `correct` says which, so a host
+     * with its own buzzer can clear it on a correct answer and move to the next buzz on a wrong one.
      */
-    onBuzzJudged?: () => void;
+    onBuzzJudged?: (correct: boolean) => void;
+
+    /**
+     * The player the host's buzzer says is answering (name + team as they appear in the game). The buzz menu lists
+     * them first, above the usual per-team listing, so the reader doesn't have to hunt for the name.
+     */
+    buzzedInPlayer?: { name: string; teamName: string };
 
     /**
      * Called when the game is exported (MODAQ's own JSON/Sheets export or a custom export succeeding) — i.e. whenever
@@ -964,6 +971,15 @@ function update(appState: AppState, props: IModaqControlProps): void {
 
     if (props.hideNewGame !== appState.uiState.hideNewGame) {
         appState.uiState.setHideNewGame(props.hideNewGame == true);
+    }
+
+    const buzzedIn = props.buzzedInPlayer;
+    const currentBuzzedIn = appState.uiState.buzzedInPlayer;
+    if (
+        (buzzedIn?.name ?? "") !== (currentBuzzedIn?.name ?? "") ||
+        (buzzedIn?.teamName ?? "") !== (currentBuzzedIn?.teamName ?? "")
+    ) {
+        appState.uiState.setBuzzedInPlayer(buzzedIn);
     }
 
     if (props.packetName !== appState.uiState.packetFilename && props.packetName !== appState.game.packet.name) {

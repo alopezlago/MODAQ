@@ -216,7 +216,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
 
     items.push({
         key: "help",
-        text: "Help...",
+        text: "MODAQ Help...",
         onClick: openHelpHandler,
     });
 
