@@ -212,6 +212,10 @@ export class UIState {
 
     public yappServiceUrl: string | undefined;
 
+    // An optional "where do I get a packet file?" link the host supplies, shown
+    // under the packet picker. The host owns the wording and the address.
+    public packetParserLink: IPacketParserLink | undefined;
+
     constructor() {
         makeAutoObservable(this);
 
@@ -270,6 +274,7 @@ export class UIState {
         this.lastQuestionTextMouseMoveTime = 0;
         this.useDarkMode = false;
         this.yappServiceUrl = undefined;
+        this.packetParserLink = undefined;
 
         // These are defined by the theme if not set explicitly
         this.pronunciationGuideColor = undefined;
@@ -941,6 +946,10 @@ export class UIState {
         this.yappServiceUrl = url;
     }
 
+    public setPacketParserLink(link: IPacketParserLink | undefined): void {
+        this.packetParserLink = link;
+    }
+
     public toggleBonusHighlight(): void {
         this.noBonusHighlight = !this.noBonusHighlight;
     }
@@ -1097,4 +1106,12 @@ export class UIState {
 
         this.pendingSheet.sheetId = sheetId;
     }
+}
+
+// A link the host can put under the packet picker, for hosts that run their own
+// place to turn a .docx into the JSON MODAQ loads.
+export interface IPacketParserLink {
+    // The link text, e.g. "Convert a .docx with the packet parser".
+    text: string;
+    url: string;
 }

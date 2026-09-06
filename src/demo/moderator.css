@@ -94,8 +94,25 @@ body {
 .klaxon-queue li {
     display: flex;
     justify-content: space-between;
+    align-items: baseline;
+    gap: 6px;
     padding: 4px 6px;
     border-bottom: 1px solid #ececec;
+    /* Player names are whatever a player typed, so a long one wraps inside the
+       row instead of pushing the buzz margin out of the panel. */
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.klaxon-queue li > span:first-of-type {
+    min-width: 0;
+}
+.klaxon-queue .qmargin,
+.klaxon-queue .klaxon-unlinked {
+    flex: none;
+    white-space: nowrap;
+}
+.klaxon-players li {
+    overflow-wrap: anywhere;
 }
 .klaxon-queue li.head {
     font-weight: 700;
@@ -928,4 +945,35 @@ a.kx-crumb:hover {
 .klaxon-stale input {
     width: 3.2em;
     padding: 3px 4px;
+}
+
+/* --- MODAQ's own scoresheet (the reader's side) ------------------------------
+   The Events panel and the scoreboard are Fluent components, and Fluent's
+   defaults clip or shove a cell rather than wrap it. Team and player names are
+   free text a moderator typed, so a long one has to wrap in place: the reader's
+   scoresheet must never gain a horizontal scrollbar or push the buzz panel off
+   the screen. */
+.modaq-event-viewer .ms-DetailsRow,
+.modaq-event-viewer .ms-DetailsHeader {
+    width: 100%;
+    box-sizing: border-box;
+}
+.modaq-event-viewer .ms-DetailsRow-cell {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+    text-overflow: clip;
+    min-width: 0;
+}
+/* The score line above the question ("Team A: 40, Team B: 25"). */
+.modaq-scoreboard {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+.modaq-scoreboard .ms-Label {
+    overflow-wrap: anywhere;
+}
+.modaq-scoreboard table {
+    table-layout: fixed;
+    width: 100%;
 }

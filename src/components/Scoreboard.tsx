@@ -48,8 +48,10 @@ export const Scoreboard = observer(function Scoreboard() {
     }
 
     const protestIndicator = <ProtestIndicator />;
+    // The stable class name lets a host style the score line (e.g. to wrap long
+    // team names); mergeStyleSets' own class is generated and can't be targeted.
     return (
-        <div className={classes.board}>
+        <div className={`${classes.board} modaq-scoreboard`}>
             <Stack>
                 <StackItem>{label}</StackItem>
                 {protestIndicator != undefined && (

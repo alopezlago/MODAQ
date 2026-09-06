@@ -7,7 +7,7 @@ import { PacketState } from "../state/PacketState";
 import { AppState } from "../state/AppState";
 import { IPacket } from "../state/IPacket";
 import { FilePickerWithStatus } from "./FilePickerWithStatus";
-import { Label, Stack, StackItem } from "@fluentui/react";
+import { Label, Link, Stack, StackItem } from "@fluentui/react";
 
 export const PacketLoader = observer(function PacketLoader(props: IPacketLoaderProps): JSX.Element | null {
     const onLoadHandler = React.useCallback((ev: ProgressEvent<FileReader>) => onLoad(ev, props), [props]);
@@ -28,6 +28,10 @@ export const PacketLoader = observer(function PacketLoader(props: IPacketLoaderP
         </StackItem>
     ));
 
+    // Hosts that run their own .docx-to-JSON converter can point at it from
+    // here, which is where a reader without a packet file notices they need one.
+    const parserLink = props.appState.uiState.packetParserLink;
+
     return (
         <div>
             <Stack>
@@ -41,6 +45,13 @@ export const PacketLoader = observer(function PacketLoader(props: IPacketLoaderP
                         onChange={uploadHandler}
                     />
                 </StackItem>
+                {parserLink && (
+                    <StackItem>
+                        <Link href={parserLink.url} target="_blank" rel="noopener noreferrer">
+                            {parserLink.text}
+                        </Link>
+                    </StackItem>
+                )}
                 {warnings}
             </Stack>
         </div>

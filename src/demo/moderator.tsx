@@ -197,18 +197,30 @@ function useGameSync(
     inProgress?: boolean,
     currentQuestion?: number,
     hasBonuses?: boolean,
-    protests?: IGameUpdateProtest[]
+    protests?: IGameUpdateProtest[],
+    categories?: string[]
 ) => void {
     const lastKey = React.useRef<string>("");
     const hadEvents = React.useRef<boolean>(false);
     return React.useCallback(
-        (match: IMatch, _inProgress?: boolean, currentQuestion?: number, hasBonuses?: boolean, protests?: IGameUpdateProtest[]) => {
+        (
+            match: IMatch,
+            _inProgress?: boolean,
+            currentQuestion?: number,
+            hasBonuses?: boolean,
+            protests?: IGameUpdateProtest[],
+            categories?: string[]
+        ) => {
             client.massinger({
                 action: "modaq_game",
                 qbj: match,
                 currentQuestion,
                 hasBonuses: hasBonuses !== false,
                 protests: protests ?? [],
+                // The whole packet's categories, in packet order. The server
+                // alone decides which of them a player may see: it releases a
+                // category only once the room has finished that cycle.
+                categories: categories ?? [],
             });
             // A game with no events after one that had some is a new game, not
             // an edit of the loaded one: stop overwriting that archive.
@@ -523,8 +535,21 @@ function useEndGame(client: KlaxonClient, round: string): { exported: boolean; o
 
 // MODAQ's New Game dialog only shows its packet file picker when a parse
 // service is configured (JSON packets are parsed in the browser; only .docx
-// files go to the service). Same public YAPP instance as MODAQ's own demo.
-const YAPP_SERVICE_URL = "https://www.quizbowlreader.com/yapp/api/parse?modaq=true";
+// files go to the service). This is Klaxon's own route, which proxies to the
+// YAPP instance Klaxon deploys (see /api/yapp/parse in server/index.js) — so a
+// moderator loading a .docx stays on one origin and gets our parser, not a
+// third party's. Relative on purpose: it follows whatever host serves this page.
+const YAPP_SERVICE_URL = "/api/yapp/parse?modaq=true";
+
+// Shown under MODAQ's packet picker in LITE mode only. A lite reader brings
+// their own packet file, so the converter is worth pointing at right where
+// they go looking for one; in tournament mode the packet comes from the
+// director instead, and the link would just be noise. Module-level so its
+// identity is stable across renders (ModaqControl diffs the prop by reference).
+const PACKET_PARSER_LINK = {
+    text: "Only have a Word packet? Convert it with Klaxon's packet parser",
+    url: "/yapp",
+};
 
 function serverErratumToErratum(e: IServerErratum): IErratum {
     return {
@@ -2082,13 +2107,20 @@ function Reading(props: {
     const ending = useEndGame(client, round);
 
     const onGameUpdate = React.useCallback(
-        (qbj: IMatch, inProgress?: boolean, currentQuestion?: number, hasBonuses?: boolean, protests?: IGameUpdateProtest[]) => {
+        (
+            qbj: IMatch,
+            inProgress?: boolean,
+            currentQuestion?: number,
+            hasBonuses?: boolean,
+            protests?: IGameUpdateProtest[],
+            categories?: string[]
+        ) => {
             try {
                 localStorage.setItem("bz_modaqLive:" + code, round);
             } catch {
                 /* storage may be unavailable; resume is best-effort */
             }
-            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests);
+            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories);
             KlaxonApi.saveExport(code, token, round, qbj, inProgress === true, currentQuestion).catch(() => {
                 /* transient failures self-heal on the next change */
             });
@@ -2286,6 +2318,7 @@ function LiteReading(props: {
                     applyStylingToRoot={false}
                     buildVersion={__BUILD_VERSION__}
                     yappServiceUrl={YAPP_SERVICE_URL}
+                    packetParserLink={PACKET_PARSER_LINK}
                     persistState={true}
                     storeName={`klaxon-lite-${code}`}
                     onGameUpdate={syncGame}

@@ -41,6 +41,7 @@ import { Bonus, ITossupWord, PacketState, Tossup } from "../state/PacketState";
 import { ICustomExport } from "../state/CustomExport";
 import { Cycle } from "../state/Cycle";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
+import { IPacketParserLink } from "../state/UIState";
 
 // Initialize Fluent UI icons when this is loaded, before the first render
 initializeIcons();
@@ -300,12 +301,19 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                                     });
                                 }
                             });
+                            // The packet's category line per tossup, in packet
+                            // order (QBJ carries a tossup's packet number but
+                            // not its metadata).
+                            const categories: string[] = appState.game.packet.tossups.map(
+                                (t) => t.metadata ?? ""
+                            );
                             onGameUpdate(
                                 QBJ.toQBJ(appState.game, appState.uiState.packetFilename),
                                 inProgress,
                                 appState.uiState.cycleIndex + 1,
                                 hasBonuses,
-                                protests
+                                protests,
+                                categories
                             );
                         } catch {
                             /* a transient inconsistent state shouldn't crash the reader */
@@ -473,14 +481,18 @@ export interface IModaqControlProps {
      * host keep a live copy of the match stats in sync without the moderator clicking export. inProgress is true
      * until the reader reaches the last playable question (the same point where Next becomes Export), so hosts can
      * avoid counting a half-played game as final. currentQuestion is the 1-based question the reader is on, so a
-     * host can show live scoreboards with game progress.
+     * host can show live scoreboards with game progress. categories carries the loaded packet's per-tossup metadata
+     * line, indexed by packet tossup number - 1 (empty string where a tossup has none), so a host can label questions
+     * by category. It covers the WHOLE packet, including tossups nobody has heard yet, so a host that shows them to
+     * players must gate them itself.
      */
     onGameUpdate?: (
         qbj: IMatch,
         inProgress?: boolean,
         currentQuestion?: number,
         hasBonuses?: boolean,
-        protests?: IGameUpdateProtest[]
+        protests?: IGameUpdateProtest[],
+        categories?: string[]
     ) => void;
 
     /**
@@ -595,6 +607,12 @@ export interface IModaqControlProps {
      * defined, then packets must be in a JSON format.
      */
     yappServiceUrl?: string;
+
+    /**
+     * An optional link shown under the packet picker, for hosts that run their own place to turn a .docx into the
+     * JSON MODAQ loads. The host owns both the wording and the address.
+     */
+    packetParserLink?: IPacketParserLink;
 }
 
 // Open MODAQ's own New Game dialog, prefilled by the host with a packet and
@@ -948,6 +966,10 @@ function update(appState: AppState, props: IModaqControlProps): void {
 
     if (props.yappServiceUrl !== appState.uiState.yappServiceUrl) {
         appState.uiState.setYappServiceUrl(props.yappServiceUrl);
+    }
+
+    if (props.packetParserLink !== appState.uiState.packetParserLink) {
+        appState.uiState.setPacketParserLink(props.packetParserLink);
     }
 
     if (props.gameFormat != undefined && props.gameFormat !== appState.game.gameFormat) {
