@@ -977,3 +977,100 @@ a.kx-crumb:hover {
     table-layout: fixed;
     width: 100%;
 }
+
+/* Protests the teams raised, in the moderator's buzz panel. Two halves, as the
+   ACF rules have it: noting one (H.2) is instant and cheap; opening it (H.3) is
+   what lets the teams argue, and only a filed protest may have its question
+   shown to the room. */
+.klaxon-protests {
+    margin-top: 12px;
+    border-top: 1px solid #ececec;
+    padding-top: 10px;
+}
+.klaxon-protests h3 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #605e5c;
+}
+.klaxon-protests ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.klaxon-protest {
+    border: 1px solid #ececec;
+    border-left: 3px solid #c8c6c4;
+    border-radius: 3px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.klaxon-protest.st-open {
+    border-left-color: #d8401f;
+}
+.klaxon-protest.st-filed {
+    border-left-color: #2f7d4f;
+}
+.kp-head {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 13px;
+}
+.kp-team {
+    color: #605e5c;
+}
+.kp-status {
+    margin-left: auto;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #605e5c;
+}
+.kp-reason {
+    font-size: 12px;
+    margin-top: 2px;
+}
+.kp-rule {
+    color: #a19f9d;
+}
+.kp-says {
+    margin: 6px 0 0;
+    font-size: 12px;
+}
+.kp-says li {
+    padding: 3px 0 3px 7px;
+    border-left: 2px solid #ececec;
+    margin-bottom: 3px;
+}
+.kp-says li.kp-for {
+    border-left-color: #2f7d4f;
+}
+.kp-says li.kp-against {
+    border-left-color: #9a6400;
+}
+.kp-who {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #605e5c;
+}
+.kp-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+.kp-actions button {
+    font-size: 12px;
+    padding: 3px 8px;
+}
+.kp-shown,
+.klaxon-protest-note {
+    font-size: 12px;
+    color: #605e5c;
+}

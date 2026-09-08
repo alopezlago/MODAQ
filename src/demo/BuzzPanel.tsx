@@ -1,10 +1,119 @@
 import * as React from "react";
-import { IPublicRoomState, IRoomMember, IStuckAlert, KlaxonClient } from "./klaxonClient";
+import { IProtest, IPublicRoomState, IRoomMember, IStuckAlert, KlaxonClient } from "./klaxonClient";
 
 // The native Klaxon buzz panel shown beside the MODAQ reader. It renders the
 // latency-fair buzz queue the Klaxon server resolves and gives the moderator the
 // same reset/next/clear controls a Klaxon reader has, so they can drive the
 // buzzer while scoring in MODAQ.
+// The protests the teams have raised, and the moderator's side of them.
+//
+// The ACF rules split this in two and so does this panel. A team says
+// "protest" at a pause and the moderator notes it (H.2) — that arrives here as
+// "noted", and nothing else happens, because play carries on. At the next break
+// the moderator opens it (H.3), which is what lets both teams write their
+// reasoning; then they enter it in MODAQ's own protest box and confirm it filed.
+//
+// Only after it is filed can the question be shown to the room: until then it
+// is a live packet question, and a room that has seen one cannot unsee it.
+function ProtestList(props: { client: KlaxonClient; protests: IProtest[] }): JSX.Element | null {
+    const { client, protests } = props;
+    const [busy, setBusy] = React.useState<string | null>(null);
+    const [note, setNote] = React.useState<string>("");
+
+    const act = React.useCallback(
+        async (action: string, id: string, extra?: Record<string, unknown>) => {
+            setBusy(id);
+            const res = await client.protest(action, id, extra ?? {});
+            setBusy(null);
+            setNote(res.error ? `Could not do that: ${res.error}` : "");
+        },
+        [client]
+    );
+
+    // The question the room is being shown comes from the packet MODAQ has
+    // loaded — the players' side has never had the text.
+    const showQuestion = React.useCallback(
+        (p: IProtest) => {
+            const text = window.prompt(
+                `Show the room the text of question ${p.cycle}? Paste or edit what they should see.`,
+                ""
+            );
+            if (text == undefined || text.trim() === "") {
+                return;
+            }
+            void act("protest_show_question", p.id, { text });
+        },
+        [act]
+    );
+
+    if (protests.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="klaxon-protests">
+            <h3>Protests ({protests.length})</h3>
+            {note !== "" && <p className="klaxon-protest-note">{note}</p>}
+            <ul>
+                {protests.map((p) => {
+                    const forSide = p.statements.filter((s) => s.side === "for");
+                    const againstSide = p.statements.filter((s) => s.side === "against");
+                    return (
+                        <li key={p.id} className={`klaxon-protest st-${p.status}`}>
+                            <div className="kp-head">
+                                <strong>Q{p.cycle}</strong>
+                                <span className="kp-team">{p.byTeam}</span>
+                                <span className="kp-status">{p.status}</span>
+                            </div>
+                            {p.reasonLabel != undefined && (
+                                <div className="kp-reason">
+                                    {p.reasonLabel}
+                                    {p.rule != undefined && <span className="kp-rule"> {p.rule}</span>}
+                                </div>
+                            )}
+                            {p.statements.length > 0 && (
+                                <ul className="kp-says">
+                                    {[...forSide, ...againstSide].map((s, i) => (
+                                        <li key={i} className={`kp-${s.side}`}>
+                                            <span className="kp-who">
+                                                {s.name} · {s.side}
+                                            </span>
+                                            <span className="kp-text">{s.text}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            <div className="kp-actions">
+                                {p.status === "lodged" && (
+                                    <button disabled={busy === p.id} onClick={() => void act("protest_open", p.id)}>
+                                        Take it — let both teams write
+                                    </button>
+                                )}
+                                {p.status === "open" && (
+                                    <button disabled={busy === p.id} onClick={() => void act("protest_file", p.id)}>
+                                        Filed in MODAQ
+                                    </button>
+                                )}
+                                {p.status === "filed" && !p.questionShown && (
+                                    <button disabled={busy === p.id} onClick={() => showQuestion(p)}>
+                                        Show the room the question
+                                    </button>
+                                )}
+                                {p.questionShown && <span className="kp-shown">question shown</span>}
+                                {p.status !== "filed" && (
+                                    <button disabled={busy === p.id} onClick={() => void act("protest_dismiss", p.id)}>
+                                        Drop
+                                    </button>
+                                )}
+                            </div>
+                        </li>
+                    );
+                })}
+            </ul>
+        </div>
+    );
+}
+
 // Whether a key event targets a text field, where "r" should be typed rather
 // than reset the buzzer.
 function isTextEntry(target: EventTarget | null): boolean {
@@ -343,9 +452,15 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                 })}
             </ol>
 
+            <ProtestList client={client} protests={state?.protests ?? []} />
+
             <div className="klaxon-controls">
-                <button onClick={() => client.resetBuzzer()} disabled={!buzzed} title="Shortcut: r">
-                    Reset buzzer (r)
+                <button
+                    onClick={() => client.resetBuzzer()}
+                    disabled={!buzzed}
+                    title="Shortcut: r — clears without scoring, which records the buzz as accidental"
+                >
+                    Accidental buzz (r)
                 </button>
                 <button onClick={startTimer} title="Shortcut: t — a 5-second countdown only you see">
                     5s timer (t)

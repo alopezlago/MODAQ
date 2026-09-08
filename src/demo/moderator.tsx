@@ -267,7 +267,9 @@ function useJudgedHandler(client: KlaxonClient, roomState: IPublicRoomState | un
             if (!correct && queueMode) {
                 client.nextBuzz();
             } else {
-                client.resetBuzzer();
+                // Judged: the buzz was scored, so this clear is NOT the
+                // moderator declaring an accidental buzz (see resetBuzzer).
+                client.resetBuzzer(true);
             }
         },
         [client, queueMode]

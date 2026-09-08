@@ -96,6 +96,30 @@ export interface IPublicRoomState {
     roster?: { name?: string; teamNames: string[]; teams: { name: string; players: string[] }[] } | null;
     queue: IBuzzQueueEntry[];
     members: IRoomMember[];
+    // Protests the teams lodged. The whole board is public to the room: under
+    // the ACF rules the arguments are made in front of everyone.
+    protests?: IProtest[];
+}
+
+// A protest raised by one of the teams. See the Klaxon server's protests.js for
+// the rules (ACF gameplay H.2, H.3, H.5) these statuses follow.
+export interface IProtest {
+    id: string;
+    cycle: number;
+    round: string | null;
+    at: number;
+    byTeam: string;
+    againstTeam: string | null;
+    byName: string;
+    reason: string | null;
+    reasonLabel: string | null;
+    rule: string | null;
+    // "lodged" the team said they want to protest; "open" the moderator is
+    // taking it and both teams are writing; "filed" it is in MODAQ.
+    status: "lodged" | "open" | "filed" | "dismissed";
+    questionShown: boolean;
+    questionText: string | null;
+    statements: { playerId: string; name: string; team: string | null; side: "for" | "against"; text: string; at: number }[];
 }
 
 // The Klaxon localStorage scheme (see public/js/util.js) prefixes every key with
@@ -364,16 +388,39 @@ export class KlaxonClient {
             });
     }
 
-    public resetBuzzer(): void {
-        this.socket?.emit("reader_action", { action: "reset_buzzer" });
+    /**
+     * Clear the buzzer. `judged` says the clear is the tail of a ruling — the
+     * moderator scored the buzz in MODAQ. Without it the server records the
+     * buzz as ACCIDENTAL: the moderator cleared without anyone answering, which
+     * is a knocked buzzer, not a wrong answer. The two are indistinguishable
+     * after the reset, so the difference has to travel with the clear.
+     */
+    public resetBuzzer(judged = false): void {
+        this.socket?.emit("reader_action", { action: "reset_buzzer", judged });
     }
 
     public nextBuzz(): void {
         this.socket?.emit("reader_action", { action: "next_buzz" });
     }
 
-    public clearQueue(): void {
-        this.socket?.emit("reader_action", { action: "clear_queue" });
+    public clearQueue(judged = false): void {
+        this.socket?.emit("reader_action", { action: "clear_queue", judged });
+    }
+
+    // --- protests -----------------------------------------------------------
+    // The moderator's side of a team's protest: take it (both teams may then
+    // write), confirm it is filed in MODAQ, drop it, or show the room the
+    // question it was about.
+    public protest(action: string, id: string, extra: Record<string, unknown> = {}): Promise<{ ok?: boolean; error?: string }> {
+        return new Promise((resolve) => {
+            if (this.socket == undefined) {
+                resolve({ error: "not_connected" });
+                return;
+            }
+            this.socket.emit("reader_action", { action, id, ...extra }, (res: { ok?: boolean; error?: string }) =>
+                resolve(res ?? {})
+            );
+        });
     }
 
     // MASSINGER pick/ban actions ride the staff-gated reader_action channel.
