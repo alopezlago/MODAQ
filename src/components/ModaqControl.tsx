@@ -656,7 +656,9 @@ function maybeOpenHostNewGame(appState: AppState, props: IModaqControlProps): vo
             team.players.length > 0
                 ? team.players.map((name) => new Player(name, team.name, /* isStarter */ true))
                 : [new Player("", team.name, /* isStarter */ true)];
-        appState.uiState.setPendingNewGameManualTeams(rows(teams[0]), rows(teams[1]));
+        // Every team the host knows about, not just the first two: a shootout
+        // hands over one per competitor.
+        appState.uiState.setPendingNewGameManualTeams(...teams.map(rows));
         appState.uiState.dialogState.showNewGameDialog();
         return;
     }
