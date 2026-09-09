@@ -477,6 +477,60 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
 }
 
 // Converts games into a QBJ file that conforms to the Match interface in the QB Schema
+/**
+ * A short, stable fingerprint of a question's text.
+ *
+ * Written into every exported game so that a QBJ says not just WHICH question
+ * was read but WHICH VERSION of it: a packet edited between rounds, a room that
+ * loaded yesterday's file, an answer line corrected after a protest. Question
+ * numbers alone can't tell those apart, and by the time anyone is debugging a
+ * game the packet has usually moved on.
+ *
+ * FNV-1a, folded twice for 16 hex characters. Deliberately not cryptographic —
+ * nothing here is a secret, and this has to run synchronously inside the export
+ * path, where crypto.subtle's promise would not fit. It only ever has to answer
+ * "is this the same text as that".
+ */
+export function questionHash(...parts: (string | undefined)[]): string {
+    const cleaned = parts.map((p) => (p ?? "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim());
+    // Nothing to fingerprint at all -- no packet loaded, or a question with no
+    // text -- is an absent hash, not a hash of the separators between nothing.
+    if (cleaned.every((p) => p === "")) {
+        return "";
+    }
+    const text = cleaned.join("\u0000");
+    const fnv = (seed: number): string => {
+        let h = seed;
+        for (let i = 0; i < text.length; i++) {
+            h ^= text.charCodeAt(i);
+            // 16777619, via shifts: Math.imul keeps this in 32-bit territory.
+            h = Math.imul(h, 0x01000193) >>> 0;
+        }
+        return h.toString(16).padStart(8, "0");
+    };
+    return fnv(0x811c9dc5) + fnv(0x9e3779b9);
+}
+
+// The fingerprint of one tossup or bonus of the loaded packet, if it is there.
+// Silently absent rather than wrong when it isn't: a game read without a packet
+// loaded (teams typed by hand, questions read off paper) has nothing to hash.
+function tossupHash(game: GameState, questionNumber: number): string | undefined {
+    const tossup = game.packet?.tossups?.[questionNumber - 1];
+    return tossup ? questionHash(tossup.question, tossup.answer) : undefined;
+}
+
+function bonusHash(game: GameState, questionNumber: number): string | undefined {
+    const bonus = game.packet?.bonuses?.[questionNumber - 1];
+    if (bonus == undefined) {
+        return undefined;
+    }
+    return questionHash(
+        bonus.leadin,
+        ...bonus.parts.map((part) => part.question),
+        ...bonus.parts.map((part) => part.answer)
+    );
+}
+
 export function toQBJString(game: GameState, packetName?: string, round?: number): string {
     // Pretty-print with a width of 2. This makes games a lot more readable, but not too much bigger than normal.
     return JSON.stringify(toQBJ(game, packetName, round), null, 2);
@@ -657,6 +711,7 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
                     parts: 1,
                     question_number: tossupNumber,
                     type: "tossup",
+                    question_hash: tossupHash(game, tossupNumber),
                 };
             }
         }
@@ -678,6 +733,7 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
                 parts: 1,
                 type: "tossup",
                 question_number: tossupNumber,
+                question_hash: tossupHash(game, tossupNumber),
             },
             replacement_tossup_question: replacementTossup,
             // TODO: Figure out how to set replacement_bonus. Doesn't really make sense right now, since it seems to be
@@ -732,6 +788,7 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
                     parts: cycle.bonusAnswer.parts.length,
                     type: "bonus",
                     question_number: bonusNumber,
+                    question_hash: bonusHash(game, bonusNumber),
                 },
                 parts,
             };
@@ -963,6 +1020,15 @@ export interface IQuestion {
     question_number: number; // number of question in packet
     type: "tossup" | "bonus" | "lightning";
     parts: number; // 1 for tossup, n for bonuses
+
+    /**
+     * Fingerprint of the question's text as it was actually read (see
+     * questionHash). Not part of the QBJ schema — an extra field, so anything
+     * reading these files ignores it — but it is what makes a game debuggable
+     * months later: it says which VERSION of question 7 this was.
+     * Absent when no packet was loaded.
+     */
+    question_hash?: string;
 }
 
 export interface IMatchQuestionBuzz {
