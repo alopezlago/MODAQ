@@ -311,6 +311,9 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                             // playtest, where the room is meant to see what the
                             // answer was once it has finished the cycle.
                             const answers: string[] = appState.game.packet.tossups.map((t) => t.answer ?? "");
+                            // ...and the questions themselves, for a host that
+                            // shows the room what it has already played.
+                            const questions: string[] = appState.game.packet.tossups.map((t) => t.question ?? "");
                             onGameUpdate(
                                 QBJ.toQBJ(appState.game, appState.uiState.packetFilename),
                                 inProgress,
@@ -318,7 +321,8 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                                 hasBonuses,
                                 protests,
                                 categories,
-                                answers
+                                answers,
+                                questions
                             );
                         } catch {
                             /* a transient inconsistent state shouldn't crash the reader */
@@ -491,8 +495,12 @@ export interface IModaqControlProps {
      * by category. answers carries the packet's answer LINES the same way, for a host running a playtest that
      * shows the room what the answer was once a cycle is over.
      *
-     * Both cover the WHOLE packet, including tossups nobody has heard yet, so a host that shows either to players
-     * must gate them itself. (An answer line especially: it is the answer to a question that may still be in play.)
+     * questions carries the tossup text itself, for a host that shows the room the questions it has already
+     * played.
+     *
+     * All three cover the WHOLE packet, including tossups nobody has heard yet, so a host that shows any of them
+     * to players must gate them itself. (The answer line and the question text especially: between them they are
+     * the entire packet, some of which is still to be read in that very room.)
      */
     onGameUpdate?: (
         qbj: IMatch,
@@ -501,7 +509,8 @@ export interface IModaqControlProps {
         hasBonuses?: boolean,
         protests?: IGameUpdateProtest[],
         categories?: string[],
-        answers?: string[]
+        answers?: string[],
+        questions?: string[]
     ) => void;
 
     /**

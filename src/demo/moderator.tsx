@@ -199,7 +199,8 @@ function useGameSync(
     hasBonuses?: boolean,
     protests?: IGameUpdateProtest[],
     categories?: string[],
-    answers?: string[]
+    answers?: string[],
+    questions?: string[]
 ) => void {
     const lastKey = React.useRef<string>("");
     const hadEvents = React.useRef<boolean>(false);
@@ -211,7 +212,8 @@ function useGameSync(
             hasBonuses?: boolean,
             protests?: IGameUpdateProtest[],
             categories?: string[],
-            answers?: string[]
+            answers?: string[],
+            questions?: string[]
         ) => {
             client.massinger({
                 action: "modaq_game",
@@ -227,6 +229,9 @@ function useGameSync(
                 // categories: the server decides who may see one, and only
                 // after the room has finished that cycle.
                 answers: answers ?? [],
+                // The questions themselves. Same rule again: the server decides
+                // who sees one, and how far behind the room it runs.
+                questions: questions ?? [],
             });
             // A game with no events after one that had some is a new game, not
             // an edit of the loaded one: stop overwriting that archive.
@@ -2127,14 +2132,15 @@ function Reading(props: {
             hasBonuses?: boolean,
             protests?: IGameUpdateProtest[],
             categories?: string[],
-            answers?: string[]
+            answers?: string[],
+            questions?: string[]
         ) => {
             try {
                 localStorage.setItem("bz_modaqLive:" + code, round);
             } catch {
                 /* storage may be unavailable; resume is best-effort */
             }
-            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers);
+            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions);
             KlaxonApi.saveExport(code, token, round, qbj, inProgress === true, currentQuestion).catch(() => {
                 /* transient failures self-heal on the next change */
             });
