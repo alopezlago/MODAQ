@@ -1135,12 +1135,21 @@ a.kx-crumb:hover {
     min-width: 0;
 }
 .kc-log {
-    min-height: 120px;
-    max-height: 32vh;
+    /* Fixed, with its own scrollbar: a log that grows as people talk pushes
+       the controls under it down the panel. Anchored to the bottom so a
+       half-empty chat sits next to the box you type in. */
+    height: 26vh;
+    min-height: 140px;
     overflow-y: auto;
+    overscroll-behavior: contain;
     font-size: 13px;
     line-height: 1.4;
     margin-bottom: 6px;
+    display: flex;
+    flex-direction: column;
+}
+.kc-log > .kc-line:first-child {
+    margin-top: auto;
 }
 /* Grouped the way a chat client groups: a run from one person names them once. */
 .kc-line {
@@ -1184,4 +1193,12 @@ a.kx-crumb:hover {
     font-size: 12px;
     color: #9a6400;
     margin-top: 4px;
+}
+
+/* A mention, marked wherever the name appears. */
+.kc-at {
+    background: #ececec;
+    border-radius: 3px;
+    padding: 0 3px;
+    font-weight: 600;
 }

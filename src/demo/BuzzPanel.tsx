@@ -33,6 +33,34 @@ function Leaderboard(props: { rows: { name: string; banked: number; current: num
     );
 }
 
+// The message with each mention marked. Split on the names the SERVER
+// resolved, and rendered as text nodes rather than markup — a chat message is
+// somebody else's typing.
+function renderMentions(m: IChatMessage): React.ReactNode {
+    const names = (m.mentions ?? []).map((x) => x.name).sort((a, b) => b.length - a.length);
+    if (names.length === 0) {
+        return m.text;
+    }
+    const escaped = names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const pattern = new RegExp("@(" + escaped.join("|") + ")(?![\\w-])", "gi");
+    const out: React.ReactNode[] = [];
+    let at = 0;
+    let key = 0;
+    for (const hit of m.text.matchAll(pattern)) {
+        if (hit.index != undefined && hit.index > at) {
+            out.push(m.text.slice(at, hit.index));
+        }
+        out.push(
+            <span className="kc-at" key={key++}>
+                {hit[0]}
+            </span>
+        );
+        at = (hit.index ?? 0) + hit[0].length;
+    }
+    out.push(m.text.slice(at));
+    return out;
+}
+
 /**
  * The room's chat, in the panel the host is already looking at.
  *
@@ -92,7 +120,7 @@ function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[] }): JSX
                             {!grouped && (
                                 <span className={"kc-who" + (m.staff ? " kc-staff" : "")}>{m.name}</span>
                             )}
-                            <span className="kc-text">{m.text}</span>
+                            <span className="kc-text">{renderMentions(m)}</span>
                         </div>
                     );
                 })}

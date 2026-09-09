@@ -116,6 +116,9 @@ export interface IChatMessage {
     staff: boolean;
     text: string;
     at: number;
+    // Who the message addressed, resolved by the server against the people in
+    // the room — never taken from the sender, who could otherwise ping anyone.
+    mentions?: { id: string; name: string }[];
 }
 
 // A protest raised by one of the teams. See the Klaxon server's protests.js for
