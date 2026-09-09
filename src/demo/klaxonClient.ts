@@ -99,6 +99,23 @@ export interface IPublicRoomState {
     // Protests the teams lodged. The whole board is public to the room: under
     // the ACF rules the arguments are made in front of everyone.
     protests?: IProtest[];
+    // A Discord shootout: everyone competing for themselves. Null otherwise.
+    shootout?: { rows: { name: string; banked: number; current: number; total: number }[]; packets?: number } | null;
+    // The room's chat, which in a shootout is why half the people are there.
+    chat?: IChatMessage[];
+}
+
+// One line of the room's chat. Nothing to do with answering — see the Klaxon
+// server's shootout.js.
+type ChatListener = (message: IChatMessage) => void;
+
+export interface IChatMessage {
+    id: string;
+    playerId: string;
+    name: string;
+    staff: boolean;
+    text: string;
+    at: number;
 }
 
 // A protest raised by one of the teams. See the Klaxon server's protests.js for
@@ -196,6 +213,7 @@ export class KlaxonClient {
     private readonly listeners: StateListener[] = [];
     private readonly messageListeners: MessageListener[] = [];
     private readonly stuckListeners: StuckListener[] = [];
+    private readonly chatListeners: ChatListener[] = [];
     private readonly sharedGameListeners: SharedGameListener[] = [];
     private readonly buzzPendingListeners: ((cycleNo: number) => void)[] = [];
     private joinedOnce = false;
@@ -237,6 +255,12 @@ export class KlaxonClient {
                 // screen) still gets messages that already arrived.
                 this.messages = [...this.messages, m].slice(-5);
                 for (const l of this.messageListeners) l(m);
+            });
+
+            socket.on("chat_message", (...args: unknown[]) => {
+                const m = args[0] as IChatMessage;
+                if (!m || typeof m.text !== "string") return;
+                for (const l of this.chatListeners) l(m);
             });
 
             socket.on("stuck_alert", (...args: unknown[]) => {
@@ -401,6 +425,28 @@ export class KlaxonClient {
 
     public nextBuzz(): void {
         this.socket?.emit("reader_action", { action: "next_buzz" });
+    }
+
+    // Say something in the room's chat. Resolves with the server's ack so the
+    // box can put a refused message back rather than swallowing it.
+    public chatSay(text: string): Promise<{ ok?: boolean; error?: string }> {
+        return new Promise((resolve) => {
+            if (this.socket == undefined) {
+                resolve({ error: "not_connected" });
+                return;
+            }
+            this.socket.emit("chat_say", { text }, (res: { ok?: boolean; error?: string }) => resolve(res ?? {}));
+        });
+    }
+
+    // Chat arrives on its own event so a line doesn't wait for the next state
+    // broadcast, and doesn't cause one.
+    public onChatMessage(listener: ChatListener): () => void {
+        this.chatListeners.push(listener);
+        return () => {
+            const i = this.chatListeners.indexOf(listener);
+            if (i >= 0) this.chatListeners.splice(i, 1);
+        };
     }
 
     public clearQueue(judged = false): void {

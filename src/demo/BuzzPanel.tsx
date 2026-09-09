@@ -1,10 +1,124 @@
 import * as React from "react";
-import { IProtest, IPublicRoomState, IRoomMember, IStuckAlert, KlaxonClient } from "./klaxonClient";
+import { IChatMessage, IProtest, IPublicRoomState, IRoomMember, IStuckAlert, KlaxonClient } from "./klaxonClient";
 
 // The native Klaxon buzz panel shown beside the MODAQ reader. It renders the
 // latency-fair buzz queue the Klaxon server resolves and gives the moderator the
 // same reset/next/clear controls a Klaxon reader has, so they can drive the
 // buzzer while scoring in MODAQ.
+// The shootout leaderboard, as the host sees it while reading.
+function Leaderboard(props: { rows: { name: string; banked: number; current: number; total: number }[]; packets?: number }): JSX.Element | null {
+    if (props.rows.length === 0) {
+        return null;
+    }
+    return (
+        <div className="klaxon-board">
+            <h3>
+                Leaderboard{" "}
+                {props.packets ? <span className="kb-packets">{props.packets} packet(s) banked</span> : undefined}
+            </h3>
+            <ol>
+                {props.rows.map((r) => (
+                    <li key={r.name}>
+                        <span className="kb-name">{r.name}</span>
+                        {r.banked !== 0 && (
+                            <span className="kb-split">
+                                {r.banked} + {r.current}
+                            </span>
+                        )}
+                        <span className="kb-total">{r.total}</span>
+                    </li>
+                ))}
+            </ol>
+        </div>
+    );
+}
+
+/**
+ * The room's chat, in the panel the host is already looking at.
+ *
+ * Whoever creates a shootout from Klaxon's home page lands here, in MODAQ —
+ * so without this the person most likely to want the chat is the only one
+ * without it. Open by default for the same reason: a chat you have to go and
+ * find is a chat nobody uses.
+ */
+function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[] }): JSX.Element {
+    const { client } = props;
+    const [messages, setMessages] = React.useState<IChatMessage[]>(props.initial);
+    const [draft, setDraft] = React.useState<string>("");
+    const [note, setNote] = React.useState<string>("");
+    const logRef = React.useRef<HTMLDivElement | null>(null);
+
+    // The state broadcast carries the backlog; live lines arrive on their own
+    // event, so a message doesn't wait for the next state push.
+    React.useEffect(() => {
+        return client.onChatMessage((m) =>
+            setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m].slice(-120)))
+        );
+    }, [client]);
+
+    React.useEffect(() => {
+        const log = logRef.current;
+        if (log != undefined) {
+            log.scrollTop = log.scrollHeight;
+        }
+    }, [messages]);
+
+    const send = React.useCallback(async () => {
+        const text = draft.trim();
+        if (text === "") {
+            return;
+        }
+        setDraft("");
+        const res = await client.chatSay(text);
+        if (res.error != undefined) {
+            // Put it back rather than losing what they typed.
+            setDraft(text);
+            setNote(res.error === "too_fast" ? "One at a time." : res.error);
+        } else {
+            setNote("");
+        }
+    }, [client, draft]);
+
+    let lastName: string | undefined = undefined;
+    return (
+        <div className="klaxon-chat">
+            <h3>Chat</h3>
+            <div className="kc-log" ref={logRef} data-is-scrollable="true">
+                {messages.map((m) => {
+                    const grouped = m.name === lastName;
+                    lastName = m.name;
+                    return (
+                        <div key={m.id} className={"kc-line" + (grouped ? " kc-cont" : "")}>
+                            {!grouped && (
+                                <span className={"kc-who" + (m.staff ? " kc-staff" : "")}>{m.name}</span>
+                            )}
+                            <span className="kc-text">{m.text}</span>
+                        </div>
+                    );
+                })}
+                {messages.length === 0 && <div className="kc-empty">Nothing said yet.</div>}
+            </div>
+            <div className="kc-entry">
+                <input
+                    value={draft}
+                    maxLength={400}
+                    placeholder="Say something"
+                    onChange={(ev) => setDraft(ev.target.value)}
+                    onKeyDown={(ev) => {
+                        // The panel's own shortcuts must not fire while typing.
+                        ev.stopPropagation();
+                        if (ev.key === "Enter") {
+                            void send();
+                        }
+                    }}
+                />
+                <button onClick={() => void send()}>Send</button>
+            </div>
+            {note !== "" && <div className="kc-note">{note}</div>}
+        </div>
+    );
+}
+
 // The protests the teams have raised, and the moderator's side of them.
 //
 // The ACF rules split this in two and so does this panel. A team says
@@ -453,6 +567,9 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
             </ol>
 
             <ProtestList client={client} protests={state?.protests ?? []} />
+
+            {state?.shootout != undefined && <Leaderboard rows={state.shootout.rows} packets={state.shootout.packets} />}
+            {state?.shootout != undefined && <RoomChat client={client} initial={state.chat ?? []} />}
 
             <div className="klaxon-controls">
                 <button

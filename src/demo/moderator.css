@@ -1074,3 +1074,114 @@ a.kx-crumb:hover {
     font-size: 12px;
     color: #605e5c;
 }
+
+/* The shootout leaderboard and the room's chat, in the panel the host is
+   already looking at. Whoever creates a shootout lands here, so this is where
+   the chat has to be. */
+.klaxon-board {
+    margin-top: 12px;
+    border-top: 1px solid #ececec;
+    padding-top: 10px;
+}
+.klaxon-board h3,
+.klaxon-chat h3 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #605e5c;
+}
+.kb-packets {
+    font-size: 11px;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #a19f9d;
+}
+.klaxon-board ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.klaxon-board li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 3px 0;
+    border-bottom: 1px solid #f3f2f1;
+    font-size: 13px;
+}
+.kb-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.kb-split {
+    flex: none;
+    font-size: 11px;
+    color: #a19f9d;
+}
+.kb-total {
+    flex: none;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.klaxon-chat {
+    margin-top: 12px;
+    border-top: 1px solid #ececec;
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.kc-log {
+    min-height: 120px;
+    max-height: 32vh;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 6px;
+}
+/* Grouped the way a chat client groups: a run from one person names them once. */
+.kc-line {
+    padding: 1px 0;
+    overflow-wrap: anywhere;
+}
+.kc-line + .kc-line:not(.kc-cont) {
+    margin-top: 7px;
+}
+.kc-who {
+    display: block;
+    font-weight: 700;
+    font-size: 12px;
+}
+.kc-who.kc-staff {
+    color: #d8401f;
+}
+.kc-text {
+    display: block;
+}
+.kc-empty {
+    color: #a19f9d;
+    font-size: 12px;
+}
+.kc-entry {
+    display: flex;
+    gap: 6px;
+}
+.kc-entry input {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    padding: 4px 6px;
+}
+.kc-entry button {
+    flex: none;
+    font-size: 12px;
+    padding: 3px 10px;
+}
+.kc-note {
+    font-size: 12px;
+    color: #9a6400;
+    margin-top: 4px;
+}
