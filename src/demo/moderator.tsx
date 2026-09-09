@@ -198,7 +198,8 @@ function useGameSync(
     currentQuestion?: number,
     hasBonuses?: boolean,
     protests?: IGameUpdateProtest[],
-    categories?: string[]
+    categories?: string[],
+    answers?: string[]
 ) => void {
     const lastKey = React.useRef<string>("");
     const hadEvents = React.useRef<boolean>(false);
@@ -209,7 +210,8 @@ function useGameSync(
             currentQuestion?: number,
             hasBonuses?: boolean,
             protests?: IGameUpdateProtest[],
-            categories?: string[]
+            categories?: string[],
+            answers?: string[]
         ) => {
             client.massinger({
                 action: "modaq_game",
@@ -221,6 +223,10 @@ function useGameSync(
                 // alone decides which of them a player may see: it releases a
                 // category only once the room has finished that cycle.
                 categories: categories ?? [],
+                // The packet's answer lines, for a playtest room. Same rule as
+                // categories: the server decides who may see one, and only
+                // after the room has finished that cycle.
+                answers: answers ?? [],
             });
             // A game with no events after one that had some is a new game, not
             // an edit of the loaded one: stop overwriting that archive.
@@ -2120,14 +2126,15 @@ function Reading(props: {
             currentQuestion?: number,
             hasBonuses?: boolean,
             protests?: IGameUpdateProtest[],
-            categories?: string[]
+            categories?: string[],
+            answers?: string[]
         ) => {
             try {
                 localStorage.setItem("bz_modaqLive:" + code, round);
             } catch {
                 /* storage may be unavailable; resume is best-effort */
             }
-            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories);
+            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers);
             KlaxonApi.saveExport(code, token, round, qbj, inProgress === true, currentQuestion).catch(() => {
                 /* transient failures self-heal on the next change */
             });

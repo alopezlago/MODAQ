@@ -307,13 +307,18 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                             const categories: string[] = appState.game.packet.tossups.map(
                                 (t) => t.metadata ?? ""
                             );
+                            // ...and the answer lines, for a host running a
+                            // playtest, where the room is meant to see what the
+                            // answer was once it has finished the cycle.
+                            const answers: string[] = appState.game.packet.tossups.map((t) => t.answer ?? "");
                             onGameUpdate(
                                 QBJ.toQBJ(appState.game, appState.uiState.packetFilename),
                                 inProgress,
                                 appState.uiState.cycleIndex + 1,
                                 hasBonuses,
                                 protests,
-                                categories
+                                categories,
+                                answers
                             );
                         } catch {
                             /* a transient inconsistent state shouldn't crash the reader */
@@ -483,8 +488,11 @@ export interface IModaqControlProps {
      * avoid counting a half-played game as final. currentQuestion is the 1-based question the reader is on, so a
      * host can show live scoreboards with game progress. categories carries the loaded packet's per-tossup metadata
      * line, indexed by packet tossup number - 1 (empty string where a tossup has none), so a host can label questions
-     * by category. It covers the WHOLE packet, including tossups nobody has heard yet, so a host that shows them to
-     * players must gate them itself.
+     * by category. answers carries the packet's answer LINES the same way, for a host running a playtest that
+     * shows the room what the answer was once a cycle is over.
+     *
+     * Both cover the WHOLE packet, including tossups nobody has heard yet, so a host that shows either to players
+     * must gate them itself. (An answer line especially: it is the answer to a question that may still be in play.)
      */
     onGameUpdate?: (
         qbj: IMatch,
@@ -492,7 +500,8 @@ export interface IModaqControlProps {
         currentQuestion?: number,
         hasBonuses?: boolean,
         protests?: IGameUpdateProtest[],
-        categories?: string[]
+        categories?: string[],
+        answers?: string[]
     ) => void;
 
     /**
