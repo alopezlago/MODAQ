@@ -417,7 +417,12 @@ async function stagePreviousGame(
 }
 
 function describeGame(g: IArchivedGame): string {
-    const teams = g.teams.length === 2 ? `${g.teams[0]} ${g.scores[0]} – ${g.teams[1]} ${g.scores[1]}` : "(teams not set)";
+    // However many sides the game had: two reads as "A 120 – B 95", and a
+    // three-way or a shootout lists them all rather than giving up.
+    const teams =
+        g.teams.length > 0
+            ? g.teams.map((name, i) => `${name} ${g.scores[i] ?? 0}`).join(" – ")
+            : "(teams not set)";
     const progress = g.total > 0 ? ` · Q${Math.min(g.current, g.total)}/${g.total}` : "";
     return `${teams}${progress}`;
 }

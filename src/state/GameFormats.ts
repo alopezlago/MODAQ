@@ -41,6 +41,11 @@ export const StandardPowersMACFGameFormat: IGameFormat = {
 // ten), and this is the ceiling MODAQ supports.
 export const maximumIndividualPlayerCount = 16;
 
+// The most sides a TEAM game can have. Two is the format nearly everyone plays,
+// but the scoring engine has never actually required it, so a reader running a
+// three-way or a round robin in one room is not held back by the app.
+export const maximumTeamCount = 16;
+
 // NAQT's Individual Player National Championship Tournament: players compete on their own, games are tossups
 // only, and every incorrect buzz before the end of the question is a neg (not just the first one).
 export const IPNCTGameFormat: IGameFormat = {
@@ -89,12 +94,19 @@ export function isIndividualFormat(format: IGameFormat): boolean {
 
 // The most competitors (teams, or players in an individual format) a game in this format can have
 export function getMaximumTeamCount(format: IGameFormat): number {
-    if (!isIndividualFormat(format)) {
-        return 2;
+    if (isIndividualFormat(format)) {
+        // Clamp to what the rest of the app can handle, in case a hand-edited format asks for more
+        return Math.max(
+            2,
+            Math.min(maximumIndividualPlayerCount, format.maximumPlayerCount ?? maximumIndividualPlayerCount)
+        );
     }
 
-    // Clamp to what the rest of the app can handle, in case a hand-edited format asks for more
-    return Math.max(2, Math.min(maximumIndividualPlayerCount, format.maximumPlayerCount ?? maximumIndividualPlayerCount));
+    // Team games are nearly always two sides, but nothing in the scoring
+    // requires it: a score is an array indexed by team, and the QBJ export
+    // builds one match_team per team. A format may pin itself to two; without
+    // one, a reader may add sides up to the same ceiling individual games use.
+    return Math.max(2, Math.min(maximumTeamCount, format.maximumTeamCount ?? maximumTeamCount));
 }
 
 // Whether every incorrect buzz before the end of a tossup is a neg, rather than just the first one

@@ -41,8 +41,7 @@ function createPendingIndividualGame(players: Player[], gameFormat?: IGameFormat
         type: PendingGameType.Manual,
         gameFormat: gameFormat ?? GameFormats.IPNCTGameFormat,
         manual: {
-            firstTeamPlayers: [],
-            secondTeamPlayers: [],
+            teamPlayers: [[], []],
             individualPlayers: players,
         },
     };
@@ -63,13 +62,20 @@ describe("IndividualFormatTests", () => {
             expect(GameFormats.negsForEveryWrongBuzz(GameFormats.IPNCTGameFormat)).to.be.true;
             expect(GameFormats.getMaximumTeamCount(GameFormats.IPNCTGameFormat)).to.equal(16);
         });
-        it("Team formats are unaffected", () => {
+        it("Team formats keep their bonuses and their negs", () => {
             for (const gameFormat of [GameFormats.ACFGameFormat, GameFormats.StandardPowersMACFGameFormat]) {
                 expect(GameFormats.isIndividualFormat(gameFormat)).to.be.false;
                 expect(GameFormats.hasBonuses(gameFormat)).to.be.true;
                 expect(GameFormats.negsForEveryWrongBuzz(gameFormat)).to.be.false;
-                expect(GameFormats.getMaximumTeamCount(gameFormat)).to.equal(2);
+                // A team game is nearly always two sides, but nothing in the scoring requires it, so a reader
+                // may add more. A format that wants to be strict says so with maximumTeamCount.
+                expect(GameFormats.getMaximumTeamCount(gameFormat)).to.equal(GameFormats.maximumTeamCount);
             }
+        });
+        it("A format can pin itself to two teams", () => {
+            expect(
+                GameFormats.getMaximumTeamCount({ ...GameFormats.ACFGameFormat, maximumTeamCount: 2 })
+            ).to.equal(2);
         });
         it("A hand-edited player count is clamped to what the app supports", () => {
             expect(
@@ -298,13 +304,22 @@ describe("IndividualFormatTests", () => {
                 expect(result.value.scores[0]).to.deep.equal(expected);
             }
         });
-        it("A team format still refuses a game with more than two teams", () => {
+        it("A team format now takes a game with more than two teams", () => {
             const qbj: QBJ.IMatch = QBJ.toQBJ(playedIndividualGame(12), "packet", 1);
             const result = QBJ.fromQBJ(qbj, packet, GameFormats.ACFGameFormat);
 
+            expect(result.success).to.be.true;
+            if (result.success) {
+                expect(result.value.teamNames.length).to.equal(12);
+            }
+        });
+        it("...but not past what the format allows", () => {
+            const qbj: QBJ.IMatch = QBJ.toQBJ(playedIndividualGame(12), "packet", 1);
+            const result = QBJ.fromQBJ(qbj, packet, { ...GameFormats.ACFGameFormat, maximumTeamCount: 2 });
+
             expect(result.success).to.be.false;
             if (!result.success) {
-                expect(result.message).to.contain("2 teams");
+                expect(result.message).to.contain("at most 2 teams");
             }
         });
         it("A game with only one competitor is refused", () => {
@@ -361,8 +376,8 @@ describe("IndividualFormatTests", () => {
                 GameFormats.ACFGameFormat
             );
             if (pendingNewGame.type === PendingGameType.Manual) {
-                pendingNewGame.manual.firstTeamPlayers = [new Player("Alice", "A", /* isStarter */ true)];
-                pendingNewGame.manual.secondTeamPlayers = [new Player("Bob", "B", /* isStarter */ true)];
+                pendingNewGame.manual.teamPlayers[0] = [new Player("Alice", "A", /* isStarter */ true)];
+                pendingNewGame.manual.teamPlayers[1] = [new Player("Bob", "B", /* isStarter */ true)];
             }
 
             const teams: Player[][] = PendingNewGameUtils.getPendingNewGamePlayers(pendingNewGame);

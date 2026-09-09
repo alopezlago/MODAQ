@@ -361,7 +361,7 @@ describe("QBJTests", () => {
             const result: IResult<GameState> = QBJ.fromQBJ(match, defaultPacket, GameFormats.ACFGameFormat);
             expect(result.success).to.be.false;
         });
-        it("Invalid QBJ - more than 2 teams", () => {
+        it("Three teams is a game, not an error", () => {
             const match: IMatch = createDefaultMatch();
             match.match_teams = ["Alpha", "Beta", "Gamma"].map((teamName) => {
                 return {
@@ -378,7 +378,12 @@ describe("QBJTests", () => {
             });
 
             const result: IResult<GameState> = QBJ.fromQBJ(match, defaultPacket, GameFormats.ACFGameFormat);
-            expect(result.success).to.be.false;
+            // A team game is no longer capped at two sides: the scoring has always been an array indexed by
+            // team, so three of them is just a three-way game.
+            expect(result.success).to.be.true;
+            if (result.success) {
+                expect(result.value.teamNames).to.deep.equal(["Alpha", "Beta", "Gamma"]);
+            }
         });
         it("Invalid QBJ - undefined and empty lineup", () => {
             const match: IMatch = createDefaultMatch();

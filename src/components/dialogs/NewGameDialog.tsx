@@ -248,10 +248,7 @@ const ManualNewGamePivotBody = observer(function ManualNewGamePivotBody(props: I
             return undefined;
         }
 
-        return NewGameValidator.playerTeamsUnique(
-            uiState.pendingNewGame.manual.firstTeamPlayers,
-            uiState.pendingNewGame.manual.secondTeamPlayers
-        );
+        return NewGameValidator.teamNamesUnique(uiState.pendingNewGame.manual.teamPlayers);
     }, [uiState.pendingNewGame]);
 
     const pendingNewGame: IPendingNewGame | undefined = uiState.pendingNewGame;
@@ -275,34 +272,47 @@ const ManualNewGamePivotBody = observer(function ManualNewGamePivotBody(props: I
         );
     }
 
-    const teamNameErrorMessage = NewGameValidator.playerTeamsUnique(
-        manualState.firstTeamPlayers,
-        manualState.secondTeamPlayers
-    );
+    const teamNameErrorMessage = NewGameValidator.teamNamesUnique(manualState.teamPlayers);
+    const maximumTeams: number = GameFormats.getMaximumTeamCount(pendingNewGame.gameFormat);
+    // Two sides get the names everyone expects; past that they are numbered,
+    // because "third team" stops being a useful label quickly.
+    const teamLabel = (index: number): string =>
+        maximumTeams <= 2 || index < 2
+            ? index === 0
+                ? "First team"
+                : "Second team"
+            : `Team ${index + 1}`;
 
     return (
         <Stack>
             <div className={props.classes.teamEntriesContainer}>
-                <ManualTeamEntry
-                    defaultTeamName={manualState.firstTeamPlayers[0].teamName}
-                    players={manualState.firstTeamPlayers}
-                    teamNameErrorMessage={teamNameErrorMessage}
-                    teamLabel="First team"
-                    onAddPlayerClick={addPlayerHandler}
-                    onRemovePlayerClick={removePlayerHandler}
-                    validateTeamName={teamNameValidationHandler}
-                />
-                <Separator vertical={true} />
-                <ManualTeamEntry
-                    defaultTeamName={manualState.secondTeamPlayers[0].teamName}
-                    players={manualState.secondTeamPlayers}
-                    teamNameErrorMessage={teamNameErrorMessage}
-                    teamLabel="Second team"
-                    onAddPlayerClick={addPlayerHandler}
-                    onRemovePlayerClick={removePlayerHandler}
-                    validateTeamName={teamNameValidationHandler}
-                />
+                {manualState.teamPlayers.map((players, index) => (
+                    <React.Fragment key={index}>
+                        {index > 0 && <Separator vertical={true} />}
+                        <ManualTeamEntry
+                            defaultTeamName={players[0]?.teamName ?? ""}
+                            players={players}
+                            teamNameErrorMessage={teamNameErrorMessage}
+                            teamLabel={teamLabel(index)}
+                            onAddPlayerClick={addPlayerHandler}
+                            onRemovePlayerClick={removePlayerHandler}
+                            validateTeamName={teamNameValidationHandler}
+                            onRemoveTeamClick={
+                                manualState.teamPlayers.length > 2
+                                    ? () => uiState.removeTeamFromPendingNewGame(index)
+                                    : undefined
+                            }
+                        />
+                    </React.Fragment>
+                ))}
             </div>
+            {manualState.teamPlayers.length < maximumTeams && (
+                <DefaultButton
+                    text="Add team"
+                    onClick={() => uiState.addTeamToPendingNewGame()}
+                    ariaLabel="Add another team to this game"
+                />
+            )}
         </Stack>
     );
 });
@@ -651,11 +661,10 @@ function onAddPlayer(appState: AppState, players: Player[]): void {
         const teamName: string = players[0].teamName;
         const newPlayer: Player = new Player("", teamName, players.length < 4);
 
-        if (players === uiState.pendingNewGame.manual.firstTeamPlayers) {
-            uiState.addPlayerToFirstTeamInPendingNewGame(newPlayer);
-        } else {
-            uiState.addPlayerToSecondTeamInPendingNewGame(newPlayer);
-        }
+        // Which roster this button belongs to, by identity rather than by name:
+        // the name is still being typed and two teams can briefly share one.
+        const teamIndex: number = uiState.pendingNewGame.manual.teamPlayers.findIndex((team) => team === players);
+        uiState.addPlayerToTeamInPendingNewGame(teamIndex < 0 ? 0 : teamIndex, newPlayer);
     }
 }
 
@@ -663,10 +672,11 @@ function onRemovePlayer(appState: AppState, player: Player): void {
     const uiState: UIState = appState.uiState;
 
     if (uiState.pendingNewGame?.type === PendingGameType.Manual) {
-        if (player.teamName === uiState.pendingNewGame.manual.firstTeamPlayers[0].teamName) {
-            uiState.removePlayerToFirstTeamInPendingNewGame(player);
-        } else {
-            uiState.removePlayerToSecondTeamInPendingNewGame(player);
+        const teamIndex: number = uiState.pendingNewGame.manual.teamPlayers.findIndex((team) =>
+            team.includes(player)
+        );
+        if (teamIndex >= 0) {
+            uiState.removePlayerFromTeamInPendingNewGame(teamIndex, player);
         }
     }
 }

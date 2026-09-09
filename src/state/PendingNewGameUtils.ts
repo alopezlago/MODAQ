@@ -14,7 +14,7 @@ export function getPendingNewGamePlayers(pendingNewGame: IPendingNewGame): Playe
                 return pendingNewGame.manual.individualPlayers.map((player) => [player]);
             }
 
-            return [pendingNewGame.manual.firstTeamPlayers, pendingNewGame.manual.secondTeamPlayers];
+            return pendingNewGame.manual.teamPlayers;
         case PendingGameType.QBJRegistration:
             if (GameFormats.isIndividualFormat(pendingNewGame.gameFormat)) {
                 return (pendingNewGame.registration.individualPlayers ?? []).map((player) => [player]);

@@ -294,30 +294,57 @@ export class UIState {
         return players;
     }
 
-    // Replace both manual rosters at once, for a host that already knows the teams (see ModaqControl's
-    // newGameOnLoad.teams). Creates the pending game if there isn't one, so it can be called before the dialog opens.
-    public setPendingNewGameManualTeams(firstTeamPlayers: Player[], secondTeamPlayers: Player[]): void {
+    // Replace every manual roster at once, for a host that already knows the teams (see ModaqControl's
+    // newGameOnLoad.teams). Creates the pending game if there isn't one, so it can be called before the dialog
+    // opens. Takes as many teams as the format allows, so a host can seed a three- or eight-way game.
+    public setPendingNewGameManualTeams(...teamPlayers: Player[][]): void {
         if (this.pendingNewGame == undefined) {
             this.createPendingNewGame();
         }
         if (this.pendingNewGame?.type !== PendingGameType.Manual) {
             return;
         }
-        this.pendingNewGame.manual.firstTeamPlayers = firstTeamPlayers;
-        this.pendingNewGame.manual.secondTeamPlayers = secondTeamPlayers;
+        const limit: number = GameFormats.getMaximumTeamCount(this.pendingNewGame.gameFormat);
+        this.pendingNewGame.manual.teamPlayers = teamPlayers.slice(0, limit);
     }
 
-    // TODO: Feels off. Could generalize to array of teams
-    public addPlayerToFirstTeamInPendingNewGame(player: Player): void {
+    public addPlayerToTeamInPendingNewGame(teamIndex: number, player: Player): void {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
-            this.pendingNewGame.manual.firstTeamPlayers.push(player);
+            this.pendingNewGame.manual.teamPlayers[teamIndex]?.push(player);
         }
+    }
+
+    public addPlayerToFirstTeamInPendingNewGame(player: Player): void {
+        this.addPlayerToTeamInPendingNewGame(0, player);
     }
 
     public addPlayerToSecondTeamInPendingNewGame(player: Player): void {
-        if (this.pendingNewGame?.type === PendingGameType.Manual) {
-            this.pendingNewGame.manual.secondTeamPlayers.push(player);
+        this.addPlayerToTeamInPendingNewGame(1, player);
+    }
+
+    // Another side to the game, with one empty row for the reader to fill in.
+    // Refuses to go past what the format allows.
+    public addTeamToPendingNewGame(): void {
+        if (this.pendingNewGame?.type !== PendingGameType.Manual) {
+            return;
         }
+        const teams: Player[][] = this.pendingNewGame.manual.teamPlayers;
+        if (teams.length >= GameFormats.getMaximumTeamCount(this.pendingNewGame.gameFormat)) {
+            return;
+        }
+        teams.push([new Player("", `Team ${teams.length + 1}`, /* isStarter */ true)]);
+    }
+
+    // A game needs two sides, so the last two cannot be removed.
+    public removeTeamFromPendingNewGame(teamIndex: number): void {
+        if (this.pendingNewGame?.type !== PendingGameType.Manual) {
+            return;
+        }
+        const teams: Player[][] = this.pendingNewGame.manual.teamPlayers;
+        if (teams.length <= 2 || teamIndex < 0 || teamIndex >= teams.length) {
+            return;
+        }
+        teams.splice(teamIndex, 1);
     }
 
     // Each competitor in an individual game is their own one-player team, so their team name follows their name
@@ -356,20 +383,22 @@ export class UIState {
 
     public createPendingNewGame(): void {
         if (this.pendingNewGame == undefined) {
-            const firstTeamPlayers: Player[] = [];
-            const secondTeamPlayers: Player[] = [];
-            for (let i = 0; i < 4; i++) {
-                firstTeamPlayers.push(new Player("", "Team 1", /* isStarter */ true));
-                secondTeamPlayers.push(new Player("", "Team 2", /* isStarter */ true));
-            }
+            // A game starts with the two sides nearly every game has; the
+            // dialog adds more when the format allows them.
+            const teamPlayers: Player[][] = [1, 2].map((teamNumber) => {
+                const players: Player[] = [];
+                for (let i = 0; i < 4; i++) {
+                    players.push(new Player("", `Team ${teamNumber}`, /* isStarter */ true));
+                }
+                return players;
+            });
 
             this.pendingNewGame = {
                 packet: new PacketState(),
                 type: PendingGameType.Manual,
                 gameFormat: GameFormats.StandardPowersMACFGameFormat,
                 manual: {
-                    firstTeamPlayers,
-                    secondTeamPlayers,
+                    teamPlayers,
                     individualPlayers: UIState.createIndividualPlayers(),
                 },
             };
@@ -432,20 +461,21 @@ export class UIState {
         this.dialogState.visibleDialog = ModalVisibilityStatus.ExportToSheets;
     }
 
-    public removePlayerToFirstTeamInPendingNewGame(player: Player): void {
+    public removePlayerFromTeamInPendingNewGame(teamIndex: number, player: Player): void {
         if (this.pendingNewGame?.type === PendingGameType.Manual) {
-            this.pendingNewGame.manual.firstTeamPlayers = this.pendingNewGame.manual.firstTeamPlayers.filter(
-                (p) => p !== player
-            );
+            const teams: Player[][] = this.pendingNewGame.manual.teamPlayers;
+            if (teams[teamIndex] != undefined) {
+                teams[teamIndex] = teams[teamIndex].filter((p) => p !== player);
+            }
         }
     }
 
+    public removePlayerToFirstTeamInPendingNewGame(player: Player): void {
+        this.removePlayerFromTeamInPendingNewGame(0, player);
+    }
+
     public removePlayerToSecondTeamInPendingNewGame(player: Player): void {
-        if (this.pendingNewGame?.type === PendingGameType.Manual) {
-            this.pendingNewGame.manual.secondTeamPlayers = this.pendingNewGame.manual.secondTeamPlayers.filter(
-                (p) => p !== player
-            );
-        }
+        this.removePlayerFromTeamInPendingNewGame(1, player);
     }
 
     public setFontFamily(listedFont: string): void {
@@ -635,7 +665,7 @@ export class UIState {
                 this.pendingNewGame.ucsdSheets.firstTeamPlayersFromRosters = players;
                 break;
             case PendingGameType.Manual:
-                this.pendingNewGame.manual.firstTeamPlayers = players;
+                this.pendingNewGame.manual.teamPlayers[0] = players;
                 break;
             case PendingGameType.QBJRegistration:
                 this.pendingNewGame.registration.firstTeamPlayers = players;
@@ -658,7 +688,7 @@ export class UIState {
                 this.pendingNewGame.ucsdSheets.secondTeamPlayersFromRosters = players;
                 break;
             case PendingGameType.Manual:
-                this.pendingNewGame.manual.secondTeamPlayers = players;
+                this.pendingNewGame.manual.teamPlayers[1] = players;
                 break;
             case PendingGameType.QBJRegistration:
                 this.pendingNewGame.registration.secondTeamPlayers = players;

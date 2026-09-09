@@ -29,8 +29,13 @@ export interface IGameFormat {
     // Undefined or false means the standard team game.
     isIndividualFormat?: boolean;
 
-    // The most competitors a game can have. Only meaningful for individual formats; team games always have two.
+    // The most competitors a game can have. Only meaningful for individual formats.
     maximumPlayerCount?: number;
+
+    // The most sides a TEAM game may have. Nearly every format is played two a
+    // side and can say so here; left out, a reader may add more, which the
+    // scoring has always been able to handle.
+    maximumTeamCount?: number;
 
     // Standard formats only penalize the first incorrect buzz on a tossup. When this is true, every incorrect
     // buzz made before the end of the question is a neg (IPNCT).

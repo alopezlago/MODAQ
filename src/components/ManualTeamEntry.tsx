@@ -31,6 +31,8 @@ const addPlayerButtonStyle: Partial<IButtonStyles> = {
 
 // I looked into using a DetailsList instead of a List, so we could get rid of the Starter label on each checkbox, but
 // the column label is usually cut off, defeating the purpose
+const removeTeamButtonProps: IIconProps = { iconName: "Delete" };
+
 export const ManualTeamEntry = observer(function ManualTeamEntry(props: IManualTeamEntryProps) {
     const classes: ITeamEntryClassNames = getClassNames();
 
@@ -91,6 +93,14 @@ export const ManualTeamEntry = observer(function ManualTeamEntry(props: IManualT
                     onClick={addPlayerHandler}
                     disabled={addButtonDisabled}
                 />
+                {props.onRemoveTeamClick != undefined && (
+                    <IconButton
+                        iconProps={removeTeamButtonProps}
+                        title="Remove this team"
+                        ariaLabel={`Remove ${props.teamLabel}`}
+                        onClick={props.onRemoveTeamClick}
+                    />
+                )}
             </div>
         </FocusZone>
     );
@@ -265,6 +275,10 @@ const getClassNames = (): ITeamEntryClassNames =>
     });
 
 export interface IManualTeamEntryProps {
+    // Drop this team from the game. Absent when there is nothing to drop --
+    // two sides are the minimum, so the last two never offer it.
+    onRemoveTeamClick?: () => void;
+
     defaultTeamName: string;
     players: Player[];
     teamLabel: string;

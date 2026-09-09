@@ -76,8 +76,7 @@ describe("NewGameValidatorTests", () => {
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
                     individualPlayers: [],
-                    firstTeamPlayers: [],
-                    secondTeamPlayers: [new Player("b", "2", true)],
+                    teamPlayers: [[], [new Player("b", "2", true)]],
                 },
             });
         });
@@ -88,8 +87,7 @@ describe("NewGameValidatorTests", () => {
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
                     individualPlayers: [],
-                    firstTeamPlayers: [new Player("a", "1", true)],
-                    secondTeamPlayers: [],
+                    teamPlayers: [[new Player("a", "1", true)], []],
                 },
             });
         });
@@ -100,8 +98,7 @@ describe("NewGameValidatorTests", () => {
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
                     individualPlayers: [],
-                    firstTeamPlayers: [new Player("", "1", true)],
-                    secondTeamPlayers: [new Player("b", "2", true)],
+                    teamPlayers: [[new Player("", "1", true)], [new Player("b", "2", true)]],
                 },
             });
         });
@@ -112,8 +109,7 @@ describe("NewGameValidatorTests", () => {
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
                     individualPlayers: [],
-                    firstTeamPlayers: [new Player("a", "1", true)],
-                    secondTeamPlayers: [new Player("", "2", true)],
+                    teamPlayers: [[new Player("a", "1", true)], [new Player("", "2", true)]],
                 },
             });
         });
@@ -124,12 +120,11 @@ describe("NewGameValidatorTests", () => {
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
                     individualPlayers: [],
-                    firstTeamPlayers: [
+                    teamPlayers: [[
                         new Player("a", "1", true),
                         new Player("aa", "1", true),
                         new Player("a", "1", true),
-                    ],
-                    secondTeamPlayers: [new Player("b", "2", true)],
+                    ], [new Player("b", "2", true)]],
                 },
             });
         });
@@ -140,12 +135,11 @@ describe("NewGameValidatorTests", () => {
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
                     individualPlayers: [],
-                    firstTeamPlayers: [new Player("a", "1", true)],
-                    secondTeamPlayers: [
+                    teamPlayers: [[new Player("a", "1", true)], [
                         new Player("b", "2", true),
                         new Player("bb", "2", true),
                         new Player("b", "2", true),
-                    ],
+                    ]],
                 },
             });
         });
@@ -156,8 +150,7 @@ describe("NewGameValidatorTests", () => {
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
                     individualPlayers: [],
-                    firstTeamPlayers: [new Player("a", "1", false)],
-                    secondTeamPlayers: [new Player("b", "2", true)],
+                    teamPlayers: [[new Player("a", "1", false)], [new Player("b", "2", true)]],
                 },
             });
         });
@@ -168,8 +161,7 @@ describe("NewGameValidatorTests", () => {
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
                     individualPlayers: [],
-                    firstTeamPlayers: [new Player("a", "1", true)],
-                    secondTeamPlayers: [new Player("b", "2", false)],
+                    teamPlayers: [[new Player("a", "1", true)], [new Player("b", "2", false)]],
                 },
             });
         });
@@ -180,8 +172,7 @@ describe("NewGameValidatorTests", () => {
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
                     individualPlayers: [],
-                    firstTeamPlayers: [new Player("a", "1", true)],
-                    secondTeamPlayers: [new Player("b", "2", true)],
+                    teamPlayers: [[new Player("a", "1", true)], [new Player("b", "2", true)]],
                 },
             });
         });
@@ -193,8 +184,7 @@ describe("NewGameValidatorTests", () => {
                 manual: {
                     individualPlayers: [],
                     cycles: [],
-                    firstTeamPlayers: [new Player("a", "1", true)],
-                    secondTeamPlayers: [new Player("b", "2", true)],
+                    teamPlayers: [[new Player("a", "1", true)], [new Player("b", "2", true)]],
                 },
             });
         });
@@ -205,8 +195,7 @@ describe("NewGameValidatorTests", () => {
                 gameFormat: GameFormats.UndefinedGameFormat,
                 manual: {
                     individualPlayers: [],
-                    firstTeamPlayers: [new Player("a", "1", true)],
-                    secondTeamPlayers: [new Player("b", "2", true)],
+                    teamPlayers: [[new Player("a", "1", true)], [new Player("b", "2", true)]],
                 },
             };
             const result: boolean = NewGameValidator.isValid(newGame);
@@ -220,8 +209,7 @@ describe("NewGameValidatorTests", () => {
                 manual: {
                     individualPlayers: [],
                     cycles: defaultPacket.tossups.map(() => new Cycle()),
-                    firstTeamPlayers: [new Player("a", "1", true)],
-                    secondTeamPlayers: [new Player("b", "2", true)],
+                    teamPlayers: [[new Player("a", "1", true)], [new Player("b", "2", true)]],
                 },
             };
             const result: boolean = NewGameValidator.isValid(newGame);

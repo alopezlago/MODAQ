@@ -159,7 +159,7 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
             success: false,
             message: GameFormats.isIndividualFormat(gameFormat)
                 ? `This format allows at most ${maximumTeamCount} players, but the QBJ file has ${qbj.match_teams.length}`
-                : `There must be 2 teams in the QBJ file, but ${qbj.match_teams.length} were found. Pick an individual format to read a game with more than two competitors.`,
+                : `This format allows at most ${maximumTeamCount} teams, but the QBJ file has ${qbj.match_teams.length}.`,
         };
     }
 
