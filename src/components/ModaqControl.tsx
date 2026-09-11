@@ -28,6 +28,7 @@ import { StateProvider } from "../contexts/StateContext";
 import { IErratum } from "../state/IErratum";
 import { TiebreakerContext, ITiebreakerContextValue, ITiebreakerItem } from "../contexts/TiebreakerContext";
 import { NewGameNoticeContext, INewGameNoticeContextValue } from "../contexts/NewGameNoticeContext";
+import { HostNewGameContext, IHostNewGameContextValue } from "../contexts/HostNewGameContext";
 import * as QBJ from "../qbj/QBJ";
 import { IMatch } from "../qbj/QBJ";
 import { AppState } from "../state/AppState";
@@ -42,6 +43,15 @@ import { ICustomExport } from "../state/CustomExport";
 import { Cycle } from "../state/Cycle";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
 import { IPacketParserLink } from "../state/UIState";
+import {
+    IHostNewGame,
+    IHostTeam,
+    ILiveTeam,
+    startHostNewGame,
+    syncLiveTeams,
+} from "./HostGameController";
+
+export type { IHostNewGame, IHostTeam, ILiveTeam };
 
 // Initialize Fluent UI icons when this is loaded, before the first render
 initializeIcons();
@@ -201,19 +211,119 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
     const persistedStateRef = React.useRef(props.onPersistedState);
     persistedStateRef.current = props.onPersistedState;
     const lastAppliedRef = React.useRef<string | undefined>(undefined);
+    // Ready once any saved game has been restored. Host-driven changes to the game wait for this, so a restore
+    // finishing late can't overwrite them (or be mistaken for them).
+    const [ready, setReady] = React.useState(false);
     React.useEffect(
         () =>
-            initializeControl(appState, {
-                ...props,
-                persistState: props.persistState ?? true,
-                onPersistedState: (json: string) => {
-                    if (json === lastAppliedRef.current) {
-                        return;
-                    }
-                    persistedStateRef.current?.(json);
+            initializeControl(
+                appState,
+                {
+                    ...props,
+                    persistState: props.persistState ?? true,
+                    onPersistedState: (json: string) => {
+                        if (json === lastAppliedRef.current) {
+                            return;
+                        }
+                        persistedStateRef.current?.(json);
+                    },
                 },
-            }),
+                () => setReady(true)
+            ),
         []
+    );
+
+    // Tell the host whether there's a game, so it can offer its own way of starting one when there isn't.
+    const onGameLoadedChange = props.onGameLoadedChange;
+    React.useEffect(() => {
+        if (!ready || onGameLoadedChange == undefined) {
+            return;
+        }
+        return reaction(
+            () => appState.game.isLoaded,
+            (loaded) => onGameLoadedChange(loaded),
+            { fireImmediately: true }
+        );
+    }, [appState, ready, onGameLoadedChange]);
+
+    // A game the host started: each new object is a new game.
+    const hostNewGame = props.hostNewGame;
+    const hostGameFormat = props.gameFormat;
+    React.useEffect(() => {
+        if (!ready || hostNewGame == undefined) {
+            return;
+        }
+        if (hostNewGame.confirm) {
+            openHostNewGameDialog(appState, hostNewGame, hostNewGame.gameFormat ?? hostGameFormat);
+        } else {
+            startHostNewGame(appState, hostNewGame);
+        }
+        // Only a new game object starts a game; the format changing on its own doesn't.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [appState, ready, hostNewGame]);
+
+    // Competitors who come and go: bring the game's teams and who is active in line with the host's list whenever
+    // either changes, or the reader moves on. Watching the game's teams means a game restored or replaced from
+    // elsewhere (another moderator's screen) is caught up too.
+    const liveTeams = props.liveTeams;
+    // The furthest question reached in this game, so a reader stepping back to fix an earlier score doesn't make
+    // anyone's arrival or departure look like it happened back there. Kept across changes to the list.
+    const furthestRef = React.useRef<{ packet: PacketState | undefined; furthest: number }>({
+        packet: undefined,
+        furthest: 0,
+    });
+    React.useEffect(() => {
+        if (!ready || liveTeams == undefined) {
+            return;
+        }
+        return reaction(
+            () => ({
+                loaded: appState.game.isLoaded,
+                teams: appState.game.teamNames.join("\n"),
+                cycle: appState.uiState.cycleIndex,
+                packet: appState.game.packet,
+            }),
+            (current) => {
+                const mark = furthestRef.current;
+                if (current.packet !== mark.packet) {
+                    mark.packet = current.packet;
+                    mark.furthest = 0;
+                }
+                mark.furthest = Math.max(mark.furthest, current.cycle);
+                syncLiveTeams(appState, liveTeams, mark.furthest);
+            },
+            { fireImmediately: true }
+        );
+    }, [appState, ready, liveTeams]);
+
+    // The host's theme wins over the one MODAQ saved with its state (so it's applied again once that's restored);
+    // the moderator flipping MODAQ's own option is handed back to the host.
+    const darkMode = props.darkMode;
+    React.useEffect(() => {
+        if (ready && darkMode != undefined && appState.uiState.useDarkMode !== darkMode) {
+            appState.uiState.toggleDarkMode();
+        }
+    }, [appState, ready, darkMode]);
+    const darkModeRef = React.useRef({ darkMode, onChange: props.onDarkModeChange });
+    darkModeRef.current = { darkMode, onChange: props.onDarkModeChange };
+    React.useEffect(() => {
+        if (!ready) {
+            return;
+        }
+        return reaction(
+            () => appState.uiState.useDarkMode,
+            (dark) => {
+                const host = darkModeRef.current;
+                if (host.onChange != undefined && dark !== host.darkMode) {
+                    host.onChange(dark);
+                }
+            }
+        );
+    }, [appState, ready]);
+
+    const hostNewGameValue: IHostNewGameContextValue = React.useMemo(
+        () => ({ onNewGameRequested: props.onNewGameRequested }),
+        [props.onNewGameRequested]
     );
 
     const onExported = props.onExported;
@@ -237,20 +347,32 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
             return;
         }
         try {
-            parseStore(appState, JSON.parse(remoteState.json), false);
+            const snapshot = JSON.parse(remoteState.json);
+            // A host that owns the theme keeps this screen's: one moderator's dark mode isn't the other's, and two
+            // screens each putting theirs back would bounce the game between them forever.
+            if (props.darkMode != undefined && snapshot?.uiState != undefined) {
+                snapshot.uiState.useDarkMode = appState.uiState.useDarkMode;
+            }
+            parseStore(appState, snapshot, false);
             lastAppliedRef.current = JSON.stringify(appState);
         } catch {
             /* a bad snapshot from the host must not take down the reader */
         }
+        // Only a new snapshot is applied; the theme changing on its own isn't one.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [appState, remoteState]);
 
     React.useEffect(() => update(appState, props), [appState, props]);
 
     // Live stats sync: whenever the game changes, hand the host the current QBJ
     // (debounced so a burst of edits collapses into one push).
-    const onGameUpdate = props.onGameUpdate;
+    // Held in a ref, so a host passing a new function on each render doesn't re-subscribe the reaction -- which
+    // would cancel the pending (debounced) update every time, and in a busy room the update would never land.
+    const onGameUpdateRef = React.useRef(props.onGameUpdate);
+    onGameUpdateRef.current = props.onGameUpdate;
+    const hasGameUpdate: boolean = props.onGameUpdate != undefined;
     React.useEffect(() => {
-        if (onGameUpdate == undefined) {
+        if (!hasGameUpdate) {
             return;
         }
         let timer: ReturnType<typeof setTimeout> | undefined;
@@ -264,6 +386,10 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                 lastUpdate: appState.game.lastUpdate,
                 isLoaded: appState.game.isLoaded,
                 cycleIndex: appState.uiState.cycleIndex,
+                // A new game replacing one that was loaded changes neither of the above when both sit at the first
+                // question, so the packet and the players are watched too.
+                packet: appState.game.packet,
+                players: appState.game.players.length,
             }),
             () => {
                 if (timer != undefined) {
@@ -314,7 +440,7 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                             // ...and the questions themselves, for a host that
                             // shows the room what it has already played.
                             const questions: string[] = appState.game.packet.tossups.map((t) => t.question ?? "");
-                            onGameUpdate(
+                            onGameUpdateRef.current?.(
                                 QBJ.toQBJ(appState.game, appState.uiState.packetFilename),
                                 inProgress,
                                 appState.uiState.cycleIndex + 1,
@@ -337,7 +463,7 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
             }
             dispose();
         };
-    }, [appState, onGameUpdate]);
+    }, [appState, hasGameUpdate]);
 
     // Buzz judgments: fire when the reader marks a buzz correct or wrong on the
     // question being read (not when revisiting an already-judged question), so a
@@ -426,6 +552,7 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
         <ErrorBoundary appState={appState}>
             <StateProvider appState={appState}>
                 <NewGameNoticeContext.Provider value={newGameNoticeValue}>
+                <HostNewGameContext.Provider value={hostNewGameValue}>
                 <TiebreakerContext.Provider value={tiebreakerValue}>
                     <ThemeProvider theme={theme} applyTo={applyTo}>
                         <div className="modaq-control">
@@ -434,6 +561,7 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                         </div>
                     </ThemeProvider>
                 </TiebreakerContext.Provider>
+                </HostNewGameContext.Provider>
                 </NewGameNoticeContext.Provider>
             </StateProvider>
         </ErrorBoundary>
@@ -594,6 +722,49 @@ export interface IModaqControlProps {
     newGameNotice?: React.ReactNode;
 
     /**
+     * Start a game from the host. Each new object starts a new game (compared by identity), replacing any game that
+     * is loaded. With `confirm`, MODAQ's New Game dialog opens prefilled with the packet and teams, for the moderator
+     * to check and Start; without it, the game starts at once. Applied after any saved game has been restored.
+     *
+     * A host should stop passing the object once the game has started: a control mounted later with the same object
+     * would start it again.
+     */
+    hostNewGame?: IHostNewGame;
+
+    /**
+     * Called instead of opening the New Game dialog when the moderator chooses New game from the menu, for a host
+     * that starts games its own way (with `hostNewGame`). The import commands under New game are unaffected.
+     */
+    onNewGameRequested?: () => void;
+
+    /**
+     * For a game whose competitors come and go — a shootout, where whoever is in the room is playing, including
+     * someone who arrives at question 9 and leaves at 15. A present team missing from the loaded game (matched by
+     * name) is added, active from the question the reader has reached; a team marked absent stops being active from
+     * the next question until it's present again. So each player is credited with the tossups they actually heard.
+     * The list is everyone: a team in the game that isn't on it counts as absent. Nobody is ever removed from the
+     * game.
+     */
+    liveTeams?: ILiveTeam[];
+
+    /**
+     * Called with whether a game is loaded: once when the control is ready (after any saved game is restored), and
+     * again whenever that changes.
+     */
+    onGameLoadedChange?: (loaded: boolean) => void;
+
+    /**
+     * Dark mode, for a host with a theme of its own to keep MODAQ in step with. Applied whenever it changes; MODAQ's
+     * own Dark mode option still works, and reports through `onDarkModeChange` so the host can follow it.
+     */
+    darkMode?: boolean;
+
+    /**
+     * Called when the moderator turns MODAQ's Dark mode option on or off.
+     */
+    onDarkModeChange?: (dark: boolean) => void;
+
+    /**
      * The packet for the current game. This should only be set once.
      */
     packet?: IPacket;
@@ -641,14 +812,21 @@ function maybeOpenHostNewGame(appState: AppState, props: IModaqControlProps): vo
     if (spec == undefined || appState.game.isLoaded) {
         return;
     }
+    openHostNewGameDialog(appState, spec, props.gameFormat);
+}
 
+function openHostNewGameDialog(
+    appState: AppState,
+    spec: { packet: IPacket; packetName?: string; rosters?: IPlayer[]; teams?: IHostTeam[] },
+    gameFormat: IGameFormat | undefined
+): void {
     const packetState = PacketLoaderController.loadPacket(appState, spec.packet, spec.packetName);
     appState.uiState.createPendingNewGame();
     if (packetState != undefined) {
         appState.uiState.setPendingNewGamePacket(packetState);
     }
-    if (props.gameFormat != undefined) {
-        appState.uiState.setPendingNewGameFormat(props.gameFormat);
+    if (gameFormat != undefined) {
+        appState.uiState.setPendingNewGameFormat(gameFormat);
     }
     if (spec.packetName != undefined) {
         appState.uiState.setPacketFilename(spec.packetName);
@@ -683,7 +861,7 @@ function maybeOpenHostNewGame(appState: AppState, props: IModaqControlProps): vo
     appState.uiState.dialogState.showNewGameDialog();
 }
 
-function initializeControl(appState: AppState, props: IModaqControlProps): () => void {
+function initializeControl(appState: AppState, props: IModaqControlProps, onReady: () => void): () => void {
     if (props.persistState) {
         configure({ enforceActions: "observed", computedRequiresReaction: true });
         // When the host wants the snapshots, wrap localStorage so it sees every write.
@@ -717,9 +895,11 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
             // Only open the host-driven New Game once persistence has restored any in-progress game (so a mid-round
             // refresh doesn't clobber it).
             maybeOpenHostNewGame(appState, props);
+            onReady();
         });
     } else {
         maybeOpenHostNewGame(appState, props);
+        onReady();
     }
 
     // We have to add the listener at the document layer, otherwise the event isn't picked up if the user clicks on

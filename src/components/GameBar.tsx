@@ -22,6 +22,7 @@ import { useAppState } from "../contexts/StateContext";
 import { StatusDisplayType } from "../state/StatusDisplayType";
 import { ReaderFollower } from "../speech/ReaderFollower";
 import { useTiebreakers } from "../contexts/TiebreakerContext";
+import { HostNewGameContext } from "../contexts/HostNewGameContext";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
@@ -31,8 +32,16 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     const uiState: UIState = appState.uiState;
     const game: GameState = appState.game;
     const tiebreakers = useTiebreakers();
+    const { onNewGameRequested } = React.useContext(HostNewGameContext);
 
     const newGameHandler = React.useCallback(() => {
+        // A host that starts games its own way takes it from here, including whatever it wants to do about a game
+        // that hasn't been exported.
+        if (onNewGameRequested != undefined) {
+            onNewGameRequested();
+            return;
+        }
+
         if (appState.game.hasUpdates) {
             // Prompt the user
             uiState.dialogState.showYesNoCancelMessageDialog({
@@ -62,7 +71,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
             uiState.createPendingNewGame();
             uiState.dialogState.showNewGameDialog();
         }
-    }, [appState, uiState]);
+    }, [appState, uiState, onNewGameRequested]);
     const importGameHandler = React.useCallback(() => {
         uiState.createPendingNewGame();
         uiState.dialogState.showImportGameDialog();

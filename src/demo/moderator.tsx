@@ -3,7 +3,9 @@ import * as ReactDOM from "react-dom";
 import { initializeIcons } from "@fluentui/react";
 
 import "./moderator.css";
-import { IGameUpdateProtest, ModaqControl } from "../components/ModaqControl";
+import { IGameUpdateProtest, IHostNewGame, IHostTeam, ILiveTeam, ModaqControl } from "../components/ModaqControl";
+import { PACKET_ACCEPT, readPacketFile, packetName as fileStem } from "./packetFile";
+import { PacketDrop } from "./PacketDrop";
 import { IPacket } from "../state/IPacket";
 import { IPlayer } from "../state/TeamState";
 import { IErratum } from "../state/IErratum";
@@ -26,7 +28,9 @@ import {
     ITournamentInfo,
     KlaxonApi,
     IArchivedGame,
+    IShootoutSession,
     KlaxonClient,
+    WithdrawMode,
     readCredentials,
     sessionToken,
 } from "./klaxonClient";
@@ -138,11 +142,7 @@ function deriveSubcats(packet: IPacket): { label: string; indexes: number[] }[] 
 // asks for it, the packet is tagged with (multiple) subcategories, and there
 // is actually something to ban.
 function massingerApplies(format: ITournamentFormat | undefined, packet: IPacket): boolean {
-    return (
-        format?.massinger === true &&
-        packet.tossups.length > MASSINGER_TARGET &&
-        deriveSubcats(packet).length >= 2
-    );
+    return format?.massinger === true && packet.tossups.length > MASSINGER_TARGET && deriveSubcats(packet).length >= 2;
 }
 
 // Apply a finished (or partial) board to the packet: each subcategory loses
@@ -263,10 +263,7 @@ function useBuzzedInPlayer(roomState: IPublicRoomState | undefined): { name: str
     const member = head ? (roomState?.members ?? []).find((m) => m.id === head.playerId) : undefined;
     const name = member?.rosterPlayer ?? "";
     const teamName = member?.rosterTeam ?? "";
-    return React.useMemo(
-        () => (name === "" ? undefined : { name, teamName }),
-        [name, teamName]
-    );
+    return React.useMemo(() => (name === "" ? undefined : { name, teamName }), [name, teamName]);
 }
 
 // Judging a buzz resolves it: clear the Klaxon buzzer, or — a wrong answer in
@@ -431,9 +428,7 @@ function describeGame(g: IArchivedGame): string {
     // However many sides the game had: two reads as "A 120 – B 95", and a
     // three-way or a shootout lists them all rather than giving up.
     const teams =
-        g.teams.length > 0
-            ? g.teams.map((name, i) => `${name} ${g.scores[i] ?? 0}`).join(" – ")
-            : "(teams not set)";
+        g.teams.length > 0 ? g.teams.map((name, i) => `${name} ${g.scores[i] ?? 0}`).join(" – ") : "(teams not set)";
     const progress = g.total > 0 ? ` · Q${Math.min(g.current, g.total)}/${g.total}` : "";
     return `${teams}${progress}`;
 }
@@ -502,7 +497,9 @@ function PreviousGames(props: {
                     </li>
                 ))}
             </ul>
-            <p className="hint">Load a game to correct a score or export it again; it becomes the room&apos;s current game.</p>
+            <p className="hint">
+                Load a game to correct a score or export it again; it becomes the room&apos;s current game.
+            </p>
             {msg && <p className="msg">{msg}</p>}
         </div>
     );
@@ -528,11 +525,18 @@ function downloadFullBuzz(client: KlaxonClient): void {
 // Klaxon reader view (settings, players, invite links): MODAQ mode is turned
 // off for the room, and the shared game and the players' scoresheet are
 // retired with it. Re-entering MODAQ later is one click on that page.
-function useEndGame(client: KlaxonClient, round: string): { exported: boolean; onExported: () => void; endGame: () => void } {
+function useEndGame(
+    client: KlaxonClient,
+    round: string
+): { exported: boolean; onExported: () => void; endGame: () => void } {
     const [exported, setExported] = React.useState(false);
     const onExported = React.useCallback(() => setExported(true), []);
     const endGame = React.useCallback(() => {
-        if (!window.confirm("End this game and go back to the buzzer page? The room leaves MODAQ mode; you can start MODAQ again from there.")) {
+        if (
+            !window.confirm(
+                "End this game and go back to the buzzer page? The room leaves MODAQ mode; you can start MODAQ again from there."
+            )
+        ) {
             return;
         }
         try {
@@ -540,13 +544,15 @@ function useEndGame(client: KlaxonClient, round: string): { exported: boolean; o
         } catch {
             /* ignore */
         }
-        archiveCurrentGame(client).then(() => {
-            client.massinger({ action: "modaq_game", qbj: null });
-            client.pushSharedGame(round, null);
-            return client.massinger({ action: "set_options", options: { modaqMode: false, modaqLite: false } });
-        }).then(() => {
-            location.href = `/r/${client.code}`;
-        });
+        archiveCurrentGame(client)
+            .then(() => {
+                client.massinger({ action: "modaq_game", qbj: null });
+                client.pushSharedGame(round, null);
+                return client.massinger({ action: "set_options", options: { modaqMode: false, modaqLite: false } });
+            })
+            .then(() => {
+                location.href = `/r/${client.code}`;
+            });
     }, [client, round]);
     return { exported, onExported, endGame };
 }
@@ -579,6 +585,56 @@ function serverErratumToErratum(e: IServerErratum): IErratum {
     };
 }
 
+// --- theme -----------------------------------------------------------------------
+// Klaxon's theme (dark or light) lives in /js/theme.js, shared by every Klaxon
+// page: it stamps html[data-theme] and announces changes with a `klaxon-theme`
+// event, including a change made in another tab. This page follows it, and so
+// does MODAQ — turning on MODAQ's own Dark mode option sets Klaxon's theme, so
+// the two never disagree.
+interface IKlaxonThemeApi {
+    get(): "dark" | "light";
+    set(pref: "dark" | "light" | "system"): void;
+}
+const klaxonTheme = (): IKlaxonThemeApi | undefined =>
+    ((window as unknown) as { klaxonTheme?: IKlaxonThemeApi }).klaxonTheme;
+const currentTheme = (): "dark" | "light" =>
+    klaxonTheme()?.get() ?? (document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+
+function useKlaxonDark(): [boolean, (dark: boolean) => void] {
+    const [dark, setDark] = React.useState(() => currentTheme() === "dark");
+    React.useEffect(() => {
+        const follow = (): void => setDark(currentTheme() === "dark");
+        document.addEventListener("klaxon-theme", follow);
+        follow();
+        return () => document.removeEventListener("klaxon-theme", follow);
+    }, []);
+    const choose = React.useCallback((next: boolean) => {
+        const api = klaxonTheme();
+        if (api) {
+            api.set(next ? "dark" : "light");
+        } else {
+            setDark(next);
+        }
+    }, []);
+    return [dark, choose];
+}
+
+// MODAQ, in the page's theme.
+function KlaxonModaq(props: React.ComponentProps<typeof ModaqControl>): JSX.Element {
+    const [dark, setDark] = useKlaxonDark();
+    return <ModaqControl {...props} darkMode={dark} onDarkModeChange={setDark} />;
+}
+
+function ThemeToggle(): JSX.Element {
+    const [dark, setDark] = useKlaxonDark();
+    const label = dark ? "Switch to light mode" : "Switch to dark mode";
+    return (
+        <button className="kx-theme" onClick={() => setDark(!dark)} aria-label={label} title={label}>
+            {dark ? "☀" : "☾"}
+        </button>
+    );
+}
+
 // The Klaxon bar every page carries, so the moderator knows where they are and
 // can get back to the room or start another game.
 function KlaxonHeader(props: { code: string }): JSX.Element {
@@ -601,6 +657,7 @@ function KlaxonHeader(props: { code: string }): JSX.Element {
             </nav>
             <div className="kx-right">
                 <span className="kx-pill">{creds.role === "co-reader" ? "co-reader" : "reader"}</span>
+                <ThemeToggle />
             </div>
         </header>
     );
@@ -618,7 +675,16 @@ function Moderator(): JSX.Element {
 function ModeratorBody(): JSX.Element {
     const clientRef = React.useRef<KlaxonClient | undefined>(undefined);
     const [phase, setPhase] = React.useState<
-        "connecting" | "error" | "setup" | "lobby" | "pickban" | "reading" | "lite" | "account"
+        | "connecting"
+        | "error"
+        | "setup"
+        | "lobby"
+        | "pickban"
+        | "reading"
+        | "lite"
+        | "account"
+        | "shootout-setup"
+        | "shootout"
     >("connecting");
     const [fatal, setFatal] = React.useState<string>("");
     // When the fix for an error is signing in, the error view offers the link.
@@ -679,6 +745,12 @@ function ModeratorBody(): JSX.Element {
                 // to the Klaxon buzzer.
                 if (state.settings?.modaqLite) {
                     await seedSharedGame(client, () => `klaxon-lite-${code}`);
+                    // A shootout starts with the host's setup (packets, notes,
+                    // withdraw rule) and goes straight back to reading after it.
+                    if (state.settings?.shootout) {
+                        setPhase((state.shootout?.session?.packets.length ?? 0) > 0 ? "shootout" : "shootout-setup");
+                        return;
+                    }
                     setPhase("lite");
                     return;
                 }
@@ -698,7 +770,9 @@ function ModeratorBody(): JSX.Element {
             })
             .catch((error: Error & { denyReason?: string; state?: IPublicRoomState }) => {
                 if (error.denyReason === "not_logged_in") {
-                    setFatal("Sign in with your reader account to moderate this room (the director must have added or approved you).");
+                    setFatal(
+                        "Sign in with your reader account to moderate this room (the director must have added or approved you)."
+                    );
                     setSignInUrl(`/account?return=${encodeURIComponent(`/modaq?room=${code}`)}`);
                 } else if (error.denyReason === "not_approved" && error.state?.tournamentCode) {
                     // Known account, not approved yet: offer the request-access
@@ -708,7 +782,9 @@ function ModeratorBody(): JSX.Element {
                     setPhase("account");
                     return;
                 } else if (error.denyReason === "not_approved") {
-                    setFatal("Your account isn't approved for this tournament yet — ask the director to add you (they can use your email).");
+                    setFatal(
+                        "Your account isn't approved for this tournament yet — ask the director to add you (they can use your email)."
+                    );
                 } else {
                     setFatal(error.message);
                 }
@@ -851,11 +927,8 @@ function ModeratorBody(): JSX.Element {
     async function loadPacketForStart(client: KlaxonClient, roundLabel: string): Promise<IPacket> {
         // A freshly chosen file wins; upload it so other moderators/the TD get it too.
         if (packetFile) {
-            const text = await packetFile.text();
-            const parsed = JSON.parse(text) as IPacket;
-            if (!Array.isArray(parsed.tossups)) {
-                throw new Error("That file isn't a packet (no tossups array).");
-            }
+            const { packet: parsed } = await readPacketFile(packetFile, setSetupMsg);
+            setSetupMsg("");
             await KlaxonApi.savePacket(code, client.token, roundLabel, parsed);
             return parsed;
         }
@@ -883,9 +956,7 @@ function ModeratorBody(): JSX.Element {
         let errata: IErratum[] = [];
         try {
             const { errata: serverErrata } = await KlaxonApi.getErrata(code, client.token);
-            errata = serverErrata
-                .filter((e) => (e.round ?? "") === roundLabel)
-                .map(serverErratumToErratum);
+            errata = serverErrata.filter((e) => (e.round ?? "") === roundLabel).map(serverErratumToErratum);
         } catch {
             /* ignore */
         }
@@ -971,6 +1042,30 @@ function ModeratorBody(): JSX.Element {
         return <LiteReading code={code} client={clientRef.current!} roomState={roomState} />;
     }
 
+    if (phase === "shootout-setup") {
+        const hasSession = (roomState?.shootout?.session?.packets.length ?? 0) > 0;
+        return (
+            <ShootoutSetup
+                code={code}
+                client={clientRef.current!}
+                roomState={roomState}
+                onDone={() => setPhase("shootout")}
+                onCancel={hasSession ? () => setPhase("shootout") : undefined}
+            />
+        );
+    }
+
+    if (phase === "shootout") {
+        return (
+            <ShootoutReading
+                code={code}
+                client={clientRef.current!}
+                roomState={roomState}
+                onEditSession={() => setPhase("shootout-setup")}
+            />
+        );
+    }
+
     if (phase === "account") {
         return (
             <AccountGate
@@ -1024,7 +1119,7 @@ function ModeratorBody(): JSX.Element {
 
         const chooseRound = (r: string): void => {
             setRound(r);
-            setPacketFile(undefined);   // going back to the tournament packet
+            setPacketFile(undefined); // going back to the tournament packet
             setSetupMsg("");
         };
 
@@ -1033,8 +1128,8 @@ function ModeratorBody(): JSX.Element {
                 <h1>MODAQ moderator — room {code}</h1>
                 {clientRef.current ? <DirectorMessages client={clientRef.current} /> : undefined}
                 <p className="hint">
-                    Choose the round and its packet, then start — teams are set in MODAQ&apos;s New Game dialog, and
-                    you read with the Klaxon buzzer on the right.
+                    Choose the round and its packet, then start — teams are set in MODAQ&apos;s New Game dialog, and you
+                    read with the Klaxon buzzer on the right.
                 </p>
 
                 {scheduledRounds.length > 0 && (
@@ -1083,12 +1178,14 @@ function ModeratorBody(): JSX.Element {
                 )}
 
                 <label htmlFor="packet">
-                    {serverPackets.length > 0 ? "…or read your own packet file (JSON)" : "Packet file (JSON)"}
+                    {serverPackets.length > 0
+                        ? "…or read your own packet (PDF, Word, or JSON)"
+                        : "Packet file (PDF, Word, or JSON)"}
                 </label>
                 <input
                     id="packet"
                     type="file"
-                    accept=".json,application/json"
+                    accept={PACKET_ACCEPT}
                     onChange={(e) => {
                         setPacketFile(e.target.files?.[0]);
                         setSetupMsg("");
@@ -1096,15 +1193,10 @@ function ModeratorBody(): JSX.Element {
                 />
 
                 <label htmlFor="round">Round label</label>
-                <input
-                    id="round"
-                    type="text"
-                    value={round}
-                    onChange={(e) => setRound(e.target.value)}
-                />
+                <input id="round" type="text" value={round} onChange={(e) => setRound(e.target.value)} />
                 <p className="hint">
-                    What this game is filed under in the tournament&apos;s stats. Picking a released round above sets
-                    it for you.
+                    What this game is filed under in the tournament&apos;s stats. Picking a released round above sets it
+                    for you.
                 </p>
 
                 <p className={packetReady ? "packet-status ready" : "packet-status"}>
@@ -1159,7 +1251,7 @@ function ModeratorBody(): JSX.Element {
                             }
                             // The snapshot carries its own packet; the server's copy
                             // (if the round's file is still there) is only a fallback.
-                            let packet: IPacket = { tossups: [], bonuses: [] } as unknown as IPacket;
+                            let packet: IPacket = ({ tossups: [], bonuses: [] } as unknown) as IPacket;
                             try {
                                 packet = await KlaxonApi.getPacket<IPacket>(code, client.token, game.round);
                             } catch {
@@ -1288,7 +1380,10 @@ function ConnectedPlayers(props: {
     const members = (roomState?.members ?? []).filter((m) => m.role === "player");
     const teams = teamNames ?? [];
     const normTeam = (v: string | null | undefined): string =>
-        (v ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+        (v ?? "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ")
+            .trim();
     const unplaced = preTeams
         ? 0
         : teams.length >= 2
@@ -1309,7 +1404,10 @@ function ConnectedPlayers(props: {
 
     const same = (a: string | null | undefined, b: string | null | undefined): boolean => {
         const norm = (v: string | null | undefined): string =>
-            (v ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+            (v ?? "")
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, " ")
+                .trim();
         return norm(a) !== "" && norm(a) === norm(b);
     };
 
@@ -1421,22 +1519,19 @@ function TeamLobby(props: {
     const connected = players.filter((m) => m.connected);
 
     const norm = (v: string | null | undefined): string =>
-        (v ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+        (v ?? "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ")
+            .trim();
     const teamNames = [teamA.trim(), teamB.trim()].filter((n) => n !== "");
     const namesReady = teamNames.length === 2 && norm(teamA) !== norm(teamB);
 
-    const onTeam = (name: string): IRoomMember[] =>
-        connected.filter((m) => norm(m.effectiveTeam) === norm(name));
-    const unassigned = connected.filter(
-        (m) => !teamNames.some((name) => norm(name) === norm(m.effectiveTeam))
-    );
+    const onTeam = (name: string): IRoomMember[] => connected.filter((m) => norm(m.effectiveTeam) === norm(name));
+    const unassigned = connected.filter((m) => !teamNames.some((name) => norm(name) === norm(m.effectiveTeam)));
 
-    const missingCaptains = captainsWanted
-        ? teamNames.filter((name) => !onTeam(name).some((m) => m.isCaptain))
-        : [];
+    const missingCaptains = captainsWanted ? teamNames.filter((name) => !onTeam(name).some((m) => m.isCaptain)) : [];
     const emptyTeams = namesReady ? teamNames.filter((name) => onTeam(name).length === 0) : [];
-    const canStart =
-        namesReady && unassigned.length === 0 && (connected.length === 0 || emptyTeams.length === 0);
+    const canStart = namesReady && unassigned.length === 0 && (connected.length === 0 || emptyTeams.length === 0);
 
     const link = `${location.origin}/${code}`;
     const copyLink = async (): Promise<void> => {
@@ -1524,14 +1619,12 @@ function TeamLobby(props: {
 
                     {namesReady && unassigned.length > 0 && (
                         <div className="ms-warn">
-                            {unassigned.length} player{unassigned.length === 1 ? "" : "s"} still need a team — set
-                            them on the right, or remove them from the room.
+                            {unassigned.length} player{unassigned.length === 1 ? "" : "s"} still need a team — set them
+                            on the right, or remove them from the room.
                         </div>
                     )}
                     {namesReady && connected.length > 0 && unassigned.length === 0 && emptyTeams.length > 0 && (
-                        <div className="ms-warn">
-                            Nobody is on {emptyTeams.join(" or ")} yet.
-                        </div>
+                        <div className="ms-warn">Nobody is on {emptyTeams.join(" or ")} yet.</div>
                     )}
                     {canStart && missingCaptains.length > 0 && (
                         <div className="ms-warn">
@@ -1656,14 +1749,18 @@ function PickBan(props: {
         (roomState?.members ?? []).find(
             (m) =>
                 m.isCaptain === true &&
-                (m.effectiveTeam ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() ===
-                    team.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+                (m.effectiveTeam ?? "")
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, " ")
+                    .trim() ===
+                    team
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, " ")
+                        .trim()
         );
 
     const teamOptions: string[] =
-        gameTeams.length >= 2
-            ? gameTeams.map((team) => team.name)
-            : roomState?.roster?.teamNames?.slice(0, 2) ?? [];
+        gameTeams.length >= 2 ? gameTeams.map((team) => team.name) : roomState?.roster?.teamNames?.slice(0, 2) ?? [];
     const [msg, setMsg] = React.useState("");
     const [probed, setProbed] = React.useState(false);
     const [starting, setStarting] = React.useState(false);
@@ -1743,8 +1840,8 @@ function PickBan(props: {
                             ))}
                         </select>
                         <p className="hint">
-                            The other team ({teamOptions[1 - firstIndex] ?? "—"}) picks second, and they alternate
-                            from there. You can change whose turn it is at any point once the board is running.
+                            The other team ({teamOptions[1 - firstIndex] ?? "—"}) picks second, and they alternate from
+                            there. You can change whose turn it is at any point once the board is running.
                         </p>
                         <label htmlFor="ms-control">Who makes the picks?</label>
                         <select
@@ -1765,8 +1862,8 @@ function PickBan(props: {
                         </p>
                         {control === "captain" && missingCaptains.length > 0 && (
                             <p className="ms-warn">
-                                No captain yet for {missingCaptains.join(" or ")} — mark one in the players list on
-                                the right (or their picks will have to come from you).
+                                No captain yet for {missingCaptains.join(" or ")} — mark one in the players list on the
+                                right (or their picks will have to come from you).
                             </p>
                         )}
 
@@ -1817,8 +1914,7 @@ function PickBan(props: {
     const remaining = massingerRemaining(board);
     const bansLeft = remaining - board.target;
     const active = board.status === "active";
-    const secondsLeft =
-        board.deadline != null ? Math.max(0, Math.ceil((board.deadline - Date.now()) / 1000)) : null;
+    const secondsLeft = board.deadline != null ? Math.max(0, Math.ceil((board.deadline - Date.now()) / 1000)) : null;
     const expired = active && secondsLeft === 0;
     const lastAction = board.actions[board.actions.length - 1];
 
@@ -1856,13 +1952,12 @@ function PickBan(props: {
                                 {board.control === "captain" &&
                                     (captainOf(board.teams[board.turn]) ? (
                                         <span className="ms-captain-name">
-                                            ★ {captainOf(board.teams[board.turn])?.rosterPlayer ||
+                                            ★{" "}
+                                            {captainOf(board.teams[board.turn])?.rosterPlayer ||
                                                 captainOf(board.teams[board.turn])?.name}
                                         </span>
                                     ) : (
-                                        <span className="ms-warn-inline">
-                                            no captain for {board.teams[board.turn]}
-                                        </span>
+                                        <span className="ms-warn-inline">no captain for {board.teams[board.turn]}</span>
                                     ))}
                             </div>
                             <div className="ms-turnrow">
@@ -1890,8 +1985,8 @@ function PickBan(props: {
 
                     {lastAction && (
                         <p className="ms-last">
-                            Last: {board.teams[lastAction.team]} {lastAction.type === "protect" ? "protected" : "banned"}{" "}
-                            <strong>{lastAction.label}</strong>
+                            Last: {board.teams[lastAction.team]}{" "}
+                            {lastAction.type === "protect" ? "protected" : "banned"} <strong>{lastAction.label}</strong>
                             {lastAction.by === "timeout"
                                 ? " (random — time expired)"
                                 : lastAction.by && lastAction.by !== "moderator" && lastAction.by !== "random"
@@ -1977,7 +2072,10 @@ function PickBan(props: {
                                 Random ban{expired ? " (time expired)" : ""}
                             </button>
                         )}
-                        <button disabled={board.actions.length === 0} onClick={() => send({ action: "massinger_undo" })}>
+                        <button
+                            disabled={board.actions.length === 0}
+                            onClick={() => send({ action: "massinger_undo" })}
+                        >
                             Undo last
                         </button>
                         <button className={editing ? "ms-turn active" : ""} onClick={() => setEditing(!editing)}>
@@ -2189,13 +2287,17 @@ function Reading(props: {
                 <RoomToolbar code={code} label={`Room ${code} · Round ${round}`}>
                     <button onClick={onChange}>Change round / teams</button>
                     {ending.exported && (
-                        <button className="mod-endgame" onClick={ending.endGame} title="Back to the buzzer page (settings, players)">
+                        <button
+                            className="mod-endgame"
+                            onClick={ending.endGame}
+                            title="Back to the buzzer page (settings, players)"
+                        >
                             End game →
                         </button>
                     )}
                 </RoomToolbar>
                 <DirectorMessages client={client} />
-                <ModaqControl
+                <KlaxonModaq
                     applyStylingToRoot={false}
                     buildVersion={__BUILD_VERSION__}
                     yappServiceUrl={YAPP_SERVICE_URL}
@@ -2206,9 +2308,7 @@ function Reading(props: {
                         teams: config.teams,
                     }}
                     newGameNotice={
-                        config.board ? (
-                            <PickBanSummary board={config.board} onEdit={config.onEditPickBan} />
-                        ) : undefined
+                        config.board ? <PickBanSummary board={config.board} onEdit={config.onEditPickBan} /> : undefined
                     }
                     gameFormat={config.gameFormat}
                     persistState={true}
@@ -2305,13 +2405,51 @@ function LiteReading(props: {
     const [showPrev, setShowPrev] = React.useState(false);
     // Loading a previous game remounts MODAQ so it reads the staged snapshot.
     const [gameKey, setGameKey] = React.useState(0);
+
+    // Starting a game is one step: drop the packet (PDF, Word, or JSON) and
+    // MODAQ's New Game dialog opens with it loaded and the teams filled in from
+    // the room, so all that's left is Start. Shown whenever there's no game, and
+    // again when the reader picks New game.
+    const [gameLoaded, setGameLoaded] = React.useState<boolean | undefined>(undefined);
+    const [picking, setPicking] = React.useState(false);
+    const [hostGame, setHostGame] = React.useState<IHostNewGame | undefined>(undefined);
+    const [status, setStatus] = React.useState("");
+    const [error, setError] = React.useState("");
+    const teams = teamsFromRoom(roomState);
+    const onNewGameRequested = React.useCallback(() => setPicking(true), []);
+
+    const onFiles = async (files: File[]): Promise<void> => {
+        setError("");
+        try {
+            const { packet, name } = await readPacketFile(files[0], setStatus);
+            // The game on screen is filed first, so nothing is lost.
+            if (gameLoaded) {
+                await archiveCurrentGame(client);
+            }
+            setHostGame({ packet, packetName: name, teams, confirm: true });
+            setPicking(false);
+        } catch (e) {
+            setError((e as Error).message);
+        } finally {
+            setStatus("");
+        }
+    };
+
+    const showStart = gameLoaded === false || picking;
     return (
         <div className="mod-shell">
             <div className="mod-main">
-                <RoomToolbar code={code} label={`Room ${code} · MODAQ lite`}>
-                    <button onClick={() => setShowPrev((v) => !v)}>{showPrev ? "Hide previous games" : "Previous games"}</button>
+                <RoomToolbar code={code} label={`Room ${code} · MODAQ`}>
+                    {gameLoaded && !picking && <button onClick={() => setPicking(true)}>New packet</button>}
+                    <button onClick={() => setShowPrev((v) => !v)}>
+                        {showPrev ? "Hide previous games" : "Previous games"}
+                    </button>
                     {ending.exported && (
-                        <button className="mod-endgame" onClick={ending.endGame} title="Back to the buzzer page (settings, players)">
+                        <button
+                            className="mod-endgame"
+                            onClick={ending.endGame}
+                            title="Back to the buzzer page (settings, players)"
+                        >
                             End game →
                         </button>
                     )}
@@ -2329,27 +2467,668 @@ function LiteReading(props: {
                             }
                             await stagePreviousGame(client, g.id, () => `klaxon-lite-${code}`);
                             setShowPrev(false);
+                            // A remounted MODAQ must not start the last dropped packet again.
+                            setHostGame(undefined);
                             setGameKey((k) => k + 1);
                         }}
                     />
                 )}
-                <ModaqControl
-                    key={gameKey}
+                {showStart && (
+                    <div className="pk-start">
+                        <div className="pk-start-head">
+                            <h2>{gameLoaded ? "Read another packet" : "Start a game"}</h2>
+                            {gameLoaded && (
+                                <button onClick={() => setPicking(false)} disabled={status !== ""}>
+                                    Back to the game
+                                </button>
+                            )}
+                        </div>
+                        <PacketDrop
+                            pageWide
+                            disabled={status !== ""}
+                            onFiles={onFiles}
+                            title={status || "Drop the packet anywhere on this page"}
+                            hint="A PDF, a Word document (.docx), or a packet JSON file"
+                        />
+                        {error && <p className="pk-error">{error}</p>}
+                        <p className="hint">
+                            {teams.length >= 2
+                                ? `Teams from the room: ${teams
+                                      .map((t) => `${t.name} (${t.players.join(", ")})`)
+                                      .join(" vs. ")}. They'll be filled in — check them and press Start.`
+                                : "Next, name the teams and press Start. (Players who give a team when they join are filled in for you.)"}
+                        </p>
+                    </div>
+                )}
+                <div className={showStart && !gameLoaded ? "mod-modaq-idle" : undefined}>
+                    <KlaxonModaq
+                        key={gameKey}
+                        applyStylingToRoot={false}
+                        buildVersion={__BUILD_VERSION__}
+                        yappServiceUrl={YAPP_SERVICE_URL}
+                        packetParserLink={PACKET_PARSER_LINK}
+                        persistState={true}
+                        storeName={`klaxon-lite-${code}`}
+                        onGameUpdate={syncGame}
+                        onBuzzJudged={onBuzzJudged}
+                        buzzedInPlayer={buzzedInPlayer}
+                        onExported={() => {
+                            ending.onExported();
+                            downloadFullBuzz(client);
+                        }}
+                        onPersistedState={shared.onPersistedState}
+                        remoteState={shared.remoteState}
+                        hostNewGame={hostGame}
+                        onNewGameRequested={onNewGameRequested}
+                        onGameLoadedChange={setGameLoaded}
+                    />
+                </div>
+            </div>
+            <div className="mod-side">
+                <BuzzPanel client={client} state={roomState} />
+            </div>
+        </div>
+    );
+}
+
+// The teams a room already knows about, for a game started from a dropped
+// packet: the room's roster if it has one (a previous game's teams, or a
+// roster the reader loaded), otherwise the teams players gave when they
+// joined. Fewer than two is no teams at all — the reader names them.
+function teamsFromRoom(state: IPublicRoomState | undefined): IHostTeam[] {
+    const roster = (state?.roster?.teams ?? []).filter((t) => t.name && t.players.length > 0);
+    if (roster.length >= 2) {
+        return roster.map((t) => ({ name: t.name, players: [...t.players] }));
+    }
+    const byTeam = new Map<string, string[]>();
+    for (const m of state?.members ?? []) {
+        if (m.role !== "player" || !m.connected) continue;
+        const team = (m.effectiveTeam ?? m.team ?? "").trim();
+        if (!team) continue;
+        const players = byTeam.get(team) ?? [];
+        players.push(m.rosterPlayer || m.displayName || m.name);
+        byTeam.set(team, players);
+    }
+    const teams = Array.from(byTeam.entries()).map(([name, players]) => ({ name, players }));
+    return teams.length >= 2 ? teams : [];
+}
+
+// --- Discord shootout ----------------------------------------------------------
+// Everyone plays for themselves, and whoever is in the room is playing: the host
+// never enters a roster. They set the evening up once — what's being played,
+// notes for the room, how a withdrawn buzz is handled, the packets — send the
+// link, and read. MODAQ keeps its game in step with the room: a player who joins
+// is in the game from the question being read, one who leaves (or drops off for
+// longer than a moment) stops hearing tossups from the next question.
+
+// A dropped connection isn't leaving. Laptops sleep, Wi-Fi blips and pages
+// reload; any of those comes back within seconds, and counting it as a
+// departure would pepper the game with leave/join pairs.
+const PRESENCE_GRACE_MS = 20000;
+
+const competitorName = (m: IRoomMember): string =>
+    (m.displayName || m.name || "").replace(/\s+/g, " ").trim().slice(0, 40);
+
+// The room's players as MODAQ's competitors, each marked present or not. Names
+// are the ones the server builds the shootout roster from (see the Klaxon
+// server's shootout.roster), so a buzz links to the right MODAQ player.
+function useShootoutPresence(roomState: IPublicRoomState | undefined): ILiveTeam[] {
+    const goneSince = React.useRef(new Map<string, number>());
+    const [tick, setTick] = React.useState(0);
+    const now = Date.now();
+    const byName = new Map<string, { name: string; present: boolean }>();
+    let wakeIn = Infinity;
+    for (const m of roomState?.members ?? []) {
+        if (m.role !== "player") continue;
+        const name = competitorName(m);
+        if (!name) continue;
+        let present = m.connected;
+        if (m.connected) {
+            goneSince.current.delete(m.id);
+        } else {
+            const since = goneSince.current.get(m.id) ?? now;
+            goneSince.current.set(m.id, since);
+            if (now - since < PRESENCE_GRACE_MS) {
+                present = true;
+                wakeIn = Math.min(wakeIn, since + PRESENCE_GRACE_MS - now);
+            }
+        }
+        // Two members under one name are one competitor (the server's roster
+        // merges them the same way); here if either is.
+        const key = name.toLowerCase();
+        const seen = byName.get(key);
+        byName.set(key, { name: seen?.name ?? name, present: (seen?.present ?? false) || present });
+    }
+    const list: ILiveTeam[] = Array.from(byName.values()).map((c) => ({
+        name: c.name,
+        players: [c.name],
+        present: c.present,
+    }));
+    const key = JSON.stringify(list);
+    // Look again when the first grace period runs out.
+    React.useEffect(() => {
+        if (wakeIn === Infinity) return;
+        const timer = setTimeout(() => setTick((t) => t + 1), wakeIn + 50);
+        return () => clearTimeout(timer);
+    }, [key, tick, wakeIn]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return React.useMemo(() => list, [key]);
+}
+
+const SCHEMES: { value: string; label: string }[] = [
+    { value: "15/10/-5", label: "15 / 10 / −5 (powers)" },
+    { value: "20/15/10/-5", label: "20 / 15 / 10 / −5 (superpowers)" },
+    { value: "20/10/0", label: "20 / 10 / 0 (no negs)" },
+];
+
+function shootoutGameFormat(scoring: { scheme: string; bonuses: boolean } | undefined): IGameFormat | undefined {
+    return gameFormatFor({ tossupScheme: scoring?.scheme ?? "15/10/-5", hasBonuses: scoring?.bonuses === true });
+}
+
+const WITHDRAW_CHOICES: { value: WithdrawMode; label: string; detail: string }[] = [
+    {
+        value: "free",
+        label: "Free withdraws",
+        detail: "A player can take back a buzz at no cost.",
+    },
+    {
+        value: "none",
+        label: "No withdraws",
+        detail: "A buzz stands once it's in.",
+    },
+    {
+        value: "typed",
+        label: "Type your answer first",
+        detail:
+            "Everyone waiting in the buzz queue types their answer before the player with the floor gives theirs. " +
+            "Withdrawing is only free if you hadn't committed to a different answer.",
+    },
+];
+
+interface ISetupRow {
+    key: string;
+    id?: string; // set once it's stored on the server
+    name: string;
+    tossups: number;
+    bonuses: number;
+    status: "reading" | "saved" | "error";
+    message?: string;
+}
+
+const newPacketId = (): string => `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+function ShootoutSetup(props: {
+    code: string;
+    client: KlaxonClient;
+    roomState: IPublicRoomState | undefined;
+    onDone: () => void;
+    onCancel?: () => void;
+}): JSX.Element {
+    const { code, client, roomState, onDone, onCancel } = props;
+    // Taken once: the form is the host's until they save it.
+    const [initial] = React.useState<IShootoutSession | null>(() => roomState?.shootout?.session ?? null);
+    const [name, setName] = React.useState(initial?.name ?? "");
+    const [notes, setNotes] = React.useState(initial?.notes ?? "");
+    const [withdraw, setWithdraw] = React.useState<WithdrawMode>(initial?.withdraw ?? "free");
+    const [scheme, setScheme] = React.useState(initial?.scoring.scheme ?? "15/10/-5");
+    const [bonuses, setBonuses] = React.useState(initial?.scoring.bonuses ?? false);
+    const [rows, setRows] = React.useState<ISetupRow[]>(() =>
+        (initial?.packets ?? []).map((p) => ({
+            key: p.id,
+            id: p.id,
+            name: p.name,
+            tossups: p.tossups,
+            bonuses: p.bonuses,
+            status: "saved",
+        }))
+    );
+    const [saving, setSaving] = React.useState(false);
+    const [msg, setMsg] = React.useState("");
+    const [copied, setCopied] = React.useState(false);
+
+    const update = (key: string, change: Partial<ISetupRow>): void =>
+        setRows((list) => list.map((r) => (r.key === key ? { ...r, ...change } : r)));
+
+    // Read the files one after another (the parser is shared, and a set of
+    // twelve packets shouldn't arrive as twelve simultaneous uploads), and
+    // store each on the server as soon as it's read.
+    const queue = React.useRef<Promise<void>>(Promise.resolve());
+    const onFiles = (files: File[]): void => {
+        setMsg("");
+        const added: ISetupRow[] = files.map((file) => ({
+            key: newPacketId(),
+            name: fileStem(file),
+            tossups: 0,
+            bonuses: 0,
+            status: "reading",
+            message: "Waiting…",
+        }));
+        setRows((list) => [...list, ...added]);
+        files.forEach((file, i) => {
+            const row = added[i];
+            queue.current = queue.current.then(async () => {
+                try {
+                    update(row.key, { message: "Reading…" });
+                    const { packet } = await readPacketFile(file, (text) => update(row.key, { message: text }));
+                    update(row.key, { message: "Saving…" });
+                    const id = row.key;
+                    await KlaxonApi.savePacket(code, client.token, id, packet);
+                    update(row.key, {
+                        id,
+                        status: "saved",
+                        message: undefined,
+                        tossups: packet.tossups.length,
+                        bonuses: packet.bonuses?.length ?? 0,
+                    });
+                } catch (e) {
+                    update(row.key, { status: "error", message: (e as Error).message });
+                }
+            });
+        });
+    };
+
+    const move = (key: string, by: number): void =>
+        setRows((list) => {
+            const i = list.findIndex((r) => r.key === key);
+            const j = i + by;
+            if (i < 0 || j < 0 || j >= list.length) return list;
+            const next = [...list];
+            [next[i], next[j]] = [next[j], next[i]];
+            return next;
+        });
+
+    const saved = rows.filter((r) => r.status === "saved" && r.id);
+    const reading = rows.some((r) => r.status === "reading");
+    const canSave = !saving && !reading && saved.length > 0;
+    const link = `${location.origin}/${code}`;
+
+    const save = async (): Promise<void> => {
+        setSaving(true);
+        setMsg("");
+        try {
+            const r = await client.massinger({
+                action: "shootout_session",
+                session: {
+                    name: name.trim(),
+                    notes,
+                    withdraw,
+                    scoring: { scheme, bonuses },
+                    packets: saved.map((p) => ({
+                        id: p.id,
+                        name: p.name.trim(),
+                        tossups: p.tossups,
+                        bonuses: p.bonuses,
+                    })),
+                },
+            });
+            if (r.error) throw new Error(r.error);
+            onDone();
+        } catch (e) {
+            setMsg("Couldn't save: " + (e as Error).message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // The buzz panel sits beside the form: people turn up (and start talking)
+    // while the host is still setting up, and the host should see them.
+    return (
+        <div className="mod-shell">
+            <div className="mod-main">
+                <div className="mod-center mod-setup so-setup">
+                    <h1>{initial ? "Edit the shootout" : "Set up a Discord shootout"}</h1>
+                    <p className="hint">
+                        Everyone plays for themselves. Whoever opens the link is in the game as soon as they join — no
+                        roster to enter — and the scores add up across every packet you read.
+                    </p>
+
+                    <label htmlFor="so-name">What are you playing?</label>
+                    <input
+                        id="so-name"
+                        type="text"
+                        maxLength={80}
+                        placeholder="e.g. 2026 Fall Novice playtest"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                    />
+
+                    <label htmlFor="so-notes">Notes for the players</label>
+                    <textarea
+                        id="so-notes"
+                        rows={4}
+                        maxLength={2000}
+                        placeholder="What kind of questions these are, what you're playtesting, anything else the room should know."
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                    />
+                    <p className="hint">Shown on every player&apos;s screen for the whole session.</p>
+
+                    <label>Packets</label>
+                    <PacketDrop
+                        multiple
+                        pageWide
+                        onFiles={onFiles}
+                        title="Drop the packets here, in any order"
+                        hint="PDFs, Word documents (.docx), or packet JSON — reorder them below"
+                    />
+                    {rows.length > 0 && (
+                        <ol className="so-packets">
+                            {rows.map((r, i) => (
+                                <li key={r.key} className={`so-packet ${r.status}`}>
+                                    <span className="so-packet-num">{i + 1}.</span>
+                                    <input
+                                        type="text"
+                                        aria-label={`Name of packet ${i + 1}`}
+                                        maxLength={80}
+                                        value={r.name}
+                                        onChange={(e) => update(r.key, { name: e.target.value })}
+                                    />
+                                    <span className="so-packet-info">
+                                        {r.status === "saved"
+                                            ? `${r.tossups} tossups${r.bonuses ? ` · ${r.bonuses} bonuses` : ""}`
+                                            : r.message}
+                                    </span>
+                                    <span className="so-packet-actions">
+                                        <button
+                                            onClick={() => move(r.key, -1)}
+                                            disabled={i === 0}
+                                            aria-label="Move up"
+                                            title="Move up"
+                                        >
+                                            ↑
+                                        </button>
+                                        <button
+                                            onClick={() => move(r.key, 1)}
+                                            disabled={i === rows.length - 1}
+                                            aria-label="Move down"
+                                            title="Move down"
+                                        >
+                                            ↓
+                                        </button>
+                                        <button
+                                            onClick={() => setRows((list) => list.filter((x) => x.key !== r.key))}
+                                            disabled={r.status === "reading"}
+                                            aria-label="Remove"
+                                            title="Remove"
+                                        >
+                                            ✕
+                                        </button>
+                                    </span>
+                                </li>
+                            ))}
+                        </ol>
+                    )}
+
+                    <fieldset className="so-withdraw">
+                        <legend>Withdrawing a buzz</legend>
+                        {WITHDRAW_CHOICES.map((c) => (
+                            <label key={c.value} className={withdraw === c.value ? "so-choice selected" : "so-choice"}>
+                                <input
+                                    type="radio"
+                                    name="so-withdraw"
+                                    value={c.value}
+                                    checked={withdraw === c.value}
+                                    onChange={() => setWithdraw(c.value)}
+                                />
+                                <span>
+                                    <strong>{c.label}</strong>
+                                    <span className="so-choice-detail">{c.detail}</span>
+                                </span>
+                            </label>
+                        ))}
+                    </fieldset>
+
+                    <div className="so-scoring">
+                        <label htmlFor="so-scheme">Scoring</label>
+                        <select id="so-scheme" value={scheme} onChange={(e) => setScheme(e.target.value)}>
+                            {SCHEMES.map((s) => (
+                                <option key={s.value} value={s.value}>
+                                    {s.label}
+                                </option>
+                            ))}
+                        </select>
+                        <label className="so-check">
+                            <input type="checkbox" checked={bonuses} onChange={(e) => setBonuses(e.target.checked)} />{" "}
+                            Read bonuses too
+                        </label>
+                    </div>
+
+                    <label>Invite link — post it in Discord</label>
+                    <div className="so-link">
+                        <code>{link}</code>
+                        <button
+                            onClick={async () => {
+                                try {
+                                    await navigator.clipboard.writeText(link);
+                                } catch {
+                                    /* clipboard may be blocked */
+                                }
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 1200);
+                            }}
+                        >
+                            {copied ? "Copied!" : "Copy"}
+                        </button>
+                    </div>
+
+                    <div className="so-actions">
+                        <button className="primary" disabled={!canSave} onClick={save}>
+                            {saving ? "Saving…" : initial ? "Save changes" : "Open the room →"}
+                        </button>
+                        {onCancel && <button onClick={onCancel}>Cancel</button>}
+                    </div>
+                    <p className="msg">
+                        {msg ||
+                            (reading
+                                ? "Reading the packets…"
+                                : saved.length === 0
+                                ? "Add at least one packet to start."
+                                : "")}
+                    </p>
+                </div>
+            </div>
+            <div className="mod-side">
+                <BuzzPanel client={client} state={roomState} />
+            </div>
+        </div>
+    );
+}
+
+function ShootoutReading(props: {
+    code: string;
+    client: KlaxonClient;
+    roomState: IPublicRoomState | undefined;
+    onEditSession: () => void;
+}): JSX.Element {
+    const { code, client, roomState, onEditSession } = props;
+    const session = roomState?.shootout?.session ?? null;
+    const onBuzzJudged = useJudgedHandler(client, roomState);
+    const buzzedInPlayer = useBuzzedInPlayer(roomState);
+    const syncGame = useGameSync(client);
+    const shared = useSharedGame(client, "lite");
+    const competitors = useShootoutPresence(roomState);
+
+    const [gameLoaded, setGameLoaded] = React.useState<boolean | undefined>(undefined);
+    const [hostGame, setHostGame] = React.useState<IHostNewGame | undefined>(undefined);
+    const [busy, setBusy] = React.useState("");
+    const [msg, setMsg] = React.useState("");
+    // Which packet the game on screen is, and how far it has got.
+    const gamePacket = React.useRef<string | null>(session?.current ?? null);
+    const lastGame = React.useRef<{ qbj: IMatch; inProgress: boolean; question?: number } | undefined>(undefined);
+    const [progress, setProgress] = React.useState<{ question: number; inProgress: boolean } | undefined>(undefined);
+
+    const index = session?.currentIndex ?? -1;
+    const packets = session?.packets ?? [];
+    const next = packets[index + 1];
+    const scheme = session?.scoring.scheme ?? "15/10/-5";
+    const withBonuses = session?.scoring.bonuses === true;
+    const format = React.useMemo(() => shootoutGameFormat({ scheme, bonuses: withBonuses }), [scheme, withBonuses]);
+
+    const startPacket = React.useCallback(
+        async (i: number): Promise<void> => {
+            const p = packets[i];
+            if (!p) return;
+            setBusy(`Loading ${p.name}…`);
+            setMsg("");
+            try {
+                const packet = await KlaxonApi.getPacket<IPacket>(code, client.token, p.id);
+                if (gameLoaded) {
+                    await saveLast();
+                    await archiveCurrentGame(client);
+                }
+                await client.massinger({ action: "shootout_current", packet: p.id });
+                gamePacket.current = p.id;
+                lastGame.current = undefined;
+                setProgress(undefined);
+                // Whoever is here now; anyone who arrives later is added as they do.
+                setHostGame({
+                    packet,
+                    packetName: p.name,
+                    teams: competitors.filter((c) => c.present),
+                    gameFormat: format,
+                });
+            } catch (e) {
+                setMsg(`Couldn't load ${p.name}: ${(e as Error).message}`);
+            } finally {
+                setBusy("");
+            }
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [packets, code, client, gameLoaded, competitors, format]
+    );
+
+    // A fresh room: the first packet (or the one the session says is next)
+    // goes straight in. The reader just reads.
+    const autoStarted = React.useRef(false);
+    React.useEffect(() => {
+        if (gameLoaded === false && !autoStarted.current && packets.length > 0) {
+            autoStarted.current = true;
+            startPacket(Math.max(index, 0));
+        }
+    }, [gameLoaded, packets.length, index, startPacket]);
+
+    // The latest state of the game, kept as the packet's game on the server:
+    // that's what the export at the end is built from.
+    async function saveLast(): Promise<void> {
+        const g = lastGame.current;
+        const id = gamePacket.current;
+        if (!g || !id) return;
+        try {
+            await KlaxonApi.saveExport(code, client.token, id, g.qbj, g.inProgress, g.question);
+        } catch {
+            /* the live sync has saved all but the last change */
+        }
+    }
+
+    // Read through a ref: the session is a new object on every room broadcast,
+    // and a callback that changed with it would have MODAQ re-subscribe — and
+    // drop its pending (debounced) update — every time anyone so much as buzzed.
+    const packetsRef = React.useRef(packets);
+    packetsRef.current = packets;
+    const onGameUpdate = React.useCallback(
+        (
+            qbj: IMatch,
+            inProgress?: boolean,
+            currentQuestion?: number,
+            hasBonuses?: boolean,
+            protests?: IGameUpdateProtest[],
+            categories?: string[],
+            answers?: string[],
+            questions?: string[]
+        ) => {
+            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions);
+            const id = gamePacket.current;
+            const p = packetsRef.current.find((x) => x.id === id);
+            // A late update from the previous packet's game mustn't land on this one.
+            if (!id || (p && qbj.packets && qbj.packets !== p.name)) return;
+            lastGame.current = { qbj, inProgress: inProgress === true, question: currentQuestion };
+            setProgress({ question: currentQuestion ?? 0, inProgress: inProgress === true });
+            KlaxonApi.saveExport(code, client.token, id, qbj, inProgress === true, currentQuestion).catch(() => {
+                /* the next change saves it again */
+            });
+        },
+        [syncGame, code, client]
+    );
+
+    const goNext = (): void => {
+        if (!next) {
+            onEditSession();
+            return;
+        }
+        const current = packets[index];
+        if (
+            current &&
+            progress?.inProgress &&
+            !window.confirm(
+                `${current.name} isn't finished (question ${progress.question} of ${current.tossups}). Start ${next.name} anyway?`
+            )
+        ) {
+            return;
+        }
+        startPacket(index + 1);
+    };
+    // MODAQ's New game command does the same, through a callback that never changes.
+    const goNextRef = React.useRef(goNext);
+    goNextRef.current = goNext;
+    const onNewGameRequested = React.useCallback(() => goNextRef.current(), []);
+
+    const exportAll = async (): Promise<void> => {
+        setBusy("Preparing the export…");
+        await saveLast();
+        setBusy("");
+        const a = document.createElement("a");
+        a.href = KlaxonApi.shootoutExportUrl(code, client.token);
+        a.download = "";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    };
+
+    const current = packets[index];
+    const label = session
+        ? `${session.name}${current ? ` · Packet ${index + 1} of ${packets.length}: ${current.name}` : ""}`
+        : `Room ${code}`;
+    const here = competitors.filter((c) => c.present).length;
+
+    return (
+        <div className="mod-shell">
+            <div className="mod-main">
+                <RoomToolbar code={code} label={label}>
+                    <button className="primary" onClick={goNext} disabled={busy !== "" || gameLoaded === undefined}>
+                        {next ? `Next packet: ${next.name} →` : "Add more packets"}
+                    </button>
+                    <button
+                        onClick={exportAll}
+                        disabled={busy !== "" || index < 0}
+                        title="Packets and games, laid out for quizbowlbuzzpoints.com"
+                    >
+                        Export for buzzpoints ⤓
+                    </button>
+                    <button onClick={onEditSession} disabled={busy !== ""}>
+                        Edit session
+                    </button>
+                </RoomToolbar>
+                <DirectorMessages client={client} />
+                {(busy || msg) && <p className={msg ? "pk-error so-status" : "so-status"}>{msg || busy}</p>}
+                {gameLoaded && here === 0 && (
+                    <p className="so-status">
+                        Nobody has joined yet — send the player link. Players are added to the game as they arrive.
+                    </p>
+                )}
+                <KlaxonModaq
                     applyStylingToRoot={false}
                     buildVersion={__BUILD_VERSION__}
-                    yappServiceUrl={YAPP_SERVICE_URL}
-                    packetParserLink={PACKET_PARSER_LINK}
                     persistState={true}
                     storeName={`klaxon-lite-${code}`}
-                    onGameUpdate={syncGame}
+                    onGameUpdate={onGameUpdate}
                     onBuzzJudged={onBuzzJudged}
                     buzzedInPlayer={buzzedInPlayer}
-                    onExported={() => {
-                        ending.onExported();
-                        downloadFullBuzz(client);
-                    }}
                     onPersistedState={shared.onPersistedState}
                     remoteState={shared.remoteState}
+                    hostNewGame={hostGame}
+                    onNewGameRequested={onNewGameRequested}
+                    onGameLoadedChange={setGameLoaded}
+                    liveTeams={competitors}
                 />
             </div>
             <div className="mod-side">
@@ -2378,7 +3157,12 @@ function AccountGate(props: { tcode: string; onApproved: () => void; strict?: bo
         setChecking(true);
         let isIn = false;
         if (sessionToken()) {
-            try { await KlaxonApi.me(); isIn = true; } catch { localStorage.removeItem("bz_sessionToken"); }
+            try {
+                await KlaxonApi.me();
+                isIn = true;
+            } catch {
+                localStorage.removeItem("bz_sessionToken");
+            }
         }
         setLoggedIn(isIn);
         if (isIn) {
@@ -2386,13 +3170,20 @@ function AccountGate(props: { tcode: string; onApproved: () => void; strict?: bo
                 const a = await KlaxonApi.getAccess(tcode);
                 const effective = strict ? a.memberStatus ?? null : a.status;
                 setStatus(effective);
-                if (effective === "approved") { onApproved(); return; }
-            } catch { /* ignore */ }
+                if (effective === "approved") {
+                    onApproved();
+                    return;
+                }
+            } catch {
+                /* ignore */
+            }
         }
         setChecking(false);
     }, [tcode, onApproved, strict]);
 
-    React.useEffect(() => { refresh(); }, [refresh]);
+    React.useEffect(() => {
+        refresh();
+    }, [refresh]);
 
     const submit = async (): Promise<void> => {
         setMsg("");
@@ -2402,24 +3193,42 @@ function AccountGate(props: { tcode: string; onApproved: () => void; strict?: bo
             setPassword("");
             await refresh();
         } catch (e) {
-            setMsg((e as Error).message === "username_taken" ? "That username is taken." :
-                (e as Error).message === "bad_credentials" ? "Wrong username or password." :
-                (e as Error).message === "bad_password" ? "Password must be at least 6 characters." :
-                (e as Error).message === "bad_username" ? "Username must be 3–30 letters/numbers." :
-                "Could not sign in: " + (e as Error).message);
+            setMsg(
+                (e as Error).message === "username_taken"
+                    ? "That username is taken."
+                    : (e as Error).message === "bad_credentials"
+                    ? "Wrong username or password."
+                    : (e as Error).message === "bad_password"
+                    ? "Password must be at least 6 characters."
+                    : (e as Error).message === "bad_username"
+                    ? "Username must be 3–30 letters/numbers."
+                    : "Could not sign in: " + (e as Error).message
+            );
         }
     };
 
     const request = async (): Promise<void> => {
         setMsg("");
-        try { const r = await KlaxonApi.requestAccess(tcode); setStatus(r.status); }
-        catch (e) { setMsg("Could not request access: " + (e as Error).message); }
+        try {
+            const r = await KlaxonApi.requestAccess(tcode);
+            setStatus(r.status);
+        } catch (e) {
+            setMsg("Could not request access: " + (e as Error).message);
+        }
     };
 
-    const logout = (): void => { localStorage.removeItem("bz_sessionToken"); setLoggedIn(false); setStatus(null); };
+    const logout = (): void => {
+        localStorage.removeItem("bz_sessionToken");
+        setLoggedIn(false);
+        setStatus(null);
+    };
 
     if (checking) {
-        return <div className="mod-center"><p>Checking access…</p></div>;
+        return (
+            <div className="mod-center">
+                <p>Checking access…</p>
+            </div>
+        );
     }
 
     if (!loggedIn) {
@@ -2428,17 +3237,29 @@ function AccountGate(props: { tcode: string; onApproved: () => void; strict?: bo
                 <h1>Reader sign-in</h1>
                 <p className="hint">This tournament requires an approved reader account to read its packets.</p>
                 <div className="schedule-rounds">
-                    <button onClick={() => setMode("login")} disabled={mode === "login"}>Log in</button>
-                    <button onClick={() => setMode("register")} disabled={mode === "register"}>Create account</button>
+                    <button onClick={() => setMode("login")} disabled={mode === "login"}>
+                        Log in
+                    </button>
+                    <button onClick={() => setMode("register")} disabled={mode === "register"}>
+                        Create account
+                    </button>
                 </div>
                 <label htmlFor="acct-user">Username</label>
                 <input id="acct-user" type="text" value={username} onChange={(e) => setUsername(e.target.value)} />
                 <label htmlFor="acct-pass">Password</label>
-                <input id="acct-pass" type="password" value={password}
+                <input
+                    id="acct-pass"
+                    type="password"
+                    value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") submit(); }} />
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") submit();
+                    }}
+                />
                 <div>
-                    <button className="primary" onClick={submit}>{mode === "register" ? "Create account" : "Log in"}</button>
+                    <button className="primary" onClick={submit}>
+                        {mode === "register" ? "Create account" : "Log in"}
+                    </button>
                 </div>
                 <p className="msg">{msg}</p>
             </div>
@@ -2450,19 +3271,39 @@ function AccountGate(props: { tcode: string; onApproved: () => void; strict?: bo
             <h1>Reader access</h1>
             {status === "pending" && (
                 <>
-                    <p>Your request is <strong>pending</strong> the tournament director&apos;s approval.</p>
-                    <div><button className="primary" onClick={refresh}>Check again</button></div>
+                    <p>
+                        Your request is <strong>pending</strong> the tournament director&apos;s approval.
+                    </p>
+                    <div>
+                        <button className="primary" onClick={refresh}>
+                            Check again
+                        </button>
+                    </div>
                 </>
             )}
             {status === "denied" && <p className="msg">Your access request was denied by the director.</p>}
-            {(status == null) && (
+            {status == null && (
                 <>
                     <p>You&apos;re signed in. Request access to read this tournament&apos;s packets.</p>
-                    <div><button className="primary" onClick={request}>Request access</button></div>
+                    <div>
+                        <button className="primary" onClick={request}>
+                            Request access
+                        </button>
+                    </div>
                 </>
             )}
             <p className="msg">{msg}</p>
-            <p className="hint"><a href="#" onClick={(e) => { e.preventDefault(); logout(); }}>Sign out</a></p>
+            <p className="hint">
+                <a
+                    href="#"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        logout();
+                    }}
+                >
+                    Sign out
+                </a>
+            </p>
         </div>
     );
 }

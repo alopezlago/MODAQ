@@ -47,6 +47,8 @@ export interface IRoomSettings {
     playerAlerts?: boolean;
     modaqMode?: boolean;
     modaqLite?: boolean;
+    shootout?: boolean;
+    lockedAnswers?: boolean;
 }
 
 // One subcategory on a MASSINGER pick/ban board. `indexes` are 0-based tossup
@@ -100,9 +102,29 @@ export interface IPublicRoomState {
     // the ACF rules the arguments are made in front of everyone.
     protests?: IProtest[];
     // A Discord shootout: everyone competing for themselves. Null otherwise.
-    shootout?: { rows: { name: string; banked: number; current: number; total: number }[]; packets?: number } | null;
+    shootout?: {
+        rows: { name: string; banked: number; current: number; total: number }[];
+        packets?: number;
+        // What the host set up; null until they have.
+        session?: IShootoutSession | null;
+    } | null;
     // The room's chat, which in a shootout is why half the people are there.
     chat?: IChatMessage[];
+}
+
+export type WithdrawMode = "free" | "none" | "typed";
+
+// A shootout's plan for the evening, as the host set it up (see the Klaxon
+// server's shootout.normalizeSession). Names the packets; their contents are
+// stored as the room's packets, under the packet id.
+export interface IShootoutSession {
+    name: string;
+    notes: string;
+    withdraw: WithdrawMode;
+    scoring: { scheme: string; bonuses: boolean };
+    packets: { id: string; name: string; tossups: number; bonuses: number }[];
+    current: string | null; // id of the packet being read
+    currentIndex: number; // its place in `packets`, -1 before the first
 }
 
 // One line of the room's chat. Nothing to do with answering — see the Klaxon
@@ -531,6 +553,10 @@ export const KlaxonApi = {
     // Download URL for the room's full buzz log (every buzz attempt, ordered).
     fullBuzzUrl(code: string, token: string | null): string {
         return `/api/rooms/${code}/fullbuzz?${q(token)}`;
+    },
+    // A shootout's packets and games, laid out for quizbowlbuzzpoints.com.
+    shootoutExportUrl(code: string, token: string | null): string {
+        return `/api/rooms/${code}/shootout/export.zip?${q(token)}`;
     },
     listGames(code: string, token: string | null): Promise<{ games: IArchivedGame[] }> {
         return rest("GET", `/api/rooms/${code}/games?${q(token)}`);

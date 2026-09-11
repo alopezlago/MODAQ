@@ -19,8 +19,8 @@ body {
 }
 
 .mod-side {
-    border-left: 1px solid #e1dfdd;
-    background: #faf9f8;
+    border-left: 1px solid var(--m-line, #e1dfdd);
+    background: var(--m-panel, #faf9f8);
     padding: 12px 14px;
     position: sticky;
     top: 0;
@@ -37,7 +37,7 @@ body {
         position: static;
         max-height: none;
         border-left: 0;
-        border-top: 1px solid #e1dfdd;
+        border-top: 1px solid var(--m-line, #e1dfdd);
     }
 }
 
@@ -54,12 +54,12 @@ body {
     margin-bottom: 10px;
 }
 .klaxon-phase.ready {
-    background: #edebe9;
-    color: #444;
+    background: var(--m-subtle-2, #edebe9);
+    color: var(--m-text-2, #444);
 }
 .klaxon-phase.buzzed {
-    background: #d13438;
-    color: #fff;
+    background: var(--m-bad-fill, #d13438);
+    color: var(--m-on-strong, #fff);
 }
 /* A player reporting that the buzzer was never cleared — deliberately loud. */
 .klaxon-stuck {
@@ -70,19 +70,19 @@ body {
     margin-bottom: 10px;
     padding: 8px 10px;
     border-radius: 8px;
-    background: #fde7e9;
-    border: 1px solid #d13438;
-    color: #a4262c;
+    background: var(--m-bad-bg, #fde7e9);
+    border: 1px solid var(--m-bad-line, #d13438);
+    color: var(--m-bad, #a4262c);
     font-size: 0.85rem;
     font-weight: 600;
 }
 .klaxon-stuck button {
     flex: none;
     padding: 4px 8px;
-    border: 1px solid #d13438;
+    border: 1px solid var(--m-bad-line, #d13438);
     border-radius: 6px;
-    background: #fff;
-    color: #a4262c;
+    background: var(--m-surface, #fff);
+    color: var(--m-bad, #a4262c);
     cursor: pointer;
     font-size: 0.78rem;
 }
@@ -97,7 +97,7 @@ body {
     align-items: baseline;
     gap: 6px;
     padding: 4px 6px;
-    border-bottom: 1px solid #ececec;
+    border-bottom: 1px solid var(--m-line-soft, #ececec);
     /* Player names are whatever a player typed, so a long one wraps inside the
        row instead of pushing the buzz margin out of the panel. */
     min-width: 0;
@@ -116,15 +116,15 @@ body {
 }
 .klaxon-queue li.head {
     font-weight: 700;
-    background: #fff4ce;
+    background: var(--m-warn-bg, #fff4ce);
 }
 .klaxon-queue li.empty,
 .klaxon-players li.empty {
-    color: #888;
+    color: var(--m-muted-2, #888);
     justify-content: flex-start;
 }
 .klaxon-queue .qmargin {
-    color: #888;
+    color: var(--m-muted-2, #888);
     font-variant-numeric: tabular-nums;
 }
 .klaxon-controls {
@@ -135,9 +135,9 @@ body {
 }
 .klaxon-controls button {
     padding: 8px 10px;
-    border: 1px solid #8a8886;
+    border: 1px solid var(--m-control-line, #8a8886);
     border-radius: 6px;
-    background: #fff;
+    background: var(--m-surface, #fff);
     cursor: pointer;
     font-size: 0.9rem;
 }
@@ -156,18 +156,18 @@ body {
 }
 .klaxon-players li {
     padding: 3px 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--m-line-soft, #f0f0f0);
 }
 .klaxon-players li.gone {
-    color: #d13438;
+    color: var(--m-bad, #d13438);
 }
 .klaxon-offline {
-    color: #d13438;
+    color: var(--m-bad, #d13438);
     font-weight: 700;
     font-size: 0.75rem;
 }
 .klaxon-hint {
-    color: #666;
+    color: var(--m-muted, #666);
     font-size: 0.78rem;
     margin-top: 12px;
 }
@@ -205,8 +205,8 @@ body {
     padding: 10px 18px;
     font-size: 1rem;
     font-weight: 700;
-    background: #0078d4;
-    color: #fff;
+    background: var(--m-accent-fill, #0078d4);
+    color: var(--m-on-strong, #fff);
     border: 0;
     border-radius: 6px;
     cursor: pointer;
@@ -223,18 +223,18 @@ body {
 }
 .mod-setup .schedule-rounds button {
     padding: 6px 10px;
-    border: 1px solid #8a8886;
+    border: 1px solid var(--m-control-line, #8a8886);
     border-radius: 6px;
-    background: #fff;
+    background: var(--m-surface, #fff);
     cursor: pointer;
 }
 .mod-setup .msg {
     margin-top: 12px;
-    color: #d13438;
+    color: var(--m-bad, #d13438);
     min-height: 1.2em;
 }
 .mod-setup .hint {
-    color: #666;
+    color: var(--m-muted, #666);
     font-size: 0.85rem;
 }
 .mod-changebar {
@@ -243,16 +243,16 @@ body {
     justify-content: space-between;
     gap: 10px;
     padding: 6px 10px;
-    background: #f3f2f1;
+    background: var(--m-subtle, #f3f2f1);
     border-radius: 6px;
     margin-bottom: 8px;
     font-size: 0.9rem;
 }
 .mod-changebar button {
     padding: 6px 10px;
-    border: 1px solid #8a8886;
+    border: 1px solid var(--m-control-line, #8a8886);
     border-radius: 6px;
-    background: #fff;
+    background: var(--m-surface, #fff);
     cursor: pointer;
 }
 .mod-toolbar-actions {
@@ -262,7 +262,7 @@ body {
     flex-wrap: wrap;
 }
 .mod-toolbar-actions a {
-    color: #0078d4;
+    color: var(--m-accent, #0078d4);
     text-decoration: none;
     font-size: 0.9rem;
     white-space: nowrap;
@@ -288,8 +288,8 @@ body {
     justify-content: space-between;
     gap: 10px;
     padding: 8px 12px;
-    background: #fff4ce;
-    border: 1px solid #f0c36d;
+    background: var(--m-warn-bg, #fff4ce);
+    border: 1px solid var(--m-warn-line, #f0c36d);
     border-radius: 6px;
     margin-bottom: 8px;
     font-size: 0.95rem;
@@ -299,9 +299,9 @@ body {
 }
 .mod-director-msg button {
     padding: 6px 10px;
-    border: 1px solid #8a8886;
+    border: 1px solid var(--m-control-line, #8a8886);
     border-radius: 6px;
-    background: #fff;
+    background: var(--m-surface, #fff);
     cursor: pointer;
     flex-shrink: 0;
 }
@@ -315,16 +315,16 @@ body {
     justify-content: space-between;
     align-items: center;
     gap: 12px;
-    background: #fff4ce;
-    border: 1px solid #e1dfdd;
+    background: var(--m-warn-bg, #fff4ce);
+    border: 1px solid var(--m-line, #e1dfdd);
     border-radius: 8px;
     padding: 10px 12px;
     margin-bottom: 10px;
 }
 .ms-clockline.expired {
-    background: #fde7e9;
-    border-color: #d13438;
-    color: #a4262c;
+    background: var(--m-bad-bg, #fde7e9);
+    border-color: var(--m-bad-line, #d13438);
+    color: var(--m-bad, #a4262c);
     animation: ms-blink 1s steps(2) infinite;
 }
 @keyframes ms-blink {
@@ -342,9 +342,9 @@ body {
     margin-bottom: 8px;
 }
 .ms-turn.active {
-    background: #0b6a0b;
-    color: #fff;
-    border-color: #0b6a0b;
+    background: var(--m-ok-fill, #0b6a0b);
+    color: var(--m-on-strong, #fff);
+    border-color: var(--m-ok-line, #0b6a0b);
 }
 .ms-list {
     list-style: none;
@@ -355,22 +355,22 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
-    border-bottom: 1px solid #ececec;
+    border-bottom: 1px solid var(--m-line-soft, #ececec);
     padding: 5px 6px;
 }
 .ms-list li.banned .ms-label {
     text-decoration: line-through;
-    color: #888;
+    color: var(--m-muted-2, #888);
 }
 .ms-list li.protected {
-    background: #f1faf1;
+    background: var(--m-ok-bg, #f1faf1);
 }
 .ms-list .ms-label {
     flex: 1;
 }
 .ms-list .ms-mark {
     font-size: 0.82rem;
-    color: #666;
+    color: var(--m-muted, #666);
     white-space: nowrap;
 }
 .ms-actions {
@@ -380,14 +380,14 @@ body {
 .ms-actions button,
 .ms-controls button {
     cursor: pointer;
-    background: #fff;
-    border: 1px solid #8a8886;
+    background: var(--m-surface, #fff);
+    border: 1px solid var(--m-control-line, #8a8886);
     border-radius: 6px;
     padding: 4px 10px;
     font-size: 0.85rem;
 }
 .ms-actions button:hover {
-    background: #f3f2f1;
+    background: var(--m-subtle, #f3f2f1);
 }
 .ms-controls {
     display: flex;
@@ -397,14 +397,14 @@ body {
 }
 .ms-controls button.primary,
 .ms-controls .primary {
-    background: #0b6a0b;
-    color: #fff;
-    border-color: #0b6a0b;
+    background: var(--m-ok-fill, #0b6a0b);
+    color: var(--m-on-strong, #fff);
+    border-color: var(--m-ok-line, #0b6a0b);
     font-weight: 600;
 }
 .ms-doneline {
     font-weight: 700;
-    color: #0b6a0b;
+    color: var(--m-ok, #0b6a0b);
 }
 
 /* --- MASSINGER: teams step, connected players, dialog summary --- */
@@ -413,8 +413,8 @@ body {
     justify-content: space-between;
     align-items: center;
     gap: 12px;
-    background: #f3f9f3;
-    border: 1px solid #0b6a0b;
+    background: var(--m-ok-bg, #f3f9f3);
+    border: 1px solid var(--m-ok-line, #0b6a0b);
     border-radius: 8px;
     padding: 8px 12px;
     margin-bottom: 10px;
@@ -433,7 +433,7 @@ body {
     display: flex;
     align-items: baseline;
     gap: 8px;
-    border-bottom: 1px solid #ececec;
+    border-bottom: 1px solid var(--m-line-soft, #ececec);
     padding: 4px 2px;
     font-size: 0.85rem;
 }
@@ -444,32 +444,32 @@ body {
     flex: 1;
 }
 .ms-alias {
-    color: #888;
+    color: var(--m-muted-2, #888);
     font-size: 0.78rem;
 }
 .ms-player-team {
-    color: #666;
+    color: var(--m-muted, #666);
     font-size: 0.78rem;
     white-space: nowrap;
 }
 .ms-player-team.picking {
-    color: #0b6a0b;
+    color: var(--m-ok, #0b6a0b);
     font-weight: 700;
 }
 .ms-unlinked {
-    color: #a4262c;
+    color: var(--m-bad, #a4262c);
     font-weight: 400;
     font-size: 0.8rem;
 }
 .ms-last {
     margin: 0 0 10px;
     font-size: 0.85rem;
-    color: #444;
+    color: var(--m-text-2, #444);
 }
 .ms-summary {
-    border: 1px solid #0b6a0b;
+    border: 1px solid var(--m-ok-line, #0b6a0b);
     border-radius: 8px;
-    background: #f3f9f3;
+    background: var(--m-ok-bg, #f3f9f3);
     padding: 10px 12px;
     margin-bottom: 12px;
 }
@@ -482,8 +482,8 @@ body {
 }
 .ms-summary-edit {
     cursor: pointer;
-    background: #fff;
-    border: 1px solid #0b6a0b;
+    background: var(--m-surface, #fff);
+    border: 1px solid var(--m-ok-line, #0b6a0b);
     border-radius: 6px;
     padding: 4px 10px;
     font-size: 0.82rem;
@@ -499,7 +499,7 @@ body {
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #555;
+    color: var(--m-muted, #555);
 }
 .ms-summary-cols ul {
     margin: 0;
@@ -507,10 +507,10 @@ body {
 }
 .ms-summary-cols p {
     margin: 0;
-    color: #777;
+    color: var(--m-muted-2, #777);
 }
 .ms-summary-by {
-    color: #666;
+    color: var(--m-muted, #666);
 }
 
 /* --- packet chooser on the setup screen --- */
@@ -526,46 +526,46 @@ body {
     gap: 10px;
     cursor: pointer;
     text-align: left;
-    background: #fff;
-    border: 1px solid #8a8886;
+    background: var(--m-surface, #fff);
+    border: 1px solid var(--m-control-line, #8a8886);
     border-radius: 6px;
     padding: 8px 12px;
     font-size: 0.9rem;
 }
 .packet-choice:hover {
-    background: #f3f2f1;
+    background: var(--m-subtle, #f3f2f1);
 }
 .packet-choice.selected {
-    border-color: #0b6a0b;
+    border-color: var(--m-ok-line, #0b6a0b);
     border-width: 2px;
-    background: #f1faf1;
+    background: var(--m-ok-bg, #f1faf1);
 }
 .packet-choice-check {
-    color: #0b6a0b;
+    color: var(--m-ok, #0b6a0b);
     font-size: 1rem;
 }
 .packet-choice-sub {
     display: block;
-    color: #666;
+    color: var(--m-muted, #666);
     font-size: 0.78rem;
 }
 .packet-status {
-    background: #fff4ce;
-    border: 1px solid #e1dfdd;
+    background: var(--m-warn-bg, #fff4ce);
+    border: 1px solid var(--m-line, #e1dfdd);
     border-radius: 6px;
     padding: 8px 10px;
     margin: 6px 0 4px;
     font-size: 0.85rem;
 }
 .packet-status.ready {
-    background: #f1faf1;
-    border-color: #0b6a0b;
+    background: var(--m-ok-bg, #f1faf1);
+    border-color: var(--m-ok-line, #0b6a0b);
 }
 .mod-setup .chip.selected,
 .mod-setup .schedule-rounds button.selected {
-    background: #0b6a0b;
-    color: #fff;
-    border-color: #0b6a0b;
+    background: var(--m-ok-fill, #0b6a0b);
+    color: var(--m-on-strong, #fff);
+    border-color: var(--m-ok-line, #0b6a0b);
     font-weight: 600;
 }
 
@@ -574,8 +574,8 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
-    background: #faf9f8;
-    border: 1px solid #e1dfdd;
+    background: var(--m-panel, #faf9f8);
+    border: 1px solid var(--m-line, #e1dfdd);
     border-radius: 8px;
     padding: 8px 12px;
     margin-bottom: 12px;
@@ -587,8 +587,8 @@ body {
 }
 .lobby-link button {
     cursor: pointer;
-    background: #fff;
-    border: 1px solid #8a8886;
+    background: var(--m-surface, #fff);
+    border: 1px solid var(--m-control-line, #8a8886);
     border-radius: 6px;
     padding: 5px 10px;
     font-size: 0.85rem;
@@ -604,7 +604,7 @@ body {
 .lobby-number {
     font-size: 2rem;
     font-weight: 700;
-    color: #0b6a0b;
+    color: var(--m-ok, #0b6a0b);
     line-height: 1;
 }
 
@@ -619,57 +619,57 @@ body {
     flex-wrap: wrap;
 }
 .ms-team-select {
-    border: 1px solid #8a8886;
+    border: 1px solid var(--m-control-line, #8a8886);
     border-radius: 5px;
-    background: #fff;
+    background: var(--m-surface, #fff);
     padding: 2px 4px;
     font-size: 0.78rem;
     max-width: 46%;
 }
 .ms-team-select.picking {
-    border-color: #0b6a0b;
-    background: #f1faf1;
+    border-color: var(--m-ok-line, #0b6a0b);
+    background: var(--m-ok-bg, #f1faf1);
     font-weight: 700;
 }
 .ms-captain {
     cursor: pointer;
-    background: #fff;
-    border: 1px solid #8a8886;
+    background: var(--m-surface, #fff);
+    border: 1px solid var(--m-control-line, #8a8886);
     border-radius: 999px;
     padding: 1px 8px;
     margin-left: auto;
     font-size: 0.72rem;
-    color: #666;
+    color: var(--m-muted, #666);
 }
 .ms-captain.is-captain {
-    background: #fff4ce;
-    border-color: #b58a00;
-    color: #6b4e00;
+    background: var(--m-warn-bg, #fff4ce);
+    border-color: var(--m-warn-line, #b58a00);
+    color: var(--m-warn-text, #6b4e00);
     font-weight: 700;
 }
 .ms-control-live {
-    border: 1px solid #8a8886;
+    border: 1px solid var(--m-control-line, #8a8886);
     border-radius: 6px;
-    background: #fff;
+    background: var(--m-surface, #fff);
     padding: 3px 6px;
     font-size: 0.82rem;
 }
 .ms-captain-name {
-    color: #6b4e00;
+    color: var(--m-warn-text, #6b4e00);
     font-size: 0.82rem;
     font-weight: 700;
 }
 .ms-warn {
-    background: #fde7e9;
-    border: 1px solid #d13438;
+    background: var(--m-bad-bg, #fde7e9);
+    border: 1px solid var(--m-bad-line, #d13438);
     border-radius: 6px;
     padding: 7px 10px;
     margin: 4px 0;
     font-size: 0.85rem;
-    color: #a4262c;
+    color: var(--m-bad, #a4262c);
 }
 .ms-warn-inline {
-    color: #a4262c;
+    color: var(--m-bad, #a4262c);
     font-size: 0.82rem;
     font-weight: 600;
 }
@@ -681,15 +681,15 @@ body {
 }
 .ms-remove {
     cursor: pointer;
-    background: #fff;
-    border: 1px solid #d13438;
+    background: var(--m-surface, #fff);
+    border: 1px solid var(--m-bad-line, #d13438);
     border-radius: 999px;
     padding: 1px 8px;
     font-size: 0.72rem;
-    color: #a4262c;
+    color: var(--m-bad, #a4262c);
 }
 .ms-remove:hover {
-    background: #fde7e9;
+    background: var(--m-bad-bg, #fde7e9);
 }
 
 /* --- lobby team building --- */
@@ -700,10 +700,10 @@ body {
     margin: 6px 0 10px;
 }
 .lobby-team {
-    border: 1px solid #e1dfdd;
+    border: 1px solid var(--m-line, #e1dfdd);
     border-radius: 8px;
     padding: 8px 10px;
-    background: #faf9f8;
+    background: var(--m-panel, #faf9f8);
 }
 .lobby-team h3 {
     margin: 0 0 4px;
@@ -715,12 +715,12 @@ body {
     font-size: 0.85rem;
 }
 .lobby-cap {
-    color: #6b4e00;
+    color: var(--m-warn-text, #6b4e00);
     font-weight: 700;
     font-size: 0.78rem;
 }
 .mod-setup .muted-count {
-    color: #777;
+    color: var(--m-muted-2, #777);
     font-weight: 400;
     font-size: 0.82rem;
 }
@@ -799,9 +799,9 @@ a.kx-crumb:hover {
     min-width: 0;
 }
 .klaxon-remove {
-    border: 1px solid #c8c6c4;
-    background: #fff;
-    color: #605e5c;
+    border: 1px solid var(--m-line-strong, #c8c6c4);
+    background: var(--m-surface, #fff);
+    color: var(--m-muted, #605e5c);
     border-radius: 4px;
     font-size: 0.85rem;
     line-height: 1;
@@ -809,22 +809,22 @@ a.kx-crumb:hover {
     cursor: pointer;
 }
 .klaxon-remove:hover {
-    color: #a4262c;
-    border-color: #a4262c;
+    color: var(--m-bad, #a4262c);
+    border-color: var(--m-bad-line, #a4262c);
 }
 .mod-endgame {
     font-weight: 600;
-    border-color: #0078d4 !important;
-    color: #0078d4;
+    border-color: var(--m-accent, #0078d4) !important;
+    color: var(--m-accent, #0078d4);
 }
 
 /* Previous games in this room (non-tournament rooms). */
 .mod-prev {
     margin: 14px 0 8px;
     padding: 10px 12px;
-    border: 1px solid #e1dfdd;
+    border: 1px solid var(--m-line, #e1dfdd);
     border-radius: 6px;
-    background: #faf9f8;
+    background: var(--m-panel, #faf9f8);
 }
 .mod-prev h3 {
     margin: 0 0 6px;
@@ -840,21 +840,21 @@ a.kx-crumb:hover {
     align-items: center;
     gap: 10px;
     padding: 5px 0;
-    border-bottom: 1px solid #edebe9;
+    border-bottom: 1px solid var(--m-line-soft, #edebe9);
 }
 .mod-prev-label {
     flex: 1;
     min-width: 0;
 }
 .mod-prev-when {
-    color: #605e5c;
+    color: var(--m-muted, #605e5c);
     font-size: 0.85rem;
 }
 .mod-prev button {
     padding: 4px 10px;
-    border: 1px solid #8a8886;
+    border: 1px solid var(--m-control-line, #8a8886);
     border-radius: 4px;
-    background: #fff;
+    background: var(--m-surface, #fff);
     cursor: pointer;
 }
 
@@ -865,8 +865,8 @@ a.kx-crumb:hover {
     gap: 8px;
 }
 .klaxon-sound-toggle {
-    border: 1px solid #c8c6c4;
-    background: #fff;
+    border: 1px solid var(--m-line-strong, #c8c6c4);
+    background: var(--m-surface, #fff);
     border-radius: 4px;
     font-size: 0.85rem;
     line-height: 1;
@@ -880,12 +880,12 @@ a.kx-crumb:hover {
     font-size: 2.6rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
-    color: #0078d4;
+    color: var(--m-accent, #0078d4);
     margin: 4px 0 8px;
     line-height: 1.1;
 }
 .klaxon-timer.done {
-    color: #a4262c;
+    color: var(--m-bad, #a4262c);
     animation: klaxon-timer-blink 0.5s steps(2) infinite;
 }
 @keyframes klaxon-timer-blink {
@@ -893,7 +893,7 @@ a.kx-crumb:hover {
 }
 /* Unlinked buzzers + the picker that fixes them. */
 .klaxon-unlinked {
-    color: #a4262c;
+    color: var(--m-bad, #a4262c);
     font-size: 0.72rem;
     font-weight: 700;
     margin-left: 6px;
@@ -914,7 +914,7 @@ a.kx-crumb:hover {
     display: inline-block;
     margin-top: 10px;
     font-size: 0.85rem;
-    color: #0078d4;
+    color: var(--m-accent, #0078d4);
     text-decoration: none;
 }
 .klaxon-fullbuzz-hint {
@@ -923,7 +923,7 @@ a.kx-crumb:hover {
 
 /* A buzzer linked to its MODAQ player reads in green; unlinked stays flagged red. */
 .klaxon-linked {
-    color: #107c10;
+    color: var(--m-ok, #107c10);
     font-weight: 600;
 }
 
@@ -937,9 +937,9 @@ a.kx-crumb:hover {
 }
 .klaxon-stale button {
     padding: 4px 8px;
-    border: 1px solid #8a8886;
+    border: 1px solid var(--m-control-line, #8a8886);
     border-radius: 4px;
-    background: #fff;
+    background: var(--m-surface, #fff);
     cursor: pointer;
 }
 .klaxon-stale input {
@@ -984,7 +984,7 @@ a.kx-crumb:hover {
    shown to the room. */
 .klaxon-protests {
     margin-top: 12px;
-    border-top: 1px solid #ececec;
+    border-top: 1px solid var(--m-line-soft, #ececec);
     padding-top: 10px;
 }
 .klaxon-protests h3 {
@@ -992,7 +992,7 @@ a.kx-crumb:hover {
     font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #605e5c;
+    color: var(--m-muted, #605e5c);
 }
 .klaxon-protests ul {
     list-style: none;
@@ -1000,8 +1000,8 @@ a.kx-crumb:hover {
     padding: 0;
 }
 .klaxon-protest {
-    border: 1px solid #ececec;
-    border-left: 3px solid #c8c6c4;
+    border: 1px solid var(--m-line-soft, #ececec);
+    border-left: 3px solid var(--m-line-strong, #c8c6c4);
     border-radius: 3px;
     padding: 6px 8px;
     margin-bottom: 6px;
@@ -1009,10 +1009,10 @@ a.kx-crumb:hover {
     overflow-wrap: anywhere;
 }
 .klaxon-protest.st-open {
-    border-left-color: #d8401f;
+    border-left-color: var(--m-kx-accent, #d8401f);
 }
 .klaxon-protest.st-filed {
-    border-left-color: #2f7d4f;
+    border-left-color: var(--m-ok-line, #2f7d4f);
 }
 .kp-head {
     display: flex;
@@ -1021,21 +1021,21 @@ a.kx-crumb:hover {
     font-size: 13px;
 }
 .kp-team {
-    color: #605e5c;
+    color: var(--m-muted, #605e5c);
 }
 .kp-status {
     margin-left: auto;
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #605e5c;
+    color: var(--m-muted, #605e5c);
 }
 .kp-reason {
     font-size: 12px;
     margin-top: 2px;
 }
 .kp-rule {
-    color: #a19f9d;
+    color: var(--m-faint, #a19f9d);
 }
 .kp-says {
     margin: 6px 0 0;
@@ -1043,21 +1043,21 @@ a.kx-crumb:hover {
 }
 .kp-says li {
     padding: 3px 0 3px 7px;
-    border-left: 2px solid #ececec;
+    border-left: 2px solid var(--m-line-soft, #ececec);
     margin-bottom: 3px;
 }
 .kp-says li.kp-for {
-    border-left-color: #2f7d4f;
+    border-left-color: var(--m-ok-line, #2f7d4f);
 }
 .kp-says li.kp-against {
-    border-left-color: #9a6400;
+    border-left-color: var(--m-warn-line, #9a6400);
 }
 .kp-who {
     display: block;
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #605e5c;
+    color: var(--m-muted, #605e5c);
 }
 .kp-actions {
     display: flex;
@@ -1072,7 +1072,7 @@ a.kx-crumb:hover {
 .kp-shown,
 .klaxon-protest-note {
     font-size: 12px;
-    color: #605e5c;
+    color: var(--m-muted, #605e5c);
 }
 
 /* The shootout leaderboard and the room's chat, in the panel the host is
@@ -1080,7 +1080,7 @@ a.kx-crumb:hover {
    the chat has to be. */
 .klaxon-board {
     margin-top: 12px;
-    border-top: 1px solid #ececec;
+    border-top: 1px solid var(--m-line-soft, #ececec);
     padding-top: 10px;
 }
 .klaxon-board h3,
@@ -1089,13 +1089,13 @@ a.kx-crumb:hover {
     font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #605e5c;
+    color: var(--m-muted, #605e5c);
 }
 .kb-packets {
     font-size: 11px;
     text-transform: none;
     letter-spacing: 0;
-    color: #a19f9d;
+    color: var(--m-faint, #a19f9d);
 }
 .klaxon-board ol {
     list-style: none;
@@ -1107,7 +1107,7 @@ a.kx-crumb:hover {
     align-items: baseline;
     gap: 8px;
     padding: 3px 0;
-    border-bottom: 1px solid #f3f2f1;
+    border-bottom: 1px solid var(--m-line-soft, #f3f2f1);
     font-size: 13px;
 }
 .kb-name {
@@ -1118,7 +1118,7 @@ a.kx-crumb:hover {
 .kb-split {
     flex: none;
     font-size: 11px;
-    color: #a19f9d;
+    color: var(--m-faint, #a19f9d);
 }
 .kb-total {
     flex: none;
@@ -1128,7 +1128,7 @@ a.kx-crumb:hover {
 
 .klaxon-chat {
     margin-top: 12px;
-    border-top: 1px solid #ececec;
+    border-top: 1px solid var(--m-line-soft, #ececec);
     padding-top: 10px;
     display: flex;
     flex-direction: column;
@@ -1165,13 +1165,13 @@ a.kx-crumb:hover {
     font-size: 12px;
 }
 .kc-who.kc-staff {
-    color: #d8401f;
+    color: var(--m-kx-accent, #d8401f);
 }
 .kc-text {
     display: block;
 }
 .kc-empty {
-    color: #a19f9d;
+    color: var(--m-faint, #a19f9d);
     font-size: 12px;
 }
 .kc-entry {
@@ -1191,14 +1191,365 @@ a.kx-crumb:hover {
 }
 .kc-note {
     font-size: 12px;
-    color: #9a6400;
+    color: var(--m-warn-text, #9a6400);
     margin-top: 4px;
 }
 
 /* A mention, marked wherever the name appears. */
 .kc-at {
-    background: #ececec;
+    background: var(--m-subtle, #ececec);
     border-radius: 3px;
     padding: 0 3px;
     font-weight: 600;
+}
+
+/* --- dark theme ---------------------------------------------------------------
+   Follows Klaxon's theme (html[data-theme], set by /js/theme.js — the same
+   choice as every other Klaxon page, and MODAQ's own Dark mode option is kept
+   in step with it). Every color above falls back to its light value, so these
+   variables exist only here: the light theme is exactly what it always was.
+   Neutral greys to sit beside MODAQ's own dark palette; the Klaxon bar keeps
+   Klaxon's warm dark, as on the room page. */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --m-bg: #0b0b0b;
+    --m-text: #eeeeee;
+    --m-text-2: #d6d6d6;
+    --m-surface: #1b1b1b;
+    --m-panel: #141414;
+    --m-subtle: #1f1f1f;
+    --m-subtle-2: #2a2a2a;
+    --m-line-soft: #2c2c2c;
+    --m-line: #383838;
+    --m-line-strong: #555555;
+    --m-control-line: #7a7a7a;
+    --m-faint: #8c8c8c;
+    --m-muted-2: #a0a0a0;
+    --m-muted: #b8b8b8;
+    --m-on-strong: #ffffff;
+    --m-ok: #6cc893;
+    --m-ok-line: #3f8f5f;
+    --m-ok-fill: #1f6b3d;
+    --m-ok-bg: #15271b;
+    --m-bad: #ff8a80;
+    --m-bad-line: #d9534f;
+    --m-bad-fill: #c42b2f;
+    --m-bad-bg: #3a1a1c;
+    --m-warn-bg: #3a3012;
+    --m-warn-line: #9a7a2a;
+    --m-warn-text: #f0c36d;
+    --m-accent: #4aa8ff;
+    --m-accent-fill: #0a6fc2;
+    --m-kx-accent: #ff7a55;
+}
+:root[data-theme="dark"] body {
+    background: var(--m-bg);
+    color: var(--m-text);
+}
+:root[data-theme="dark"] .kx-bar {
+    --kx-ink: #efe7d8;
+    --kx-muted: #aba08d;
+    --kx-soft: #474036;
+    --kx-surface: #25211b;
+    --kx-accent: #ff7a55;
+}
+/* Klaxon's own controls only: MODAQ's (Fluent) controls follow MODAQ's palette. */
+:root[data-theme="dark"] :where(.mod-center, .mod-side, .mod-changebar, .pk-start) :is(input, select, textarea) {
+    background: var(--m-surface);
+    color: var(--m-text);
+    border-color: var(--m-control-line);
+}
+:root[data-theme="dark"] :where(.mod-center, .mod-side, .mod-changebar, .pk-start) button:not(.primary) {
+    color: var(--m-text);
+}
+:root[data-theme="dark"] :where(.mod-center, .mod-side, .mod-changebar, .pk-start) a {
+    color: var(--m-accent);
+}
+
+/* --- theme toggle in the Klaxon bar --- */
+.kx-theme {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--kx-soft);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--kx-ink);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+}
+.kx-theme:hover {
+    border-color: var(--kx-ink);
+}
+
+/* --- starting a game from a packet file (lite rooms and shootouts) --- */
+.pk-start {
+    margin: 10px 0 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--m-line, #e1dfdd);
+    border-radius: 10px;
+    background: var(--m-panel, #faf9f8);
+}
+.pk-start-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.pk-start h2 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+.pk-start .hint {
+    color: var(--m-muted, #666);
+    font-size: 0.85rem;
+    margin: 10px 0 0;
+}
+.pk-start-head button {
+    padding: 6px 10px;
+    border: 1px solid var(--m-control-line, #8a8886);
+    border-radius: 6px;
+    background: var(--m-surface, #fff);
+    cursor: pointer;
+}
+.pk-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 26px 16px;
+    border: 2px dashed var(--m-control-line, #8a8886);
+    border-radius: 10px;
+    background: var(--m-surface, #fff);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+}
+.pk-drop:hover,
+.pk-drop:focus-visible {
+    border-color: var(--m-accent, #0078d4);
+    outline: none;
+}
+.pk-drop.over {
+    border-color: var(--m-accent, #0078d4);
+    border-style: solid;
+    background: var(--m-subtle, #f3f2f1);
+}
+.pk-drop.disabled {
+    cursor: progress;
+    opacity: 0.8;
+}
+.pk-drop-icon {
+    font-size: 1.8rem;
+    line-height: 1;
+    color: var(--m-accent, #0078d4);
+}
+.pk-drop-title {
+    font-size: 1.05rem;
+}
+.pk-drop-hint {
+    color: var(--m-muted, #666);
+    font-size: 0.85rem;
+}
+.pk-drop-button {
+    margin-top: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: var(--m-accent-fill, #0078d4);
+    color: var(--m-on-strong, #fff);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.pk-drop.disabled .pk-drop-button {
+    visibility: hidden;
+}
+.pk-error {
+    margin: 10px 0 0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--m-bad-bg, #fde7e9);
+    color: var(--m-bad, #a4262c);
+    font-size: 0.9rem;
+}
+/* With no game yet, MODAQ's empty reader sits quietly under the drop zone. */
+.mod-modaq-idle {
+    opacity: 0.45;
+}
+
+/* --- shootout setup --- */
+.so-setup {
+    max-width: 680px;
+}
+.so-setup textarea {
+    width: 100%;
+    padding: 8px;
+    font: inherit;
+    font-size: 0.95rem;
+    box-sizing: border-box;
+    resize: vertical;
+}
+.so-packets {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.so-packet {
+    display: grid;
+    grid-template-columns: 2em minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid var(--m-line, #e1dfdd);
+    border-radius: 8px;
+    background: var(--m-surface, #fff);
+}
+.so-packet.error {
+    border-color: var(--m-bad-line, #d13438);
+    background: var(--m-bad-bg, #fde7e9);
+}
+.so-packet-num {
+    color: var(--m-muted, #666);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.mod-setup .so-packet input[type="text"] {
+    padding: 5px 7px;
+    font-size: 0.95rem;
+}
+.so-packet-info {
+    color: var(--m-muted, #666);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+.so-packet.error .so-packet-info {
+    color: var(--m-bad, #a4262c);
+    white-space: normal;
+    max-width: 22em;
+}
+.so-packet-actions {
+    display: flex;
+    gap: 4px;
+}
+.so-packet-actions button {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--m-control-line, #8a8886);
+    border-radius: 6px;
+    background: var(--m-surface, #fff);
+    cursor: pointer;
+}
+.so-packet-actions button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+.so-withdraw {
+    margin: 16px 0 0;
+    padding: 0;
+    border: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.so-withdraw legend {
+    font-weight: 600;
+    margin-bottom: 6px;
+    padding: 0;
+}
+.mod-setup .so-choice {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--m-line, #e1dfdd);
+    border-radius: 8px;
+    font-weight: 400;
+    cursor: pointer;
+}
+.mod-setup .so-choice.selected {
+    border-color: var(--m-accent, #0078d4);
+    background: var(--m-subtle, #f3f2f1);
+}
+.so-choice input {
+    margin-top: 3px;
+}
+.so-choice-detail {
+    display: block;
+    color: var(--m-muted, #666);
+    font-size: 0.85rem;
+}
+.so-scoring {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 4px 14px;
+}
+.so-scoring label[for] {
+    grid-column: 1 / -1;
+}
+.mod-setup .so-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-weight: 400;
+    white-space: nowrap;
+}
+.so-link {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.so-link code {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--m-line, #e1dfdd);
+    border-radius: 6px;
+    background: var(--m-subtle, #f3f2f1);
+    overflow-wrap: anywhere;
+}
+.so-link button,
+.so-actions button:not(.primary) {
+    padding: 8px 12px;
+    border: 1px solid var(--m-control-line, #8a8886);
+    border-radius: 6px;
+    background: var(--m-surface, #fff);
+    cursor: pointer;
+}
+.so-actions {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+}
+.so-status {
+    margin: 8px 0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--m-subtle, #f3f2f1);
+    font-size: 0.9rem;
+}
+.mod-changebar button.primary {
+    background: var(--m-accent-fill, #0078d4);
+    border-color: var(--m-accent-fill, #0078d4);
+    color: var(--m-on-strong, #fff);
+    font-weight: 600;
+}
+.mod-changebar button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+@media (max-width: 600px) {
+    .so-packet {
+        grid-template-columns: 2em minmax(0, 1fr) auto;
+    }
+    .so-packet-info {
+        grid-column: 2 / -1;
+    }
 }
