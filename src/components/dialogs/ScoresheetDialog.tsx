@@ -135,10 +135,36 @@ export const ScoresheetDialogBody = observer(function ScoresheetDialogBody(
                 cyclesRows.push(renderStatlineRow(game, teamToPlayerMap, playerToStatlineMap, classNames));
 
                 const teamTitle = game.teamNames.join(" vs. ");
+                // The score, at the top, in the same order as the columns below
+                // it — with one team per competitor there can be eight of them,
+                // and the totals were a column you had to scroll to the end of
+                // the game to read.
+                const finalScores: number[] = game.finalScore ?? [];
+                const leader: number = Math.max(...finalScores, -Infinity);
+                // Nobody leads a game everyone is level in — marking all four at
+                // 0-0-0-0 says nothing.
+                const hasLeader: boolean = finalScores.some((points) => points !== finalScores[0]);
+                const totals: JSX.Element[] = game.teamNames.map((teamName, i) => {
+                    const points: number = finalScores[i] ?? 0;
+                    const isLeader: boolean = hasLeader && points === leader;
+                    return (
+                        <div
+                            className={`${classNames.totalsEntry} ${isLeader ? classNames.totalsLeader : ""}`}
+                            key={`total_${teamName}_${i}`}
+                        >
+                            <span className={classNames.totalsName}>{teamName}</span>
+                            <span className={classNames.totalsPoints}>{points}</span>
+                        </div>
+                    );
+                });
+
                 return (
                     <Stack>
                         <StackItem>
                             <h2>{teamTitle}</h2>
+                        </StackItem>
+                        <StackItem>
+                            <div className={classNames.totals}>{totals}</div>
                         </StackItem>
                         <StackItem>
                             <table className={classNames.table}>
@@ -231,7 +257,7 @@ function renderHeader(game: GameState, classNames: IScoresheetClassNames): JSX.E
             </th>
         );
         headers.push(
-            <th className={classNames.tableHeader} key={`thTotal_${i}`}>
+            <th className={`${classNames.tableHeader} ${classNames.totalScoreHeader}`} key={`thTotal_${i}`}>
                 Total
             </th>
         );
@@ -395,6 +421,12 @@ export interface IScoresheetDialogBodyProps {
 
 interface IScoresheetClassNames {
     bonusCell: string;
+    totals: string;
+    totalsEntry: string;
+    totalsLeader: string;
+    totalsName: string;
+    totalsPoints: string;
+    totalScoreHeader: string;
     correctBonus: string;
     cycleRow: string;
     inactivePlayerCell: string;
@@ -447,7 +479,40 @@ const getClassNames = memoizeFunction(
                 padding: "0em 0.5em",
             },
             totalScoreCell: {
-                fontWeight: 500,
+                fontWeight: 700,
+                borderLeft: "1px solid",
+                borderRight: "1px solid",
+            },
+            totalScoreHeader: {
+                fontWeight: 700,
+                borderLeft: "1px solid",
+                borderRight: "1px solid",
+            },
+            totals: {
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "6px 18px",
+                margin: "0 0 12px",
+            },
+            totalsEntry: {
+                display: "flex",
+                alignItems: "baseline",
+                gap: 8,
+                padding: "2px 8px",
+                border: "1px solid",
+                borderColor: theme?.palette.neutralTertiaryAlt ?? "#c8c6c4",
+                borderRadius: 2,
+            },
+            totalsLeader: {
+                borderColor: theme?.palette.themePrimary ?? "#0078d4",
+                borderWidth: 2,
+            },
+            totalsName: {
+                fontSize: "1rem",
+            },
+            totalsPoints: {
+                fontSize: "1.35rem",
+                fontWeight: 700,
             },
             tuLabel: {
                 marginBottom: 0,

@@ -1,6 +1,16 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { DetailsList, CheckboxVisibility, SelectionMode, IColumn, Label, Text, ISelection } from "@fluentui/react";
+import {
+    DetailsList,
+    CheckboxVisibility,
+    SelectionMode,
+    IColumn,
+    Label,
+    Text,
+    ISelection,
+    TooltipHost,
+    DirectionalHint,
+} from "@fluentui/react";
 import { mergeStyleSets } from "@fluentui/react";
 
 import { CycleItemList } from "./cycleItems/CycleItemList";
@@ -157,12 +167,11 @@ function onRenderItemColumn(item: Cycle, appState: AppState, index: number, colu
             return <Label>{index + 1}</Label>;
         case cycleKey:
             const scores: number[][] = column.data;
-            const scoreInCurrentCycle: number[] = scores[index];
 
             return (
                 <>
                     <CycleItemList cycle={item} game={appState.game} />
-                    <Text>{`(${scoreInCurrentCycle.join(" - ")})`}</Text>
+                    <ScoreLine appState={appState} scores={scores} index={index} />
                 </>
             );
         default:
@@ -170,8 +179,62 @@ function onRenderItemColumn(item: Cycle, appState: AppState, index: number, colu
     }
 }
 
+// The running score is a row of bare numbers in team order. That reads fine for
+// two teams; at an individual tournament, where every competitor is their own
+// team, "(15 - 30 - 45 - -5)" is a puzzle — nothing on screen says which number
+// belongs to whom. Hovering (or tabbing to) the line names every one of them and
+// says what this question changed.
+const ScoreLine = observer(function ScoreLine(props: {
+    appState: AppState;
+    scores: number[][];
+    index: number;
+}): JSX.Element {
+    const { appState, scores, index } = props;
+    const classes: IEventViewerClassNames = getClassNames(appState.uiState.isEventLogHidden);
+    const current: number[] = scores[index] ?? [];
+    const previous: number[] | undefined = index > 0 ? scores[index - 1] : undefined;
+    const teamNames: string[] = appState.game.teamNames;
+
+    const rows: JSX.Element[] = teamNames.map((name, i) => {
+        const total: number = current[i] ?? 0;
+        const change: number = total - (previous?.[i] ?? 0);
+        return (
+            <tr key={`${name}_${i}`}>
+                <td className={classes.tooltipName}>{name}</td>
+                <td className={classes.tooltipScore}>{total}</td>
+                <td className={classes.tooltipChange}>{change === 0 ? "" : change > 0 ? `+${change}` : `${change}`}</td>
+            </tr>
+        );
+    });
+
+    return (
+        <TooltipHost
+            content={undefined}
+            directionalHint={DirectionalHint.rightCenter}
+            tooltipProps={{
+                onRenderContent: () => (
+                    <div>
+                        <div className={classes.tooltipTitle}>{`Score after question ${index + 1}`}</div>
+                        <table className={classes.tooltipTable}>
+                            <tbody>{rows}</tbody>
+                        </table>
+                    </div>
+                ),
+            }}
+        >
+            <Text className={classes.scoreLine}>{`(${current.join(" - ")})`}</Text>
+        </TooltipHost>
+    );
+});
+
 interface IEventViewerClassNames {
     eventViewerContainer: string;
+    scoreLine: string;
+    tooltipChange: string;
+    tooltipName: string;
+    tooltipScore: string;
+    tooltipTable: string;
+    tooltipTitle: string;
 }
 
 interface IEventViewerRow {
@@ -186,5 +249,32 @@ const getClassNames = (isHidden: boolean): IEventViewerClassNames =>
             maxHeight: "90vh",
             overflowY: "auto",
             display: isHidden ? "none" : undefined,
+        },
+        // Dotted underline and a help cursor: the line is worth hovering, and
+        // nothing else here is.
+        scoreLine: {
+            borderBottom: "1px dotted",
+            cursor: "help",
+        },
+        tooltipTitle: {
+            fontWeight: 600,
+            marginBottom: 4,
+        },
+        tooltipTable: {
+            borderCollapse: "collapse",
+        },
+        tooltipName: {
+            paddingRight: 12,
+            whiteSpace: "nowrap",
+        },
+        tooltipScore: {
+            textAlign: "right",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+        },
+        tooltipChange: {
+            textAlign: "right",
+            paddingLeft: 8,
+            whiteSpace: "nowrap",
         },
     });

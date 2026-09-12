@@ -651,9 +651,6 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
 
             <ProtestList client={client} protests={state?.protests ?? []} />
 
-            {state?.shootout != undefined && <Leaderboard rows={state.shootout.rows} packets={state.shootout.packets} />}
-            {state?.shootout != undefined && <RoomChat client={client} initial={state.chat ?? []} />}
-
             <div className="klaxon-controls">
                 <button
                     onClick={() => client.resetBuzzer()}
@@ -727,6 +724,9 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                     <span>min ago</span>
                 </div>
             )}
+
+            {state?.shootout != undefined && <RoomChat client={client} initial={state.chat ?? []} />}
+            {state?.shootout != undefined && <Leaderboard rows={state.shootout.rows} packets={state.shootout.packets} />}
 
             <p className="klaxon-hint">
                 Buzzes are resolved with Klaxon&apos;s latency-fair timing. Judge the buzz in the MODAQ reader on the
