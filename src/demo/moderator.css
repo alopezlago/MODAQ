@@ -1535,6 +1535,40 @@ a.kx-crumb:hover {
     background: var(--m-subtle, #f3f2f1);
     font-size: 0.9rem;
 }
+/* The time beside the name that starts a run, and the day divider when the
+   log crosses midnight — the way a chat client does it. */
+.kc-when {
+    margin-left: 6px;
+    font-weight: 400;
+    font-size: 0.68rem;
+    color: var(--m-muted-2, #888);
+}
+.kc-day {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0 4px;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--m-muted-2, #888);
+}
+.kc-day::before,
+.kc-day::after {
+    content: "";
+    flex: 1 1 auto;
+    border-top: 1px solid var(--m-line-soft, #ececec);
+}
+
+/* The packet picker in the shootout toolbar. */
+.so-jump {
+    max-width: 15em;
+    padding: 5px 6px;
+    border: 1px solid var(--m-control-line, #8a8886);
+    border-radius: 6px;
+    background: var(--m-surface, #fff);
+    font-size: 0.85rem;
+}
 .mod-changebar button.primary {
     background: var(--m-accent-fill, #0078d4);
     border-color: var(--m-accent-fill, #0078d4);

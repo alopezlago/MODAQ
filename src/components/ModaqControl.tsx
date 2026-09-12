@@ -932,11 +932,31 @@ function initializeControl(appState: AppState, props: IModaqControlProps, onRead
         typeBuzzIndexKeydownHandler(event, appState);
     document.addEventListener("keydown", typeBuzzIndexListener, /* useCapture */ true);
 
+    // Clicking a text box while the buzz menu is open — the host's chat, say, which is exactly where someone
+    // goes mid-buzz. The menu dismisses itself on an outside click, but it puts focus back where it was (the
+    // question word), so the typing that followed drove the shortcuts instead of landing in the box: "can we
+    // check" moved the reader two questions on and marked the buzz wrong. Close the menu and hand focus to the
+    // box, once Fluent has finished restoring it.
+    const textFocusListener: (event: Event) => void = (event: Event) => {
+        if (!appState.uiState.buzzMenuState.visible || !isTextEntryElement(event.target)) {
+            return;
+        }
+        appState.uiState.hideBuzzMenu();
+        const element: HTMLElement = event.target as HTMLElement;
+        setTimeout(() => {
+            if (element.isConnected) {
+                element.focus();
+            }
+        }, 0);
+    };
+    document.addEventListener("pointerdown", textFocusListener, /* useCapture */ true);
+
     return () => {
         document.removeEventListener("keyup", keydownListener);
         document.removeEventListener("keydown", buzzMenuKeyListener, /* useCapture */ true);
         document.removeEventListener("keydown", preventSpaceScrollListener);
         document.removeEventListener("keydown", typeBuzzIndexListener, /* useCapture */ true);
+        document.removeEventListener("pointerdown", textFocusListener, /* useCapture */ true);
     };
 }
 
@@ -960,6 +980,13 @@ function buzzMenuShortcutHandler(event: KeyboardEvent, appState: AppState): void
         appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None ||
         !appState.uiState.buzzMenuState.visible
     ) {
+        return;
+    }
+
+    // Not while someone is typing. This listener is on the capture phase, so it sees the key before the field
+    // does and would otherwise take it: with the buzz menu open -- which is exactly when there is something to
+    // talk about -- "c" in the host's chat box marked the buzz correct instead of typing a letter.
+    if (isTextEntryElement(event.target)) {
         return;
     }
 

@@ -191,7 +191,11 @@ const teamsKey = (teams: IGameTeam[]): string => teams.map((t) => `${t.name}:${t
 // which the server cuts down to the player-safe scoresheet the room shows.
 // Called in every mode.
 function useGameSync(
-    client: KlaxonClient
+    client: KlaxonClient,
+    // A shootout reads several packets; this says which one the game on screen
+    // is, so the server files its score under that packet rather than under
+    // whichever the room has moved to since. Read as each update is sent.
+    packetOf?: () => string | null
 ): (
     match: IMatch,
     inProgress?: boolean,
@@ -232,6 +236,8 @@ function useGameSync(
                 // The questions themselves. Same rule again: the server decides
                 // who sees one, and how far behind the room it runs.
                 questions: questions ?? [],
+                // Which of a shootout's packets this game is (null elsewhere).
+                packet: packetOf?.() ?? null,
             });
             // A game with no events after one that had some is a new game, not
             // an edit of the loaded one: stop overwriting that archive.
@@ -2403,8 +2409,10 @@ function LiteReading(props: {
     const shared = useSharedGame(client, "lite");
     const ending = useEndGame(client, "lite");
     const [showPrev, setShowPrev] = React.useState(false);
-    // Loading a previous game remounts MODAQ so it reads the staged snapshot.
+    // Loading a previous game remounts MODAQ so it reads the staged snapshot,
+    // and takes it off screen while that is staged (see MODAQ_PERSIST_SETTLE_MS).
     const [gameKey, setGameKey] = React.useState(0);
+    const [staging, setStaging] = React.useState(false);
 
     // Starting a game is one step: drop the packet (PDF, Word, or JSON) and
     // MODAQ's New Game dialog opens with it loaded and the teams filled in from
@@ -2465,11 +2473,15 @@ function LiteReading(props: {
                             if (client.lastState?.scoresheet) {
                                 await archiveCurrentGame(client);
                             }
+                            // Off screen before staging, or its own save lands on top of what we stage.
+                            setStaging(true);
+                            await wait(MODAQ_PERSIST_SETTLE_MS);
                             await stagePreviousGame(client, g.id, () => `klaxon-lite-${code}`);
                             setShowPrev(false);
                             // A remounted MODAQ must not start the last dropped packet again.
                             setHostGame(undefined);
                             setGameKey((k) => k + 1);
+                            setStaging(false);
                         }}
                     />
                 )}
@@ -2501,27 +2513,29 @@ function LiteReading(props: {
                     </div>
                 )}
                 <div className={showStart && !gameLoaded ? "mod-modaq-idle" : undefined}>
-                    <KlaxonModaq
-                        key={gameKey}
-                        applyStylingToRoot={false}
-                        buildVersion={__BUILD_VERSION__}
-                        yappServiceUrl={YAPP_SERVICE_URL}
-                        packetParserLink={PACKET_PARSER_LINK}
-                        persistState={true}
-                        storeName={`klaxon-lite-${code}`}
-                        onGameUpdate={syncGame}
-                        onBuzzJudged={onBuzzJudged}
-                        buzzedInPlayer={buzzedInPlayer}
-                        onExported={() => {
-                            ending.onExported();
-                            downloadFullBuzz(client);
-                        }}
-                        onPersistedState={shared.onPersistedState}
-                        remoteState={shared.remoteState}
-                        hostNewGame={hostGame}
-                        onNewGameRequested={onNewGameRequested}
-                        onGameLoadedChange={setGameLoaded}
-                    />
+                    {!staging && (
+                        <KlaxonModaq
+                            key={gameKey}
+                            applyStylingToRoot={false}
+                            buildVersion={__BUILD_VERSION__}
+                            yappServiceUrl={YAPP_SERVICE_URL}
+                            packetParserLink={PACKET_PARSER_LINK}
+                            persistState={true}
+                            storeName={`klaxon-lite-${code}`}
+                            onGameUpdate={syncGame}
+                            onBuzzJudged={onBuzzJudged}
+                            buzzedInPlayer={buzzedInPlayer}
+                            onExported={() => {
+                                ending.onExported();
+                                downloadFullBuzz(client);
+                            }}
+                            onPersistedState={shared.onPersistedState}
+                            remoteState={shared.remoteState}
+                            hostNewGame={hostGame}
+                            onNewGameRequested={onNewGameRequested}
+                            onGameLoadedChange={setGameLoaded}
+                        />
+                    )}
                 </div>
             </div>
             <div className="mod-side">
@@ -2656,6 +2670,15 @@ interface ISetupRow {
 }
 
 const newPacketId = (): string => `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+// MODAQ saves its game to localStorage on a short delay, which is the same
+// place a game being put back has to be written. So it is taken off screen
+// first, and its last save allowed to land, before anything is staged for it —
+// otherwise the game on screen overwrites the one being restored, and which
+// won was a matter of milliseconds.
+const MODAQ_PERSIST_SETTLE_MS = 400;
 
 function ShootoutSetup(props: {
     code: string;
@@ -2944,7 +2967,11 @@ function ShootoutReading(props: {
     const session = roomState?.shootout?.session ?? null;
     const onBuzzJudged = useJudgedHandler(client, roomState);
     const buzzedInPlayer = useBuzzedInPlayer(roomState);
-    const syncGame = useGameSync(client);
+    // Which packet the game on screen is. Every score the server files is filed
+    // under this, so moving between packets can't put one packet's score on
+    // another (nor lose it).
+    const gamePacket = React.useRef<string | null>(session?.current ?? null);
+    const syncGame = useGameSync(client, () => gamePacket.current);
     const shared = useSharedGame(client, "lite");
     const competitors = useShootoutPresence(roomState);
 
@@ -2952,10 +2979,36 @@ function ShootoutReading(props: {
     const [hostGame, setHostGame] = React.useState<IHostNewGame | undefined>(undefined);
     const [busy, setBusy] = React.useState("");
     const [msg, setMsg] = React.useState("");
-    // Which packet the game on screen is, and how far it has got.
-    const gamePacket = React.useRef<string | null>(session?.current ?? null);
-    const lastGame = React.useRef<{ qbj: IMatch; inProgress: boolean; question?: number } | undefined>(undefined);
+    // Loading a packet that was already read remounts MODAQ, so it picks up the
+    // game filed for it rather than starting a new one; while that is staged it
+    // comes off screen (see MODAQ_PERSIST_SETTLE_MS).
+    const [gameKey, setGameKey] = React.useState(0);
+    const [staging, setStaging] = React.useState(false);
+    // The packets that have a game filed against them, so the picker can say
+    // which have been read.
+    const [played, setPlayed] = React.useState<Set<string>>(new Set());
+    // How far the game on screen has got.
+    const lastGame = React.useRef<
+        | {
+              args: Parameters<NonNullable<React.ComponentProps<typeof ModaqControl>["onGameUpdate"]>>;
+              inProgress: boolean;
+              question?: number;
+          }
+        | undefined
+    >(undefined);
     const [progress, setProgress] = React.useState<{ question: number; inProgress: boolean } | undefined>(undefined);
+
+    const refreshPlayed = React.useCallback(async (): Promise<void> => {
+        try {
+            const { games } = await KlaxonApi.listGames(code, client.token);
+            setPlayed(new Set(games.map((g) => g.id)));
+        } catch {
+            /* the picker just won't mark them */
+        }
+    }, [code, client]);
+    React.useEffect(() => {
+        refreshPlayed();
+    }, [refreshPlayed]);
 
     const index = session?.currentIndex ?? -1;
     const packets = session?.packets ?? [];
@@ -2964,29 +3017,55 @@ function ShootoutReading(props: {
     const withBonuses = session?.scoring.bonuses === true;
     const format = React.useMemo(() => shootoutGameFormat({ scheme, bonuses: withBonuses }), [scheme, withBonuses]);
 
+    // Go to a packet: the one that was on screen is filed under its own packet
+    // (so the leaderboard keeps its score and it can be reopened), and then
+    // either the game already read for this packet comes back — to fix a score,
+    // or read the rest of it — or a new game starts on it.
     const startPacket = React.useCallback(
-        async (i: number): Promise<void> => {
+        // `force` is the page opening with no game at all: the session may
+        // already name this packet, and it still has to be loaded.
+        async (i: number, force = false): Promise<void> => {
             const p = packets[i];
-            if (!p) return;
+            if (!p || (p.id === gamePacket.current && !force)) return;
             setBusy(`Loading ${p.name}…`);
             setMsg("");
             try {
-                const packet = await KlaxonApi.getPacket<IPacket>(code, client.token, p.id);
-                if (gameLoaded) {
+                const leaving = gamePacket.current;
+                if (gameLoaded && leaving) {
+                    // The server banks what this packet finished with when it
+                    // hears the room has moved on, so make sure it has the last
+                    // scoring change first.
+                    if (lastGame.current) {
+                        syncGame(...lastGame.current.args);
+                    }
                     await saveLast();
-                    await archiveCurrentGame(client);
+                    // Filed under the packet's own id, so reopening it finds it.
+                    await client.archiveGame(leaving);
                 }
+                const done = await KlaxonApi.getGame(code, client.token, p.id).catch(() => null);
                 await client.massinger({ action: "shootout_current", packet: p.id });
                 gamePacket.current = p.id;
                 lastGame.current = undefined;
                 setProgress(undefined);
-                // Whoever is here now; anyone who arrives later is added as they do.
-                setHostGame({
-                    packet,
-                    packetName: p.name,
-                    teams: competitors.filter((c) => c.present),
-                    gameFormat: format,
-                });
+                if (done?.game?.json) {
+                    // Read before: put that game back, rather than wiping it.
+                    setStaging(true);
+                    await wait(MODAQ_PERSIST_SETTLE_MS);
+                    await stagePreviousGame(client, p.id, () => `klaxon-lite-${code}`);
+                    setHostGame(undefined);
+                    setGameKey((k) => k + 1);
+                    setStaging(false);
+                } else {
+                    const packet = await KlaxonApi.getPacket<IPacket>(code, client.token, p.id);
+                    // Whoever is here now; anyone who arrives later is added as they do.
+                    setHostGame({
+                        packet,
+                        packetName: p.name,
+                        teams: competitors.filter((c) => c.present),
+                        gameFormat: format,
+                    });
+                }
+                refreshPlayed();
             } catch (e) {
                 setMsg(`Couldn't load ${p.name}: ${(e as Error).message}`);
             } finally {
@@ -2994,7 +3073,7 @@ function ShootoutReading(props: {
             }
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [packets, code, client, gameLoaded, competitors, format]
+        [packets, code, client, gameLoaded, competitors, format, syncGame, refreshPlayed]
     );
 
     // A fresh room: the first packet (or the one the session says is next)
@@ -3003,7 +3082,7 @@ function ShootoutReading(props: {
     React.useEffect(() => {
         if (gameLoaded === false && !autoStarted.current && packets.length > 0) {
             autoStarted.current = true;
-            startPacket(Math.max(index, 0));
+            startPacket(Math.max(index, 0), /* force */ true);
         }
     }, [gameLoaded, packets.length, index, startPacket]);
 
@@ -3014,7 +3093,7 @@ function ShootoutReading(props: {
         const id = gamePacket.current;
         if (!g || !id) return;
         try {
-            await KlaxonApi.saveExport(code, client.token, id, g.qbj, g.inProgress, g.question);
+            await KlaxonApi.saveExport(code, client.token, id, g.args[0], g.inProgress, g.question);
         } catch {
             /* the live sync has saved all but the last change */
         }
@@ -3036,12 +3115,18 @@ function ShootoutReading(props: {
             answers?: string[],
             questions?: string[]
         ) => {
-            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions);
             const id = gamePacket.current;
             const p = packetsRef.current.find((x) => x.id === id);
-            // A late update from the previous packet's game mustn't land on this one.
+            // A late (debounced) update from the packet just left mustn't land on
+            // this one — not on the room's scoresheet either, which is what the
+            // leaderboard and the banked score are read from.
             if (!id || (p && qbj.packets && qbj.packets !== p.name)) return;
-            lastGame.current = { qbj, inProgress: inProgress === true, question: currentQuestion };
+            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions);
+            lastGame.current = {
+                args: [qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions],
+                inProgress: inProgress === true,
+                question: currentQuestion,
+            };
             setProgress({ question: currentQuestion ?? 0, inProgress: inProgress === true });
             KlaxonApi.saveExport(code, client.token, id, qbj, inProgress === true, currentQuestion).catch(() => {
                 /* the next change saves it again */
@@ -3085,6 +3170,7 @@ function ShootoutReading(props: {
     };
 
     const current = packets[index];
+    const previous = index > 0 ? packets[index - 1] : undefined;
     const label = session
         ? `${session.name}${current ? ` · Packet ${index + 1} of ${packets.length}: ${current.name}` : ""}`
         : `Room ${code}`;
@@ -3094,6 +3180,34 @@ function ShootoutReading(props: {
         <div className="mod-shell">
             <div className="mod-main">
                 <RoomToolbar code={code} label={label}>
+                    {previous && (
+                        <button
+                            onClick={() => startPacket(index - 1)}
+                            disabled={busy !== "" || gameLoaded === undefined}
+                            title={`Back to ${previous.name} — the game read on it comes back with it`}
+                        >
+                            ← {previous.name}
+                        </button>
+                    )}
+                    {packets.length > 1 && (
+                        <select
+                            className="so-jump"
+                            aria-label="Go to a packet"
+                            title="Go to any packet. One that has been read comes back as it was."
+                            value={session?.current ?? ""}
+                            disabled={busy !== "" || gameLoaded === undefined}
+                            onChange={(e) => {
+                                const at = packets.findIndex((p) => p.id === e.target.value);
+                                if (at >= 0) startPacket(at);
+                            }}
+                        >
+                            {packets.map((p, i) => (
+                                <option key={p.id} value={p.id}>
+                                    {`${i + 1}. ${p.name}${played.has(p.id) ? " ✓ read" : ""}`}
+                                </option>
+                            ))}
+                        </select>
+                    )}
                     <button className="primary" onClick={goNext} disabled={busy !== "" || gameLoaded === undefined}>
                         {next ? `Next packet: ${next.name} →` : "Add more packets"}
                     </button>
@@ -3115,21 +3229,24 @@ function ShootoutReading(props: {
                         Nobody has joined yet — send the player link. Players are added to the game as they arrive.
                     </p>
                 )}
-                <KlaxonModaq
-                    applyStylingToRoot={false}
-                    buildVersion={__BUILD_VERSION__}
-                    persistState={true}
-                    storeName={`klaxon-lite-${code}`}
-                    onGameUpdate={onGameUpdate}
-                    onBuzzJudged={onBuzzJudged}
-                    buzzedInPlayer={buzzedInPlayer}
-                    onPersistedState={shared.onPersistedState}
-                    remoteState={shared.remoteState}
-                    hostNewGame={hostGame}
-                    onNewGameRequested={onNewGameRequested}
-                    onGameLoadedChange={setGameLoaded}
-                    liveTeams={competitors}
-                />
+                {!staging && (
+                    <KlaxonModaq
+                        key={gameKey}
+                        applyStylingToRoot={false}
+                        buildVersion={__BUILD_VERSION__}
+                        persistState={true}
+                        storeName={`klaxon-lite-${code}`}
+                        onGameUpdate={onGameUpdate}
+                        onBuzzJudged={onBuzzJudged}
+                        buzzedInPlayer={buzzedInPlayer}
+                        onPersistedState={shared.onPersistedState}
+                        remoteState={shared.remoteState}
+                        hostNewGame={hostGame}
+                        onNewGameRequested={onNewGameRequested}
+                        onGameLoadedChange={setGameLoaded}
+                        liveTeams={competitors}
+                    />
+                )}
             </div>
             <div className="mod-side">
                 <BuzzPanel client={client} state={roomState} />

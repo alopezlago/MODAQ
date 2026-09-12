@@ -61,6 +61,50 @@ function renderMentions(m: IChatMessage): React.ReactNode {
     return out;
 }
 
+// Timestamps the way a chat client does them: the time beside the name that
+// starts a run, the whole date and time on hover, and a divider when the log
+// crosses into another day (an evening's reading easily passes midnight).
+const chatTime = (at: number): string => {
+    try {
+        return new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    } catch {
+        return "";
+    }
+};
+
+const chatFullTime = (at: number): string => {
+    try {
+        return new Date(at).toLocaleString([], {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+        });
+    } catch {
+        return "";
+    }
+};
+
+const dayOf = (at: number): string => new Date(at).toDateString();
+
+function dayLabel(at: number): string {
+    const day = dayOf(at);
+    const now = new Date();
+    if (day === now.toDateString()) {
+        return "Today";
+    }
+    const yesterday = new Date(now.getTime() - 86400000);
+    if (day === yesterday.toDateString()) {
+        return "Yesterday";
+    }
+    try {
+        return new Date(at).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+    } catch {
+        return day;
+    }
+}
+
 /**
  * The room's chat, in the panel the host is already looking at.
  *
@@ -108,20 +152,31 @@ function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[] }): JSX
     }, [client, draft]);
 
     let lastName: string | undefined = undefined;
+    let lastDay: string | undefined = undefined;
     return (
         <div className="klaxon-chat">
             <h3>Chat</h3>
             <div className="kc-log" ref={logRef} data-is-scrollable="true">
                 {messages.map((m) => {
-                    const grouped = m.name === lastName;
+                    const newDay = dayOf(m.at) !== lastDay;
+                    // A run of lines from one person names them once — but a new
+                    // day starts a fresh run, so its first line is labelled.
+                    const grouped = m.name === lastName && !newDay;
                     lastName = m.name;
+                    lastDay = dayOf(m.at);
                     return (
-                        <div key={m.id} className={"kc-line" + (grouped ? " kc-cont" : "")}>
-                            {!grouped && (
-                                <span className={"kc-who" + (m.staff ? " kc-staff" : "")}>{m.name}</span>
-                            )}
-                            <span className="kc-text">{renderMentions(m)}</span>
-                        </div>
+                        <React.Fragment key={m.id}>
+                            {newDay && <div className="kc-day">{dayLabel(m.at)}</div>}
+                            <div className={"kc-line" + (grouped ? " kc-cont" : "")} title={chatFullTime(m.at)}>
+                                {!grouped && (
+                                    <span className={"kc-who" + (m.staff ? " kc-staff" : "")}>
+                                        {m.name}
+                                        <span className="kc-when">{chatTime(m.at)}</span>
+                                    </span>
+                                )}
+                                <span className="kc-text">{renderMentions(m)}</span>
+                            </div>
+                        </React.Fragment>
                     );
                 })}
                 {messages.length === 0 && <div className="kc-empty">Nothing said yet.</div>}
