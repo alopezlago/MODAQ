@@ -265,7 +265,7 @@ export class KlaxonClient {
     private readonly chatListeners: ChatListener[] = [];
     private readonly chatTypingListeners: ChatTypingListener[] = [];
     private readonly sharedGameListeners: SharedGameListener[] = [];
-    private readonly buzzPendingListeners: ((cycleNo: number) => void)[] = [];
+    private readonly buzzPendingListeners: ((wave: string) => void)[] = [];
     private joinedOnce = false;
     public lastState: IPublicRoomState | undefined;
     public messages: IDirectorMessage[] = [];
@@ -326,8 +326,11 @@ export class KlaxonClient {
             });
 
             socket.on("buzz_pending", (...args: unknown[]) => {
-                const p = args[0] as { cycleNo?: number };
-                for (const l of this.buzzPendingListeners) l(p?.cycleNo ?? -1);
+                const p = args[0] as { cycleNo?: number; wave?: number };
+                // A question has one wave per buzz-in, not one in total: the
+                // key has to name the wave or every buzz after the first on a
+                // question is taken for a repeat and goes unheard.
+                for (const l of this.buzzPendingListeners) l(`${p?.cycleNo ?? -1}:${p?.wave ?? 0}`);
             });
 
             socket.on("modaq_state", (...args: unknown[]) => {
@@ -420,8 +423,9 @@ export class KlaxonClient {
         };
     }
 
-    // A buzz just landed (before the reconcile window resolves who won it).
-    public onBuzzPending(listener: (cycleNo: number) => void): () => void {
+    // A buzz just landed (before the reconcile window resolves who won it). The
+    // listener is given a key for the WAVE it belongs to — see the handler.
+    public onBuzzPending(listener: (wave: string) => void): () => void {
         this.buzzPendingListeners.push(listener);
         return () => {
             const i = this.buzzPendingListeners.indexOf(listener);

@@ -1,26 +1,43 @@
 import * as React from "react";
-import { IChatMessage, IProtest, IPublicRoomState, IRoomMember, IStuckAlert, KlaxonClient } from "./klaxonClient";
+import {
+    IChatMessage,
+    IProtest,
+    IPublicRoomState,
+    IRoomMember,
+    IShootoutSession,
+    IStuckAlert,
+    KlaxonClient,
+} from "./klaxonClient";
 
 // The native Klaxon buzz panel shown beside the MODAQ reader. It renders the
 // latency-fair buzz queue the Klaxon server resolves and gives the moderator the
 // same reset/next/clear controls a Klaxon reader has, so they can drive the
 // buzzer while scoring in MODAQ.
 // The shootout leaderboard, as the host sees it while reading.
-function Leaderboard(props: { rows: { name: string; banked: number; current: number; total: number }[]; packets?: number }): JSX.Element | null {
+function Leaderboard(props: {
+    rows: { name: string; banked: number; current: number; total: number }[];
+    packets?: number;
+    // Which packet the room is on, so the heading says where the evening has
+    // got to rather than how many totals have been filed away.
+    at?: string;
+}): JSX.Element | null {
     if (props.rows.length === 0) {
         return null;
     }
+    // Nothing banked yet means every point came from this packet, and a column
+    // of "0 + n" would say so on every row.
+    const showSplit = (props.packets ?? 0) > 0;
     return (
         <div className="klaxon-board">
             <h3>
                 Leaderboard{" "}
-                {props.packets ? <span className="kb-packets">{props.packets} packet(s) banked</span> : undefined}
+                {props.at != undefined && props.at !== "" ? <span className="kb-packets">{props.at}</span> : undefined}
             </h3>
             <ol>
                 {props.rows.map((r) => (
                     <li key={r.name}>
                         <span className="kb-name">{r.name}</span>
-                        {r.banked !== 0 && (
+                        {showSplit && (r.banked !== 0 || r.current !== 0) && (
                             <span className="kb-split">
                                 {r.banked} + {r.current}
                             </span>
@@ -118,6 +135,16 @@ function dayLabel(at: number): string {
 function marginText(ms: number): string {
     const n = Math.max(0, Math.round(ms || 0));
     return n < 1000 ? `${n}ms` : `${(n / 1000).toFixed(n < 10000 ? 1 : 0)}s`;
+}
+
+// Where the evening has got to: "packet 2 of 9 · Round 02".
+function packetLabel(session: IShootoutSession | null | undefined): string {
+    const at = session?.currentIndex ?? -1;
+    const packet = at >= 0 ? session?.packets?.[at] : undefined;
+    if (packet == undefined || session == undefined) {
+        return "";
+    }
+    return session.packets.length > 1 ? `packet ${at + 1} of ${session.packets.length} · ${packet.name}` : packet.name;
 }
 
 // Discord's wording, and its restraint: past two names it stops listing them.
@@ -535,13 +562,15 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
     // Instant buzz sound: fires on the server's buzz_pending (sent the moment a
     // press lands, before the reconcile window names the winner). One per cycle.
     const [soundOn, setSoundOn] = React.useState(buzzSoundOn());
-    const soundedCycle = React.useRef<number | null>(null);
+    const soundedWave = React.useRef<string | null>(null);
     React.useEffect(() => {
-        return client.onBuzzPending((cycleNo) => {
-            if (soundedCycle.current === cycleNo) {
+        return client.onBuzzPending((wave) => {
+            // Once per wave. In queue mode a question has several, and the
+            // reader has to hear each of them — they stop reading again.
+            if (soundedWave.current === wave) {
                 return;
             }
-            soundedCycle.current = cycleNo;
+            soundedWave.current = wave;
             if (buzzSoundOn()) {
                 playBuzzBeep();
             }
@@ -932,7 +961,13 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
             )}
 
             {state?.shootout != undefined && <RoomChat client={client} initial={state.chat ?? []} />}
-            {state?.shootout != undefined && <Leaderboard rows={state.shootout.rows} packets={state.shootout.packets} />}
+            {state?.shootout != undefined && (
+                <Leaderboard
+                    rows={state.shootout.rows}
+                    packets={state.shootout.packets}
+                    at={packetLabel(state.shootout.session)}
+                />
+            )}
 
             <p className="klaxon-hint">
                 Buzzes are resolved with Klaxon&apos;s latency-fair timing. Judge the buzz in the MODAQ reader on the

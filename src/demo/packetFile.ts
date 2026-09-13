@@ -12,6 +12,7 @@
 
 import { IPacket } from "../state/IPacket";
 import { pdfToPacketHtml, IPdfJsLib } from "./pdfPacket";
+import { markPacketPowerFromBold } from "./boldPower";
 
 // Klaxon's own route to its YAPP instance (see /api/yapp/parse in Klaxon's
 // server/index.js). The parser takes a .docx, and — for anything that isn't a
@@ -145,7 +146,11 @@ async function parse(body: Uint8Array, what: string): Promise<IPacket> {
     } catch {
         throw new Error("The parser sent back something that isn't a packet.");
     }
-    return checked(packet, what);
+    // Some packets mark power by setting the powered part in bold and writing no
+    // marker at all; the parser keeps the bold and there is nothing for a format
+    // to match. See boldPower.ts — questions that say nothing about power this
+    // way are left exactly as they came.
+    return checked(markPacketPowerFromBold(packet), what);
 }
 
 // pdf.js is about a megabyte and a half with its worker, and most readers
