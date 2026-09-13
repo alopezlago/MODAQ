@@ -2682,7 +2682,20 @@ const SCHEMES: { value: string; label: string }[] = [
 ];
 
 function shootoutGameFormat(scoring: { scheme: string; bonuses: boolean } | undefined): IGameFormat | undefined {
-    return gameFormatFor({ tossupScheme: scoring?.scheme ?? "15/10/-5", hasBonuses: scoring?.bonuses === true });
+    const format = gameFormatFor({ tossupScheme: scoring?.scheme ?? "15/10/-5", hasBonuses: scoring?.bonuses === true });
+    if (format == undefined) {
+        return undefined;
+    }
+    // EVERY wrong buzz is a neg here, which is how individual play works
+    // (NAQT's IPNCT says so outright) and not how a team game does.
+    //
+    // Under the team rule only the first neg on a question counts: a second
+    // side buzzing in wrong after it scores nothing, because in a two-team
+    // match that side has already lost its shot at the tossup. A shootout has
+    // no sides — everybody is their own team — so that rule handed a free
+    // guess to everyone after the first person to get it wrong, which is the
+    // opposite of what a buzz is supposed to cost.
+    return { ...format, negsForEveryWrongBuzz: true };
 }
 
 const WITHDRAW_CHOICES: { value: WithdrawMode; label: string; detail: string }[] = [
