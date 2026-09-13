@@ -20,7 +20,14 @@ export const TossupAnswerCycleItem = observer(function TossupAnswerCycleItem(
     let buzzDescription = "answered";
     const points: number = props.game.getBuzzValue(props.buzz);
     if (points <= 0) {
-        const actualPoints = props.buzz === props.cycle.firstWrongBuzz ? points : 0;
+        // What this buzz actually cost, decided by the same call the SCORE is
+        // decided by (Cycle.getNegBuzzes) rather than by repeating the rule
+        // here. Repeating it meant assuming the team rule — only the first
+        // wrong buzz on a question is a neg — so under a format that negs every
+        // one of them, an individual game or a shootout, the log printed "for
+        // 0 ✗" beside a buzz that had just cost the player five.
+        const negs: ITossupAnswerEvent[] = props.cycle.getNegBuzzes(props.game.gameFormat);
+        const actualPoints = negs.indexOf(props.buzz) >= 0 ? points : 0;
         buzzDescription = `for ${actualPoints} ✗`;
     } else {
         buzzDescription = `for ${points} ✓`;
