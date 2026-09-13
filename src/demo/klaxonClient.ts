@@ -48,6 +48,7 @@ export interface IRoomSettings {
     modaqMode?: boolean;
     modaqLite?: boolean;
     shootout?: boolean;
+    typedAnswers?: boolean;
     lockedAnswers?: boolean;
 }
 
@@ -98,6 +99,17 @@ export interface IPublicRoomState {
     roster?: { name?: string; teamNames: string[]; teams: { name: string; players: string[] }[] } | null;
     queue: IBuzzQueueEntry[];
     members: IRoomMember[];
+    // The typed-answer window for this cycle, when the room uses one. Nobody's
+    // answer is in here — the moderator gets those on their own channel — only
+    // whether a window is running and how many people have committed.
+    answers?: {
+        open?: boolean;
+        guaranteed?: boolean;
+        closesAt?: number;
+        committed?: number;
+        activePlayerId?: string | null;
+        spoken?: string[];
+    } | null;
     // Protests the teams lodged. The whole board is public to the room: under
     // the ACF rules the arguments are made in front of everyone.
     protests?: IProtest[];

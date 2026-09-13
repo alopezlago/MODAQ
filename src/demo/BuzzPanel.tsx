@@ -408,6 +408,8 @@ function notifyStuck(code: string, who: string): void {
 export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState | undefined }): JSX.Element {
     const { client, state } = props;
     const [stuck, setStuck] = React.useState<IStuckAlert | undefined>(undefined);
+    // Why "Show their answer" did nothing, when it did nothing.
+    const [showAnswerMsg, setShowAnswerMsg] = React.useState("");
 
     // Instant buzz sound: fires on the server's buzz_pending (sent the moment a
     // press lands, before the reconcile window names the winner). One per cycle.
@@ -507,6 +509,7 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
     }, [buzzed]);
 
     const queueMode = !!state?.settings?.queueMode;
+    const answerWindow = state?.answers ?? undefined;
     const players = (state?.members ?? []).filter((m) => m.role === "player");
     const offline = players.filter((p) => !p.connected).length;
 
@@ -672,7 +675,34 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                         Clear queue
                     </button>
                 )}
+                {/* Typed answers: the player with the floor sends theirs with Enter, and nothing reveals it on a
+                    timer. This is how the reader asks for it — when they've given someone long enough, or when the
+                    player is sitting on an answer they haven't sent. */}
+                {answerWindow != undefined && (
+                    <button
+                        onClick={async () => {
+                            const res = await client.massinger({ action: "reveal_answer" });
+                            if (res?.error != undefined) {
+                                setShowAnswerMsg(
+                                    res.error === "nothing_typed" ? "They haven't typed anything yet." : res.error
+                                );
+                                setTimeout(() => setShowAnswerMsg(""), 2500);
+                            }
+                        }}
+                        disabled={!buzzed}
+                        title="Put the buzzed-in player's typed answer on the record now"
+                    >
+                        Show their answer
+                    </button>
+                )}
             </div>
+            {showAnswerMsg !== "" && <div className="klaxon-note">{showAnswerMsg}</div>}
+            {(answerWindow?.spoken?.length ?? 0) > 0 && (
+                <div className="klaxon-said">
+                    <span className="klaxon-said-label">Given: </span>
+                    {(answerWindow?.spoken ?? []).join(" \u00b7 ")}
+                </div>
+            )}
 
             <div className="klaxon-players">
                 <h3>

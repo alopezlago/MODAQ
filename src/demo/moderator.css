@@ -1141,6 +1141,25 @@ a.kx-crumb:hover {
     font-variant-numeric: tabular-nums;
 }
 
+/* What the floor has actually given, and why a force-show did nothing. */
+.klaxon-said {
+    margin-top: 8px;
+    padding: 6px 8px;
+    border-left: 3px solid var(--m-accent, #0078d4);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+.klaxon-said-label {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 11px;
+    color: var(--m-muted, #605e5c);
+}
+.klaxon-note {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--m-muted, #605e5c);
+}
 .klaxon-chat {
     margin-top: 12px;
     border-top: 1px solid var(--m-line-soft, #ececec);
