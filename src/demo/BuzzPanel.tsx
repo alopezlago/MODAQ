@@ -510,6 +510,19 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
 
     const queueMode = !!state?.settings?.queueMode;
     const answerWindow = state?.answers ?? undefined;
+    // Whether players type their answers at all. It is a room setting either
+    // way; the point of having it here is that the moderator is HERE, and
+    // deciding it shouldn't mean leaving the game to find the buzzer page.
+    const typedAnswers = state?.settings?.typedAnswers === true || state?.settings?.lockedAnswers === true;
+    // A checkbox bound straight to the room setting ignores the click until the
+    // server answers, so it flicks back under the pointer. Show what the
+    // moderator just chose, and let go once the room agrees.
+    const [pendingTyped, setPendingTyped] = React.useState<boolean | undefined>(undefined);
+    React.useEffect(() => {
+        if (pendingTyped != undefined && pendingTyped === typedAnswers) {
+            setPendingTyped(undefined);
+        }
+    }, [pendingTyped, typedAnswers]);
     const players = (state?.members ?? []).filter((m) => m.role === "player");
     const offline = players.filter((p) => !p.connected).length;
 
@@ -696,6 +709,25 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                     </button>
                 )}
             </div>
+
+            <label className="klaxon-opt" title="Players type their answer instead of saying it out loud">
+                <input
+                    type="checkbox"
+                    checked={pendingTyped ?? typedAnswers}
+                    onChange={(e) => {
+                        const on = e.target.checked;
+                        setPendingTyped(on);
+                        // Off means off: no boxes for anyone, including the
+                        // players queued behind the buzzer.
+                        client.massinger({
+                            action: "set_options",
+                            options: on ? { typedAnswers: true } : { typedAnswers: false, lockedAnswers: false },
+                        });
+                    }}
+                />{" "}
+                Players type their answers
+            </label>
+
             {showAnswerMsg !== "" && <div className="klaxon-note">{showAnswerMsg}</div>}
             {(answerWindow?.spoken?.length ?? 0) > 0 && (
                 <div className="klaxon-said">

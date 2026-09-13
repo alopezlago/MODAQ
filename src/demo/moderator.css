@@ -1141,6 +1141,24 @@ a.kx-crumb:hover {
     font-variant-numeric: tabular-nums;
 }
 
+/* A room setting the reader may want mid-game, where the reader is. */
+.klaxon-opt {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    /* Its own row between the buttons and the player list, not crowded onto
+       either of them. */
+    margin: 10px 0 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--m-line-soft, #ececec);
+    font-size: 13px;
+    cursor: pointer;
+}
+.klaxon-opt input {
+    width: auto;
+    margin: 0;
+}
+
 /* What the floor has actually given, and why a force-show did nothing. */
 .klaxon-said {
     margin-top: 8px;
