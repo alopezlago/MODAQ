@@ -1271,6 +1271,10 @@ a.kx-crumb:hover {
 }
 .kc-text {
     display: block;
+    /* Line breaks a player typed are kept by the server, so they are drawn
+       here too; long words still wrap rather than widening the panel. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 .kc-empty {
     color: var(--m-faint, #a19f9d);
