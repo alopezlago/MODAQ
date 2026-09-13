@@ -113,12 +113,32 @@ function dayLabel(at: number): string {
  * without it. Open by default for the same reason: a chat you have to go and
  * find is a chat nobody uses.
  */
+// How far behind the buzz that won it. Milliseconds while that is the unit that
+// means something, seconds once the gap is one a person could have counted.
+function marginText(ms: number): string {
+    const n = Math.max(0, Math.round(ms || 0));
+    return n < 1000 ? `${n}ms` : `${(n / 1000).toFixed(n < 10000 ? 1 : 0)}s`;
+}
+
+// Discord's wording, and its restraint: past two names it stops listing them.
+function typingLine(names: string[]): string {
+    if (names.length === 0) return "";
+    if (names.length === 1) return `${names[0]} is typing\u2026`;
+    if (names.length === 2) return `${names[0]} and ${names[1]} are typing\u2026`;
+    return "Several people are typing\u2026";
+}
+
 function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[] }): JSX.Element {
     const { client } = props;
     const [messages, setMessages] = React.useState<IChatMessage[]>(props.initial);
     const [draft, setDraft] = React.useState<string>("");
     const [note, setNote] = React.useState<string>("");
     const logRef = React.useRef<HTMLDivElement | null>(null);
+    // Who else is about to say something. Names time out on their own, so a
+    // page that closes mid-sentence doesn't leave its name standing.
+    const [typists, setTypists] = React.useState<{ id: string; name: string; at: number }[]>([]);
+    const typingSentAt = React.useRef(0);
+    const stopTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
     // The state broadcast carries the backlog; live lines arrive on their own
     // event, so a message doesn't wait for the next state push.
@@ -135,12 +155,42 @@ function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[] }): JSX
         }
     }, [messages]);
 
+    React.useEffect(() => {
+        return client.onChatTyping((t) =>
+            setTypists((prev) => {
+                const rest = prev.filter((x) => x.id !== t.playerId);
+                return t.typing ? [...rest, { id: t.playerId, name: t.name, at: Date.now() }] : rest;
+            })
+        );
+    }, [client]);
+
+    // Drop names nobody has re-announced.
+    React.useEffect(() => {
+        const timer = setInterval(
+            () => setTypists((prev) => prev.filter((x) => Date.now() - x.at < 6000)),
+            1500
+        );
+        return () => clearInterval(timer);
+    }, []);
+
+    const sendTyping = React.useCallback(
+        (on: boolean) => {
+            const now = Date.now();
+            if (on && now - typingSentAt.current < 2500) return;
+            typingSentAt.current = on ? now : 0;
+            client.chatTyping(on);
+        },
+        [client]
+    );
+
     const send = React.useCallback(async () => {
         const text = draft.trim();
         if (text === "") {
             return;
         }
         setDraft("");
+        clearTimeout(stopTimer.current);
+        sendTyping(false);
         const res = await client.chatSay(text);
         if (res.error != undefined) {
             // Put it back rather than losing what they typed.
@@ -161,9 +211,34 @@ function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[] }): JSX
                     const newDay = dayOf(m.at) !== lastDay;
                     // A run of lines from one person names them once — but a new
                     // day starts a fresh run, so its first line is labelled.
-                    const grouped = m.name === lastName && !newDay;
-                    lastName = m.name;
+                    const grouped = m.system == undefined && m.name === lastName && !newDay;
+                    // An announcement breaks the run: the next line from that
+                    // person is named again rather than trailing off an event.
+                    lastName = m.system == undefined ? m.name : undefined;
                     lastDay = dayOf(m.at);
+                    if (m.system === "cycle") {
+                        // Where the room got to, drawn like the day rules around it.
+                        return (
+                            <React.Fragment key={m.id}>
+                                {newDay && <div className="kc-day">{dayLabel(m.at)}</div>}
+                                <div className="kc-day kc-cycle" title={chatFullTime(m.at)}>
+                                    {m.text}
+                                </div>
+                            </React.Fragment>
+                        );
+                    }
+                    if (m.system === "answer") {
+                        return (
+                            <React.Fragment key={m.id}>
+                                {newDay && <div className="kc-day">{dayLabel(m.at)}</div>}
+                                <div className="kc-event" title={chatFullTime(m.at)}>
+                                    <span className="kc-event-label">Answer</span>
+                                    <span className="kc-event-who">{m.name}</span>
+                                    <span className="kc-event-text">{m.text}</span>
+                                </div>
+                            </React.Fragment>
+                        );
+                    }
                     return (
                         <React.Fragment key={m.id}>
                             {newDay && <div className="kc-day">{dayLabel(m.at)}</div>}
@@ -181,12 +256,23 @@ function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[] }): JSX
                 })}
                 {messages.length === 0 && <div className="kc-empty">Nothing said yet.</div>}
             </div>
+            <div className="kc-typing">{typingLine(typists.map((t) => t.name))}</div>
             <div className="kc-entry">
                 <input
                     value={draft}
                     maxLength={400}
                     placeholder="Say something"
-                    onChange={(ev) => setDraft(ev.target.value)}
+                    onChange={(ev) => {
+                        setDraft(ev.target.value);
+                        if (ev.target.value.trim() === "") {
+                            clearTimeout(stopTimer.current);
+                            sendTyping(false);
+                            return;
+                        }
+                        sendTyping(true);
+                        clearTimeout(stopTimer.current);
+                        stopTimer.current = setTimeout(() => sendTyping(false), 4500);
+                    }}
                     onKeyDown={(ev) => {
                         // The panel's own shortcuts must not fire while typing.
                         ev.stopPropagation();
@@ -358,6 +444,41 @@ function playStuckSound(): void {
     }
 }
 
+// An answer has been given. Two rising notes, softer and lower than the buzz,
+// because it means "read this" rather than "stop reading" — and the reader is
+// usually looking at the question, not at this panel, when it lands.
+function playAnswerChime(): void {
+    try {
+        const Ctor = (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext })
+            .AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (Ctor == undefined) return;
+        const ctx = new Ctor();
+        const master = ctx.createGain();
+        master.gain.value = 0.55;
+        master.connect(ctx.destination);
+        const t = ctx.currentTime;
+        [
+            [587, 0],
+            [880, 0.12],
+        ].forEach(([freq, delay]) => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = "triangle";
+            const at = t + delay;
+            o.frequency.setValueAtTime(freq, at);
+            g.gain.setValueAtTime(0.0001, at);
+            g.gain.exponentialRampToValueAtTime(0.7, at + 0.01);
+            g.gain.exponentialRampToValueAtTime(0.0001, at + 0.22);
+            o.connect(g).connect(master);
+            o.start(at);
+            o.stop(at + 0.26);
+        });
+        setTimeout(() => void ctx.close(), 900);
+    } catch {
+        /* audio unavailable */
+    }
+}
+
 // The buzz itself, played the moment the server hears a press — BEFORE the
 // reconcile window decides who won it (no name is shown until then).
 function playBuzzBeep(): void {
@@ -510,6 +631,25 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
 
     const queueMode = !!state?.settings?.queueMode;
     const answerWindow = state?.answers ?? undefined;
+    // An answer landing is the thing the reader has been waiting for, so it
+    // says so out loud. Counted rather than compared: the same answer given
+    // twice is still an answer given twice.
+    const spokenCount = answerWindow?.spoken?.length ?? 0;
+    const [answerFlash, setAnswerFlash] = React.useState(false);
+    const heardAnswers = React.useRef(spokenCount);
+    React.useEffect(() => {
+        if (spokenCount > heardAnswers.current) {
+            if (buzzSoundOn()) {
+                playAnswerChime();
+            }
+            setAnswerFlash(true);
+            const timer = setTimeout(() => setAnswerFlash(false), 1600);
+            heardAnswers.current = spokenCount;
+            return () => clearTimeout(timer);
+        }
+        heardAnswers.current = spokenCount;
+        return undefined;
+    }, [spokenCount]);
     // Whether players type their answers at all. It is a room setting either
     // way; the point of having it here is that the moderator is HERE, and
     // deciding it shouldn't mean leaving the game to find the buzzer page.
@@ -657,7 +797,11 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                             >
                                 {modaqLabel(m, entry.name)}
                             </span>
-                            {index > 0 && <span className="qmargin">+{entry.marginMs}ms</span>}
+                            {index > 0 && (
+                                <span className="qmargin" title={`Buzzed this far behind ${queue[0].name}`}>
+                                    +{marginText(entry.marginMs)}
+                                </span>
+                            )}
                             {!m?.rosterPlayer && <span className="klaxon-unlinked">not in MODAQ</span>}
                             {!m?.rosterPlayer && linkPicker(m, entry.playerId)}
                         </li>
@@ -730,7 +874,7 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
 
             {showAnswerMsg !== "" && <div className="klaxon-note">{showAnswerMsg}</div>}
             {(answerWindow?.spoken?.length ?? 0) > 0 && (
-                <div className="klaxon-said">
+                <div className={"klaxon-said" + (answerFlash ? " klaxon-said-new" : "")}>
                     <span className="klaxon-said-label">Given: </span>
                     {(answerWindow?.spoken ?? []).join(" \u00b7 ")}
                 </div>

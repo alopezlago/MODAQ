@@ -2662,6 +2662,19 @@ function useShootoutPresence(roomState: IPublicRoomState | undefined): ILiveTeam
     return React.useMemo(() => list, [key]);
 }
 
+// A packet that marks superpowers puts a second marker ahead of the usual one:
+// "(+)" for the 20, "(*)" for the 15. If the format only knows about "(*)" then
+// every superpower in the packet is read as an ordinary power and quietly scored
+// 15 — no error, no warning, just a tournament scored wrong. So: look.
+const SUPERPOWER_MARKER = "(+)";
+
+function hasSuperpowers(packet: { tossups?: { question?: string }[] } | undefined): boolean {
+    return (packet?.tossups ?? []).some((t) => (t.question ?? "").includes(SUPERPOWER_MARKER));
+}
+
+// Whether the scoring in force actually has a tier for them.
+const schemeHasSuperpowers = (scheme: string | undefined): boolean => scheme === "20/15/10/-5";
+
 const SCHEMES: { value: string; label: string }[] = [
     { value: "15/10/-5", label: "15 / 10 / −5 (powers)" },
     { value: "20/15/10/-5", label: "20 / 15 / 10 / −5 (superpowers)" },
@@ -3018,6 +3031,8 @@ function ShootoutReading(props: {
     // comes off screen (see MODAQ_PERSIST_SETTLE_MS).
     const [gameKey, setGameKey] = React.useState(0);
     const [staging, setStaging] = React.useState(false);
+    // Whether the packet on screen marks superpowers (see hasSuperpowers).
+    const [superPacket, setSuperPacket] = React.useState(false);
     // The packets that have a game filed against them, so the picker can say
     // which have been read.
     const [played, setPlayed] = React.useState<Set<string>>(new Set());
@@ -3081,6 +3096,12 @@ function ShootoutReading(props: {
                 gamePacket.current = p.id;
                 lastGame.current = undefined;
                 setProgress(undefined);
+                // Does this packet mark superpowers? Asked on its own and never
+                // fatal: a packet that won't load here (a game being put back
+                // doesn't need one) means no warning, not a failure to read.
+                void KlaxonApi.getPacket<IPacket>(code, client.token, p.id)
+                    .then((pk) => setSuperPacket(hasSuperpowers(pk)))
+                    .catch(() => setSuperPacket(false));
                 if (done?.game?.json) {
                     // Read before: put that game back, rather than wiping it.
                     setStaging(true);
@@ -3205,6 +3226,24 @@ function ShootoutReading(props: {
 
     const current = packets[index];
     const previous = index > 0 ? packets[index - 1] : undefined;
+    const superMismatch = superPacket && !schemeHasSuperpowers(scheme);
+
+    // Change the scoring without stopping the game. A format is a property of
+    // the game, not of the packet load, so MODAQ takes the new one and the
+    // questions are re-read against it from here on — which is the whole point
+    // of being able to fix it in the middle of a match.
+    const setScheme = async (next: string): Promise<void> => {
+        if (!session) return;
+        setBusy("scheme");
+        try {
+            await client.massinger({
+                action: "shootout_session",
+                session: { ...session, scoring: { ...session.scoring, scheme: next } },
+            });
+        } finally {
+            setBusy("");
+        }
+    };
     const label = session
         ? `${session.name}${current ? ` · Packet ${index + 1} of ${packets.length}: ${current.name}` : ""}`
         : `Room ${code}`;
@@ -3252,10 +3291,34 @@ function ShootoutReading(props: {
                     >
                         Export all rounds for buzzpoints ⤓
                     </button>
+                    <select
+                        className="so-jump"
+                        aria-label="Scoring"
+                        title="The scoring in force. Changing it applies to the game on screen."
+                        value={scheme ?? "15/10/-5"}
+                        disabled={busy !== "" || session == undefined}
+                        onChange={(e) => void setScheme(e.target.value)}
+                    >
+                        {SCHEMES.map((sc) => (
+                            <option key={sc.value} value={sc.value}>
+                                {sc.label}
+                            </option>
+                        ))}
+                    </select>
                     <button onClick={onEditSession} disabled={busy !== ""}>
                         Edit session
                     </button>
                 </RoomToolbar>
+                {superMismatch && (
+                    <div className="mod-warn" role="alert">
+                        <strong>This packet marks superpowers.</strong> It has {SUPERPOWER_MARKER} in it, and the
+                        scoring in force ({scheme}) has no tier for them — every superpower will be scored as an
+                        ordinary power.
+                        <button onClick={() => void setScheme("20/15/10/-5")} disabled={busy !== ""}>
+                            Use 20 / 15 / 10 / \u22125
+                        </button>
+                    </div>
+                )}
                 <DirectorMessages client={client} />
                 {(busy || msg) && <p className={msg ? "pk-error so-status" : "so-status"}>{msg || busy}</p>}
                 {gameLoaded && here === 0 && (
@@ -3275,6 +3338,10 @@ function ShootoutReading(props: {
                         buzzedInPlayer={buzzedInPlayer}
                         buzzQueueCount={hostBuzzer.count}
                         onWithdrawBuzz={hostBuzzer.withdraw}
+                        // Passed as well as being set at game start, so changing
+                        // the scoring mid-match reaches the game on screen
+                        // rather than only the next packet.
+                        gameFormat={format}
                         onPersistedState={shared.onPersistedState}
                         remoteState={shared.remoteState}
                         hostNewGame={hostGame}

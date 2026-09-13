@@ -142,6 +142,14 @@ export interface IShootoutSession {
 // One line of the room's chat. Nothing to do with answering — see the Klaxon
 // server's shootout.js.
 type ChatListener = (message: IChatMessage) => void;
+// Somebody in the room is (or has stopped) typing in the chat. Presence only:
+// no text ever travels this way.
+export interface IChatTyping {
+    playerId: string;
+    name: string;
+    typing: boolean;
+}
+type ChatTypingListener = (typing: IChatTyping) => void;
 
 export interface IChatMessage {
     id: string;
@@ -150,6 +158,10 @@ export interface IChatMessage {
     staff: boolean;
     text: string;
     at: number;
+    // Something the ROOM did rather than something somebody said — at present
+    // "answer", an answer the room heard. Drawn as an event, never folded into
+    // a run of chat.
+    system?: string;
     // Who the message addressed, resolved by the server against the people in
     // the room — never taken from the sender, who could otherwise ping anyone.
     mentions?: { id: string; name: string }[];
@@ -251,6 +263,7 @@ export class KlaxonClient {
     private readonly messageListeners: MessageListener[] = [];
     private readonly stuckListeners: StuckListener[] = [];
     private readonly chatListeners: ChatListener[] = [];
+    private readonly chatTypingListeners: ChatTypingListener[] = [];
     private readonly sharedGameListeners: SharedGameListener[] = [];
     private readonly buzzPendingListeners: ((cycleNo: number) => void)[] = [];
     private joinedOnce = false;
@@ -298,6 +311,12 @@ export class KlaxonClient {
                 const m = args[0] as IChatMessage;
                 if (!m || typeof m.text !== "string") return;
                 for (const l of this.chatListeners) l(m);
+            });
+
+            socket.on("chat_typing", (...args: unknown[]) => {
+                const t = args[0] as IChatTyping;
+                if (!t || typeof t.playerId !== "string") return;
+                for (const l of this.chatTypingListeners) l(t);
             });
 
             socket.on("stuck_alert", (...args: unknown[]) => {
@@ -484,6 +503,18 @@ export class KlaxonClient {
             const i = this.chatListeners.indexOf(listener);
             if (i >= 0) this.chatListeners.splice(i, 1);
         };
+    }
+
+    public onChatTyping(listener: ChatTypingListener): () => void {
+        this.chatTypingListeners.push(listener);
+        return () => {
+            const i = this.chatTypingListeners.indexOf(listener);
+            if (i >= 0) this.chatTypingListeners.splice(i, 1);
+        };
+    }
+
+    public chatTyping(typing: boolean): void {
+        this.socket?.emit("chat_typing", { typing });
     }
 
     public clearQueue(judged = false): void {

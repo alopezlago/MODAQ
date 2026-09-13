@@ -1141,6 +1141,37 @@ a.kx-crumb:hover {
     font-variant-numeric: tabular-nums;
 }
 
+/* Where the room got to. Quieter than a day rule: it happens every question. */
+.kc-cycle {
+    color: var(--m-accent, #0078d4);
+    font-size: 11px;
+}
+
+/* An answer the room heard, in the chat. Labelled and boxed so it never reads
+   as one of the players talking. */
+.kc-event {
+    margin: 6px 0;
+    padding: 4px 6px;
+    border: 1px solid var(--m-accent, #0078d4);
+    border-radius: 4px;
+    overflow-wrap: anywhere;
+}
+.kc-event-label {
+    display: inline-block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #fff;
+    background: var(--m-accent, #0078d4);
+    border-radius: 2px;
+    padding: 0 4px;
+    margin-right: 6px;
+}
+.kc-event-who {
+    font-weight: 600;
+    margin-right: 6px;
+}
+
 /* A room setting the reader may want mid-game, where the reader is. */
 .klaxon-opt {
     display: flex;
@@ -1166,6 +1197,25 @@ a.kx-crumb:hover {
     border-left: 3px solid var(--m-accent, #0078d4);
     font-size: 13px;
     overflow-wrap: anywhere;
+}
+/* Just arrived: the reader may have been looking at the question. */
+.klaxon-said-new {
+    animation: klaxon-said-in 1.6s ease-out;
+}
+@keyframes klaxon-said-in {
+    0%,
+    40% {
+        background: var(--m-accent-soft, #deecf9);
+    }
+    100% {
+        background: transparent;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .klaxon-said-new {
+        animation: none;
+        background: var(--m-accent-soft, #deecf9);
+    }
 }
 .klaxon-said-label {
     text-transform: uppercase;
@@ -1225,6 +1275,17 @@ a.kx-crumb:hover {
 .kc-empty {
     color: var(--m-faint, #a19f9d);
     font-size: 12px;
+}
+/* Its height is reserved: a line that comes and goes above the box moves the
+   box you are typing in. */
+.kc-typing {
+    min-height: 14px;
+    font-size: 11px;
+    font-style: italic;
+    color: var(--m-muted, #605e5c);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 .kc-entry {
     display: flex;
