@@ -118,12 +118,14 @@ export const EventViewer = observer(function EventViewer(): JSX.Element | null {
                 const eventContainerBoundingRect: DOMRect = eventViewerContainer.getBoundingClientRect();
                 const selectedCellBoundingRect: DOMRect = selectedCell.getBoundingClientRect();
 
-                // scrollIntoView defaults to scrolling to the top of the item. If it's past the bottom, we want to
-                // scroll to the bottom of the element.
+                // Scroll the log itself rather than calling scrollIntoView, which walks up and scrolls EVERY
+                // scrollable ancestor — the page included. On a tall page (a shootout, where the buzz panel
+                // carries the chat and the leaderboard) moving to the next question dragged the whole window
+                // down a little each time.
                 if (eventContainerBoundingRect.y > selectedCellBoundingRect.y) {
-                    selectedCell.scrollIntoView();
+                    eventViewerContainer.scrollTop -= eventContainerBoundingRect.y - selectedCellBoundingRect.y;
                 } else if (eventContainerBoundingRect.bottom < selectedCellBoundingRect.bottom) {
-                    selectedCell.scrollIntoView(false);
+                    eventViewerContainer.scrollTop += selectedCellBoundingRect.bottom - eventContainerBoundingRect.bottom;
                 }
             }
         }

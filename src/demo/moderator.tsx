@@ -272,6 +272,25 @@ function useBuzzedInPlayer(roomState: IPublicRoomState | undefined): { name: str
     return React.useMemo(() => (name === "" ? undefined : { name, teamName }), [name, teamName]);
 }
 
+// What the buzz menu needs from the room besides the name: the size of the queue, and a way to take the buzz back
+// without scoring it. A withdrawn buzz is not a wrong answer — nothing reaches the game — so this is the Klaxon
+// side of the menu, and it is only offered in a room that keeps a queue.
+function useHostBuzzer(
+    client: KlaxonClient,
+    roomState: IPublicRoomState | undefined
+): { count: number; withdraw: (() => void) | undefined } {
+    const count = roomState?.queue?.length ?? 0;
+    const queueMode = roomState?.settings?.queueMode === true;
+    const withdraw = React.useCallback(() => {
+        if (queueMode) {
+            client.nextBuzz();
+        } else {
+            client.resetBuzzer(true);
+        }
+    }, [client, queueMode]);
+    return React.useMemo(() => ({ count, withdraw: count > 0 ? withdraw : undefined }), [count, withdraw]);
+}
+
 // Judging a buzz resolves it: clear the Klaxon buzzer, or — a wrong answer in
 // queue mode — hand the buzzer to whoever is next in the queue.
 function useJudgedHandler(client: KlaxonClient, roomState: IPublicRoomState | undefined): (correct: boolean) => void {
@@ -645,6 +664,16 @@ function ThemeToggle(): JSX.Element {
 // can get back to the room or start another game.
 function KlaxonHeader(props: { code: string }): JSX.Element {
     const creds = readCredentials(props.code);
+    const [copied, setCopied] = React.useState(false);
+    const copyLink = async (): Promise<void> => {
+        try {
+            await navigator.clipboard.writeText(`${location.origin}/${props.code}`);
+        } catch {
+            /* clipboard may be blocked; ignore */
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1200);
+    };
     return (
         <header className="kx-bar">
             <nav className="kx-crumbs" aria-label="Breadcrumb">
@@ -662,6 +691,19 @@ function KlaxonHeader(props: { code: string }): JSX.Element {
                 </span>
             </nav>
             <div className="kx-right">
+                <button className="kx-action" onClick={copyLink} title="Copy this room's player join link">
+                    {copied ? "Copied!" : "Copy player link"}
+                </button>
+                {/* ?plain=1 keeps the buzzer page from redirecting back here. */}
+                <a
+                    className="kx-action"
+                    href={`/r/${props.code}?plain=1`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Buzzer options and invite links, in the normal reader view"
+                >
+                    Buzzer options ↗
+                </a>
                 <span className="kx-pill">{creds.role === "co-reader" ? "co-reader" : "reader"}</span>
                 <ThemeToggle />
             </div>
@@ -2151,30 +2193,15 @@ function DirectorMessages(props: { client: KlaxonClient }): JSX.Element | null {
     );
 }
 
-// Shared bar shown above the MODAQ reader: the room label, a copyable player
-// join link, and a link to the normal Klaxon reader controls (buzzer options,
-// invite links). The ?plain=1 keeps that page from redirecting back here.
+// Shared bar shown above the MODAQ reader: what is being read, and whatever
+// buttons that view needs. The player link and the buzzer options used to live
+// here too; they belong to the room rather than to the view, so they sit in the
+// Klaxon bar at the top of the page (see KlaxonHeader).
 function RoomToolbar(props: { code: string; label: string; children?: React.ReactNode }): JSX.Element {
-    const [copied, setCopied] = React.useState(false);
-    const copyLink = async (): Promise<void> => {
-        try {
-            await navigator.clipboard.writeText(`${location.origin}/${props.code}`);
-        } catch {
-            /* clipboard may be blocked; ignore */
-        }
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1200);
-    };
     return (
         <div className="mod-changebar">
             <span>{props.label}</span>
-            <span className="mod-toolbar-actions">
-                <button onClick={copyLink}>{copied ? "Copied!" : "Copy player link"}</button>
-                <a href={`/r/${props.code}?plain=1`} target="_blank" rel="noopener noreferrer">
-                    Buzzer options ↗
-                </a>
-                {props.children}
-            </span>
+            <span className="mod-toolbar-actions">{props.children}</span>
         </div>
     );
 }
@@ -2270,6 +2297,7 @@ function Reading(props: {
     // the next queued buzzer when a queue-mode answer was wrong).
     const onBuzzJudged = useJudgedHandler(client, roomState);
     const buzzedInPlayer = useBuzzedInPlayer(roomState);
+    const hostBuzzer = useHostBuzzer(client, roomState);
 
     const onErrataChange = React.useCallback(
         (errata: IErratum[]) => {
@@ -2324,6 +2352,8 @@ function Reading(props: {
                     onGameUpdate={onGameUpdate}
                     onBuzzJudged={onBuzzJudged}
                     buzzedInPlayer={buzzedInPlayer}
+                    buzzQueueCount={hostBuzzer.count}
+                    onWithdrawBuzz={hostBuzzer.withdraw}
                     onExported={ending.onExported}
                     onPersistedState={shared.onPersistedState}
                     remoteState={shared.remoteState}
@@ -2402,6 +2432,7 @@ function LiteReading(props: {
     const { code, client, roomState } = props;
     const onBuzzJudged = useJudgedHandler(client, roomState);
     const buzzedInPlayer = useBuzzedInPlayer(roomState);
+    const hostBuzzer = useHostBuzzer(client, roomState);
     // Lite mode has no tournament roster, but the teams entered in MODAQ's own
     // New Game dialog still link the buzzers to real players, and the room
     // still gets the live scoresheet.
@@ -2525,6 +2556,8 @@ function LiteReading(props: {
                             onGameUpdate={syncGame}
                             onBuzzJudged={onBuzzJudged}
                             buzzedInPlayer={buzzedInPlayer}
+                            buzzQueueCount={hostBuzzer.count}
+                            onWithdrawBuzz={hostBuzzer.withdraw}
                             onExported={() => {
                                 ending.onExported();
                                 downloadFullBuzz(client);
@@ -2967,6 +3000,7 @@ function ShootoutReading(props: {
     const session = roomState?.shootout?.session ?? null;
     const onBuzzJudged = useJudgedHandler(client, roomState);
     const buzzedInPlayer = useBuzzedInPlayer(roomState);
+    const hostBuzzer = useHostBuzzer(client, roomState);
     // Which packet the game on screen is. Every score the server files is filed
     // under this, so moving between packets can't put one packet's score on
     // another (nor lose it).
@@ -3214,9 +3248,9 @@ function ShootoutReading(props: {
                     <button
                         onClick={exportAll}
                         disabled={busy !== "" || index < 0}
-                        title="Packets and games, laid out for quizbowlbuzzpoints.com"
+                        title="Every packet read this session, and its game, laid out for quizbowlbuzzpoints.com"
                     >
-                        Export for buzzpoints ⤓
+                        Export all rounds for buzzpoints ⤓
                     </button>
                     <button onClick={onEditSession} disabled={busy !== ""}>
                         Edit session
@@ -3239,6 +3273,8 @@ function ShootoutReading(props: {
                         onGameUpdate={onGameUpdate}
                         onBuzzJudged={onBuzzJudged}
                         buzzedInPlayer={buzzedInPlayer}
+                        buzzQueueCount={hostBuzzer.count}
+                        onWithdrawBuzz={hostBuzzer.withdraw}
                         onPersistedState={shared.onPersistedState}
                         remoteState={shared.remoteState}
                         hostNewGame={hostGame}

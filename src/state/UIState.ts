@@ -44,6 +44,13 @@ export class UIState {
     @ignore
     public buzzedInPlayer: { name: string; teamName: string } | undefined;
 
+    // The rest of what the host's buzzer knows about the buzz being judged: how
+    // many are still waiting behind the player who has the floor, and how to
+    // hand the buzzer on without scoring anything (a withdrawn buzz). MODAQ on
+    // its own has neither — there is no queue in a game it runs by itself.
+    @ignore
+    public hostBuzzer: { queueCount: number; onWithdraw?: () => void } | undefined;
+
     // TODO: Should we also include the Cycle? This would simplify anything that needs access to the cycle
     public cycleIndex: number;
 
@@ -747,6 +754,10 @@ export class UIState {
 
     public setBuzzedInPlayer(player: { name: string; teamName: string } | undefined): void {
         this.buzzedInPlayer = player;
+    }
+
+    public setHostBuzzer(hostBuzzer: { queueCount: number; onWithdraw?: () => void } | undefined): void {
+        this.hostBuzzer = hostBuzzer;
     }
 
     public setHideNewGame(value: boolean): void {

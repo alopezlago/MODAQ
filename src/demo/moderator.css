@@ -778,6 +778,21 @@ a.kx-crumb:hover {
     gap: 8px;
     align-items: center;
 }
+.kx-action {
+    font-family: inherit;
+    font-size: 0.8rem;
+    padding: 0.25em 0.7em;
+    border: 1.5px solid var(--kx-ink);
+    border-radius: 4px;
+    background: var(--kx-surface);
+    color: var(--kx-ink);
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.kx-action:hover {
+    background: var(--kx-soft);
+}
 .kx-pill {
     font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     font-size: 0.72rem;

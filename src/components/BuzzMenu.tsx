@@ -66,30 +66,73 @@ export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps) {
     // number key) if we read them there.
     const visible: boolean = props.appState.uiState.buzzMenuState.visible;
     const selectedPlayerIndex: number | undefined = props.appState.uiState.buzzMenuState.selectedPlayerIndex;
+    // Same reason: the menu now stays open while the reader judges a queue, so it has to follow the host's buzzer
+    // passing from one player to the next. Read inside the Consumer, these never re-rendered and the section went on
+    // naming whoever buzzed first.
+    const buzzedIn = props.appState.uiState.buzzedInPlayer;
+    const hostBuzzer = props.appState.uiState.hostBuzzer;
+    const hostQueueCount: number = hostBuzzer?.queueCount ?? 0;
+    const onWithdraw: (() => void) | undefined = hostBuzzer?.onWithdraw;
+    // The buzzes on this tossup, so a player who has already had it is marked wherever they appear. Read here for
+    // the same tracking reason; correctBuzz/wrongBuzzes change as the reader judges.
+    const cycleCorrectBuzz = props.cycle.correctBuzz;
+    const cycleWrongBuzzes = props.cycle.wrongBuzzes;
 
     return (
         <ThemeContext.Consumer>
             {(theme) => {
                 const menuItems: IContextualMenuItem[] = [];
+                // Referenced so the observer tracks them (see the dereference above); the values themselves are
+                // read through props.cycle where they are used.
+                void cycleCorrectBuzz;
+                void cycleWrongBuzzes;
 
                 // The host's buzzer knows who is answering: offer them first, so the reader doesn't hunt through
                 // the roster for a name they already have. The regular per-team listing is untouched below, and
                 // the number-key shortcuts still belong to it.
-                const buzzedIn = props.appState.uiState.buzzedInPlayer;
+                const waiting: number = Math.max(0, hostQueueCount - 1);
                 if (buzzedIn != undefined) {
                     const player = [
                         ...props.appState.game.getActivePlayers(buzzedIn.teamName, props.appState.uiState.cycleIndex),
                     ].find((p) => p.name === buzzedIn.name);
                     if (player != undefined) {
+                        const items: IContextualMenuItem[] = [
+                            buildPlayerMenuItem(
+                                props,
+                                theme,
+                                player,
+                                buzzedIn.teamName,
+                                -1,
+                                undefined,
+                                "BuzzedIn_",
+                                /* emphasize */ true
+                            ),
+                        ];
+
+                        // A withdrawn buzz is not a wrong answer: nothing is scored and the game keeps no record
+                        // of it. All it does is pass the buzzer to whoever is next, which is a thing the reader
+                        // needs at the moment they are looking at this menu — not in another panel.
+                        if (onWithdraw != undefined) {
+                            items.push({
+                                key: "BuzzedIn_Withdraw",
+                                text: waiting > 0 ? "Withdrew — next buzzer →" : "Withdrew — clear the buzzer",
+                                title:
+                                    "They took the buzz back. Nothing is scored, and the buzzer goes to the next " +
+                                    "player in the queue.",
+                                data: { props, player },
+                                onClick: onWithdrawClicked,
+                            });
+                        }
+
                         menuItems.push({
                             key: "BuzzedIn_Section",
                             itemType: ContextualMenuItemType.Section,
                             sectionProps: {
                                 bottomDivider: true,
-                                title: "Buzzed in",
-                                items: [
-                                    buildPlayerMenuItem(props, theme, player, buzzedIn.teamName, -1, undefined, "BuzzedIn_"),
-                                ],
+                                title:
+                                    `▶ Buzzed in: ${buzzedIn.name}` +
+                                    (waiting > 0 ? ` (${waiting} more waiting)` : ""),
+                                items,
                             },
                         });
                     }
@@ -133,6 +176,21 @@ export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps) {
     );
 });
 
+// What this player has already done on THIS tossup, wherever in it they did it. The Correct/Wrong ticks below only
+// describe the word the menu is open on, so a player who negged forty words ago looked untouched at the next buzz —
+// which is exactly when a reader is about to hand them the floor again.
+function earlierBuzz(props: IBuzzMenuProps, player: Player): string | undefined {
+    const correct = props.cycle.correctBuzz;
+    if (correct != undefined && PlayerUtils.playersEqual(correct.marker.player, player)) {
+        return correct.marker.position === props.wordIndex ? undefined : `✓ word ${correct.marker.position + 1}`;
+    }
+
+    const wrong = (props.cycle.wrongBuzzes ?? []).find(
+        (buzz) => PlayerUtils.playersEqual(buzz.marker.player, player) && buzz.marker.position !== props.wordIndex
+    );
+    return wrong != undefined ? `✗ word ${wrong.marker.position + 1}` : undefined;
+}
+
 function getPlayerMenuItems(
     props: IBuzzMenuProps,
     theme: Theme | undefined,
@@ -165,7 +223,8 @@ function buildPlayerMenuItem(
     teamName: string,
     globalIndex: number,
     selectedPlayerIndex: number | undefined,
-    keyPrefix = ""
+    keyPrefix = "",
+    emphasize = false
 ): IContextualMenuItem {
     const numbered = globalIndex >= 0;
     {
@@ -230,14 +289,23 @@ function buildPlayerMenuItem(
         // The first nine players across both teams can be picked with number keys; show the number, and
         // highlight the player picked that way (C marks them correct, W marks them wrong)
         const isKeyboardSelected: boolean = numbered && selectedPlayerIndex === globalIndex;
+        const alreadyBuzzed: string | undefined = earlierBuzz(props, player);
 
         return {
             key: topLevelKey,
             id: numbered ? TossupQuestionController.getBuzzMenuPlayerElementId(globalIndex) : undefined,
             text: numbered && globalIndex < 9 ? `${globalIndex + 1}. ${player.name}` : player.name,
+            // Right-aligned, so the name still reads straight down the menu: the player who has the buzzer, or one
+            // who has already answered this tossup and cannot have it again.
+            secondaryText: emphasize ? "has the buzzer" : alreadyBuzzed,
+            title: alreadyBuzzed != undefined ? `${player.name} already buzzed on this tossup (${alreadyBuzzed})` : undefined,
             style: {
                 // + "20" makes the background translucent by 32/255 ~15%
-                background: isKeyboardSelected
+                background: emphasize
+                    ? theme
+                        ? theme.palette.themeLight
+                        : "rgb(192, 192, 192)"
+                    : isKeyboardSelected
                     ? theme
                         ? theme.palette.themeLight
                         : "rgb(192, 192, 192)"
@@ -245,11 +313,12 @@ function buildPlayerMenuItem(
                     ? theme
                         ? theme.palette.teal + "20"
                         : "rgb(0, 128, 128)"
-                    : isWrongChecked
+                    : isWrongChecked || alreadyBuzzed != undefined
                     ? theme
                         ? theme.palette.red + "20"
                         : "rgb(128, 0, 0)"
                     : undefined,
+                fontWeight: emphasize ? 700 : undefined,
             },
             subMenuProps: {
                 items: subMenuItems,
@@ -340,7 +409,35 @@ function onWrongClicked(
         };
 
         props.cycle.addWrongBuzz(marker, props.tossupNumber - 1, props.appState.game.gameFormat);
+
+        // Marking a buzz wrong hands the host's buzzer to the next player in the queue (see the moderator page's
+        // judged handler), and that player is usually judged at this same word. Leaving the menu open where it is
+        // saves clicking back into the exact word for every buzz on a crowded tossup.
+        keepOpenIfQueued(props, ev);
     }
+}
+
+// Fluent dismisses the menu after a click unless the handler has called preventDefault (and returns falsy).
+function keepOpenIfQueued(
+    props: IBuzzMenuProps,
+    ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>
+): void {
+    if ((props.appState.uiState.hostBuzzer?.queueCount ?? 0) > 1) {
+        ev?.preventDefault();
+    }
+}
+
+function onWithdrawClicked(
+    ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
+    item?: IContextualMenuItem
+) {
+    if (item?.data == undefined || !isBuzzMenuItemData(item.data)) {
+        return;
+    }
+
+    const { props } = { ...item.data };
+    keepOpenIfQueued(props, ev);
+    props.appState.uiState.hostBuzzer?.onWithdraw?.();
 }
 
 function onProtestClicked(

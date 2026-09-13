@@ -652,6 +652,13 @@ export interface IModaqControlProps {
      * them first, above the usual per-team listing, so the reader doesn't have to hunt for the name.
      */
     buzzedInPlayer?: { name: string; teamName: string };
+    /** How many buzzes the host's buzzer has waiting, the one being judged included. */
+    buzzQueueCount?: number;
+    /**
+     * Take the buzzed-in player's buzz back without scoring it and hand the buzzer to whoever is next. Given, the
+     * buzz menu offers it beside Correct/Wrong; a withdrawn buzz is not a wrong answer and leaves no mark on the game.
+     */
+    onWithdrawBuzz?: () => void;
 
     /**
      * Called when the game is exported (MODAQ's own JSON/Sheets export or a custom export succeeding) — i.e. whenever
@@ -1229,6 +1236,12 @@ function update(appState: AppState, props: IModaqControlProps): void {
         (buzzedIn?.teamName ?? "") !== (currentBuzzedIn?.teamName ?? "")
     ) {
         appState.uiState.setBuzzedInPlayer(buzzedIn);
+    }
+
+    const queueCount = props.buzzQueueCount ?? 0;
+    const currentHostBuzzer = appState.uiState.hostBuzzer;
+    if (queueCount !== (currentHostBuzzer?.queueCount ?? 0) || props.onWithdrawBuzz !== currentHostBuzzer?.onWithdraw) {
+        appState.uiState.setHostBuzzer({ queueCount, onWithdraw: props.onWithdrawBuzz });
     }
 
     if (props.packetName !== appState.uiState.packetFilename && props.packetName !== appState.game.packet.name) {
