@@ -1596,6 +1596,18 @@ a.kx-crumb:hover {
 .so-choice input {
     margin-top: 3px;
 }
+/* The number that belongs to one of the choices, shown under it when it's the
+   one chosen. */
+.so-choice-extra {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 13px;
+}
+.so-choice-extra input {
+    width: 5em;
+}
 .so-choice-detail {
     display: block;
     color: var(--m-muted, #666);

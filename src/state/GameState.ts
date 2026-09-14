@@ -516,7 +516,7 @@ export class GameState {
         if (this.gameFormat.pairTossupsBonuses) {
             // Same as the cycle index plus thrown out questions
             let thrownOutBonusesCount = 0;
-            for (let i = 0; i <= cycleIndex; i++) {
+            for (let i = 0; i <= cycleIndex && i < this.cycles.length; i++) {
                 const cycle: Cycle = this.cycles[i];
                 if (cycle.thrownOutBonuses !== undefined) {
                     thrownOutBonusesCount += cycle.thrownOutBonuses.length;
@@ -529,7 +529,7 @@ export class GameState {
 
         const previousCycleIndex: number = cycleIndex - 1;
         let usedBonusesCount = 0;
-        for (let i = 0; i <= cycleIndex; i++) {
+        for (let i = 0; i <= cycleIndex && i < this.cycles.length; i++) {
             const cycle = this.cycles[i];
             if (cycle.correctBuzz != undefined && i <= previousCycleIndex) {
                 usedBonusesCount++;
@@ -562,7 +562,7 @@ export class GameState {
 
     public getTossupIndex(cycleIndex: number): number {
         let thrownOutTossupsCount = 0;
-        for (let i = 0; i <= cycleIndex; i++) {
+        for (let i = 0; i <= cycleIndex && i < this.cycles.length; i++) {
             const cycle: Cycle = this.cycles[i];
             if (cycle.thrownOutTossups !== undefined) {
                 thrownOutTossupsCount += cycle.thrownOutTossups.length;

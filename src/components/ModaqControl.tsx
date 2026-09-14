@@ -510,6 +510,17 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
             appState.game.setGameFormat(props.gameFormat);
         }
     }, [appState, props.gameFormat]);
+
+    // Keep the question being read inside the game being read. Loading another
+    // packet, restoring an archived one, or a throw-out can all leave the index
+    // past the end of the cycles that now exist, and every screen that draws
+    // "the current cycle" then draws undefined.
+    const cycleCount: number = appState.game.cycles.length;
+    React.useEffect(() => {
+        if (cycleCount > 0 && appState.uiState.cycleIndex > cycleCount - 1) {
+            appState.uiState.setCycleIndex(cycleCount - 1);
+        }
+    }, [appState, cycleCount, appState.uiState.cycleIndex]);
     React.useEffect(() => {
         if (props.packet != undefined) {
             const packet: PacketState | undefined = PacketLoaderController.loadPacket(
@@ -1158,9 +1169,15 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
             // If there are bonuses and they are active, toggle the bonus part. We have to do some defensive checks to
             // make sure that we can update the bonus
             const cycleIndex: number = appState.uiState.cycleIndex;
-            const cycle: Cycle = appState.game.cycles[cycleIndex];
+            // A game that has just been swapped underneath us can be shorter
+            // than the one before it — a 23-question packet followed by a
+            // 20-question one — and the index outlives the game it belonged
+            // to. Reading the cycle without asking whether it exists is what
+            // put "Cannot read properties of undefined (reading 'correctBuzz')"
+            // on the screen instead of a reader's game.
+            const cycle: Cycle | undefined = appState.game.cycles[cycleIndex];
             const bonus: Bonus | undefined = appState.game.getBonus(cycleIndex);
-            if (cycle.correctBuzz == undefined || bonus == undefined) {
+            if (cycle?.correctBuzz == undefined || bonus == undefined) {
                 event.preventDefault();
                 event.stopPropagation();
 

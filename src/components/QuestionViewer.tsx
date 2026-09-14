@@ -37,7 +37,16 @@ export const QuestionViewer = observer(function QuestionViewer() {
     const game: GameState = appState.game;
     const uiState: UIState = appState.uiState;
 
-    const cycle: Cycle = game.playableCycles[uiState.cycleIndex];
+    // The question being read can outlive the game it belonged to for a moment:
+    // load a 20-question packet while sitting on question 23 of a 23-question
+    // one and this index is past the end until something puts it back. Drawing
+    // nothing for that one render is the difference between a reader seeing
+    // their next packet and seeing "Something went wrong" — the clamp in
+    // ModaqControl fixes the index straight after.
+    const cycle: Cycle | undefined = game.playableCycles[uiState.cycleIndex];
+    if (cycle == undefined) {
+        return null;
+    }
     const tossupIndex: number = game.getTossupIndex(uiState.cycleIndex);
     const bonusIndex: number = game.getBonusIndex(uiState.cycleIndex);
 

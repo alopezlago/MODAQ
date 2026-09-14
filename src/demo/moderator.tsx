@@ -2681,11 +2681,21 @@ const SCHEMES: { value: string; label: string }[] = [
     { value: "20/10/0", label: "20 / 10 / 0 (no negs)" },
 ];
 
-function shootoutGameFormat(scoring: { scheme: string; bonuses: boolean } | undefined): IGameFormat | undefined {
+function shootoutGameFormat(
+    scoring: { scheme: string; bonuses: boolean } | undefined,
+    // How many questions the packet being read actually has. A packet is
+    // whatever the host dropped in — 23 as easily as 20 — and the format has to
+    // agree with it: `regulationTossupCount` is where MODAQ stops, so a game
+    // told 20 while holding 23 simply would not read the last three. (It also
+    // left the question being read past the end of the NEXT packet's cycles,
+    // which is what crashed the reader's page.)
+    tossupCount?: number
+): IGameFormat | undefined {
     const format = gameFormatFor({ tossupScheme: scoring?.scheme ?? "15/10/-5", hasBonuses: scoring?.bonuses === true });
     if (format == undefined) {
         return undefined;
     }
+    const regulationTossupCount = Math.max(1, Math.floor(tossupCount ?? 0) || format.regulationTossupCount);
     // EVERY wrong buzz is a neg here, which is how individual play works
     // (NAQT's IPNCT says so outright) and not how a team game does.
     //
@@ -2695,7 +2705,7 @@ function shootoutGameFormat(scoring: { scheme: string; bonuses: boolean } | unde
     // no sides — everybody is their own team — so that rule handed a free
     // guess to everyone after the first person to get it wrong, which is the
     // opposite of what a buzz is supposed to cost.
-    return { ...format, negsForEveryWrongBuzz: true };
+    return { ...format, negsForEveryWrongBuzz: true, regulationTossupCount };
 }
 
 const WITHDRAW_CHOICES: { value: WithdrawMode; label: string; detail: string }[] = [
@@ -2716,7 +2726,16 @@ const WITHDRAW_CHOICES: { value: WithdrawMode; label: string; detail: string }[]
             "Everyone waiting in the buzz queue types their answer before the player with the floor gives theirs. " +
             "Withdrawing is only free if you hadn't committed to a different answer.",
     },
+    {
+        value: "rationed",
+        label: "One free withdraw, then a wait",
+        detail:
+            "A withdrawal costs nothing, but not twice in a row: for the next few questions after one, a buzz is " +
+            "yours to answer.",
+    },
 ];
+
+const DEFAULT_WITHDRAW_COOLDOWN = 5;
 
 interface ISetupRow {
     key: string;
@@ -2752,6 +2771,9 @@ function ShootoutSetup(props: {
     const [name, setName] = React.useState(initial?.name ?? "");
     const [notes, setNotes] = React.useState(initial?.notes ?? "");
     const [withdraw, setWithdraw] = React.useState<WithdrawMode>(initial?.withdraw ?? "free");
+    const [cooldown, setCooldown] = React.useState<string>(
+        String(initial?.withdrawCooldown ?? DEFAULT_WITHDRAW_COOLDOWN)
+    );
     const [scheme, setScheme] = React.useState(initial?.scoring.scheme ?? "15/10/-5");
     const [bonuses, setBonuses] = React.useState(initial?.scoring.bonuses ?? false);
     const [rows, setRows] = React.useState<ISetupRow[]>(() =>
@@ -2834,6 +2856,7 @@ function ShootoutSetup(props: {
                     name: name.trim(),
                     notes,
                     withdraw,
+                    withdrawCooldown: Math.max(1, Math.min(40, Number(cooldown) || DEFAULT_WITHDRAW_COOLDOWN)),
                     scoring: { scheme, bonuses },
                     packets: saved.map((p) => ({
                         id: p.id,
@@ -2955,6 +2978,20 @@ function ShootoutSetup(props: {
                                 <span>
                                     <strong>{c.label}</strong>
                                     <span className="so-choice-detail">{c.detail}</span>
+                                    {c.value === "rationed" && withdraw === "rationed" && (
+                                        <span className="so-choice-extra">
+                                            <label htmlFor="so-cooldown">Questions to wait</label>
+                                            <input
+                                                id="so-cooldown"
+                                                type="number"
+                                                min={1}
+                                                max={40}
+                                                value={cooldown}
+                                                onChange={(e) => setCooldown(e.target.value)}
+                                                onClick={(e) => e.preventDefault()}
+                                            />
+                                        </span>
+                                    )}
                                 </span>
                             </label>
                         ))}
@@ -3077,7 +3114,13 @@ function ShootoutReading(props: {
     const next = packets[index + 1];
     const scheme = session?.scoring.scheme ?? "15/10/-5";
     const withBonuses = session?.scoring.bonuses === true;
-    const format = React.useMemo(() => shootoutGameFormat({ scheme, bonuses: withBonuses }), [scheme, withBonuses]);
+    // The format follows the packet on screen, so a 23-question round is read as
+    // 23 questions.
+    const currentTossups = packets[index]?.tossups ?? 0;
+    const format = React.useMemo(
+        () => shootoutGameFormat({ scheme, bonuses: withBonuses }, currentTossups),
+        [scheme, withBonuses, currentTossups]
+    );
 
     // Go to a packet: the one that was on screen is filed under its own packet
     // (so the leaderboard keeps its score and it can be reopened), and then

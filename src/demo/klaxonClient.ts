@@ -124,7 +124,7 @@ export interface IPublicRoomState {
     chat?: IChatMessage[];
 }
 
-export type WithdrawMode = "free" | "none" | "typed";
+export type WithdrawMode = "free" | "none" | "typed" | "rationed";
 
 // A shootout's plan for the evening, as the host set it up (see the Klaxon
 // server's shootout.normalizeSession). Names the packets; their contents are
@@ -133,6 +133,9 @@ export interface IShootoutSession {
     name: string;
     notes: string;
     withdraw: WithdrawMode;
+    // Questions a free withdrawal costs you before the next is free too
+    // ("rationed" only).
+    withdrawCooldown?: number;
     scoring: { scheme: string; bonuses: boolean };
     packets: { id: string; name: string; tossups: number; bonuses: number }[];
     current: string | null; // id of the packet being read
