@@ -914,6 +914,24 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                 Players type their answers
             </label>
 
+            {/* Being findable is the whole point of a Discord reading: the host
+                posts the link in one server, and anyone else who wants a game
+                can come in off the home page. Off unless they ask — a room's
+                code is the only thing keeping strangers out of it. */}
+            <label
+                className="klaxon-opt"
+                title="Anyone can find this game on klaxonbuzz.com and join it"
+            >
+                <input
+                    type="checkbox"
+                    checked={state?.listed === true}
+                    onChange={(e) =>
+                        client.massinger({ action: "set_options", options: { listed: e.target.checked } })
+                    }
+                />{" "}
+                List this game on the Klaxon home page
+            </label>
+
             {showAnswerMsg !== "" && <div className="klaxon-note">{showAnswerMsg}</div>}
             {(answerWindow?.spoken?.length ?? 0) > 0 && (
                 <div className={"klaxon-said" + (answerFlash ? " klaxon-said-new" : "")}>
@@ -983,6 +1001,34 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                     at={packetLabel(state.shootout.session)}
                 />
             )}
+
+            {/* The end of the evening. It sends the room home, so it asks first;
+                reopening doesn't, because nothing is lost by it. */}
+            <div className="klaxon-end">
+                {state?.ended == undefined ? (
+                    <button
+                        onClick={() => {
+                            if (
+                                window.confirm(
+                                    "End the game for everyone? The players are sent home and the room stops taking new ones. The scoresheet, the chat and the log stay, and you can reopen it."
+                                )
+                            ) {
+                                client.massinger({ action: "end_game", end: true });
+                            }
+                        }}
+                        title="Send the players home and close the room"
+                    >
+                        End the game for everyone
+                    </button>
+                ) : (
+                    <>
+                        <span className="klaxon-ended">This game is over.</span>
+                        <button onClick={() => client.massinger({ action: "end_game", end: false })}>
+                            Reopen it
+                        </button>
+                    </>
+                )}
+            </div>
 
             <p className="klaxon-hint">
                 Buzzes are resolved with Klaxon&apos;s latency-fair timing. Judge the buzz in the MODAQ reader on the

@@ -122,6 +122,10 @@ export interface IPublicRoomState {
     } | null;
     // The room's chat, which in a shootout is why half the people are there.
     chat?: IChatMessage[];
+    // The host put this game on Klaxon's home page for anyone to join.
+    listed?: boolean;
+    // ...and/or called it over: players sent home, room closed to new ones.
+    ended?: { at: number; by: string | null } | null;
 }
 
 export type WithdrawMode = "free" | "none" | "typed" | "rationed";

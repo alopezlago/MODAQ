@@ -2789,6 +2789,9 @@ function ShootoutSetup(props: {
     const [saving, setSaving] = React.useState(false);
     const [msg, setMsg] = React.useState("");
     const [copied, setCopied] = React.useState(false);
+    // Whether anyone may find this game from Klaxon's home page. It is a room
+    // option rather than part of the session, so it is saved alongside it.
+    const [listed, setListed] = React.useState(roomState?.listed === true);
 
     const update = (key: string, change: Partial<ISetupRow>): void =>
         setRows((list) => list.map((r) => (r.key === key ? { ...r, ...change } : r)));
@@ -2867,6 +2870,7 @@ function ShootoutSetup(props: {
                 },
             });
             if (r.error) throw new Error(r.error);
+            await client.massinger({ action: "set_options", options: { listed } });
             onDone();
         } catch (e) {
             setMsg("Couldn't save: " + (e as Error).message);
@@ -3011,6 +3015,15 @@ function ShootoutSetup(props: {
                             Read bonuses too
                         </label>
                     </div>
+
+                    <label className="so-check so-listed">
+                        <input type="checkbox" checked={listed} onChange={(e) => setListed(e.target.checked)} />{" "}
+                        List this game on the Klaxon home page
+                    </label>
+                    <p className="hint">
+                        Anyone can find it and join &mdash; for open readings and playtests. It is listed only while
+                        someone is in the room, and ending the game takes it off.
+                    </p>
 
                     <label>Invite link — post it in Discord</label>
                     <div className="so-link">
@@ -3363,6 +3376,24 @@ function ShootoutReading(props: {
                     </select>
                     <button onClick={onEditSession} disabled={busy !== ""}>
                         Edit session
+                    </button>
+                    {/* The end of the evening, next to the export because that
+                        is the order it happens in: save the games, then send
+                        the room home. */}
+                    <button
+                        onClick={() => {
+                            if (
+                                window.confirm(
+                                    "End the game for everyone? The players are sent home and the room stops taking new ones. The scoresheet, the chat and the log stay, and you can reopen it from the buzzer panel."
+                                )
+                            ) {
+                                client.massinger({ action: "end_game", end: true });
+                            }
+                        }}
+                        disabled={busy !== "" || roomState?.ended != undefined}
+                        title="Send the players home and close the room"
+                    >
+                        {roomState?.ended != undefined ? "Game ended" : "End the game"}
                     </button>
                 </RoomToolbar>
                 {superMismatch && (

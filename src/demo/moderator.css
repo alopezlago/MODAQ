@@ -166,6 +166,18 @@ body {
     font-weight: 700;
     font-size: 0.75rem;
 }
+.klaxon-end {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+.klaxon-ended {
+    font-weight: 700;
+    color: var(--m-bad, #d13438);
+    font-size: 0.8rem;
+}
 .klaxon-hint {
     color: var(--m-muted, #666);
     font-size: 0.78rem;
@@ -1644,6 +1656,12 @@ a.kx-crumb:hover {
     margin: 0;
     font-weight: 400;
     white-space: nowrap;
+}
+/* The listing checkbox is a sentence, not a label beside a select. */
+.mod-setup .so-listed {
+    white-space: normal;
+    align-items: flex-start;
+    margin-top: 14px;
 }
 .so-link {
     display: flex;
