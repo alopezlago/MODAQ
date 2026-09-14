@@ -608,6 +608,14 @@ export const KlaxonApi = {
     shootoutExportUrl(code: string, token: string | null): string {
         return `/api/rooms/${code}/shootout/export.zip?${q(token)}`;
     },
+    // The room's chat as plain text, for the moderator to keep.
+    chatExportUrl(code: string, token: string | null): string {
+        return `/api/rooms/${code}/chat?${q(token)}`;
+    },
+    // Everything the room did, timestamped: buzzes, clears, withdrawals, chat.
+    activityLogUrl(code: string, token: string | null): string {
+        return `/api/rooms/${code}/log?${q(token)}`;
+    },
     listGames(code: string, token: string | null): Promise<{ games: IArchivedGame[] }> {
         return rest("GET", `/api/rooms/${code}/games?${q(token)}`);
     },

@@ -1099,6 +1099,21 @@ a.kx-crumb:hover {
     padding-top: 10px;
 }
 .klaxon-board h3,
+.kc-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.kc-export {
+    font-size: 11px;
+    color: var(--m-accent, #0078d4);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.kc-export:hover {
+    text-decoration: underline;
+}
 .klaxon-chat h3 {
     margin: 0 0 6px;
     font-size: 13px;

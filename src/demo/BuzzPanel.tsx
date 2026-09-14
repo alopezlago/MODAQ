@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+    KlaxonApi,
     IChatMessage,
     IProtest,
     IPublicRoomState,
@@ -155,7 +156,7 @@ function typingLine(names: string[]): string {
     return "Several people are typing\u2026";
 }
 
-function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[] }): JSX.Element {
+function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[]; exportUrl: string }): JSX.Element {
     const { client } = props;
     const [messages, setMessages] = React.useState<IChatMessage[]>(props.initial);
     const [draft, setDraft] = React.useState<string>("");
@@ -232,7 +233,19 @@ function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[] }): JSX
     let lastDay: string | undefined = undefined;
     return (
         <div className="klaxon-chat">
-            <h3>Chat</h3>
+            <div className="kc-head">
+                <h3>Chat</h3>
+                {/* The whole evening, not just what is still on screen: the room
+                    keeps far more than a broadcast carries (see shootout.js). */}
+                <a
+                    className="kc-export"
+                    href={props.exportUrl}
+                    download
+                    title="Download the room's chat as a text file"
+                >
+                    Export
+                </a>
+            </div>
             <div className="kc-log" ref={logRef} data-is-scrollable="true">
                 {messages.map((m) => {
                     const newDay = dayOf(m.at) !== lastDay;
@@ -960,7 +973,9 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                 </div>
             )}
 
-            {state?.shootout != undefined && <RoomChat client={client} initial={state.chat ?? []} />}
+            {state?.shootout != undefined && (
+                <RoomChat client={client} initial={state.chat ?? []} exportUrl={KlaxonApi.chatExportUrl(client.code, client.token)} />
+            )}
             {state?.shootout != undefined && (
                 <Leaderboard
                     rows={state.shootout.rows}
@@ -972,6 +987,19 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
             <p className="klaxon-hint">
                 Buzzes are resolved with Klaxon&apos;s latency-fair timing. Judge the buzz in the MODAQ reader on the
                 left; press <kbd>r</kbd> (or the button) to reset for the next tossup.
+            </p>
+            {/* Afterwards, when somebody asks what happened to their buzz: every
+                buzz, clear, withdrawal and chat line, stamped and in order. */}
+            <p className="klaxon-hint">
+                <a
+                    className="kc-export"
+                    href={KlaxonApi.activityLogUrl(client.code, client.token)}
+                    download
+                    title="Buzz times, who cleared what, withdrawals, joins and chat — as a text file"
+                >
+                    Download the activity log
+                </a>{" "}
+                if you need to work out what happened to a buzz.
             </p>
         </div>
     );
