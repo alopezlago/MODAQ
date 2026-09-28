@@ -3467,8 +3467,12 @@ function AccountGate(props: { tcode: string; onApproved: () => void; strict?: bo
             try {
                 await KlaxonApi.me();
                 isIn = true;
-            } catch {
-                localStorage.removeItem("bz_sessionToken");
+            } catch (e) {
+                // Only a session the server says is gone; not a network blip
+                // (a deploy restarts the server).
+                if ((e as Error).message === "not_logged_in") {
+                    localStorage.removeItem("bz_sessionToken");
+                }
             }
         }
         setLoggedIn(isIn);

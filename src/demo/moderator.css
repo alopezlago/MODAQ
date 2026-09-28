@@ -751,7 +751,7 @@ body {
     padding: 8px 14px;
     background: var(--kx-surface);
     border-bottom: 2px solid var(--kx-ink);
-    font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    font-family: "Atkinson Hyperlegible Next", "Atkinson fallback", "Segoe UI", system-ui, sans-serif;
     color: var(--kx-ink);
 }
 .kx-crumbs {
@@ -770,8 +770,8 @@ a.kx-crumb:hover {
     text-decoration: underline;
 }
 .kx-mark {
-    font-family: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
-    font-weight: 700;
+    font-family: "Bricolage Grotesque", "Bricolage fallback", "Segoe UI", system-ui, sans-serif;
+    font-weight: 800;
     color: var(--kx-ink);
     font-size: 1rem;
     letter-spacing: -0.01em;
@@ -780,7 +780,7 @@ a.kx-crumb:hover {
     color: var(--kx-soft);
 }
 .kx-code {
-    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-family: "Atkinson Hyperlegible Mono", "Atkinson Mono fallback", ui-monospace, Menlo, monospace;
     font-weight: 600;
     color: var(--kx-accent);
     letter-spacing: 0.12em;
@@ -806,7 +806,7 @@ a.kx-crumb:hover {
     background: var(--kx-soft);
 }
 .kx-pill {
-    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-family: "Atkinson Hyperlegible Mono", "Atkinson Mono fallback", ui-monospace, Menlo, monospace;
     font-size: 0.72rem;
     padding: 0.2em 0.55em;
     border: 1.5px solid var(--kx-ink);

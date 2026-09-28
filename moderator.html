@@ -10,9 +10,9 @@
         <title>Klaxon — MODAQ moderator</title>
         <!-- Klaxon's light/dark theme (served by the Klaxon server), stamped on <html> before anything paints. -->
         <script src="/js/theme.js"></script>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+        <!-- Klaxon's own typefaces (served by the Klaxon server), for the Klaxon bar only.
+             MODAQ's reader keeps its own font setting: the questions don't change. -->
+        <link rel="stylesheet" href="/css/fonts.css" />
         <!-- Socket.IO client is served by the Klaxon server; use the global `io`. -->
         <script src="/socket.io/socket.io.js"></script>
     </head>
