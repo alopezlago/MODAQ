@@ -644,10 +644,12 @@ function useKlaxonDark(): [boolean, (dark: boolean) => void] {
     return [dark, choose];
 }
 
-// MODAQ, in the page's theme.
+// MODAQ, in the page's theme. Never asks whether to abandon an old game: here
+// a game is only ever old because someone reopened it on purpose (from their
+// games page, the room's previous games, or an old room).
 function KlaxonModaq(props: React.ComponentProps<typeof ModaqControl>): JSX.Element {
     const [dark, setDark] = useKlaxonDark();
-    return <ModaqControl {...props} darkMode={dark} onDarkModeChange={setDark} />;
+    return <ModaqControl {...props} promptIfOld={false} darkMode={dark} onDarkModeChange={setDark} />;
 }
 
 function ThemeToggle(): JSX.Element {

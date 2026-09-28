@@ -804,6 +804,12 @@ export interface IModaqControlProps {
     persistState?: boolean;
 
     /**
+     * Whether a restored game more than five days old asks to start a new one instead (default true). A host that
+     * only ever loads games on purpose — reopening an old one to fix a score — turns it off.
+     */
+    promptIfOld?: boolean;
+
+    /**
      * If `persistState` is true, then this is the name of the store in localStorge. This can only be set on the first
      * render.
      */
@@ -900,7 +906,7 @@ function initializeControl(appState: AppState, props: IModaqControlProps, onRead
             // Need to check if game is old and prompt the user if they want to restart the game.
             // Date subtraction gives you the number of milliseconds
             const lastUpdate: number | undefined = appState.game.lastUpdate?.getTime();
-            if (lastUpdate && Date.now() - lastUpdate > minAgeToPromptForReset) {
+            if (props.promptIfOld !== false && lastUpdate && Date.now() - lastUpdate > minAgeToPromptForReset) {
                 appState.uiState.dialogState.showOKCancelMessageDialog({
                     title: "Start new game?",
                     message: "The loaded game is over 5 days old. Do you want to start a new game instead?",
