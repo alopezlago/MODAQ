@@ -273,6 +273,9 @@ function onSubmit(appState: AppState): void {
 
     // We need to set the game's packet, players, etc. to the values in the uiState
     game.clear();
+
+    // The errata describe the packet of the game that was replaced, so they don't apply to the imported one
+    appState.errata.clear();
     game.setGameFormat(pendingNewGame.gameFormat);
     game.addNewPlayers(firstTeamPlayers.filter((player) => player.name !== ""));
     game.addNewPlayers(secondTeamPlayers.filter((player) => player.name !== ""));

@@ -17,6 +17,7 @@ import { BonusQuestionPart } from "./BonusQuestionPart";
 import { Bonus } from "../state/PacketState";
 import { Cycle } from "../state/Cycle";
 import { CancelButton } from "./CancelButton";
+import { ErrataButton } from "./ErrataButton";
 import { BonusProtestDialog } from "./dialogs/BonusProtestDialog";
 import { AppState } from "../state/AppState";
 import { FormattedText } from "./FormattedText";
@@ -112,7 +113,8 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
                             <StackItem styles={stackItemStyles}>
                                 <div />
                             </StackItem>
-                            <StackItem>
+                            <StackItem className={classes.questionButtons}>
+                                <ErrataButton questionNumber={props.bonusIndex + 1} questionType="bonus" />
                                 <CancelButton
                                     className="throw-out-bonus"
                                     disabled={disabled}
@@ -140,6 +142,7 @@ interface IBonusQuestionClassNames {
     bonusLeadin: string;
     bonusContainer: string;
     bonusMetadata: string;
+    questionButtons: string;
 }
 
 const getClassNames = (theme: ITheme | undefined, fontSize: number, disabled: boolean): IBonusQuestionClassNames =>
@@ -147,6 +150,12 @@ const getClassNames = (theme: ITheme | undefined, fontSize: number, disabled: bo
         bonusContainer: {
             display: "flex",
             justifyContent: "space-between",
+        },
+        // Keeps the errata and throw-out buttons together in the question's top-right corner
+        questionButtons: {
+            display: "flex",
+            alignItems: "flex-start",
+            whiteSpace: "nowrap",
         },
         bonusLeadin: [
             { paddingLeft: "24px", display: "inline-block", fontSize },

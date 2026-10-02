@@ -43,6 +43,9 @@ export function onSubmit(appState: AppState): void {
 
     appState.setGame(gameResult.value);
 
+    // The errata describe the packet of the game that was replaced, so they don't apply to the imported one
+    appState.errata.clear();
+
     hideDialog(appState);
 }
 
