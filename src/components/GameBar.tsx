@@ -714,13 +714,20 @@ function getPlayerManagementSubMenuItems(
         disabled: gameMenuItemsDisabled,
     };
 
+    // When every competitor is their own team there are no teams to rename or
+    // reorder, and no one to reorder within one; renaming a competitor is the
+    // player's own Rename, under "Player".
+    const items: ICommandBarItemProps[] = game.isIndividualGame
+        ? [playerActionsItem, addPlayerItem]
+        : [playerActionsItem, addPlayerItem, reorderPlayersItem, reorderTeamsItem, renameTeamItem];
+
     return {
         key: "teamManagement",
         itemType: ContextualMenuItemType.Section,
         sectionProps: {
             bottomDivider: true,
             title: "Team Management",
-            items: [playerActionsItem, addPlayerItem, reorderPlayersItem, reorderTeamsItem, renameTeamItem],
+            items,
         },
     };
 }

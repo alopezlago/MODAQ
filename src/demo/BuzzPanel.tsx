@@ -5,6 +5,7 @@ import {
     IProtest,
     IPublicRoomState,
     IRoomMember,
+    IRecentEvent,
     IShootoutSession,
     IStuckAlert,
     KlaxonClient,
@@ -325,6 +326,70 @@ function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[]; export
             </div>
             {note !== "" && <div className="kc-note">{note}</div>}
         </div>
+    );
+}
+
+// The buzzer's recent history, newest first: who buzzed and how far behind,
+// who pressed too late, every clear and next-buzzer and withdrawal, and who did
+// it. For the moment a moderator wonders whether they just cleared the wrong
+// buzz — and if they did, the clear says so and offers to undo it. The full
+// record is the activity log; this is the part worth having on screen.
+const recentClock = (at: number): string =>
+    new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+
+export function useRecentBuzzes(client: KlaxonClient): IRecentEvent[] {
+    const [recent, setRecent] = React.useState<IRecentEvent[]>(client.recent);
+    React.useEffect(() => client.onRecent(setRecent), [client]);
+    return recent;
+}
+
+// Undo the last clear, saying so if the room had already moved on.
+export function useUndoClear(client: KlaxonClient): [(id: string) => void, string] {
+    const [msg, setMsg] = React.useState("");
+    const undo = React.useCallback(
+        async (id: string) => {
+            const res = await client.restoreBuzzes(id);
+            if (res?.error != undefined) {
+                setMsg(
+                    res.error === "nobody_to_restore"
+                        ? "Everyone it cleared has left or is already back in the queue."
+                        : "That clear can't be undone any more — the room has moved on."
+                );
+                setTimeout(() => setMsg(""), 3000);
+            }
+        },
+        [client]
+    );
+    return [undo, msg];
+}
+
+function RecentBuzzes(props: { events: IRecentEvent[]; onUndo: (id: string) => void }): JSX.Element {
+    const { events, onUndo } = props;
+    return (
+        <details className="klaxon-recent" open>
+            <summary>Recent buzzes</summary>
+            {events.length === 0 ? (
+                <p className="klaxon-recent-empty">Nothing yet.</p>
+            ) : (
+                <ol>
+                    {events.map((e, i) => (
+                        <li key={`${e.at}-${i}`} className={`kr-${e.kind}`}>
+                            <time>{recentClock(e.at)}</time>
+                            <span className="kr-text">
+                                {e.question != undefined && <span className="kr-q">Q{e.question}</span>}
+                                {e.text}
+                                {e.note != undefined && <span className="kr-note"> · {e.note}</span>}
+                            </span>
+                            {e.undoId != undefined && (
+                                <button onClick={() => onUndo(e.undoId as string)} title="Put the cleared buzzes back in the queue">
+                                    Undo
+                                </button>
+                            )}
+                        </li>
+                    ))}
+                </ol>
+            )}
+        </details>
     );
 }
 
@@ -663,6 +728,9 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
 
     const queue = state?.queue ?? [];
     const buzzed = queue.length > 0;
+    const recent = useRecentBuzzes(client);
+    const [undoClear, undoMsg] = useUndoClear(client);
+    const undoable = recent.find((e) => e.undoId != undefined);
 
     // Resetting the buzzer resolves the complaint.
     React.useEffect(() => {
@@ -874,6 +942,19 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                         Clear queue
                     </button>
                 )}
+                {/* Right where the clear was pressed, for as long as it can be
+                    taken back (the same question, nothing cleared since). Only
+                    for a clear without scoring — the slip this is for; one
+                    that followed a ruling is undone from the list below. */}
+                {undoable?.undoId != undefined && undoable.kind === "clear-accidental" && (
+                    <button
+                        className="klaxon-undo"
+                        onClick={() => undoClear(undoable.undoId as string)}
+                        title={`Undo: ${undoable.text}`}
+                    >
+                        ↶ Undo clear
+                    </button>
+                )}
                 {/* Typed answers: the player with the floor sends theirs with Enter, and nothing reveals it on a
                     timer. This is how the reader asks for it — when they've given someone long enough, or when the
                     player is sitting on an answer they haven't sent. */}
@@ -933,6 +1014,8 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
             </label>
 
             {showAnswerMsg !== "" && <div className="klaxon-note">{showAnswerMsg}</div>}
+            {undoMsg !== "" && <div className="klaxon-note">{undoMsg}</div>}
+            <RecentBuzzes events={recent} onUndo={undoClear} />
             {(answerWindow?.spoken?.length ?? 0) > 0 && (
                 <div className={"klaxon-said" + (answerFlash ? " klaxon-said-new" : "")}>
                     <span className="klaxon-said-label">Given: </span>

@@ -980,10 +980,16 @@ a.kx-crumb:hover {
    free text a moderator typed, so a long one has to wrap in place: the reader's
    scoresheet must never gain a horizontal scrollbar or push the buzz panel off
    the screen. */
-.modaq-event-viewer .ms-DetailsRow,
-.modaq-event-viewer .ms-DetailsHeader {
+.modaq-event-viewer .ms-DetailsRow {
     width: 100%;
     box-sizing: border-box;
+}
+/* Not border-box: Fluent's header is height 42px plus a 16px padding-top, and
+   border-box takes the padding out of the 42px, so the "Events" title (still a
+   42px line) slid down under the first row. It has no side padding, so
+   content-box fills the width just the same. */
+.modaq-event-viewer .ms-DetailsHeader {
+    width: 100%;
 }
 .modaq-event-viewer .ms-DetailsRow-cell {
     white-space: normal;
@@ -1748,4 +1754,101 @@ a.kx-crumb:hover {
     .so-packet-info {
         grid-column: 2 / -1;
     }
+}
+
+/* --- Recent buzzes -----------------------------------------------------------
+   The buzzer's last few dozen events, newest first, in a box that scrolls on
+   its own so a busy shootout doesn't push the players list off the panel.
+   Clears are the rows a moderator comes here for, so they stand out; one made
+   without scoring is tinted as the slip it may have been. */
+.klaxon-recent {
+    margin: 0 0 14px;
+}
+.klaxon-recent summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+.klaxon-recent ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 15rem;
+    overflow-y: auto;
+    border: 1px solid var(--m-line-soft, #ececec);
+    border-radius: 6px;
+    font-size: 0.82rem;
+}
+.klaxon-recent li {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 3px 6px;
+    border-bottom: 1px solid var(--m-line-soft, #f0f0f0);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.klaxon-recent li:last-child {
+    border-bottom: none;
+}
+.klaxon-recent time {
+    flex: none;
+    color: var(--m-muted-2, #888);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.75rem;
+}
+.klaxon-recent .kr-text {
+    flex: 1;
+    min-width: 0;
+}
+.klaxon-recent .kr-q {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 0 4px;
+    border-radius: 3px;
+    background: var(--m-line-soft, #f0f0f0);
+    color: var(--m-muted, #666);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+}
+.klaxon-recent .kr-note {
+    color: var(--m-muted, #666);
+    font-style: italic;
+}
+.klaxon-recent .kr-miss,
+.klaxon-recent .kr-room {
+    color: var(--m-muted, #666);
+}
+.klaxon-recent .kr-clear,
+.klaxon-recent .kr-clear-accidental,
+.klaxon-recent .kr-restore {
+    font-weight: 600;
+}
+.klaxon-recent .kr-clear-accidental {
+    background: var(--m-warn-bg, #fff4ce);
+}
+.klaxon-recent .kr-alert {
+    color: var(--m-bad, #a4262c);
+}
+.klaxon-recent li button {
+    flex: none;
+    padding: 1px 8px;
+    border: 1px solid var(--m-control-line, #8a8886);
+    border-radius: 4px;
+    background: var(--m-surface, #fff);
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.78rem;
+}
+.klaxon-recent-empty {
+    margin: 0;
+    color: var(--m-muted-2, #888);
+    font-size: 0.85rem;
+}
+.klaxon-controls button.klaxon-undo {
+    border-color: var(--m-warn-line, #c19c00);
+    background: var(--m-warn-bg, #fff4ce);
+    color: inherit;
+    font-weight: 600;
 }

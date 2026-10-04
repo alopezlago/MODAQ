@@ -259,6 +259,19 @@ export interface IStuckAlert {
 }
 type StuckListener = (alert: IStuckAlert) => void;
 
+// One line of the moderator's recent-buzzes list, worded by the server (see
+// store.recentActivity). Newest first. `undoId` is set on the one clear that
+// can still be undone.
+export interface IRecentEvent {
+    at: number;
+    kind: string;
+    text: string;
+    question?: number | null;
+    note?: string | null;
+    undoId?: string | null;
+}
+type RecentListener = (events: IRecentEvent[]) => void;
+
 export class KlaxonClient {
     public readonly code: string;
     public readonly token: string | null;
@@ -273,6 +286,8 @@ export class KlaxonClient {
     private readonly chatTypingListeners: ChatTypingListener[] = [];
     private readonly sharedGameListeners: SharedGameListener[] = [];
     private readonly buzzPendingListeners: ((wave: string) => void)[] = [];
+    private readonly recentListeners: RecentListener[] = [];
+    public recent: IRecentEvent[] = [];
     private joinedOnce = false;
     public lastState: IPublicRoomState | undefined;
     public messages: IDirectorMessage[] = [];
@@ -338,6 +353,13 @@ export class KlaxonClient {
                 // key has to name the wave or every buzz after the first on a
                 // question is taken for a repeat and goes unheard.
                 for (const l of this.buzzPendingListeners) l(`${p?.cycleNo ?? -1}:${p?.wave ?? 0}`);
+            });
+
+            socket.on("recent", (...args: unknown[]) => {
+                const r = args[0];
+                if (!Array.isArray(r)) return;
+                this.recent = r as IRecentEvent[];
+                for (const l of this.recentListeners) l(this.recent);
             });
 
             socket.on("modaq_state", (...args: unknown[]) => {
@@ -492,6 +514,21 @@ export class KlaxonClient {
 
     public nextBuzz(): void {
         this.socket?.emit("reader_action", { action: "next_buzz" });
+    }
+
+    // Staff only: the recent-buzzes list, replayed on subscribe.
+    public onRecent(listener: RecentListener): () => void {
+        this.recentListeners.push(listener);
+        listener(this.recent);
+        return () => {
+            const i = this.recentListeners.indexOf(listener);
+            if (i >= 0) this.recentListeners.splice(i, 1);
+        };
+    }
+
+    // Undo a clear: the buzzes it dropped go back in the queue.
+    public restoreBuzzes(id: string): Promise<{ ok?: boolean; error?: string }> {
+        return this.massinger({ action: "restore_buzzes", id });
     }
 
     // Say something in the room's chat. Resolves with the server's ack so the

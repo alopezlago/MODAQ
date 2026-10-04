@@ -49,6 +49,7 @@ export class GameState {
         makeObservable(this, {
             cycles: observable,
             teamNames: computed,
+            isIndividualGame: computed,
             gameFormat: observable,
             hasUpdates: observable,
             lastUpdate: observable,
@@ -113,6 +114,23 @@ export class GameState {
         }
 
         return teamNames;
+    }
+
+    // Whether every competitor is their own team: an individual format (IPNCT), or a game built like one. A Klaxon
+    // shootout plays a team format but hands over one team per competitor, named for them.
+    public get isIndividualGame(): boolean {
+        if (GameFormats.isIndividualFormat(this.gameFormat)) {
+            return true;
+        }
+
+        const teamNames: string[] = this.teamNames;
+        return (
+            teamNames.length > 0 &&
+            teamNames.every((teamName) => {
+                const players: Player[] = this.getPlayers(teamName);
+                return players.length === 1 && players[0].name === teamName;
+            })
+        );
     }
 
     public get finalScore(): number[] {

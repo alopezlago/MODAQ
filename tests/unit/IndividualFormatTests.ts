@@ -48,6 +48,35 @@ function createPendingIndividualGame(players: Player[], gameFormat?: IGameFormat
 }
 
 describe("IndividualFormatTests", () => {
+    describe("isIndividualGame", () => {
+        it("An individual format is an individual game", () => {
+            expect(createIndividualGame(3).isIndividualGame).to.be.true;
+        });
+        it("One-player teams named for their player are an individual game in a team format (a shootout)", () => {
+            expect(createIndividualGame(5, GameFormats.ACFGameFormat).isIndividualGame).to.be.true;
+        });
+        it("A team game is not", () => {
+            const game: GameState = new GameState();
+            game.addNewPlayers([
+                new Player("Alice", "Team A", true),
+                new Player("Bob", "Team A", true),
+                new Player("Carol", "Team B", true),
+            ]);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+            expect(game.isIndividualGame).to.be.false;
+        });
+        it("A one-player team under a team name is not", () => {
+            const game: GameState = new GameState();
+            game.addNewPlayers([new Player("Alice", "Team A", true), new Player("Bob", "Team B", true)]);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+            expect(game.isIndividualGame).to.be.false;
+        });
+        it("A game with no players is not", () => {
+            const game: GameState = new GameState();
+            game.setGameFormat(GameFormats.ACFGameFormat);
+            expect(game.isIndividualGame).to.be.false;
+        });
+    });
     describe("format", () => {
         it("IPNCT is one of the known formats", () => {
             expect(GameFormats.getKnownFormats()).to.contain(GameFormats.IPNCTGameFormat);
