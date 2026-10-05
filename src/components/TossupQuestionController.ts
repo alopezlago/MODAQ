@@ -26,8 +26,18 @@ export function selectWordFromClick(appState: AppState, event: React.MouseEvent<
         return;
     }
 
-    // Clicking a word opens the player pad there; clicking the word the pad is already on closes it
     const uiState: UIState = appState.uiState;
+    if (uiState.useBuzzMenu) {
+        // The buzz menu opens on the clicked word; clicking the selected word again deselects it
+        uiState.endBuzzPointPlacement();
+        uiState.setSelectedWordIndex(uiState.selectedWordIndex === index ? -1 : index);
+        uiState.showBuzzMenu(/* clearSelectedWordOnClose */ true);
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+    }
+
+    // Clicking a word opens the player pad there; clicking the word the pad is already on closes it
     if (uiState.buzzPointPlacement != undefined && uiState.selectedWordIndex === index) {
         cancelBuzzPointPlacement(appState);
     } else {
@@ -53,7 +63,12 @@ export function selectWordFromKeyboardEvent(appState: AppState, event: React.Key
         const questionWord: HTMLSpanElement = questionWords[i];
 
         if (questionWord.getAttribute("data-index") === selectedWordIndexString) {
-            placeBuzzPointAt(appState, appState.uiState.selectedWordIndex, /* anchorToWord */ true);
+            if (appState.uiState.useBuzzMenu) {
+                appState.uiState.showBuzzMenu(/* clearSelectedWordOnClose */ false);
+            } else {
+                placeBuzzPointAt(appState, appState.uiState.selectedWordIndex, /* anchorToWord */ true);
+            }
+
             break;
         }
     }
@@ -79,8 +94,8 @@ export function getWordsForReaderFollower(tossup: Tossup, gameFormat: IGameForma
 export function updateBuzzPointFromReader(appState: AppState, wordIndex: number): void {
     const uiState: UIState = appState.uiState;
 
-    // Don't move the buzz point out from under the user while they're placing it
-    if (uiState.buzzPointPlacement != undefined) {
+    // Don't move the buzz point out from under the user while they're placing it or marking a buzz
+    if (uiState.buzzPointPlacement != undefined || uiState.buzzMenuState.visible) {
         return;
     }
 
@@ -152,7 +167,8 @@ export function updateReaderFollowerCue(appState: AppState, cue: string): void {
 
 /**
  * Handles the buzz shortcut (Space): places the buzz point and opens the player pad there. The arrow keys move the
- * point; a player's button (or 1-8 / Shift+1-8) records the buzz; Escape closes the pad.
+ * point; a player's button (or 1-8 / Shift+1-8) records the buzz; Escape closes the pad. When the buzz menu is used
+ * instead of the pad (UIState.useBuzzMenu), the second press opens the buzz menu on the placed word.
  *
  * With the microphone on, the first press always starts at the reader's position (shifted by the configured
  * offset), or the first word if nothing has been recognized yet; nothing else overrides it. Without the
@@ -165,8 +181,15 @@ export function handleBuzzShortcut(appState: AppState, now?: number): void {
     if (placement != undefined) {
         const isStale: boolean = !placement.movedManually && currentTime - placement.startTime > stalePlacementInMs;
         if (!isStale) {
-            // The pad is already open. If the buzzer opened it, the moderator's Space confirms that placement.
-            uiState.confirmBuzzPointPlacement();
+            if (uiState.useBuzzMenu && !placement.startedByBuzzSound) {
+                // Open the buzz menu on the placed word. Clear the word when the menu closes, so the next Space
+                // follows the reader again instead of sticking to this buzz.
+                uiState.showBuzzMenu(/* clearSelectedWordOnClose */ true);
+            } else {
+                // The pad is already open. If the buzzer opened it, the moderator's Space confirms that placement.
+                uiState.confirmBuzzPointPlacement();
+            }
+
             return;
         }
 
@@ -187,6 +210,7 @@ export function handleBuzzSound(appState: AppState, now?: number): void {
     if (
         !uiState.trackReaderWithMicrophone ||
         uiState.buzzPointPlacement != undefined ||
+        uiState.buzzMenuState.visible ||
         uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None ||
         cycle == undefined ||
         cycle.correctBuzz != undefined
@@ -251,9 +275,22 @@ export function placeBuzzPointAt(appState: AppState, wordIndex: number, anchorTo
     });
 }
 
-/** Places the buzz point on the end of the question (the E shortcut). */
+/**
+ * The E shortcut: puts the buzz point on the end of the question and opens the player pad there, or the buzz menu
+ * when that's used instead.
+ */
 export function placeBuzzPointAtEnd(appState: AppState): void {
-    placeBuzzPointAt(appState, getLastBuzzableIndex(appState), /* anchorToWord */ false);
+    const lastBuzzableIndex: number = getLastBuzzableIndex(appState);
+    if (appState.uiState.useBuzzMenu) {
+        if (lastBuzzableIndex >= 0) {
+            appState.uiState.setSelectedWordIndex(lastBuzzableIndex);
+            appState.uiState.showBuzzMenu(/* clearSelectedWordOnClose */ false);
+        }
+
+        return;
+    }
+
+    placeBuzzPointAt(appState, lastBuzzableIndex, /* anchorToWord */ false);
 }
 
 /**

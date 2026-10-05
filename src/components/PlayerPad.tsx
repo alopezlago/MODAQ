@@ -21,7 +21,7 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
     // Dereference the observables in the component body so mobx tracks them; reads inside the ThemeContext.Consumer
     // callback aren't tracked
     const wordIndex: number = uiState.selectedWordIndex;
-    if (uiState.buzzPointPlacement == undefined || wordIndex < 0) {
+    if (uiState.buzzPointPlacement == undefined || wordIndex < 0 || uiState.useBuzzMenu) {
         return null;
     }
 

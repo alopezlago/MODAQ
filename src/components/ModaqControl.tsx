@@ -292,7 +292,8 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
         if (
             event.key === " " &&
             !isTextEntryElement(event.target) &&
-            appState.uiState.dialogState.visibleDialog === ModalVisibilityStatus.None
+            appState.uiState.dialogState.visibleDialog === ModalVisibilityStatus.None &&
+            !appState.uiState.buzzMenuState.visible
         ) {
             event.preventDefault();
         }
@@ -328,6 +329,7 @@ function playerShortcutHandler(event: KeyboardEvent, appState: AppState): void {
     const uiState: UIState = appState.uiState;
     if (
         uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None ||
+        uiState.buzzMenuState.visible ||
         isTextEntryElement(event.target) ||
         event.ctrlKey ||
         event.altKey ||
@@ -362,6 +364,7 @@ function playerShortcutHandler(event: KeyboardEvent, appState: AppState): void {
 function buzzPointPlacementShortcutHandler(event: KeyboardEvent, appState: AppState): void {
     if (
         appState.uiState.buzzPointPlacement == undefined ||
+        appState.uiState.buzzMenuState.visible ||
         appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None ||
         isTextEntryElement(event.target)
     ) {
@@ -408,6 +411,11 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
 
     // Don't hijack keys while the user is typing in a text field (notably Space, the buzz shortcut)
     if (isTextEntryElement(event.target)) {
+        return;
+    }
+
+    // While the buzz menu is open it handles the keyboard
+    if (appState.uiState.buzzMenuState.visible) {
         return;
     }
 

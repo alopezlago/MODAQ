@@ -6,6 +6,7 @@ import * as TossupQuestionController from "./TossupQuestionController";
 import { IBuzzFeedback, UIState } from "../state/UIState";
 import { ITossupWord, Tossup } from "../state/PacketState";
 import { QuestionWord } from "./QuestionWord";
+import { BuzzMenu } from "./BuzzMenu";
 import { Cycle } from "../state/Cycle";
 import { Answer } from "./Answer";
 import type { IFormattedText } from "../parser/IFormattedText";
@@ -140,6 +141,20 @@ const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuesti
     const selected: boolean = props.index === uiState.selectedWordIndex;
     const buzzFeedback: IBuzzFeedback | undefined = uiState.buzzFeedback;
 
+    const buzzMenu: JSX.Element | undefined =
+        selected && props.index != undefined && uiState.buzzMenuState.visible ? (
+            <BuzzMenu
+                appState={props.appState}
+                bonusIndex={props.bonusIndex}
+                cycle={props.cycle}
+                isLastWord={props.isLastWord}
+                wordIndex={props.index}
+                target={props.selectedWordRef}
+                tossup={props.tossup}
+                tossupNumber={props.tossupNumber}
+            />
+        ) : undefined;
+
     return (
         <>
             <QuestionWord
@@ -152,6 +167,7 @@ const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuesti
                 wrong={props.wrongBuzzIndexes.findIndex((position) => position === props.index) >= 0}
                 componentRef={selected ? props.selectedWordRef : undefined}
             />
+            {buzzMenu}
             &nbsp;
         </>
     );

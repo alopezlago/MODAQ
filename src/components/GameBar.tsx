@@ -494,6 +494,14 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             checked: !appState.uiState.hideBonusOnDeadTossup,
             onClick: () => appState.uiState.toggleHideBonusOnDeadTossup(),
         },
+        {
+            key: "useBuzzMenu",
+            text: "Use buzz menu instead of player pad",
+            title: "Record buzzes with the dropdown menu on the word instead of the floating player pad",
+            canCheck: true,
+            checked: appState.uiState.useBuzzMenu,
+            onClick: () => appState.uiState.toggleUseBuzzMenu(),
+        },
     ];
 
     if (appState.uiState.customExportOptions?.customExportInterval != undefined) {

@@ -18,6 +18,7 @@ import { IPendingSheet } from "./IPendingSheet";
 import { Cycle } from "./Cycle";
 import { DialogState } from "./DialogState";
 import { IGameFormat } from "./IGameFormat";
+import { BuzzMenuState } from "./BuzzMenuState";
 import { ICustomExport } from "./CustomExport";
 import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 import { IPacketParseStatus } from "./IPacketParseStatus";
@@ -122,6 +123,11 @@ export class UIState {
     // When true, listen to the microphone and move the buzz point as the reader reads the tossup
     public trackReaderWithMicrophone: boolean;
 
+    // When true, buzzes are recorded with the original buzz menu (a dropdown on the word) instead of the player pad
+    public useBuzzMenu: boolean;
+
+    public buzzMenuState: BuzzMenuState;
+
 
 
     // When true, microphone tracking highlights where the reader is while they read. By default the reader's
@@ -225,6 +231,11 @@ export class UIState {
         this.pendingSheet = undefined;
         this.pendingTossupProtestEvent = undefined;
         this.trackReaderWithMicrophone = false;
+        this.useBuzzMenu = false;
+        this.buzzMenuState = {
+            clearSelectedWordOnClose: true,
+            visible: false,
+        };
         this.showReaderPositionWhileReading = false;
         this.instantReaderHighlight = false;
         this.buzzPointWordOffset = 0;
@@ -851,6 +862,22 @@ export class UIState {
     public resetSheetsId(): void {
         this.sheetsState.sheetId = undefined;
         this.sheetsState.sheetType = undefined;
+    }
+
+    public hideBuzzMenu(): void {
+        this.buzzMenuState.visible = false;
+    }
+
+    public showBuzzMenu(clearSelectedWordOnClose: boolean): void {
+        this.buzzPointPlacement = undefined;
+        this.buzzMenuState.visible = true;
+        this.buzzMenuState.clearSelectedWordOnClose = clearSelectedWordOnClose;
+    }
+
+    public toggleUseBuzzMenu(): void {
+        this.useBuzzMenu = !this.useBuzzMenu;
+        this.buzzPointPlacement = undefined;
+        this.buzzMenuState.visible = false;
     }
 
     public startBuzzPointPlacement(placement: IBuzzPointPlacement): void {

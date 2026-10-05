@@ -159,6 +159,67 @@ describe("TossupQuestionControllerTests", () => {
         });
     });
 
+    describe("buzz menu option", () => {
+        function createGame(): AppState {
+            const appState: AppState = new AppState();
+            appState.game.addNewPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
+
+            const packet: PacketState = new PacketState();
+            packet.setTossups([new Tossup("This is the first question", "Answer")]);
+            appState.game.loadPacket(packet);
+            appState.uiState.setTrackReaderWithMicrophone(true);
+            return appState;
+        }
+
+        it("Is off by default", () => {
+            expect(new AppState().uiState.useBuzzMenu).to.be.false;
+        });
+        it("With the buzz menu, the second Space opens it on the placed word", () => {
+            const appState: AppState = createGame();
+            appState.uiState.toggleUseBuzzMenu();
+            appState.uiState.setReaderFollowerLivePosition(3);
+
+            TossupQuestionController.handleBuzzShortcut(appState, 1000000);
+            expect(appState.uiState.buzzMenuState.visible).to.be.false;
+            TossupQuestionController.moveBuzzPoint(appState, -1);
+            TossupQuestionController.handleBuzzShortcut(appState, 1000500);
+
+            expect(appState.uiState.buzzMenuState.visible).to.be.true;
+            expect(appState.uiState.buzzMenuState.clearSelectedWordOnClose).to.be.true;
+            expect(appState.uiState.selectedWordIndex).to.equal(2);
+            expect(appState.uiState.buzzPointPlacement).to.be.undefined;
+        });
+        it("Without the buzz menu, the second Space keeps the pad open", () => {
+            const appState: AppState = createGame();
+            appState.uiState.setReaderFollowerLivePosition(3);
+
+            TossupQuestionController.handleBuzzShortcut(appState, 1000000);
+            TossupQuestionController.handleBuzzShortcut(appState, 1000500);
+
+            expect(appState.uiState.buzzMenuState.visible).to.be.false;
+            expect(appState.uiState.buzzPointPlacement).to.not.be.undefined;
+        });
+        it("With the buzz menu, E opens it at the end of the question", () => {
+            const appState: AppState = createGame();
+            appState.uiState.toggleUseBuzzMenu();
+
+            TossupQuestionController.placeBuzzPointAtEnd(appState);
+
+            // "This is the first question" plus the end-of-question marker; the last buzzable index is 5
+            expect(appState.uiState.selectedWordIndex).to.equal(5);
+            expect(appState.uiState.buzzMenuState.visible).to.be.true;
+            expect(appState.uiState.buzzPointPlacement).to.be.undefined;
+        });
+        it("The reader's position doesn't move the selected word while the buzz menu is open", () => {
+            const appState: AppState = createGame();
+            appState.uiState.setSelectedWordIndex(2);
+            appState.uiState.showBuzzMenu(/* clearSelectedWordOnClose */ true);
+
+            TossupQuestionController.updateBuzzPointFromReader(appState, 4);
+            expect(appState.uiState.selectedWordIndex).to.equal(2);
+        });
+    });
+
     describe("catchUpBuzzPointPlacement", () => {
         function startPlacement(livePosition: number): AppState {
             const appState: AppState = new AppState();
