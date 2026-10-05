@@ -1,6 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { mergeStyleSets, memoizeFunction, ThemeContext, Theme } from "@fluentui/react";
+import { keyframes, mergeStyleSets, memoizeFunction, ThemeContext, Theme } from "@fluentui/react";
 
 import type { IFormattedText } from "../parser/IFormattedText";
 import { FormattedText } from "./FormattedText";
@@ -14,7 +14,9 @@ export const QuestionWord = observer(function QuestionWord(props: IQuestionWordP
                     props.selected,
                     props.correct,
                     props.wrong,
-                    props.index != undefined
+                    props.index != undefined,
+                    props.placing,
+                    props.flash
                 );
                 return (
                     <span
@@ -35,6 +37,10 @@ interface IQuestionWordProps {
     word: IFormattedText[];
     index: number | undefined;
     selected?: boolean;
+    // The buzz point is being placed with the keyboard and is on this word
+    placing?: boolean;
+    // A buzz on this word was just recorded (or removed); the word flashes to show it
+    flash?: "correct" | "wrong" | "removed";
     correct?: boolean;
     wrong?: boolean;
     hovered?: boolean;
@@ -45,6 +51,15 @@ interface IQuestionWordClassNames {
     word: string;
 }
 
+// A strong colored pulse that fades back to the word's normal look
+const getFlashAnimation = memoizeFunction((color: string): string =>
+    keyframes({
+        "0%": { background: color, color: "white", transform: "scale(1.25)" },
+        "40%": { background: color, color: "white", transform: "scale(1)" },
+        "100%": { transform: "scale(1)" },
+    })
+);
+
 // This would be a great place for theming or settings
 const getClassNames = memoizeFunction(
     (
@@ -52,14 +67,38 @@ const getClassNames = memoizeFunction(
         selected: boolean | undefined,
         correct: boolean | undefined,
         wrong: boolean | undefined,
-        isIndexDefined: boolean
+        isIndexDefined: boolean,
+        placing: boolean | undefined,
+        flash: "correct" | "wrong" | "removed" | undefined
     ): IQuestionWordClassNames =>
         mergeStyleSets({
             word: [
                 { display: "inline-flex" },
                 selected && {
                     fontWeight: "bold",
-                    background: theme ? theme.palette.themeLight + "20" : "rbg(192, 192, 192)",
+                    background: theme ? theme.palette.themeLight : "rgb(192, 192, 192)",
+                },
+                placing && {
+                    outline: "2px solid " + (theme ? theme.palette.themePrimary : "rgb(0, 120, 212)"),
+                    outlineOffset: "1px",
+                },
+                flash != undefined && {
+                    animationName: getFlashAnimation(
+                        flash === "correct"
+                            ? theme
+                                ? theme.palette.green
+                                : "rgb(16, 124, 16)"
+                            : flash === "wrong"
+                            ? theme
+                                ? theme.palette.red
+                                : "rgb(232, 17, 35)"
+                            : theme
+                            ? theme.palette.neutralTertiary
+                            : "gray"
+                    ),
+                    animationDuration: "1.2s",
+                    animationTimingFunction: "ease-out",
+                    borderRadius: "3px",
                 },
                 correct && {
                     background: theme ? theme.palette.tealLight + "20" : "rbg(0, 128, 128)",

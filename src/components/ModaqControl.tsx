@@ -21,6 +21,7 @@ import { configure } from "mobx";
 import { observer } from "mobx-react-lite";
 
 import * as PacketLoaderController from "./PacketLoaderController";
+import * as TossupQuestionController from "./TossupQuestionController";
 import { StateProvider } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";
 import { GameViewer } from "./GameViewer";
@@ -28,10 +29,11 @@ import { ModalDialogContainer } from "./ModalDialogContainer";
 import { IGameFormat } from "../state/IGameFormat";
 import { IPacket } from "../state/IPacket";
 import { IPlayer, Player } from "../state/TeamState";
-import { Bonus, ITossupWord, PacketState, Tossup } from "../state/PacketState";
+import { Bonus, PacketState } from "../state/PacketState";
 import { ICustomExport } from "../state/CustomExport";
 import { IHostSettings } from "../state/IHostSettings";
 import { Cycle } from "../state/Cycle";
+import { UIState } from "../state/UIState";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
 import { IStatus } from "../IStatus";
 
@@ -271,43 +273,159 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
     const keydownListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) => shortcutHandler(event, appState);
     document.addEventListener("keyup", keydownListener);
 
+    // While the buzz point is being placed (after the first Space), arrow keys move it. They're handled on keydown
+    // so holding one repeats, and in the capture phase so focused controls don't scroll or move focus instead.
+    const buzzPointPlacementKeyListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) =>
+        buzzPointPlacementShortcutHandler(event, appState);
+    document.addEventListener("keydown", buzzPointPlacementKeyListener, /* useCapture */ true);
+
+    // While a tossup is live, 1-8 mark that player's buzz correct and Shift+1-8 wrong. These act on keydown; the
+    // same key's keyup must then not also reach shortcutHandler, where numbers toggle bonus parts once a tossup
+    // is answered correctly.
+    const playerShortcutKeyListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) =>
+        playerShortcutHandler(event, appState);
+    document.addEventListener("keydown", playerShortcutKeyListener, /* useCapture */ true);
+
+    // Space is the buzz shortcut, but it acts on keyup (above). Stop its keydown from scrolling the page (or
+    // clicking a focused button) when it's serving as the shortcut -- i.e. not while typing or in a dialog.
+    const preventSpaceScrollListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) => {
+        if (
+            event.key === " " &&
+            !isTextEntryElement(event.target) &&
+            appState.uiState.dialogState.visibleDialog === ModalVisibilityStatus.None
+        ) {
+            event.preventDefault();
+        }
+    };
+    document.addEventListener("keydown", preventSpaceScrollListener);
+
     return () => {
         document.removeEventListener("keyup", keydownListener);
+        document.removeEventListener("keydown", buzzPointPlacementKeyListener, /* useCapture */ true);
+        document.removeEventListener("keydown", playerShortcutKeyListener, /* useCapture */ true);
+        document.removeEventListener("keydown", preventSpaceScrollListener);
     };
 }
 
+// Whether the event targets a text-entry control, where keys (notably Space) should be typed rather than treated
+// as moderator shortcuts.
+function isTextEntryElement(target: EventTarget | null): boolean {
+    const element: HTMLElement | null = target as HTMLElement | null;
+    if (element == null || element.tagName == undefined) {
+        return false;
+    }
+
+    const tagName: string = element.tagName;
+    return tagName === "INPUT" || tagName === "TEXTAREA" || element.isContentEditable === true;
+}
+
+// The keyup of a key whose keydown was already handled as a player shortcut, so it isn't handled twice
+let handledPlayerShortcutCode: string | undefined;
+
+// 1-8 mark the player at that position (the player pad's order) correct; Shift+1-8 mark them wrong. They act while
+// the tossup is live or the player pad is open; once a tossup is answered, the numbers toggle bonus parts instead.
+function playerShortcutHandler(event: KeyboardEvent, appState: AppState): void {
+    const uiState: UIState = appState.uiState;
+    if (
+        uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None ||
+        isTextEntryElement(event.target) ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey
+    ) {
+        return;
+    }
+
+    // Use the physical key, since Shift changes event.key ("1" becomes "!")
+    const match: RegExpExecArray | null = /^(?:Digit|Numpad)([1-8])$/.exec(event.code);
+    const cycle: Cycle | undefined = appState.activeGame.cycles[uiState.cycleIndex];
+    if (
+        match == null ||
+        cycle == undefined ||
+        (cycle.correctBuzz != undefined && uiState.buzzPointPlacement == undefined)
+    ) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.repeat) {
+        return;
+    }
+
+    handledPlayerShortcutCode = event.code;
+    TossupQuestionController.recordPlayerPadBuzz(appState, Number(match[1]) - 1, /* isCorrect */ !event.shiftKey);
+}
+
+// While the player pad is open, the arrow keys move the buzz point: Left/Right by a word, Up/Down to the word above
+// or below it on the page. Escape closes the pad.
+function buzzPointPlacementShortcutHandler(event: KeyboardEvent, appState: AppState): void {
+    if (
+        appState.uiState.buzzPointPlacement == undefined ||
+        appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None ||
+        isTextEntryElement(event.target)
+    ) {
+        return;
+    }
+
+    switch (event.key) {
+        case "ArrowLeft":
+            TossupQuestionController.moveBuzzPoint(appState, -1);
+            break;
+        case "ArrowRight":
+            TossupQuestionController.moveBuzzPoint(appState, 1);
+            break;
+        case "ArrowUp":
+            TossupQuestionController.moveBuzzPointVertically(appState, -1);
+            break;
+        case "ArrowDown":
+            TossupQuestionController.moveBuzzPointVertically(appState, 1);
+            break;
+        case "Escape":
+            TossupQuestionController.cancelBuzzPointPlacement(appState);
+            break;
+        default:
+            return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+}
+
 function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
+    // This key's keydown was a player shortcut (playerShortcutHandler); don't treat its keyup as another shortcut
+    if (handledPlayerShortcutCode != undefined && event.code === handledPlayerShortcutCode) {
+        handledPlayerShortcutCode = undefined;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+    }
+
     // Disable shortcuts if there's a modal dialog open
     if (appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None) {
         return;
     }
 
+    // Don't hijack keys while the user is typing in a text field (notably Space, the buzz shortcut)
+    if (isTextEntryElement(event.target)) {
+        return;
+    }
+
     switch (event.key.toUpperCase()) {
         case "E":
-            // Go to the end of a tossup and open up the buzz menu.
-            const tossup: Tossup | undefined = appState.activeGame.getTossup(appState.uiState.cycleIndex);
-            if (tossup) {
-                // Issue is that this removes parens, so we don't have all the info we need
-                const words: ITossupWord[] = tossup.getWords(appState.activeGame.gameFormat);
-                const index: number = words.filter((word) => word.canBuzzOn).length - 1;
+            // Open the player pad at the end of the tossup
+            TossupQuestionController.placeBuzzPointAtEnd(appState);
+            event.preventDefault();
+            event.stopPropagation();
+            break;
 
-                appState.uiState.setSelectedWordIndex(index);
-                appState.uiState.showBuzzMenu(/* clearSelectedWordOnClose */ false);
-
-                // An alternate approach, if we want to keep keyboard focus there. For now users would probably just
-                // keep pressing E, and this way looks uglier (flash of focus, keeps focus after the buzzer is selected)
-                // This requires adding the class "word" to the span in QuestionWord.tsx
-                // // const index: number = words.length - 1;
-                // // const wordElement = document.getElementsByClassName("word").item(index) as HTMLSpanElement;
-                // // if (wordElement) {
-                // //     wordElement.focus();
-                // //     wordElement.click();
-                // // }
-            }
+        case " ":
+            // Space is the buzz shortcut: it marks the buzz point (where the reader is, when the microphone is
+            // tracking them) and opens the player pad there
+            TossupQuestionController.handleBuzzShortcut(appState);
 
             event.preventDefault();
             event.stopPropagation();
-
             break;
 
         case "N":
