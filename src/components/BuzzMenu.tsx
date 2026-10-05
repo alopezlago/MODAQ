@@ -169,12 +169,31 @@ export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps) {
                         shouldFocusOnMount={true}
                         shouldUpdateWhenHidden={true}
                         styles={buzzMenuStyles}
+                        calloutProps={{
+                            preventDismissOnEvent: (ev) => scrollLeftWordInPlace(ev, props.target as React.MutableRefObject<HTMLElement | null>),
+                        }}
                     />
                 );
             }}
         </ThemeContext.Consumer>
     );
 });
+
+// Fluent closes a menu on ANY scroll in the window, wherever it happens. A host page with a live chat beside the
+// reader scrolls that chat to its newest line every time somebody says something or an answer comes in — and each one
+// closed the menu the reader had just opened on a word to say who buzzed. A scroll only matters to this menu if it
+// moved the word it is pinned to, i.e. if the thing that scrolled contains that word (the page, or the question pane).
+function scrollLeftWordInPlace(ev: { type: string; target: EventTarget | null }, target: React.MutableRefObject<HTMLElement | null>): boolean {
+    if (ev.type !== "scroll") {
+        return false;
+    }
+    const word: HTMLElement | null = target.current;
+    const scrolled: EventTarget | null = ev.target;
+    if (word == null || !(scrolled instanceof Element) || scrolled === document.documentElement) {
+        return false;
+    }
+    return !scrolled.contains(word);
+}
 
 // What this player has already done on THIS tossup, wherever in it they did it. The Correct/Wrong ticks below only
 // describe the word the menu is open on, so a player who negged forty words ago looked untouched at the next buzz —

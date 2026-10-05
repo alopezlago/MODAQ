@@ -109,6 +109,8 @@ export interface IPublicRoomState {
         committed?: number;
         activePlayerId?: string | null;
         spoken?: string[];
+        // The same answers with who gave them (see SubmittedAnswers).
+        said?: { playerId: string | null; text: string; at: number }[];
     } | null;
     // Protests the teams lodged. The whole board is public to the room: under
     // the ACF rules the arguments are made in front of everyone.

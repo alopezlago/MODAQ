@@ -13,7 +13,11 @@ export const PlayerJoinsCycleItem = observer(function PlayerJoinsCycleItem(
     };
     return (
         <CycleItem
-            text={`New player (${props.join.inPlayer.teamName}): ${props.join.inPlayer.name} joins`}
+            text={
+                props.join.inPlayer.teamName === props.join.inPlayer.name
+                    ? `${props.join.inPlayer.name} joins`
+                    : `New player (${props.join.inPlayer.teamName}): ${props.join.inPlayer.name} joins`
+            }
             onDelete={deleteHandler}
         />
     );

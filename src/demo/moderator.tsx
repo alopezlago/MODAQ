@@ -16,7 +16,7 @@ import { ICustomExport } from "../state/CustomExport";
 import { IMatch } from "../qbj/QBJ";
 import * as QBJ from "../qbj/QBJ";
 import { IStatus } from "../IStatus";
-import { BuzzPanel } from "./BuzzPanel";
+import { BuzzPanel, SubmittedAnswers } from "./BuzzPanel";
 import {
     IDirectorMessage,
     IMassingerState,
@@ -2334,6 +2334,7 @@ function Reading(props: {
                 </RoomToolbar>
                 <DirectorMessages client={client} />
                 <KlaxonModaq
+                    belowTossup={<SubmittedAnswers state={roomState} />}
                     applyStylingToRoot={false}
                     buildVersion={__BUILD_VERSION__}
                     yappServiceUrl={YAPP_SERVICE_URL}
@@ -2548,6 +2549,7 @@ function LiteReading(props: {
                 <div className={showStart && !gameLoaded ? "mod-modaq-idle" : undefined}>
                     {!staging && (
                         <KlaxonModaq
+                            belowTossup={<SubmittedAnswers state={roomState} />}
                             key={gameKey}
                             applyStylingToRoot={false}
                             buildVersion={__BUILD_VERSION__}
@@ -3410,13 +3412,16 @@ function ShootoutReading(props: {
                 )}
                 <DirectorMessages client={client} />
                 {(busy || msg) && <p className={msg ? "pk-error so-status" : "so-status"}>{msg || busy}</p>}
-                {gameLoaded && here === 0 && (
+                {/* Not once the game is over: everyone was sent home, so an
+                    empty room is the point, not a link to go and send. */}
+                {gameLoaded && here === 0 && roomState?.ended == undefined && (
                     <p className="so-status">
                         Nobody has joined yet — send the player link. Players are added to the game as they arrive.
                     </p>
                 )}
                 {!staging && (
                     <KlaxonModaq
+                        belowTossup={<SubmittedAnswers state={roomState} />}
                         key={gameKey}
                         applyStylingToRoot={false}
                         buildVersion={__BUILD_VERSION__}

@@ -13,7 +13,11 @@ export const PlayerLeavesCycleItem = observer(function PlayerLeavesCycleItem(
     };
     return (
         <CycleItem
-            text={`${props.leave.outPlayer.name} (${props.leave.outPlayer.teamName}) leaves`}
+            text={
+                props.leave.outPlayer.teamName === props.leave.outPlayer.name
+                    ? `${props.leave.outPlayer.name} leaves`
+                    : `${props.leave.outPlayer.name} (${props.leave.outPlayer.teamName}) leaves`
+            }
             onDelete={deleteHandler}
         />
     );

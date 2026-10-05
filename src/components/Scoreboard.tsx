@@ -19,20 +19,30 @@ export const Scoreboard = observer(function Scoreboard() {
     const appState: AppState = useAppState();
     const classes: IScoreboardStyle = getClassNames();
 
-    const scores: number[] = appState.game.finalScore;
-    const teamNames = appState.game.teamNames;
+    const finalScore: number[] = appState.game.finalScore;
+    // Two teams read in game order. A room of twenty competitors (a shootout,
+    // IPNCT) is a standings list, and is read as one: leader first. Ties keep
+    // the order they joined in.
+    let standings: { name: string; score: number }[] = appState.game.teamNames.map((name, index) => ({
+        name,
+        score: finalScore[index] ?? 0,
+    }));
+    if (appState.game.isIndividualGame) {
+        standings = standings.slice().sort((a, b) => b.score - a.score);
+    }
+
     let label: JSX.Element | undefined;
     if (appState.uiState.isScoreVertical) {
         label = (
             <table>
                 <tbody>
-                    {teamNames.map((teamName, index) => (
-                        <tr key={teamName}>
+                    {standings.map(({ name, score }) => (
+                        <tr key={name}>
                             <td>
-                                <Label styles={labelStyles}>{teamName}</Label>
+                                <Label styles={labelStyles}>{name}</Label>
                             </td>
                             <td style={scoreCellStyle}>
-                                <Label styles={labelStyles}>{scores[index]}</Label>
+                                <Label styles={labelStyles}>{score}</Label>
                             </td>
                         </tr>
                     ))}
@@ -41,9 +51,7 @@ export const Scoreboard = observer(function Scoreboard() {
         );
     } else {
         label = (
-            <Label styles={labelStyles}>
-                {teamNames.map((teamName, index) => `${teamName}: ${scores[index]}`).join(", ")}
-            </Label>
+            <Label styles={labelStyles}>{standings.map(({ name, score }) => `${name}: ${score}`).join(", ")}</Label>
         );
     }
 

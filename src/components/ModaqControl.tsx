@@ -27,6 +27,7 @@ import * as TossupQuestionController from "./TossupQuestionController";
 import { StateProvider } from "../contexts/StateContext";
 import { IErratum } from "../state/IErratum";
 import { TiebreakerContext, ITiebreakerContextValue, ITiebreakerItem } from "../contexts/TiebreakerContext";
+import { BelowTossupContext } from "../contexts/BelowTossupContext";
 import { NewGameNoticeContext, INewGameNoticeContextValue } from "../contexts/NewGameNoticeContext";
 import { HostNewGameContext, IHostNewGameContextValue } from "../contexts/HostNewGameContext";
 import * as QBJ from "../qbj/QBJ";
@@ -565,12 +566,14 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                 <NewGameNoticeContext.Provider value={newGameNoticeValue}>
                 <HostNewGameContext.Provider value={hostNewGameValue}>
                 <TiebreakerContext.Provider value={tiebreakerValue}>
+                <BelowTossupContext.Provider value={props.belowTossup}>
                     <ThemeProvider theme={theme} applyTo={applyTo}>
                         <div className="modaq-control">
                             <GameViewer />
                             <ModalDialogContainer />
                         </div>
                     </ThemeProvider>
+                </BelowTossupContext.Provider>
                 </TiebreakerContext.Provider>
                 </HostNewGameContext.Provider>
                 </NewGameNoticeContext.Provider>
@@ -764,6 +767,12 @@ export interface IModaqControlProps {
      * game.
      */
     liveTeams?: ILiveTeam[];
+
+    /**
+     * Shown under the current tossup's words, above its answer line. Klaxon puts each typed answer there as it is
+     * submitted, where the reader is already looking.
+     */
+    belowTossup?: React.ReactNode;
 
     /**
      * Called with whether a game is loaded: once when the control is ready (after any saved game is restored), and

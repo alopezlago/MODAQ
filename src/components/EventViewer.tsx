@@ -224,10 +224,28 @@ const ScoreLine = observer(function ScoreLine(props: {
                 ),
             }}
         >
-            <Text className={classes.scoreLine}>{`(${current.join(" - ")})`}</Text>
+            <Text className={classes.scoreLine}>{scoreLineText(appState, teamNames, current, previous)}</Text>
         </TooltipHost>
     );
 });
+
+// Two teams: the running score, "(40 - 25)". Every competitor for themselves (a shootout, IPNCT): twenty numbers,
+// nearly all of them 0, is unreadable — so just the people this question moved, with where it left them, in team
+// order: "Ann 15 · Bo −5". The tooltip still lists everyone.
+function scoreLineText(appState: AppState, teamNames: string[], current: number[], previous: number[] | undefined): string {
+    if (!appState.game.isIndividualGame) {
+        return `(${current.join(" - ")})`;
+    }
+
+    const moved: string[] = [];
+    teamNames.forEach((name, i) => {
+        const total: number = current[i] ?? 0;
+        if (total !== (previous?.[i] ?? 0)) {
+            moved.push(`${name} ${total < 0 ? `−${-total}` : total}`);
+        }
+    });
+    return moved.length > 0 ? moved.join(" · ") : "No change";
+}
 
 interface IEventViewerClassNames {
     eventViewerContainer: string;

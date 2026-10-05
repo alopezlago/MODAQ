@@ -19,6 +19,7 @@ import { BuzzSoundDetector } from "../speech/BuzzSoundDetector";
 import { ReaderFollower } from "../speech/ReaderFollower";
 import { ReaderFollowerDebug } from "./ReaderFollowerDebug";
 import { useTiebreakers } from "../contexts/TiebreakerContext";
+import { BelowTossupContext } from "../contexts/BelowTossupContext";
 
 // How long the reading has to pause (no new matched words) before the buzz point moves to the reader's position.
 // Speech recognizers emit words in bursts while someone is talking, so this also smooths out mid-sentence jitter.
@@ -192,6 +193,10 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
             TossupQuestionController.selectWordFromClick(props.appState, event),
         [props.appState]
     );
+    // Only on the question being read: the event log's past tossups have nothing new to show.
+    const hostBelowTossup: React.ReactNode = React.useContext(BelowTossupContext);
+    const belowTossup: React.ReactNode =
+        props.cycle === props.appState.game.cycles[props.appState.uiState.cycleIndex] ? hostBelowTossup : undefined;
     const mouseMoveHandler = React.useCallback(
         () => props.appState.uiState.setLastQuestionTextMouseMoveTime(Date.now()),
         [props.appState]
@@ -213,6 +218,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
                 >
                     {questionWords}
                 </FocusZone>
+                {belowTossup}
                 <Answer text={props.tossup.answer} />
                 <PostQuestionMetadata metadata={props.tossup.metadata} />
                 <ReaderFollowerDebug appState={props.appState} />
@@ -256,9 +262,7 @@ const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuesti
                 // moderator presses Space, and keep it up until the buzz menu closes. The space above every word
                 // (including non-buzzable ones) is reserved the whole time, so the numbers appearing and
                 // disappearing doesn't shift the text around.
-                displayIndex={
-                    uiState.buzzIndexesVisible && props.index != undefined ? props.index + 1 : undefined
-                }
+                displayIndex={uiState.buzzIndexesVisible && props.index != undefined ? props.index + 1 : undefined}
                 reserveIndexSpace={props.reserveIndexSpace}
                 word={props.word}
                 selected={props.index === uiState.selectedWordIndex}

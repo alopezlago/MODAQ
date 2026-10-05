@@ -33,7 +33,9 @@ export const TossupAnswerCycleItem = observer(function TossupAnswerCycleItem(
         buzzDescription = `for ${points} ✓`;
     }
 
-    const text = `${props.buzz.marker.player.name} (${props.buzz.marker.player.teamName}) ${buzzDescription}`;
+    // A one-player team (a shootout, IPNCT) is just the name: "Ann (Ann)" said it twice.
+    const { name, teamName } = props.buzz.marker.player;
+    const text = `${name}${teamName === name ? "" : ` (${teamName})`} ${buzzDescription}`;
     return <CycleItem text={text} onDelete={deleteHandler} />;
 });
 

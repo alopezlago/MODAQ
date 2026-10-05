@@ -813,8 +813,13 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
     // An unlinked buzzer is flagged and gets a picker right where it's needed.
     const roster = state?.roster;
     const memberOf = (playerId: string): IRoomMember | undefined => players.find((p) => p.id === playerId);
+    // "Olin (Olin)" says nothing twice: a one-player team (a shootout) is just
+    // the name.
     const modaqLabel = (m: IRoomMember | undefined, fallback: string): string =>
-        m?.rosterPlayer ? `${m.rosterPlayer}${m.rosterTeam ? ` (${m.rosterTeam})` : ""}` : fallback;
+        m?.rosterPlayer
+            ? `${m.rosterPlayer}${m.rosterTeam && m.rosterTeam !== m.rosterPlayer ? ` (${m.rosterTeam})` : ""}`
+            : fallback;
+    const shootoutRoom = state?.shootout != undefined;
     // What this buzzer called itself when it joined — worth a tooltip once the
     // panel is showing the MODAQ player's name instead.
     const joinedAsTitle = (m: IRoomMember | undefined): string | undefined =>
@@ -977,6 +982,23 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                 )}
             </div>
 
+            {showAnswerMsg !== "" && <div className="klaxon-note">{showAnswerMsg}</div>}
+            {undoMsg !== "" && <div className="klaxon-note">{undoMsg}</div>}
+            {(answerWindow?.spoken?.length ?? 0) > 0 && (
+                <div className={"klaxon-said" + (answerFlash ? " klaxon-said-new" : "")}>
+                    <span className="klaxon-said-label">Given: </span>
+                    {(answerWindow?.spoken ?? []).join(" · ")}
+                </div>
+            )}
+
+            {/* A shootout is played in the chat, and the answers the room heard
+                land there too. So it goes straight under the buzzer's controls,
+                ahead of the options, the history and the player list — with a
+                room of twenty it used to be a long scroll away. */}
+            {state?.shootout != undefined && (
+                <RoomChat client={client} initial={state.chat ?? []} exportUrl={KlaxonApi.chatExportUrl(client.code, client.token)} />
+            )}
+
             <label className="klaxon-opt" title="Players type their answer instead of saying it out loud">
                 <input
                     type="checkbox"
@@ -1013,14 +1035,14 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                 List this game on the Klaxon home page
             </label>
 
-            {showAnswerMsg !== "" && <div className="klaxon-note">{showAnswerMsg}</div>}
-            {undoMsg !== "" && <div className="klaxon-note">{undoMsg}</div>}
             <RecentBuzzes events={recent} onUndo={undoClear} />
-            {(answerWindow?.spoken?.length ?? 0) > 0 && (
-                <div className={"klaxon-said" + (answerFlash ? " klaxon-said-new" : "")}>
-                    <span className="klaxon-said-label">Given: </span>
-                    {(answerWindow?.spoken ?? []).join(" \u00b7 ")}
-                </div>
+
+            {state?.shootout != undefined && (
+                <Leaderboard
+                    rows={state.shootout.rows}
+                    packets={state.shootout.packets}
+                    at={packetLabel(state.shootout.session)}
+                />
             )}
 
             <div className="klaxon-players">
@@ -1029,18 +1051,25 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                 </h3>
                 <ul>
                     {players.length === 0 && <li className="empty">No players connected.</li>}
-                    {players
-                        .slice()
-                        .sort((a, b) => Number(a.connected) - Number(b.connected))
-                        .map((player) => (
+                    {/* In the order they joined, and they stay put: someone
+                        arriving goes at the bottom, and a connection that
+                        flickers greys a row rather than moving it. Re-sorting
+                        on every presence change made the list jump under the
+                        reader while they were reading. */}
+                    {players.map((player) => {
+                        const label = modaqLabel(player, player.name + (player.team ? ` · ${player.team}` : ""));
+                        // A linked shootout competitor is their own team: the
+                        // picker would only repeat their name.
+                        const picker = shootoutRoom && player.rosterPlayer ? null : linkPicker(player, player.id);
+                        return (
                             <li key={player.id} className={player.connected ? "" : "gone"}>
                                 <span
                                     className={"klaxon-player-name" + (player.rosterPlayer ? " klaxon-linked" : "")}
-                                    title={joinedAsTitle(player)}
+                                    title={joinedAsTitle(player) ?? label}
                                 >
-                                    {modaqLabel(player, player.name + (player.team ? ` · ${player.team}` : ""))}
-                                    {linkPicker(player, player.id)}
-                                    {!player.connected && <span className="klaxon-offline"> OFFLINE</span>}
+                                    <span className="kp-label">{label}</span>
+                                    {picker}
+                                    {!player.connected && <span className="klaxon-offline">OFFLINE</span>}
                                 </span>
                                 <button
                                     className="klaxon-remove"
@@ -1055,7 +1084,8 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                                     ×
                                 </button>
                             </li>
-                        ))}
+                        );
+                    })}
                 </ul>
             </div>
 
@@ -1072,17 +1102,6 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                     />
                     <span>min ago</span>
                 </div>
-            )}
-
-            {state?.shootout != undefined && (
-                <RoomChat client={client} initial={state.chat ?? []} exportUrl={KlaxonApi.chatExportUrl(client.code, client.token)} />
-            )}
-            {state?.shootout != undefined && (
-                <Leaderboard
-                    rows={state.shootout.rows}
-                    packets={state.shootout.packets}
-                    at={packetLabel(state.shootout.session)}
-                />
             )}
 
             {/* The end of the evening. It sends the room home, so it asks first;
@@ -1130,6 +1149,37 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                 </a>{" "}
                 if you need to work out what happened to a buzz.
             </p>
+        </div>
+    );
+}
+
+/**
+ * Each typed answer, under the tossup the moderator is reading, as it is
+ * submitted: the moment a reader most needs to see it, and the place their
+ * eyes already are. It arrives with a pop and a glow that fades, so a new one
+ * can't slip in unnoticed between two words — on top of the answer's line in
+ * the chat and the "Given:" line in the buzz panel, not instead of them.
+ * Gone when the cycle is (the moderator ruled, or cleared the buzzer).
+ */
+export function SubmittedAnswers(props: { state: IPublicRoomState | undefined }): JSX.Element | null {
+    const said = props.state?.answers?.said ?? [];
+    if (said.length === 0) {
+        return null;
+    }
+    const members = props.state?.members ?? [];
+    const nameOf = (id: string | null): string => {
+        const m = id == null ? undefined : members.find((x) => x.id === id);
+        return m?.rosterPlayer ?? m?.name ?? "Moderator";
+    };
+    return (
+        <div className="kx-said-under" aria-live="polite">
+            {said.map((s, i) => (
+                // Keyed by when it arrived, so only the new one animates.
+                <div key={`${s.at}-${i}`} className={"kx-said-card" + (i === said.length - 1 ? " kx-said-latest" : "")}>
+                    <span className="kx-said-who">{nameOf(s.playerId)}</span>
+                    <span className="kx-said-text">{s.text}</span>
+                </div>
+            ))}
         </div>
     );
 }
