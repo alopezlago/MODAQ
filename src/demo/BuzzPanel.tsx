@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
     KlaxonApi,
+    IBuzzQueueEntry,
     IChatMessage,
     IProtest,
     IPublicRoomState,
@@ -15,38 +16,151 @@ import {
 // latency-fair buzz queue the Klaxon server resolves and gives the moderator the
 // same reset/next/clear controls a Klaxon reader has, so they can drive the
 // buzzer while scoring in MODAQ.
-// The shootout leaderboard, as the host sees it while reading.
-function Leaderboard(props: {
+
+// The board keys a competitor by the name they are known by, trimmed and cut
+// to 40 characters (see shootout.board on the server).
+const boardKey = (name: string): string => name.replace(/\s+/g, " ").trim().slice(0, 40).toLowerCase();
+
+const ordinal = (n: number): string => {
+    const tens = n % 100;
+    if (tens >= 11 && tens <= 13) return `${n}th`;
+    return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
+};
+
+/**
+ * A shootout's players, its leaderboard and its buzz queue as one list.
+ *
+ * In a shootout every competitor is their own team, so the roster and the
+ * leaderboard were the same twenty names twice. Here each player is one quiet
+ * row: rank, name, score. Nothing on it moves or lights up while the reader is
+ * reading, except when a player acts: whoever buzzes is lifted out of the list
+ * to the top of it, in buzz order, so a buzz from the twentieth row is never
+ * scrolled out of sight. The rest scroll in a box of their own, highest score
+ * first; presence greys a row and never re-sorts it.
+ */
+function Standings(props: {
+    players: IRoomMember[];
     rows: { name: string; banked: number; current: number; total: number }[];
     packets?: number;
-    // Which packet the room is on, so the heading says where the evening has
-    // got to rather than how many totals have been filed away.
     at?: string;
-}): JSX.Element | null {
-    if (props.rows.length === 0) {
-        return null;
+    queue: IBuzzQueueEntry[];
+    label: (m: IRoomMember | undefined, fallback: string) => string;
+    picker: (m: IRoomMember | undefined, playerId: string) => JSX.Element | null;
+    onRemove: (m: IRoomMember) => void;
+}): JSX.Element {
+    const { players, rows, queue } = props;
+    const scoreOf = new Map(rows.map((r) => [boardKey(r.name), r]));
+    const matched = new Set<string>();
+    const entries = players.map((m, order) => {
+        const key = boardKey(m.displayName ?? m.rosterPlayer ?? m.name);
+        matched.add(key);
+        const row = scoreOf.get(key);
+        return { id: m.id, member: m as IRoomMember | undefined, name: props.label(m, m.name), row, order };
+    });
+    // Someone removed from the room still has the points they scored.
+    for (const r of rows) {
+        if (!matched.has(boardKey(r.name)) && r.total !== 0) {
+            entries.push({ id: `row:${r.name}`, member: undefined, name: r.name, row: r, order: entries.length });
+        }
     }
-    // Nothing banked yet means every point came from this packet, and a column
-    // of "0 + n" would say so on every row.
+    const total = (e: { row?: { total: number } }): number => e.row?.total ?? 0;
+    entries.sort((a, b) => total(b) - total(a) || a.order - b.order);
+    // A rank only for someone who has scored: twenty people tied on nothing
+    // is a column of the same number, and nothing to read.
+    const anyScore = entries.some((e) => total(e) !== 0);
+    const rankOf = new Map<string, number>();
+    entries.forEach((e, i) => {
+        const prev = entries[i - 1];
+        rankOf.set(e.id, prev != undefined && total(prev) === total(e) ? (rankOf.get(prev.id) as number) : i + 1);
+    });
     const showSplit = (props.packets ?? 0) > 0;
+    const splitTitle = (e: (typeof entries)[number]): string | undefined =>
+        showSplit && e.row != undefined ? `${e.row.banked} from earlier packets + ${e.row.current} this packet` : undefined;
+
+    const queued = new Set(queue.map((q) => q.playerId));
+    const byId = new Map(entries.map((e) => [e.id, e]));
+    const offline = players.filter((p) => !p.connected).length;
+
+    const row = (e: (typeof entries)[number], extra?: JSX.Element): JSX.Element => {
+        const m = e.member;
+        // A linked competitor is their own team: the picker would only repeat
+        // their name. An unlinked one needs it, and it's the one thing on a
+        // quiet row that should catch the eye.
+        const picker = m != undefined && !m.rosterPlayer ? props.picker(m, m.id) : null;
+        return (
+            <>
+                {anyScore && <span className="ks-rank">{total(e) !== 0 ? rankOf.get(e.id) : ""}</span>}
+                <span className="ks-name" title={m?.rosterPlayer ? `Joined as ${m.name}` : e.name}>
+                    {e.name}
+                </span>
+                {extra}
+                {picker}
+                <span className="ks-score" title={splitTitle(e)}>
+                    {total(e)}
+                </span>
+                {m != undefined && (
+                    <button
+                        className="ks-remove"
+                        title={`Remove ${m.name} from the room`}
+                        aria-label={`Remove ${m.name} from the room`}
+                        onClick={() => props.onRemove(m)}
+                    >
+                        ×
+                    </button>
+                )}
+            </>
+        );
+    };
+
     return (
-        <div className="klaxon-board">
-            <h3>
-                Leaderboard{" "}
-                {props.at != undefined && props.at !== "" ? <span className="kb-packets">{props.at}</span> : undefined}
+        <div className="ks-standings">
+            <h3 className="ks-head">
+                <span>
+                    Standings · {players.length}
+                    {offline > 0 && <span className="ks-offline-count"> · {offline} offline</span>}
+                </span>
+                {props.at != undefined && props.at !== "" && <span className="kb-packets">{props.at}</span>}
             </h3>
-            <ol>
-                {props.rows.map((r) => (
-                    <li key={r.name}>
-                        <span className="kb-name">{r.name}</span>
-                        {showSplit && (r.banked !== 0 || r.current !== 0) && (
-                            <span className="kb-split">
-                                {r.banked} + {r.current}
+            {queue.length > 0 && (
+                <ol className="ks-queue" aria-label="Buzz queue">
+                    {queue.map((q, i) => {
+                        const e = byId.get(q.playerId) ?? {
+                            id: q.playerId,
+                            member: undefined,
+                            name: q.name,
+                            row: undefined,
+                            order: 0,
+                        };
+                        const badge = (
+                            <span className="ks-badge" title={i > 0 ? `Buzzed this far behind ${queue[0].name}` : undefined}>
+                                {ordinal(i + 1)}
+                                {i > 0 && ` +${marginText(q.marginMs)}`}
                             </span>
-                        )}
-                        <span className="kb-total">{r.total}</span>
-                    </li>
-                ))}
+                        );
+                        return (
+                            <li
+                                key={q.playerId}
+                                className={"ks-row" + (i === 0 ? " ks-first" : " ks-behind") + (e.member?.connected === false ? " gone" : "")}
+                            >
+                                {row(e, badge)}
+                            </li>
+                        );
+                    })}
+                </ol>
+            )}
+            <ol className="ks-list" data-is-scrollable="true">
+                {entries.length === 0 && <li className="ks-empty">Nobody here yet.</li>}
+                {entries
+                    .filter((e) => !queued.has(e.id))
+                    .map((e) => (
+                        <li
+                            key={e.id}
+                            className={"ks-row" + (e.member == undefined || !e.member.connected ? " gone" : "")}
+                            title={e.member == undefined ? "Left the room" : !e.member.connected ? "Offline" : undefined}
+                        >
+                            {row(e)}
+                        </li>
+                    ))}
             </ol>
         </div>
     );
@@ -363,11 +477,14 @@ export function useUndoClear(client: KlaxonClient): [(id: string) => void, strin
     return [undo, msg];
 }
 
-function RecentBuzzes(props: { events: IRecentEvent[]; onUndo: (id: string) => void }): JSX.Element {
+function RecentBuzzes(props: { events: IRecentEvent[]; onUndo: (id: string) => void; drawer?: boolean }): JSX.Element {
     const { events, onUndo } = props;
+    // In a shootout it opens from a button in the panel's header, so it needs
+    // no disclosure of its own.
+    const Box = props.drawer ? "div" : "details";
     return (
-        <details className="klaxon-recent" open>
-            <summary>Recent buzzes</summary>
+        <Box className={"klaxon-recent" + (props.drawer ? " ks-drawer" : "")} open={props.drawer ? undefined : true}>
+            {props.drawer ? <h3>Recent buzzes</h3> : <summary>Recent buzzes</summary>}
             {events.length === 0 ? (
                 <p className="klaxon-recent-empty">Nothing yet.</p>
             ) : (
@@ -389,7 +506,7 @@ function RecentBuzzes(props: { events: IRecentEvent[]; onUndo: (id: string) => v
                     ))}
                 </ol>
             )}
-        </details>
+        </Box>
     );
 }
 
@@ -819,7 +936,38 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
         m?.rosterPlayer
             ? `${m.rosterPlayer}${m.rosterTeam && m.rosterTeam !== m.rosterPlayer ? ` (${m.rosterTeam})` : ""}`
             : fallback;
-    const shootoutRoom = state?.shootout != undefined;
+    // A shootout keeps its history and its settings behind two header buttons.
+    const [drawer, setDrawer] = React.useState<"recent" | "settings" | null>(null);
+
+    // A shootout panel is exactly as tall as the part of the window it can
+    // be seen in, so its chat box sits at the bottom of the screen. The page's
+    // header is above it until the reader scrolls, and the panel is sticky
+    // after that, so the height follows the scroll.
+    const shootoutRef = React.useRef<HTMLDivElement | null>(null);
+    const isShootout = state?.shootout != undefined;
+    React.useEffect(() => {
+        const side = shootoutRef.current?.closest(".mod-side") as HTMLElement | null | undefined;
+        if (!isShootout || side == undefined) {
+            return undefined;
+        }
+        let frame = 0;
+        const fit = (): void => {
+            cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => {
+                const top = Math.max(0, side.getBoundingClientRect().top);
+                side.style.setProperty("--ks-side-top", `${Math.round(top)}px`);
+            });
+        };
+        fit();
+        window.addEventListener("scroll", fit, { passive: true });
+        window.addEventListener("resize", fit);
+        return () => {
+            cancelAnimationFrame(frame);
+            window.removeEventListener("scroll", fit);
+            window.removeEventListener("resize", fit);
+            side.style.removeProperty("--ks-side-top");
+        };
+    }, [isShootout]);
     // What this buzzer called itself when it joined — worth a tooltip once the
     // panel is showing the MODAQ player's name instead.
     const joinedAsTitle = (m: IRoomMember | undefined): string | undefined =>
@@ -856,49 +1004,311 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
         );
     };
 
+    const removePlayer = (player: IRoomMember): void => {
+        if (window.confirm(`Remove ${player.name} from the room? They can rejoin from the player link.`)) {
+            client.massinger({ action: "remove_player", playerId: player.id });
+        }
+    };
+
+    const soundButton = (
+        <button
+            className="klaxon-sound-toggle"
+            title={soundOn ? "Buzz sound on — click to mute" : "Buzz sound muted — click to unmute"}
+            aria-pressed={!soundOn}
+            onClick={() => {
+                const next = !soundOn;
+                setSoundOn(next);
+                localStorage.setItem(BUZZ_SOUND_KEY, next ? "1" : "0");
+                if (next) {
+                    playBuzzBeep();
+                }
+            }}
+        >
+            {soundOn ? "🔊" : "🔇"}
+        </button>
+    );
+
+    const stuckBanner = stuck != undefined && (
+        <div className="klaxon-stuck" role="alert">
+            <span>
+                ⚠ {stuck.name}
+                {stuck.team ? ` (${stuck.team})` : ""} says the buzzer isn&apos;t clear.
+            </span>
+            <button onClick={() => setStuck(undefined)}>Dismiss</button>
+        </div>
+    );
+
+    const phaseBar = (
+        <div className={"klaxon-phase " + (buzzed ? "buzzed" : "ready")}>
+            {buzzed
+                ? modaqLabel(memberOf(queue[0].playerId), queue[0].name) +
+                  (queue.length > 1 ? ` · ${queue.length - 1} more` : "")
+                : "Ready to buzz"}
+        </div>
+    );
+
+    const timerDisplay = timerLeft != null && (
+        <div className={"klaxon-timer" + (timerLeft <= 0 ? " done" : "")} aria-hidden="true">
+            {timerLeft <= 0 ? "TIME" : timerLeft.toFixed(1)}
+        </div>
+    );
+
+    // Right where the clear was pressed, for as long as it can be taken back
+    // (the same question, nothing cleared since). Only for a clear without
+    // scoring — the slip this is for; one that followed a ruling is undone from
+    // the recent-buzzes list.
+    const undoButton = undoable?.undoId != undefined && undoable.kind === "clear-accidental" && (
+        <button className="klaxon-undo" onClick={() => undoClear(undoable.undoId as string)} title={`Undo: ${undoable.text}`}>
+            ↶ Undo clear
+        </button>
+    );
+
+    // Typed answers: the player with the floor sends theirs with Enter, and
+    // nothing reveals it on a timer. This is how the reader asks for it — when
+    // they've given someone long enough, or when the player is sitting on an
+    // answer they haven't sent.
+    const showAnswerButton = answerWindow != undefined && (
+        <button
+            className="ks-wide"
+            onClick={async () => {
+                const res = await client.massinger({ action: "reveal_answer" });
+                if (res?.error != undefined) {
+                    setShowAnswerMsg(res.error === "nothing_typed" ? "They haven't typed anything yet." : res.error);
+                    setTimeout(() => setShowAnswerMsg(""), 2500);
+                }
+            }}
+            disabled={!buzzed}
+            title="Put the buzzed-in player's typed answer on the record now"
+        >
+            Show their answer
+        </button>
+    );
+
+    const notes = (
+        <>
+            {showAnswerMsg !== "" && <div className="klaxon-note">{showAnswerMsg}</div>}
+            {undoMsg !== "" && <div className="klaxon-note">{undoMsg}</div>}
+            {(answerWindow?.spoken?.length ?? 0) > 0 && (
+                <div className={"klaxon-said" + (answerFlash ? " klaxon-said-new" : "")}>
+                    <span className="klaxon-said-label">Given: </span>
+                    {(answerWindow?.spoken ?? []).join(" · ")}
+                </div>
+            )}
+        </>
+    );
+
+    const typedOption = (
+        <label className="klaxon-opt" title="Players type their answer instead of saying it out loud">
+            <input
+                type="checkbox"
+                checked={pendingTyped ?? typedAnswers}
+                onChange={(e) => {
+                    const on = e.target.checked;
+                    setPendingTyped(on);
+                    // Off means off: no boxes for anyone, including the
+                    // players queued behind the buzzer.
+                    client.massinger({
+                        action: "set_options",
+                        options: on ? { typedAnswers: true } : { typedAnswers: false, lockedAnswers: false },
+                    });
+                }}
+            />{" "}
+            Players type their answers
+        </label>
+    );
+
+    // Being findable is the whole point of a Discord reading: the host posts
+    // the link in one server, and anyone else who wants a game can come in off
+    // the home page. Off unless they ask — a room's code is the only thing
+    // keeping strangers out of it.
+    const listedOption = (
+        <label className="klaxon-opt" title="Anyone can find this game on klaxonbuzz.com and join it">
+            <input
+                type="checkbox"
+                checked={state?.listed === true}
+                onChange={(e) => client.massinger({ action: "set_options", options: { listed: e.target.checked } })}
+            />{" "}
+            List this game on the Klaxon home page
+        </label>
+    );
+
+    const staleRow = players.length > 0 && (
+        <div className="klaxon-stale">
+            <button onClick={removeStale}>Remove players who joined over</button>
+            <input
+                type="number"
+                min={1}
+                max={999}
+                value={staleMins}
+                onChange={(e) => setStaleMins(e.target.value)}
+                aria-label="Minutes"
+            />
+            <span>min ago</span>
+        </div>
+    );
+
+    // The end of the evening. It sends the room home, so it asks first;
+    // reopening doesn't, because nothing is lost by it.
+    const endRow = (
+        <div className="klaxon-end">
+            {state?.ended == undefined ? (
+                <button
+                    onClick={() => {
+                        if (
+                            window.confirm(
+                                "End the game for everyone? The players are sent home and the room stops taking new ones. The scoresheet, the chat and the log stay, and you can reopen it."
+                            )
+                        ) {
+                            client.massinger({ action: "end_game", end: true });
+                        }
+                    }}
+                    title="Send the players home and close the room"
+                >
+                    End the game for everyone
+                </button>
+            ) : (
+                <>
+                    <span className="klaxon-ended">This game is over.</span>
+                    <button onClick={() => client.massinger({ action: "end_game", end: false })}>Reopen it</button>
+                </>
+            )}
+        </div>
+    );
+
+    const hints = (
+        <>
+            <p className="klaxon-hint">
+                Buzzes are resolved with Klaxon&apos;s latency-fair timing. Judge the buzz in the MODAQ reader on the
+                left; press <kbd>r</kbd> (or the button) to reset for the next tossup.
+            </p>
+            {/* Afterwards, when somebody asks what happened to their buzz: every
+                buzz, clear, withdrawal and chat line, stamped and in order. */}
+            <p className="klaxon-hint">
+                <a
+                    className="kc-export"
+                    href={KlaxonApi.activityLogUrl(client.code, client.token)}
+                    download
+                    title="Buzz times, who cleared what, withdrawals, joins and chat — as a text file"
+                >
+                    Download the activity log
+                </a>{" "}
+                if you need to work out what happened to a buzz.
+            </p>
+        </>
+    );
+
+    // A shootout: twenty-odd people, each on their own, and a chat that is half
+    // the point. The settings and the history go behind the header's buttons,
+    // the players and the leaderboard become one list with the buzz queue lit
+    // on it, and the chat takes whatever height is left — so a reader never
+    // scrolls the panel to see who buzzed or what was said.
+    if (state?.shootout != undefined) {
+        const toggle = (which: "recent" | "settings"): void => setDrawer((d) => (d === which ? null : which));
+        // An undo the big button doesn't offer (a clear that followed a
+        // ruling) is only in the history: say there is one there.
+        const historyUndo = undoable != undefined && undoable.kind !== "clear-accidental";
+        return (
+            <div className="klaxon-buzz klaxon-shootout" ref={shootoutRef}>
+                <div className="ks-top">
+                    <h2 className="klaxon-buzz-title">Buzzer</h2>
+                    <button
+                        className={"ks-icon" + (drawer === "recent" ? " on" : "") + (historyUndo ? " ks-dot" : "")}
+                        aria-expanded={drawer === "recent"}
+                        aria-label="Recent buzzes"
+                        title={historyUndo ? "Recent buzzes — a clear can still be undone" : "Recent buzzes"}
+                        onClick={() => toggle("recent")}
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                            <path d="M3 3v5h5M12 7v5l3 2" />
+                        </svg>
+                    </button>
+                    {soundButton}
+                    <button
+                        className={"ks-icon" + (drawer === "settings" ? " on" : "")}
+                        aria-expanded={drawer === "settings"}
+                        aria-label="Room settings"
+                        title="Room settings — typed answers, listing, removing players, ending the game"
+                        onClick={() => toggle("settings")}
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" />
+                        </svg>
+                    </button>
+                </div>
+
+                {drawer === "recent" && <RecentBuzzes events={recent} onUndo={undoClear} drawer />}
+                {drawer === "settings" && (
+                    <div className="ks-drawer ks-settings">
+                        <h3>Room settings</h3>
+                        {typedOption}
+                        {listedOption}
+                        {staleRow}
+                        {endRow}
+                        {hints}
+                    </div>
+                )}
+                {/* An ended game says so where it can't be missed. */}
+                {state.ended != undefined && drawer !== "settings" && endRow}
+
+                {stuckBanner}
+                {phaseBar}
+                {timerDisplay}
+                <ProtestList client={client} protests={state.protests ?? []} />
+
+                <div className={"klaxon-controls ks-controls" + (queueMode ? "" : " ks-two")}>
+                    <button
+                        onClick={() => client.resetBuzzer()}
+                        disabled={!buzzed}
+                        title="Accidental buzz (r) — clears without scoring, which records the buzz as accidental"
+                    >
+                        Accidental <kbd>r</kbd>
+                    </button>
+                    <button onClick={startTimer} title="5-second timer (t) — a countdown only you see">
+                        5s timer <kbd>t</kbd>
+                    </button>
+                    {queueMode && (
+                        <button onClick={() => client.nextBuzz()} disabled={!buzzed} title="Next buzzer">
+                            Next →
+                        </button>
+                    )}
+                    {queueMode && (
+                        <button onClick={() => client.clearQueue()} disabled={!buzzed} title="Clear queue">
+                            Clear
+                        </button>
+                    )}
+                    {undoButton}
+                    {showAnswerButton}
+                </div>
+                {notes}
+
+                <Standings
+                    players={players}
+                    rows={state.shootout.rows}
+                    packets={state.shootout.packets}
+                    at={packetLabel(state.shootout.session)}
+                    queue={queue}
+                    label={modaqLabel}
+                    picker={linkPicker}
+                    onRemove={removePlayer}
+                />
+
+                <RoomChat client={client} initial={state.chat ?? []} exportUrl={KlaxonApi.chatExportUrl(client.code, client.token)} />
+            </div>
+        );
+    }
+
     return (
         <div className="klaxon-buzz">
             <h2 className="klaxon-buzz-title">
                 Buzzer
-                <button
-                    className="klaxon-sound-toggle"
-                    title={soundOn ? "Buzz sound on — click to mute" : "Buzz sound muted — click to unmute"}
-                    aria-pressed={!soundOn}
-                    onClick={() => {
-                        const next = !soundOn;
-                        setSoundOn(next);
-                        localStorage.setItem(BUZZ_SOUND_KEY, next ? "1" : "0");
-                        if (next) {
-                            playBuzzBeep();
-                        }
-                    }}
-                >
-                    {soundOn ? "\uD83D\uDD0A" : "\uD83D\uDD07"}
-                </button>
+                {soundButton}
             </h2>
 
-            {stuck != undefined && (
-                <div className="klaxon-stuck" role="alert">
-                    <span>
-                        ⚠ {stuck.name}
-                        {stuck.team ? ` (${stuck.team})` : ""} says the buzzer isn&apos;t clear.
-                    </span>
-                    <button onClick={() => setStuck(undefined)}>Dismiss</button>
-                </div>
-            )}
-
-            <div className={"klaxon-phase " + (buzzed ? "buzzed" : "ready")}>
-                {buzzed
-                    ? modaqLabel(memberOf(queue[0].playerId), queue[0].name) +
-                      (queue.length > 1 ? ` · ${queue.length - 1} more` : "")
-                    : "Ready to buzz"}
-            </div>
-
-            {timerLeft != null && (
-                <div className={"klaxon-timer" + (timerLeft <= 0 ? " done" : "")} aria-hidden="true">
-                    {timerLeft <= 0 ? "TIME" : timerLeft.toFixed(1)}
-                </div>
-            )}
+            {stuckBanner}
+            {phaseBar}
+            {timerDisplay}
 
             <ol className="klaxon-queue">
                 {queue.length === 0 && <li className="empty">No buzzes yet.</li>}
@@ -947,103 +1357,15 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                         Clear queue
                     </button>
                 )}
-                {/* Right where the clear was pressed, for as long as it can be
-                    taken back (the same question, nothing cleared since). Only
-                    for a clear without scoring — the slip this is for; one
-                    that followed a ruling is undone from the list below. */}
-                {undoable?.undoId != undefined && undoable.kind === "clear-accidental" && (
-                    <button
-                        className="klaxon-undo"
-                        onClick={() => undoClear(undoable.undoId as string)}
-                        title={`Undo: ${undoable.text}`}
-                    >
-                        ↶ Undo clear
-                    </button>
-                )}
-                {/* Typed answers: the player with the floor sends theirs with Enter, and nothing reveals it on a
-                    timer. This is how the reader asks for it — when they've given someone long enough, or when the
-                    player is sitting on an answer they haven't sent. */}
-                {answerWindow != undefined && (
-                    <button
-                        onClick={async () => {
-                            const res = await client.massinger({ action: "reveal_answer" });
-                            if (res?.error != undefined) {
-                                setShowAnswerMsg(
-                                    res.error === "nothing_typed" ? "They haven't typed anything yet." : res.error
-                                );
-                                setTimeout(() => setShowAnswerMsg(""), 2500);
-                            }
-                        }}
-                        disabled={!buzzed}
-                        title="Put the buzzed-in player's typed answer on the record now"
-                    >
-                        Show their answer
-                    </button>
-                )}
+                {undoButton}
+                {showAnswerButton}
             </div>
 
-            {showAnswerMsg !== "" && <div className="klaxon-note">{showAnswerMsg}</div>}
-            {undoMsg !== "" && <div className="klaxon-note">{undoMsg}</div>}
-            {(answerWindow?.spoken?.length ?? 0) > 0 && (
-                <div className={"klaxon-said" + (answerFlash ? " klaxon-said-new" : "")}>
-                    <span className="klaxon-said-label">Given: </span>
-                    {(answerWindow?.spoken ?? []).join(" · ")}
-                </div>
-            )}
-
-            {/* A shootout is played in the chat, and the answers the room heard
-                land there too. So it goes straight under the buzzer's controls,
-                ahead of the options, the history and the player list — with a
-                room of twenty it used to be a long scroll away. */}
-            {state?.shootout != undefined && (
-                <RoomChat client={client} initial={state.chat ?? []} exportUrl={KlaxonApi.chatExportUrl(client.code, client.token)} />
-            )}
-
-            <label className="klaxon-opt" title="Players type their answer instead of saying it out loud">
-                <input
-                    type="checkbox"
-                    checked={pendingTyped ?? typedAnswers}
-                    onChange={(e) => {
-                        const on = e.target.checked;
-                        setPendingTyped(on);
-                        // Off means off: no boxes for anyone, including the
-                        // players queued behind the buzzer.
-                        client.massinger({
-                            action: "set_options",
-                            options: on ? { typedAnswers: true } : { typedAnswers: false, lockedAnswers: false },
-                        });
-                    }}
-                />{" "}
-                Players type their answers
-            </label>
-
-            {/* Being findable is the whole point of a Discord reading: the host
-                posts the link in one server, and anyone else who wants a game
-                can come in off the home page. Off unless they ask — a room's
-                code is the only thing keeping strangers out of it. */}
-            <label
-                className="klaxon-opt"
-                title="Anyone can find this game on klaxonbuzz.com and join it"
-            >
-                <input
-                    type="checkbox"
-                    checked={state?.listed === true}
-                    onChange={(e) =>
-                        client.massinger({ action: "set_options", options: { listed: e.target.checked } })
-                    }
-                />{" "}
-                List this game on the Klaxon home page
-            </label>
+            {notes}
+            {typedOption}
+            {listedOption}
 
             <RecentBuzzes events={recent} onUndo={undoClear} />
-
-            {state?.shootout != undefined && (
-                <Leaderboard
-                    rows={state.shootout.rows}
-                    packets={state.shootout.packets}
-                    at={packetLabel(state.shootout.session)}
-                />
-            )}
 
             <div className="klaxon-players">
                 <h3>
@@ -1058,9 +1380,6 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                         reader while they were reading. */}
                     {players.map((player) => {
                         const label = modaqLabel(player, player.name + (player.team ? ` · ${player.team}` : ""));
-                        // A linked shootout competitor is their own team: the
-                        // picker would only repeat their name.
-                        const picker = shootoutRoom && player.rosterPlayer ? null : linkPicker(player, player.id);
                         return (
                             <li key={player.id} className={player.connected ? "" : "gone"}>
                                 <span
@@ -1068,18 +1387,14 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                                     title={joinedAsTitle(player) ?? label}
                                 >
                                     <span className="kp-label">{label}</span>
-                                    {picker}
+                                    {linkPicker(player, player.id)}
                                     {!player.connected && <span className="klaxon-offline">OFFLINE</span>}
                                 </span>
                                 <button
                                     className="klaxon-remove"
                                     title={`Remove ${player.name} from the room`}
                                     aria-label={`Remove ${player.name} from the room`}
-                                    onClick={() => {
-                                        if (window.confirm(`Remove ${player.name} from the room? They can rejoin from the player link.`)) {
-                                            client.massinger({ action: "remove_player", playerId: player.id });
-                                        }
-                                    }}
+                                    onClick={() => removePlayer(player)}
                                 >
                                     ×
                                 </button>
@@ -1089,66 +1404,9 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                 </ul>
             </div>
 
-            {players.length > 0 && (
-                <div className="klaxon-stale">
-                    <button onClick={removeStale}>Remove players who joined over</button>
-                    <input
-                        type="number"
-                        min={1}
-                        max={999}
-                        value={staleMins}
-                        onChange={(e) => setStaleMins(e.target.value)}
-                        aria-label="Minutes"
-                    />
-                    <span>min ago</span>
-                </div>
-            )}
-
-            {/* The end of the evening. It sends the room home, so it asks first;
-                reopening doesn't, because nothing is lost by it. */}
-            <div className="klaxon-end">
-                {state?.ended == undefined ? (
-                    <button
-                        onClick={() => {
-                            if (
-                                window.confirm(
-                                    "End the game for everyone? The players are sent home and the room stops taking new ones. The scoresheet, the chat and the log stay, and you can reopen it."
-                                )
-                            ) {
-                                client.massinger({ action: "end_game", end: true });
-                            }
-                        }}
-                        title="Send the players home and close the room"
-                    >
-                        End the game for everyone
-                    </button>
-                ) : (
-                    <>
-                        <span className="klaxon-ended">This game is over.</span>
-                        <button onClick={() => client.massinger({ action: "end_game", end: false })}>
-                            Reopen it
-                        </button>
-                    </>
-                )}
-            </div>
-
-            <p className="klaxon-hint">
-                Buzzes are resolved with Klaxon&apos;s latency-fair timing. Judge the buzz in the MODAQ reader on the
-                left; press <kbd>r</kbd> (or the button) to reset for the next tossup.
-            </p>
-            {/* Afterwards, when somebody asks what happened to their buzz: every
-                buzz, clear, withdrawal and chat line, stamped and in order. */}
-            <p className="klaxon-hint">
-                <a
-                    className="kc-export"
-                    href={KlaxonApi.activityLogUrl(client.code, client.token)}
-                    download
-                    title="Buzz times, who cleared what, withdrawals, joins and chat — as a text file"
-                >
-                    Download the activity log
-                </a>{" "}
-                if you need to work out what happened to a buzz.
-            </p>
+            {staleRow}
+            {endRow}
+            {hints}
         </div>
     );
 }

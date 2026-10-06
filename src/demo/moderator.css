@@ -1341,6 +1341,13 @@ a.kx-crumb:hover {
     flex: none;
     font-size: 12px;
     padding: 3px 10px;
+    /* Drawn by us, not the browser: a default button keeps its light face
+       in the dark theme, under text the theme has turned light. */
+    border: 1px solid var(--m-control-line, #8a8886);
+    border-radius: 4px;
+    background: var(--m-surface, #fff);
+    color: var(--m-text, #201f1e);
+    cursor: pointer;
 }
 .kc-note {
     font-size: 12px;
@@ -1968,6 +1975,311 @@ a.kx-crumb:hover {
 }
 @media (prefers-reduced-motion: reduce) {
     .kx-said-card.kx-said-latest {
+        animation: none;
+    }
+}
+
+/* --- The shootout panel ------------------------------------------------------
+   Built to hold twenty-odd players without the reader scrolling the panel:
+   the settings and the history open from the header, the controls sit in one
+   row, the players and the leaderboard are one list in a box of its own, and
+   the chat takes the height that is left. The list is quiet on purpose — no
+   colour on a row until its player buzzes. */
+@media (min-width: 601px) {
+    .mod-side:has(.klaxon-shootout) {
+        /* The header above it, until the page scrolls (set by BuzzPanel). */
+        height: calc(100vh - var(--ks-side-top, 0px));
+        max-height: none;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+    }
+    .klaxon-shootout {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    .klaxon-shootout .klaxon-chat {
+        flex: 1 1 auto;
+        min-height: 190px;
+    }
+    .klaxon-shootout .kc-log {
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 110px;
+    }
+}
+.ks-top {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+.ks-top .klaxon-buzz-title {
+    flex: 1 1 auto;
+    margin: 0;
+}
+.ks-icon,
+.ks-top .klaxon-sound-toggle {
+    position: relative;
+    flex: none;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--m-line, #e1dfdd);
+    border-radius: 6px;
+    background: var(--m-surface, #fff);
+    color: var(--m-text-2, #444);
+    cursor: pointer;
+}
+.ks-icon svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.ks-icon.on {
+    background: var(--m-subtle-2, #edebe9);
+    border-color: var(--m-control-line, #8a8886);
+}
+/* A clear that can still be undone, and only from the history. */
+.ks-icon.ks-dot::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--m-warn-line, #c19c00);
+}
+.ks-drawer {
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--m-line, #e1dfdd);
+    border-radius: 8px;
+    background: var(--m-surface, #fff);
+}
+.ks-drawer h3 {
+    margin: 0 0 6px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--m-muted, #605e5c);
+}
+.ks-settings .klaxon-opt {
+    margin: 4px 0;
+    padding-bottom: 6px;
+}
+.ks-settings .klaxon-hint {
+    margin: 8px 0 0;
+}
+.klaxon-shootout > .klaxon-end {
+    margin: 0 0 10px;
+}
+
+/* One row of labelled controls, the key under the label; two rows of two when
+   the panel is at its narrowest (it is 30vw, from 250px up to 340px). */
+.ks-controls {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    margin-bottom: 10px;
+}
+.ks-controls.ks-two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 601px) and (max-width: 1040px) {
+    .ks-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+.ks-controls button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 5px 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+.ks-controls kbd {
+    font-family: inherit;
+    font-size: 10px;
+    line-height: 1.3;
+    padding: 0 4px;
+    border: 1px solid var(--m-line, #e1dfdd);
+    border-radius: 3px;
+    color: var(--m-muted, #605e5c);
+}
+.ks-controls .klaxon-undo,
+.ks-controls .ks-wide {
+    grid-column: 1 / -1;
+}
+
+.ks-standings {
+    border-top: 1px solid var(--m-line-soft, #ececec);
+    padding-top: 8px;
+    min-width: 0;
+}
+.ks-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 0 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--m-muted, #605e5c);
+}
+.ks-offline-count {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+}
+.ks-queue,
+.ks-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.ks-queue {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 4px;
+}
+/* Its own scroller: twenty players can't push the chat off the panel. */
+.ks-list {
+    max-height: 34vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+.ks-list:hover {
+    scrollbar-color: var(--m-line-strong, #c8c6c4) transparent;
+}
+.mod-side:has(.ks-list:hover) {
+    scrollbar-color: transparent transparent;
+}
+.ks-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.45;
+}
+.ks-rank {
+    flex: none;
+    width: 1.6em;
+    text-align: right;
+    font-size: 11px;
+    color: var(--m-muted-2, #888);
+    font-variant-numeric: tabular-nums;
+}
+.ks-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ks-score {
+    flex: none;
+    min-width: 2.2em;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--m-text-2, #444);
+}
+.ks-row .klaxon-link-select {
+    flex: 0 1 8em;
+    min-width: 4.5em;
+    margin-left: 0;
+    font-size: 0.75rem;
+}
+/* There when the pointer or the keyboard is on the row, and not otherwise. */
+.ks-remove {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--m-muted, #605e5c);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+}
+.ks-row:hover .ks-remove,
+.ks-remove:focus-visible {
+    opacity: 1;
+}
+.ks-row.gone .ks-name,
+.ks-row.gone .ks-score {
+    color: var(--m-faint, #a19f9d);
+}
+.ks-empty {
+    padding: 4px;
+    font-size: 12px;
+    color: var(--m-faint, #a19f9d);
+}
+/* The one time a row speaks up: its player buzzed. */
+.ks-queue .ks-row {
+    animation: ks-in 0.25s ease-out;
+}
+.ks-first {
+    background: var(--m-bad-fill, #d13438);
+    color: var(--m-on-strong, #fff);
+    font-weight: 700;
+}
+.ks-first .ks-rank,
+.ks-first .ks-score,
+.ks-first .ks-remove,
+.ks-first.gone .ks-name,
+.ks-first.gone .ks-score {
+    color: inherit;
+}
+.ks-behind {
+    background: var(--m-warn-bg, #fff4ce);
+}
+.ks-badge {
+    flex: none;
+    padding: 0 5px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    background: var(--m-surface, #fff);
+    color: var(--m-bad, #a4262c);
+}
+.ks-behind .ks-badge {
+    background: transparent;
+    border: 1px solid var(--m-warn-line, #c19c00);
+    color: var(--m-warn-text, #8a5a00);
+}
+@keyframes ks-in {
+    from {
+        opacity: 0;
+        transform: translateY(-3px);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ks-queue .ks-row {
         animation: none;
     }
 }
