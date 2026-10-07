@@ -653,6 +653,9 @@ function onSubmit(appState: AppState): void {
     // We need to set the game's packet, players, etc. to the values in the uiState
     const game: GameState = appState.game;
     game.clear();
+
+    // Errata belong to the packet that was just played, so they shouldn't follow the moderator into the next game
+    appState.errata.clear();
     game.addNewPlayers(firstTeamPlayers.filter((player) => player.name !== ""));
     game.addNewPlayers(secondTeamPlayers.filter((player) => player.name !== ""));
     game.loadPacket(pendingNewGame.packet);

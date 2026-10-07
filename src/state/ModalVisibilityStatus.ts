@@ -4,6 +4,7 @@ export const enum ModalVisibilityStatus {
     AddQuestions,
     BonusProtest,
     CustomizeGameFormat,
+    Errata,
     ExportToJson,
     ExportToSheets,
     Font,

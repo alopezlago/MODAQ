@@ -12,8 +12,10 @@ import {
     IModalProps,
 } from "@fluentui/react";
 
+import * as ErrataExport from "../../state/ErrataExport";
 import * as QBJ from "../../qbj/QBJ";
 import { AppState } from "../../state/AppState";
+import { IErrataExport } from "../../state/ErrataExport";
 import { GameState } from "../../state/GameState";
 import { useAppState } from "../../contexts/StateContext";
 import { RoundSelector } from "../RoundSelector";
@@ -94,7 +96,19 @@ const ExportToJsonDialogFooter = observer(function ExportToJsonDialogFooter(
     const roundNumber: number | undefined = props.roundNumber;
 
     const cancelHandler = (): void => hideDialog(appState);
-    const exportHandler = (): void => exportGame(appState);
+
+    // Errata get their own file so the exports stay exactly what stats programs (e.g. YellowFruit) expect, but the
+    // moderator shouldn't have to remember a second button for them
+    const errataExport: IErrataExport | undefined = ErrataExport.createErrataExport(appState, roundNumber);
+    const errataCount: number = errataExport?.errata.length ?? 0;
+
+    const exportHandler = (): void => {
+        if (errataExport != undefined) {
+            downloadJson(JSON.stringify(errataExport, null, 2), ErrataExport.getErrataFilename(appState, roundNumber));
+        }
+
+        exportGame(appState);
+    };
 
     const joinedTeamNames: string = game.teamNames.join("_");
 
@@ -148,8 +162,31 @@ const ExportToJsonDialogFooter = observer(function ExportToJsonDialogFooter(
         <DefaultButton key="cancel" text="Cancel" onClick={cancelHandler} />
     );
 
-    return <DialogFooter>{buttons}</DialogFooter>;
+    return (
+        <>
+            {errataCount > 0 && (
+                <Label>
+                    The {errataCount} errata you noted on questions will be downloaded alongside the export, in a file
+                    of their own, so they don&apos;t interfere with importing the game elsewhere.
+                </Label>
+            )}
+            <DialogFooter>{buttons}</DialogFooter>
+        </>
+    );
 });
+
+// The export buttons are links to the file they download, so the errata file needs a temporary link of its own to
+// come down on the same click.
+function downloadJson(contents: string, filename: string): void {
+    const url: string = URL.createObjectURL(new Blob([contents], { type: "application/json" }));
+    const link: HTMLAnchorElement = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
 
 function exportGame(appState: AppState): void {
     appState.game.markUpdateComplete();

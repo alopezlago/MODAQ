@@ -5,6 +5,7 @@ import { ICustomExport } from "./CustomExport";
 
 import * as CustomExport from "./CustomExport";
 import * as QBJ from "../qbj/QBJ";
+import { ErrataState } from "./ErrataState";
 import { GameState } from "./GameState";
 import { UIState } from "./UIState";
 import { StatusDisplayType } from "./StatusDisplayType";
@@ -12,6 +13,10 @@ import { StatusDisplayType } from "./StatusDisplayType";
 const minimumIntervalInMs = 5000;
 
 export class AppState {
+    // Errata describe the packet instead of the game, so they live next to the game rather than in it, and are
+    // exported to their own file (see ErrataExport)
+    public errata: ErrataState;
+
     public game: GameState;
 
     public uiState: UIState;
@@ -19,6 +24,7 @@ export class AppState {
     constructor() {
         makeAutoObservable(this);
 
+        this.errata = new ErrataState();
         this.game = new GameState();
         this.uiState = new UIState();
     }
