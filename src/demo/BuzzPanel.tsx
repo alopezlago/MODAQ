@@ -8,6 +8,7 @@ import {
     IRoomMember,
     IRecentEvent,
     IShootoutSession,
+    IStaffAnswers,
     IStuckAlert,
     KlaxonClient,
 } from "./klaxonClient";
@@ -194,16 +195,10 @@ function renderMentions(m: IChatMessage): React.ReactNode {
     return out;
 }
 
-// Timestamps the way a chat client does them: the time beside the name that
-// starts a run, the whole date and time on hover, and a divider when the log
-// crosses into another day (an evening's reading easily passes midnight).
-const chatTime = (at: number): string => {
-    try {
-        return new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    } catch {
-        return "";
-    }
-};
+// Timestamps: the whole date and time on hover (on the moderator's screen a
+// time beside every name is one more thing moving while they read), and a
+// divider when the log crosses into another day — an evening's reading easily
+// passes midnight.
 
 const chatFullTime = (at: number): string => {
     try {
@@ -263,58 +258,156 @@ function packetLabel(session: IShootoutSession | null | undefined): string {
     return session.packets.length > 1 ? `packet ${at + 1} of ${session.packets.length} · ${packet.name}` : packet.name;
 }
 
-// Discord's wording, and its restraint: past two names it stops listing them.
-function typingLine(names: string[]): string {
-    if (names.length === 0) return "";
-    if (names.length === 1) return `${names[0]} is typing\u2026`;
-    if (names.length === 2) return `${names[0]} and ${names[1]} are typing\u2026`;
-    return "Several people are typing\u2026";
+// When the moderator hears the chat: only when somebody @mentions them (the
+// default — that is a player asking for them), at every line, or never.
+export type ChatSoundMode = "mentions" | "all" | "off";
+const CHAT_SOUND_KEY = "bz_modaqChatSound";
+export const readChatSound = (): ChatSoundMode => {
+    const v = localStorage.getItem(CHAT_SOUND_KEY);
+    return v === "all" || v === "off" ? v : "mentions";
+};
+export const saveChatSound = (mode: ChatSoundMode): void => localStorage.setItem(CHAT_SOUND_KEY, mode);
+
+// What is being typed after the nearest unfinished "@", and who it could be.
+// The same rules as the players' picker: an @ starts a mention only at the
+// start or after a space, and two words in is long enough to stop guessing.
+function mentionPick(
+    value: string,
+    caret: number,
+    people: { id: string; name: string }[]
+): { at: number; matches: { id: string; name: string }[]; index: number } | null {
+    const upto = value.slice(0, caret);
+    const at = upto.lastIndexOf("@");
+    if (at < 0 || (at > 0 && !/\s/.test(upto[at - 1]))) return null;
+    const typed = upto.slice(at + 1);
+    if (/\s\s/.test(typed) || typed.length > 30) return null;
+    const needle = typed.toLowerCase();
+    const matches = people.filter((p) => p.name.toLowerCase().startsWith(needle)).slice(0, 6);
+    return matches.length > 0 ? { at, matches, index: 0 } : null;
 }
 
-function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[]; exportUrl: string }): JSX.Element {
+function RoomChat(props: {
+    client: KlaxonClient;
+    initial: IChatMessage[];
+    exportUrl: string;
+    // Who can be @mentioned: everyone in the room but this page.
+    people: { id: string; name: string }[];
+    chatSound: ChatSoundMode;
+}): JSX.Element {
     const { client } = props;
     const [messages, setMessages] = React.useState<IChatMessage[]>(props.initial);
     const [draft, setDraft] = React.useState<string>("");
     const [note, setNote] = React.useState<string>("");
     const logRef = React.useRef<HTMLDivElement | null>(null);
-    // Who else is about to say something. Names time out on their own, so a
-    // page that closes mid-sentence doesn't leave its name standing.
-    const [typists, setTypists] = React.useState<{ id: string; name: string; at: number }[]>([]);
+    const inputRef = React.useRef<HTMLInputElement | null>(null);
+    const [pick, setPick] = React.useState<ReturnType<typeof mentionPick>>(null);
+    // Long messages are cut to a few lines until clicked, so one essay can't
+    // push everything else out of the box.
+    const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
     const typingSentAt = React.useRef(0);
     const stopTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const soundMode = React.useRef(props.chatSound);
+    soundMode.current = props.chatSound;
+    const mentionsMe = (m: IChatMessage): boolean => (m.mentions ?? []).some((x) => x.id === client.myId);
 
     // The state broadcast carries the backlog; live lines arrive on their own
-    // event, so a message doesn't wait for the next state push.
+    // event, so a message doesn't wait for the next state push. A new line
+    // sounds as the moderator asked: never for their own, never for the room's
+    // announcements (an answer has its own chime).
     React.useEffect(() => {
-        return client.onChatMessage((m) =>
-            setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m].slice(-120)))
-        );
+        return client.onChatMessage((m) => {
+            setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m].slice(-120)));
+            if (m.playerId === client.myId || m.system != undefined || soundMode.current === "off") {
+                return;
+            }
+            if ((m.mentions ?? []).some((x) => x.id === client.myId)) {
+                playMentionPing();
+            } else if (soundMode.current === "all") {
+                playChatBlip();
+            }
+        });
     }, [client]);
 
-    React.useEffect(() => {
+    const insertMention = (p: { id: string; name: string }): void => {
+        if (pick == null) return;
+        const input = inputRef.current;
+        const caret = input?.selectionStart ?? draft.length;
+        const before = draft.slice(0, pick.at);
+        const after = draft.slice(caret).replace(/^\s+/, "");
+        setDraft(`${before}@${p.name} ${after}`);
+        setPick(null);
+        const pos = before.length + p.name.length + 2;
+        requestAnimationFrame(() => {
+            input?.focus();
+            input?.setSelectionRange(pos, pos);
+        });
+    };
+
+    // The newest lines are always the ones on screen. The log is pinned to its
+    // bottom, and stays pinned when the BOX changes size, not only when a line
+    // arrives: a buzz lifting rows into the standings, a drawer opening or the
+    // window resizing all shrink it, and without this the latest lines slid
+    // out of sight under the reader. Scrolling up unpins it (and counts what
+    // arrives meanwhile); left alone for a few seconds, it goes back down by
+    // itself, because a moderator mid-question never wants to go and do that.
+    const pinned = React.useRef(true);
+    const scrolledAt = React.useRef(0);
+    const [unseen, setUnseen] = React.useState(0);
+    const toLatest = React.useCallback(() => {
         const log = logRef.current;
         if (log != undefined) {
             log.scrollTop = log.scrollHeight;
         }
-    }, [messages]);
-
-    React.useEffect(() => {
-        return client.onChatTyping((t) =>
-            setTypists((prev) => {
-                const rest = prev.filter((x) => x.id !== t.playerId);
-                return t.typing ? [...rest, { id: t.playerId, name: t.name, at: Date.now() }] : rest;
-            })
-        );
-    }, [client]);
-
-    // Drop names nobody has re-announced.
-    React.useEffect(() => {
-        const timer = setInterval(
-            () => setTypists((prev) => prev.filter((x) => Date.now() - x.at < 6000)),
-            1500
-        );
-        return () => clearInterval(timer);
+        pinned.current = true;
+        setUnseen(0);
     }, []);
+    const seen = React.useRef(messages.length);
+    React.useLayoutEffect(() => {
+        const arrived = Math.max(0, messages.length - seen.current);
+        seen.current = messages.length;
+        const mine = messages.length > 0 && messages[messages.length - 1].playerId === client.myId;
+        if (pinned.current || mine) {
+            toLatest();
+        } else if (arrived > 0) {
+            setUnseen((n) => n + arrived);
+        }
+    }, [messages, client, toLatest]);
+    React.useEffect(() => {
+        const log = logRef.current;
+        if (log == undefined || typeof ResizeObserver === "undefined") {
+            return undefined;
+        }
+        const keep = new ResizeObserver(() => {
+            if (pinned.current) {
+                log.scrollTop = log.scrollHeight;
+            }
+        });
+        keep.observe(log);
+        return () => keep.disconnect();
+    }, []);
+    React.useEffect(() => {
+        const timer = setInterval(() => {
+            const log = logRef.current;
+            if (pinned.current || log == undefined || log.matches(":hover")) {
+                return;
+            }
+            if (Date.now() - scrolledAt.current > 8000) {
+                toLatest();
+            }
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [toLatest]);
+    const onScroll = (): void => {
+        const log = logRef.current;
+        if (log == undefined) return;
+        const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 24;
+        pinned.current = atBottom;
+        if (atBottom) {
+            setUnseen(0);
+        } else {
+            scrolledAt.current = Date.now();
+        }
+    };
 
     const sendTyping = React.useCallback(
         (on: boolean) => {
@@ -361,9 +454,19 @@ function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[]; export
                     Export
                 </a>
             </div>
-            <div className="kc-log" ref={logRef} data-is-scrollable="true">
-                {messages.map((m) => {
-                    const newDay = dayOf(m.at) !== lastDay;
+            <div className="kc-logwrap">
+            <div className="kc-log" ref={logRef} data-is-scrollable="true" onScroll={onScroll}>
+                {messages.map((m, i) => {
+                    // A day rule at the very top that only says "Today" is a
+                    // line of nothing.
+                    const newDay = dayOf(m.at) !== lastDay && !(lastDay == undefined && dayLabel(m.at) === "Today");
+                    // Questions read with nobody talking between them would
+                    // fill the box with "Question 7, Question 8, Question 9":
+                    // only the last of a run is drawn.
+                    if (m.system === "cycle" && messages[i + 1]?.system === "cycle") {
+                        lastDay = dayOf(m.at);
+                        return null;
+                    }
                     // A run of lines from one person names them once — but a new
                     // day starts a fresh run, so its first line is labelled.
                     const grouped = m.system == undefined && m.name === lastName && !newDay;
@@ -397,12 +500,28 @@ function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[]; export
                     return (
                         <React.Fragment key={m.id}>
                             {newDay && <div className="kc-day">{dayLabel(m.at)}</div>}
-                            <div className={"kc-line" + (grouped ? " kc-cont" : "")} title={chatFullTime(m.at)}>
+                            {/* One line per message: the name runs into the
+                                text, and the time is on hover. A name on a line
+                                of its own halved how much of the chat fit. */}
+                            <div
+                                className={
+                                    "kc-line kc-inline" +
+                                    (grouped ? " kc-cont" : "") +
+                                    (mentionsMe(m) ? " kc-at-me" : "") +
+                                    (expanded.has(m.id) ? " kc-open" : "")
+                                }
+                                title={`${chatFullTime(m.at)} — click to show all of a long message`}
+                                onClick={() =>
+                                    setExpanded((prev) => {
+                                        const next = new Set(prev);
+                                        if (next.has(m.id)) next.delete(m.id);
+                                        else next.add(m.id);
+                                        return next;
+                                    })
+                                }
+                            >
                                 {!grouped && (
-                                    <span className={"kc-who" + (m.staff ? " kc-staff" : "")}>
-                                        {m.name}
-                                        <span className="kc-when">{chatTime(m.at)}</span>
-                                    </span>
+                                    <span className={"kc-who" + (m.staff ? " kc-staff" : "")}>{m.name}</span>
                                 )}
                                 <span className="kc-text">{renderMentions(m)}</span>
                             </div>
@@ -411,14 +530,41 @@ function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[]; export
                 })}
                 {messages.length === 0 && <div className="kc-empty">Nothing said yet.</div>}
             </div>
-            <div className="kc-typing">{typingLine(typists.map((t) => t.name))}</div>
+            {unseen > 0 && (
+                <button className="kc-jump" onClick={toLatest}>
+                    ↓ {unseen} new
+                </button>
+            )}
+            </div>
             <div className="kc-entry">
+                {pick != null && (
+                    <ul className="kc-mentions" role="listbox" aria-label="Mention someone">
+                        {pick.matches.map((p, i) => (
+                            <li
+                                key={p.id}
+                                role="option"
+                                aria-selected={i === pick.index}
+                                className={"kc-mention" + (i === pick.index ? " on" : "")}
+                                // Before the input's blur, which would close the list.
+                                onMouseDown={(ev) => {
+                                    ev.preventDefault();
+                                    insertMention(p);
+                                }}
+                            >
+                                {p.name}
+                            </li>
+                        ))}
+                    </ul>
+                )}
                 <input
+                    ref={inputRef}
                     value={draft}
                     maxLength={400}
-                    placeholder="Say something"
+                    placeholder="Say something — @ to mention"
+                    onBlur={() => setPick(null)}
                     onChange={(ev) => {
                         setDraft(ev.target.value);
+                        setPick(mentionPick(ev.target.value, ev.target.selectionStart ?? ev.target.value.length, props.people));
                         if (ev.target.value.trim() === "") {
                             clearTimeout(stopTimer.current);
                             sendTyping(false);
@@ -431,6 +577,26 @@ function RoomChat(props: { client: KlaxonClient; initial: IChatMessage[]; export
                     onKeyDown={(ev) => {
                         // The panel's own shortcuts must not fire while typing.
                         ev.stopPropagation();
+                        // While the picker is open, Enter and Tab finish the
+                        // name rather than sending half a mention.
+                        if (pick != null) {
+                            const n = pick.matches.length;
+                            if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+                                ev.preventDefault();
+                                const step = ev.key === "ArrowDown" ? 1 : n - 1;
+                                setPick({ ...pick, index: (pick.index + step) % n });
+                                return;
+                            }
+                            if (ev.key === "Enter" || ev.key === "Tab") {
+                                ev.preventDefault();
+                                insertMention(pick.matches[pick.index]);
+                                return;
+                            }
+                            if (ev.key === "Escape") {
+                                setPick(null);
+                                return;
+                            }
+                        }
                         if (ev.key === "Enter") {
                             void send();
                         }
@@ -701,6 +867,54 @@ function playAnswerChime(): void {
     }
 }
 
+// Short synthesized notes, [frequency, delay] each.
+function playNotes(notes: number[][], gain: number, type: OscillatorType, length: number): void {
+    try {
+        const Ctor = (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext })
+            .AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (Ctor == undefined) return;
+        const ctx = new Ctor();
+        const master = ctx.createGain();
+        master.gain.value = gain;
+        master.connect(ctx.destination);
+        const t = ctx.currentTime;
+        for (const [freq, delay] of notes) {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = type;
+            const at = t + delay;
+            o.frequency.setValueAtTime(freq, at);
+            g.gain.setValueAtTime(0.0001, at);
+            g.gain.exponentialRampToValueAtTime(0.7, at + 0.01);
+            g.gain.exponentialRampToValueAtTime(0.0001, at + length);
+            o.connect(g).connect(master);
+            o.start(at);
+            o.stop(at + length + 0.04);
+        }
+        setTimeout(() => void ctx.close(), 1000);
+    } catch {
+        /* audio unavailable */
+    }
+}
+
+// A chat line: one quiet tick, nothing like a buzz or an answer.
+function playChatBlip(): void {
+    playNotes([[740, 0]], 0.25, "sine", 0.09);
+}
+
+// Somebody @mentioned the moderator: brighter, two notes falling — "hey".
+function playMentionPing(): void {
+    playNotes(
+        [
+            [1319, 0],
+            [988, 0.11],
+        ],
+        0.5,
+        "sine",
+        0.16
+    );
+}
+
 // The buzz itself, played the moment the server hears a press — BEFORE the
 // reconcile window decides who won it (no name is shown until then).
 function playBuzzBeep(): void {
@@ -938,6 +1152,7 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
             : fallback;
     // A shootout keeps its history and its settings behind two header buttons.
     const [drawer, setDrawer] = React.useState<"recent" | "settings" | null>(null);
+    const [chatSound, setChatSound] = React.useState<ChatSoundMode>(readChatSound());
 
     // A shootout panel is exactly as tall as the part of the window it can
     // be seen in, so its chat box sits at the bottom of the screen. The page's
@@ -1242,6 +1457,24 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                 {drawer === "settings" && (
                     <div className="ks-drawer ks-settings">
                         <h3>Room settings</h3>
+                        <label className="klaxon-opt ks-select" title="Only on this screen">
+                            Chat sound
+                            <select
+                                value={chatSound}
+                                onChange={(e) => {
+                                    const mode = e.target.value as ChatSoundMode;
+                                    setChatSound(mode);
+                                    saveChatSound(mode);
+                                    // Let them hear what they picked.
+                                    if (mode === "all") playChatBlip();
+                                    if (mode === "mentions") playMentionPing();
+                                }}
+                            >
+                                <option value="mentions">When someone @mentions me</option>
+                                <option value="all">Every message</option>
+                                <option value="off">Off</option>
+                            </select>
+                        </label>
                         {typedOption}
                         {listedOption}
                         {staleRow}
@@ -1294,7 +1527,16 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                     onRemove={removePlayer}
                 />
 
-                <RoomChat client={client} initial={state.chat ?? []} exportUrl={KlaxonApi.chatExportUrl(client.code, client.token)} />
+                <RoomChat
+                    client={client}
+                    initial={state.chat ?? []}
+                    exportUrl={KlaxonApi.chatExportUrl(client.code, client.token)}
+                    people={(state.members ?? [])
+                        .filter((m) => m.id !== client.myId && m.role !== "spectator")
+                        .map((m) => ({ id: m.id, name: m.displayName ?? m.rosterPlayer ?? m.name }))
+                        .filter((p) => p.name !== "")}
+                    chatSound={chatSound}
+                />
             </div>
         );
     }
@@ -1419,18 +1661,49 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
  * the chat and the "Given:" line in the buzz panel, not instead of them.
  * Gone when the cycle is (the moderator ruled, or cleared the buzzer).
  */
-export function SubmittedAnswers(props: { state: IPublicRoomState | undefined }): JSX.Element | null {
+export function SubmittedAnswers(props: {
+    state: IPublicRoomState | undefined;
+    client?: KlaxonClient;
+}): JSX.Element | null {
+    const { client } = props;
+    // The answer box of the player with the floor, as they type it: the
+    // moderator can see an answer forming (and a player sitting on one they
+    // haven't sent) without waiting for Enter. The player is told their box
+    // is being watched.
+    const [live, setLive] = React.useState<IStaffAnswers | null>(client?.staffAnswers ?? null);
+    React.useEffect(() => (client == undefined ? undefined : client.onStaffAnswers(setLive)), [client]);
+
     const said = props.state?.answers?.said ?? [];
-    if (said.length === 0) {
-        return null;
-    }
     const members = props.state?.members ?? [];
     const nameOf = (id: string | null): string => {
         const m = id == null ? undefined : members.find((x) => x.id === id);
         return m?.rosterPlayer ?? m?.name ?? "Moderator";
     };
+    // Who has the floor comes from the room; what they've typed from the staff
+    // stream, and only when that stream is about the same player.
+    const floor = props.state?.answers?.activePlayerId ?? null;
+    const typed =
+        floor == null || live?.activePlayerId !== floor
+            ? ""
+            : live.answers.find((a) => a.playerId === floor)?.text ?? "";
+    // Once what's in the box is what they sent, the sent card says it.
+    const lastSent = [...said].reverse().find((s) => s.playerId === floor)?.text;
+    const showLive = floor != null && props.state?.answers != undefined && typed !== lastSent;
+
+    if (said.length === 0 && !showLive) {
+        return null;
+    }
     return (
         <div className="kx-said-under" aria-live="polite">
+            {showLive && (
+                <div className="kx-said-card kx-typing-card">
+                    <span className="kx-said-who">{nameOf(floor)} · typing</span>
+                    <span className="kx-said-text">
+                        {typed !== "" ? typed : <span className="kx-typing-empty">nothing yet</span>}
+                        <span className="kx-caret" aria-hidden="true" />
+                    </span>
+                </div>
+            )}
             {said.map((s, i) => (
                 // Keyed by when it arrived, so only the new one animates.
                 <div key={`${s.at}-${i}`} className={"kx-said-card" + (i === said.length - 1 ? " kx-said-latest" : "")}>

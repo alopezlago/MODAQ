@@ -1328,8 +1328,53 @@ a.kx-crumb:hover {
     text-overflow: ellipsis;
 }
 .kc-entry {
+    position: relative;
     display: flex;
     gap: 6px;
+}
+/* The @ picker, above the box so it never covers what is being typed. */
+.kc-mentions {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    z-index: 5;
+    list-style: none;
+    margin: 0 0 4px;
+    padding: 4px;
+    border: 1px solid var(--m-control-line, #8a8886);
+    border-radius: 6px;
+    background: var(--m-surface, #fff);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    font-size: 13px;
+}
+.kc-mention {
+    padding: 3px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.kc-mention.on,
+.kc-mention:hover {
+    background: var(--m-accent-soft, #deecf9);
+}
+/* A line that names the moderator. */
+.kc-line.kc-at-me {
+    margin-left: -6px;
+    margin-right: -6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--m-warn-bg, #fff4ce);
+}
+.ks-select {
+    flex-wrap: wrap;
+}
+.ks-select select {
+    flex: 1 1 10em;
+    min-width: 0;
+    font-size: 12px;
 }
 .kc-entry input {
     flex: 1 1 auto;
@@ -1979,6 +2024,42 @@ a.kx-crumb:hover {
     }
 }
 
+/* The floor's answer box as they type it. Dashed and pale, so it never reads
+   as an answer they have given; no pop, because it changes on every key. */
+.kx-said-card.kx-typing-card {
+    opacity: 1;
+    border: 2px dashed var(--m-control-line, #8a8886);
+    background: var(--m-surface, #fff);
+    font-size: 1.15rem;
+}
+.kx-typing-card .kx-said-text {
+    font-weight: 600;
+}
+.kx-typing-empty {
+    font-weight: 400;
+    font-style: italic;
+    color: var(--m-muted, #605e5c);
+}
+.kx-caret {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    margin-left: 2px;
+    vertical-align: -0.12em;
+    background: currentColor;
+    animation: kx-caret 1s steps(2) infinite;
+}
+@keyframes kx-caret {
+    50% {
+        opacity: 0;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .kx-caret {
+        animation: none;
+    }
+}
+
 /* --- The shootout panel ------------------------------------------------------
    Built to hold twenty-odd players without the reader scrolling the panel:
    the settings and the history open from the header, the controls sit in one
@@ -2004,11 +2085,76 @@ a.kx-crumb:hover {
         flex: 1 1 auto;
         min-height: 190px;
     }
+    .klaxon-shootout .kc-logwrap {
+        flex: 1 1 auto;
+        min-height: 110px;
+    }
     .klaxon-shootout .kc-log {
         flex: 1 1 auto;
         height: auto;
-        min-height: 110px;
+        min-height: 0;
     }
+}
+.kc-logwrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+/* Whatever is first sits at the bottom, by the box you type in. And no line
+   is squeezed to make room: a line that clips its overflow (a long message,
+   cut to three lines) may otherwise shrink to nothing in a flex column. */
+.kc-log > :first-child {
+    margin-top: auto;
+}
+.kc-log > * {
+    flex-shrink: 0;
+}
+/* Compact lines: the name runs into the message, and a long message stops at
+   three lines until it's clicked. */
+.kc-line.kc-inline {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    cursor: default;
+}
+.kc-line.kc-inline.kc-open {
+    display: block;
+}
+.kc-inline .kc-who {
+    display: inline;
+    margin-right: 6px;
+}
+.kc-inline .kc-text {
+    display: inline;
+}
+.kc-line.kc-inline + .kc-line.kc-inline:not(.kc-cont) {
+    margin-top: 4px;
+}
+/* Quieter than the question being read; a mention or an answer is what
+   speaks up. */
+.klaxon-shootout .kc-inline .kc-text {
+    color: var(--m-text-2, #3b3a39);
+}
+.klaxon-shootout .kc-inline.kc-at-me .kc-text {
+    color: inherit;
+}
+/* Scrolled up and something came in. */
+.kc-jump {
+    position: absolute;
+    left: 50%;
+    bottom: 6px;
+    transform: translateX(-50%);
+    padding: 2px 10px;
+    border: 1px solid var(--m-accent, #0078d4);
+    border-radius: 12px;
+    background: var(--m-surface, #fff);
+    color: var(--m-accent, #0078d4);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 .ks-top {
     display: flex;
@@ -2281,5 +2427,16 @@ a.kx-crumb:hover {
 @media (prefers-reduced-motion: reduce) {
     .ks-queue .ks-row {
         animation: none;
+    }
+}
+
+/* --- MODAQ's player pad, on Klaxon's page ------------------------------------
+   When it floats (opened with Space), MODAQ centres it at the bottom of the
+   window -- which here is on top of the buzz panel's chat box. Keep it inside
+   the reading column instead. The side column is clamp(250px, 30vw, 340px). */
+@media (min-width: 601px) {
+    [role="dialog"][aria-label="Record buzz"][class*="floatingPad"] {
+        left: calc((100vw - clamp(250px, 30vw, 340px)) / 2) !important;
+        max-width: calc(100vw - clamp(250px, 30vw, 340px) - 32px) !important;
     }
 }

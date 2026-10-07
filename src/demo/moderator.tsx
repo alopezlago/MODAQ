@@ -2334,7 +2334,7 @@ function Reading(props: {
                 </RoomToolbar>
                 <DirectorMessages client={client} />
                 <KlaxonModaq
-                    belowTossup={<SubmittedAnswers state={roomState} />}
+                    belowTossup={<SubmittedAnswers state={roomState} client={client} />}
                     applyStylingToRoot={false}
                     buildVersion={__BUILD_VERSION__}
                     yappServiceUrl={YAPP_SERVICE_URL}
@@ -2549,7 +2549,7 @@ function LiteReading(props: {
                 <div className={showStart && !gameLoaded ? "mod-modaq-idle" : undefined}>
                     {!staging && (
                         <KlaxonModaq
-                            belowTossup={<SubmittedAnswers state={roomState} />}
+                            belowTossup={<SubmittedAnswers state={roomState} client={client} />}
                             key={gameKey}
                             applyStylingToRoot={false}
                             buildVersion={__BUILD_VERSION__}
@@ -3421,7 +3421,7 @@ function ShootoutReading(props: {
                 )}
                 {!staging && (
                     <KlaxonModaq
-                        belowTossup={<SubmittedAnswers state={roomState} />}
+                        belowTossup={<SubmittedAnswers state={roomState} client={client} />}
                         key={gameKey}
                         applyStylingToRoot={false}
                         buildVersion={__BUILD_VERSION__}

@@ -274,6 +274,16 @@ export interface IRecentEvent {
 }
 type RecentListener = (events: IRecentEvent[]) => void;
 
+// The typed-answer window as staff see it (the Klaxon server's
+// answers.forStaff): every box as it stands, keystroke by keystroke, including
+// the one belonging to the player with the floor. null when no window is open.
+export interface IStaffAnswers {
+    activePlayerId: string | null;
+    spoken: { playerId: string | null; text: string }[];
+    answers: { playerId: string; name: string | null; text: string; at: number }[];
+}
+type StaffAnswersListener = (answers: IStaffAnswers | null) => void;
+
 export class KlaxonClient {
     public readonly code: string;
     public readonly token: string | null;
@@ -290,6 +300,8 @@ export class KlaxonClient {
     private readonly buzzPendingListeners: ((wave: string) => void)[] = [];
     private readonly recentListeners: RecentListener[] = [];
     public recent: IRecentEvent[] = [];
+    private readonly staffAnswersListeners: StaffAnswersListener[] = [];
+    public staffAnswers: IStaffAnswers | null = null;
     private joinedOnce = false;
     public lastState: IPublicRoomState | undefined;
     public messages: IDirectorMessage[] = [];
@@ -355,6 +367,12 @@ export class KlaxonClient {
                 // key has to name the wave or every buzz after the first on a
                 // question is taken for a repeat and goes unheard.
                 for (const l of this.buzzPendingListeners) l(`${p?.cycleNo ?? -1}:${p?.wave ?? 0}`);
+            });
+
+            socket.on("answers", (...args: unknown[]) => {
+                const a = args[0] as IStaffAnswers | null;
+                this.staffAnswers = a != undefined && Array.isArray(a.answers) ? a : null;
+                for (const l of this.staffAnswersListeners) l(this.staffAnswers);
             });
 
             socket.on("recent", (...args: unknown[]) => {
@@ -518,6 +536,16 @@ export class KlaxonClient {
         this.socket?.emit("reader_action", { action: "next_buzz" });
     }
 
+    // Staff only: what everyone in the answer window has typed so far, live.
+    public onStaffAnswers(listener: StaffAnswersListener): () => void {
+        this.staffAnswersListeners.push(listener);
+        listener(this.staffAnswers);
+        return () => {
+            const i = this.staffAnswersListeners.indexOf(listener);
+            if (i >= 0) this.staffAnswersListeners.splice(i, 1);
+        };
+    }
+
     // Staff only: the recent-buzzes list, replayed on subscribe.
     public onRecent(listener: RecentListener): () => void {
         this.recentListeners.push(listener);
@@ -535,6 +563,11 @@ export class KlaxonClient {
 
     // Say something in the room's chat. Resolves with the server's ack so the
     // box can put a refused message back rather than swallowing it.
+    // Who this page is in the room, for telling which chat lines name it.
+    public get myId(): string {
+        return this.playerId;
+    }
+
     public chatSay(text: string): Promise<{ ok?: boolean; error?: string }> {
         return new Promise((resolve) => {
             if (this.socket == undefined) {
