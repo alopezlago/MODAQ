@@ -1,6 +1,16 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { DialogFooter, PrimaryButton, DefaultButton, Stack, StackItem, Label } from "@fluentui/react";
+import {
+    DialogFooter,
+    PrimaryButton,
+    DefaultButton,
+    TextField,
+    Stack,
+    StackItem,
+    Text,
+    Label,
+    useTheme,
+} from "@fluentui/react";
 
 import * as AddQuestionsDialogController from "./AddQuestionsDialogController";
 import { AppState } from "../../state/AppState";
@@ -19,6 +29,10 @@ function preview(text: string, max = 90): string {
 // TODO: Look into making a DefaultDialog, which handles the footers and default props
 export const AddQuestionsDialog = observer(function AddQuestionsDialog(): JSX.Element {
     const appState: AppState = useAppState();
+    const hasQuestionLookup: boolean = appState.uiState.onFetchQuestionById != undefined;
+    const newPacket = appState.uiState.dialogState.addQuestions?.newPacket;
+    const hasPacketStaged: boolean =
+        (newPacket?.tossups.length ?? 0) > 0 || (newPacket?.bonuses.length ?? 0) > 0;
 
     return (
         <ModalDialog
@@ -27,10 +41,17 @@ export const AddQuestionsDialog = observer(function AddQuestionsDialog(): JSX.El
             onDismiss={() => AddQuestionsDialogController.cancel(appState)}
         >
             <AddQuestionsDialogBody appState={appState} />
-            <DialogFooter>
-                <PrimaryButton text="Load" onClick={() => AddQuestionsDialogController.commit(appState)} />
-                <DefaultButton text="Cancel" onClick={() => AddQuestionsDialogController.cancel(appState)} />
-            </DialogFooter>
+            {!hasQuestionLookup && (
+                <DialogFooter>
+                    <PrimaryButton text="Load" onClick={() => AddQuestionsDialogController.commit(appState)} />
+                    <DefaultButton text="Cancel" onClick={() => AddQuestionsDialogController.cancel(appState)} />
+                </DialogFooter>
+            )}
+            {hasQuestionLookup && hasPacketStaged && (
+                <DialogFooter>
+                    <PrimaryButton text="Confirm" onClick={() => AddQuestionsDialogController.commit(appState)} />
+                </DialogFooter>
+            )}
         </ModalDialog>
     );
 });
@@ -40,6 +61,53 @@ const AddQuestionsDialogBody = observer(function AddQuestionsDialogBody(
 ): JSX.Element {
     const appState: AppState = props.appState;
     const tiebreakers = useTiebreakers();
+    const [questionId, setQuestionId] = React.useState("");
+    const theme = useTheme();
+
+    if (appState.uiState.onFetchQuestionById != undefined) {
+        return (
+            <Stack tokens={{ childrenGap: 10 }}>
+                <StackItem>
+                    <Text variant="small" styles={{ root: { color: theme.palette.neutralSecondary } }}>
+                        To add a replacement question, request a secret code from the tournament director and enter
+                        it below.
+                    </Text>
+                </StackItem>
+                <Stack horizontal tokens={{ childrenGap: 10 }} verticalAlign="end">
+                    <StackItem grow={1}>
+                        <TextField
+                            placeholder="secret code"
+                            value={questionId}
+                            onChange={(ev, newValue) => setQuestionId(newValue ?? "")}
+                        />
+                    </StackItem>
+                    <StackItem>
+                        <PrimaryButton
+                            text="Load"
+                            disabled={questionId.trim().length === 0}
+                            onClick={() => AddQuestionsDialogController.loadById(appState, questionId.trim())}
+                        />
+                    </StackItem>
+                </Stack>
+                {appState.uiState.packetParseStatus?.status && (
+                    <StackItem>
+                        <Text
+                            variant="small"
+                            styles={{
+                                root: {
+                                    color: appState.uiState.packetParseStatus.status.isError
+                                        ? theme.palette.redDark
+                                        : theme.palette.neutralSecondary,
+                                },
+                            }}
+                        >
+                            {appState.uiState.packetParseStatus.status.status}
+                        </Text>
+                    </StackItem>
+                )}
+            </Stack>
+        );
+    }
 
     return (
         <Stack tokens={{ childrenGap: 12 }}>

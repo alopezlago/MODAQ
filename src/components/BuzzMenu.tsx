@@ -58,7 +58,7 @@ const buzzMenuStyles: Partial<IContextualMenuStyles> = {
 export const BuzzMenu = observer(function BuzzMenu(props: IBuzzMenuProps) {
     const onHideBuzzMenu: () => void = React.useCallback(() => onBuzzMenuDismissed(props), [props]);
 
-    const teamNames: string[] = props.appState.game.teamNames;
+    const teamNames: string[] = props.appState.activeGame.teamNames;
 
     // Dereference the observables we render in the component body. mobx's observer only tracks reads made
     // directly during this function; reads inside the ThemeContext.Consumer callback below happen during the
@@ -220,7 +220,7 @@ function getPlayerMenuItems(
     // TODO: Need to support Wrong (1st buzz) and Wrong (2nd buzz)
     // TODO: Add some highlighting/indicator on the player to show that they have a buzz in a different word
 
-    const players: Set<Player> = props.appState.game.getActivePlayers(teamName, props.appState.uiState.cycleIndex);
+    const players: Set<Player> = props.appState.activeGame.getActivePlayers(teamName, props.appState.uiState.cycleIndex);
     const menuItems: IContextualMenuItem[] = [];
 
     let index = 0;
@@ -374,26 +374,26 @@ function onCorrectClicked(
         // Don't include a bonus index if there should be no bonus for this correct buzz
         // TODO: This is an example of logic that should be moved out of the view layer
         const bonusIndex: number | undefined =
-            GameFormats.hasBonuses(props.appState.game.gameFormat) &&
-            (props.appState.game.gameFormat.overtimeIncludesBonuses ||
-                props.appState.uiState.cycleIndex < props.appState.game.gameFormat.regulationTossupCount)
+            GameFormats.hasBonuses(props.appState.activeGame.gameFormat) &&
+            (props.appState.activeGame.gameFormat.overtimeIncludesBonuses ||
+                props.appState.uiState.cycleIndex < props.appState.activeGame.gameFormat.regulationTossupCount)
                 ? props.bonusIndex
                 : undefined;
 
         // If we don't know the number of parts, assume it's 3, which is standard
         const partsCount: number | undefined =
-            bonusIndex != undefined && props.appState.game.packet.bonuses[bonusIndex] != undefined
-                ? props.appState.game.packet.bonuses[bonusIndex].parts.length
+            bonusIndex != undefined && props.appState.activeGame.packet.bonuses[bonusIndex] != undefined
+                ? props.appState.activeGame.packet.bonuses[bonusIndex].parts.length
                 : 3;
 
         props.cycle.addCorrectBuzz(
             {
                 player,
                 position: item.data.props.wordIndex,
-                points: props.tossup.getPointsAtPosition(props.appState.game.gameFormat, item.data.props.wordIndex),
+                points: props.tossup.getPointsAtPosition(props.appState.activeGame.gameFormat, item.data.props.wordIndex),
             },
             props.tossupNumber - 1,
-            props.appState.game.gameFormat,
+            props.appState.activeGame.gameFormat,
             bonusIndex,
             partsCount
         );
@@ -412,7 +412,7 @@ function onWrongClicked(
     const { props, player } = { ...item.data };
 
     if (item.checked) {
-        props.cycle.removeWrongBuzz(player, props.appState.game.gameFormat);
+        props.cycle.removeWrongBuzz(player, props.appState.activeGame.gameFormat);
     } else if (item.checked === false) {
         const marker: IBuzzMarker = {
             isLastWord: props.isLastWord,
@@ -427,7 +427,7 @@ function onWrongClicked(
             ),
         };
 
-        props.cycle.addWrongBuzz(marker, props.tossupNumber - 1, props.appState.game.gameFormat);
+        props.cycle.addWrongBuzz(marker, props.tossupNumber - 1, props.appState.activeGame.gameFormat);
 
         // Marking a buzz wrong hands the host's buzzer to the next player in the queue (see the moderator page's
         // judged handler), and that player is usually judged at this same word. Leaving the menu open where it is

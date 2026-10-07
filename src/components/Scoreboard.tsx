@@ -19,18 +19,17 @@ export const Scoreboard = observer(function Scoreboard() {
     const appState: AppState = useAppState();
     const classes: IScoreboardStyle = getClassNames();
 
-    const finalScore: number[] = appState.game.finalScore;
+    const finalScore: number[] = appState.activeGame.finalScore;
     // Two teams read in game order. A room of twenty competitors (a shootout,
     // IPNCT) is a standings list, and is read as one: leader first. Ties keep
     // the order they joined in.
-    let standings: { name: string; score: number }[] = appState.game.teamNames.map((name, index) => ({
+    let standings: { name: string; score: number }[] = appState.activeGame.teamNames.map((name, index) => ({
         name,
         score: finalScore[index] ?? 0,
     }));
-    if (appState.game.isIndividualGame) {
+    if (appState.activeGame.isIndividualGame) {
         standings = standings.slice().sort((a, b) => b.score - a.score);
     }
-
     let label: JSX.Element | undefined;
     if (appState.uiState.isScoreVertical) {
         label = (
@@ -59,7 +58,7 @@ export const Scoreboard = observer(function Scoreboard() {
     // The stable class name lets a host style the score line (e.g. to wrap long
     // team names); mergeStyleSets' own class is generated and can't be targeted.
     return (
-        <div className={`${classes.board} modaq-scoreboard`}>
+        <div className={`${classes.board} modaq-scoreboard scoreboard`}>
             <Stack>
                 <StackItem>{label}</StackItem>
                 {protestIndicator != undefined && (
@@ -75,7 +74,7 @@ export const Scoreboard = observer(function Scoreboard() {
 const ProtestIndicator = observer(function ProtestIndicator() {
     const appState: AppState = useAppState();
 
-    return appState.game.protestsMatter ? (
+    return appState.activeGame.protestsMatter ? (
         <Stack horizontal={true}>
             <StackItem>
                 <Icon iconName="Warning" styles={warningIconStyles} />

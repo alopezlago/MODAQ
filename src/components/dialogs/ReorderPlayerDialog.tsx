@@ -64,7 +64,7 @@ const ReorderPlayerDialogBody = observer(function ReorderPlayerDialogBody(
         return <></>;
     }
 
-    const teamOptions: IDropdownOption[] = appState.game.teamNames.map((teamName, index) => {
+    const teamOptions: IDropdownOption[] = appState.activeGame.teamNames.map((teamName, index) => {
         return {
             key: index,
             text: teamName,

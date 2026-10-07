@@ -2,6 +2,7 @@ import React from "react";
 import { AppState } from "../state/AppState";
 import { Cycle } from "../state/Cycle";
 import { UIState } from "../state/UIState";
+import { getThrowOutQuestionPrompt } from "./ThrowOutQuestionMessage";
 import { ITossupWord, Tossup } from "../state/PacketState";
 import { IGameFormat } from "../state/IGameFormat";
 import { Player } from "../state/TeamState";
@@ -459,13 +460,25 @@ export function throwOutTossup(
     tossupNumber: number,
     onThrownOut?: () => void
 ): void {
-    appState.uiState.dialogState.showOKCancelMessageDialog({
-        title: "Throw out Tossup",
+    const cycleIndex: number = appState.activeGame.cycles.indexOf(cycle);
+    const { message, replacementIndex, defaultReplacementIsExplicit } = getThrowOutQuestionPrompt(
+        appState,
+        cycleIndex,
+        "tossup",
+        tossupNumber
+    );
+    const totalTossups: number = appState.activeGame.packet.tossups.length;
+    appState.uiState.dialogState.showThrowOutQuestionDialog({
+        title: "Throw Out Tossup",
         message:
-            "Click OK to throw out the tossup. To undo this, click on the X next to its event in the Event Log." +
+            `${message} To undo this, click on the X next to its event in the Event Log.` +
             (onThrownOut ? " If the packet runs out of tossups, the next tiebreaker question is added automatically." : ""),
-        onOK: () => {
-            onConfirmThrowOutTossup(appState, cycle, tossupNumber);
+        minQuestionNumber: tossupNumber + 1,
+        defaultReplacementIsExplicit,
+        defaultReplacementNumber: replacementIndex != undefined ? replacementIndex + 1 : undefined,
+        maxQuestionNumber: totalTossups,
+        onConfirm: (userReplacementIndex) => {
+            onConfirmThrowOutTossup(appState, cycle, tossupNumber, userReplacementIndex);
             if (onThrownOut) {
                 onThrownOut();
             }
@@ -473,7 +486,12 @@ export function throwOutTossup(
     });
 }
 
-function onConfirmThrowOutTossup(appState: AppState, cycle: Cycle, tossupNumber: number) {
-    cycle.addThrownOutTossup(tossupNumber - 1);
+function onConfirmThrowOutTossup(
+    appState: AppState,
+    cycle: Cycle,
+    tossupNumber: number,
+    replacementIndex: number | undefined
+) {
+    cycle.addThrownOutTossup(tossupNumber - 1, replacementIndex);
     appState.uiState.setSelectedWordIndex(-1);
 }

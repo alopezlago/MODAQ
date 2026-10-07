@@ -26,7 +26,7 @@ export const QuestionWord = observer(function QuestionWord(props: IQuestionWordP
                         ref={props.componentRef}
                         data-index={props.index}
                         data-is-focusable="true"
-                        className={classes.word}
+                        className={props.index != undefined ? `${classes.word} word-${props.index}` : classes.word}
                     >
                         {showIndexLabel && (
                             // Render the number for buzzable words, or a blank placeholder otherwise, so every

@@ -46,7 +46,7 @@ export const ScoresheetDialogBody = observer(function ScoresheetDialogBody(
     props: IScoresheetDialogBodyProps
 ): JSX.Element {
     const appState: AppState = props.appState;
-    const game: GameState = appState.game;
+    const game: GameState = appState.activeGame;
     return (
         <ThemeContext.Consumer>
             {(theme) => {

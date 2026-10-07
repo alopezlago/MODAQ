@@ -59,6 +59,7 @@ export const CycleChooser = observer(function CycleChooser() {
             id={previousButtonTooltipId}
         >
             <DefaultButton
+                className="previous-question"
                 key="previousButton"
                 onClick={onPreviousClickHandler}
                 disabled={!CycleChooserController.canGoPrevious(appState)}
@@ -76,6 +77,7 @@ export const CycleChooser = observer(function CycleChooser() {
         nextButtonTooltip = "Export";
         nextButton = (
             <PrimaryButton
+                className="next-question"
                 aria-describedby={nextButtonTooltip}
                 key="nextButton"
                 onClick={onNextClickHandler}
@@ -88,6 +90,7 @@ export const CycleChooser = observer(function CycleChooser() {
         nextButtonTooltip = "Next (N)";
         nextButton = (
             <DefaultButton
+                className="next-question"
                 aria-describedby={nextButtonTooltip}
                 key="nextButton"
                 onClick={onNextClickHandler}
@@ -110,6 +113,7 @@ export const CycleChooser = observer(function CycleChooser() {
     if (uiState.isEditingCycleIndex) {
         questionNumberViewer = (
             <TextField
+                inputClassName="question-number"
                 type="text"
                 defaultValue={questionNumber.toString()}
                 onBlur={onProposedQuestionNumberBlurHandler}
@@ -128,7 +132,12 @@ export const CycleChooser = observer(function CycleChooser() {
                 : "Tossup"
             : "Question";
         questionNumberViewer = (
-            <Label key="questionViewer" styles={questionLableStyle} onDoubleClick={onQuestionLabelDoubleClickHandler}>
+            <Label
+                className="question-number"
+                key="questionViewer"
+                styles={questionLableStyle}
+                onDoubleClick={onQuestionLabelDoubleClickHandler}
+            >
                 {questionLabel} #{questionNumber}
             </Label>
         );
@@ -187,7 +196,7 @@ function commitCycleIndex(appState: AppState, value: string): void {
     }
 
     const propsedCycleIndex: number = parseInt(value, 10);
-    if (propsedCycleIndex >= 1 && propsedCycleIndex <= appState.game.packet.tossups.length) {
+    if (propsedCycleIndex >= 1 && propsedCycleIndex <= appState.activeGame.packet.tossups.length) {
         appState.uiState.setCycleIndex(propsedCycleIndex - 1);
     }
 

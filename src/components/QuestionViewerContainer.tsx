@@ -11,7 +11,7 @@ export const QuestionViewerContainer = observer(function QuestionViewerContainer
     const appState: AppState = useAppState();
     const classes: IQuestionViewerContainerClassNames = getClassNames();
 
-    if (!appState.game.isLoaded) {
+    if (!appState.activeGame.isLoaded) {
         return null;
     }
 

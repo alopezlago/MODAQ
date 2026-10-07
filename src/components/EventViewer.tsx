@@ -75,7 +75,7 @@ export const EventViewer = observer(function EventViewer(): JSX.Element | null {
             // TODO: Consider adding autoruns for scores/finalScore so we don't have to consider what context it's run
             // in. Just swapping scores with a scores2 value set during autorun didn't work initially, so it needs more
             // investigation.
-            data: appState.game.scores.slice(0, appState.game.playableCycles.length),
+            data: appState.activeGame.scores.slice(0, appState.activeGame.playableCycles.length),
         },
     ];
 
@@ -91,7 +91,7 @@ export const EventViewer = observer(function EventViewer(): JSX.Element | null {
         getSelectedIndices: () => [appState.uiState.cycleIndex],
         getSelectedCount: () => 1,
         isRangeSelected: (): boolean => false,
-        isAllSelected: () => appState.uiState.cycleIndex === appState.game.playableCycles.length,
+        isAllSelected: () => appState.uiState.cycleIndex === appState.activeGame.playableCycles.length,
         isIndexSelected: (index) => index === appState.uiState.cycleIndex,
         isKeySelected: () => false,
         setAllSelected: dummyFunction,
@@ -134,7 +134,7 @@ export const EventViewer = observer(function EventViewer(): JSX.Element | null {
     // This needs to re-render based on cycleIndex so it can select the current one
     return (
         <div
-            className={`${classes.eventViewerContainer} modaq-event-viewer`}
+            className={`${classes.eventViewerContainer} modaq-event-viewer event-viewer`}
             data-is-scrollable="true"
             ref={containerRef}
         >
@@ -142,7 +142,7 @@ export const EventViewer = observer(function EventViewer(): JSX.Element | null {
                 checkboxVisibility={CheckboxVisibility.hidden}
                 selectionMode={SelectionMode.single}
                 columns={columns}
-                items={appState.game.playableCycles}
+                items={appState.activeGame.playableCycles}
                 onActiveItemChanged={activeItemChangedHandler}
                 onRenderItemColumn={renderColumnHandler}
                 selection={selection}
@@ -172,7 +172,7 @@ function onRenderItemColumn(item: Cycle, appState: AppState, index: number, colu
 
             return (
                 <>
-                    <CycleItemList cycle={item} game={appState.game} />
+                    <CycleItemList cycle={item} game={appState.activeGame} />
                     <ScoreLine appState={appState} scores={scores} index={index} />
                 </>
             );

@@ -12,6 +12,7 @@ import {
 import { IPlayer as player } from "./src/state/TeamState";
 import { IErratum as erratum } from "./src/state/IErratum";
 import { ModaqControl as control, IModaqControlProps as controlProps } from "./src/components/ModaqControl";
+import { IHostSettings as hostSettings } from "./src/state/IHostSettings";
 import {
     IFormattingOptions as iFormattingOptions,
     parseFormattedText as ftpParseFormattedText,
@@ -26,6 +27,8 @@ import { IResult } from "./src/IResult";
 export const ModaqControl = control;
 
 export type IModaqControlProps = controlProps;
+
+export type IHostSettings = hostSettings;
 
 export type IPacket = packet;
 

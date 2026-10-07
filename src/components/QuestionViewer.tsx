@@ -34,7 +34,7 @@ export const QuestionViewer = observer(function QuestionViewer() {
     const fontSize: number = appState.uiState.questionFontSize;
     const fontFamily: string = appState.uiState.fontFamily;
     const classes: IQuestionViewerClassNames = getClassNames(appState.uiState.questionFontColor, fontSize);
-    const game: GameState = appState.game;
+    const game: GameState = appState.activeGame;
     const uiState: UIState = appState.uiState;
 
     // The question being read can outlive the game it belonged to for a moment:

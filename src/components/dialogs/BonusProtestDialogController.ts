@@ -17,7 +17,7 @@ export function commit(appState: AppState, cycle: Cycle): void {
         teamName =
             part == undefined || (part.points <= 0 && (part.teamName === bonusTeamName || part.teamName === ""))
                 ? bonusTeamName
-                : appState.game.teamNames.find((name) => name !== bonusTeamName) ?? "";
+                : appState.activeGame.teamNames.find((name) => name !== bonusTeamName) ?? "";
     }
 
     if (pendingProtestEvent) {

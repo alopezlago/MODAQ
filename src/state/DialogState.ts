@@ -14,6 +14,7 @@ import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 import { RenameTeamDialogState } from "./RenameTeamDialogState";
 import { ImportFromQBJDialogState } from "./ImportFromQBJDialogState";
 import { AddPlayerDialogState } from "./AddPlayerDialogState";
+import { IThrowOutQuestionDialogState } from "./IThrowOutQuestionDialogState";
 import {
     IOKCancelMessageDialogOptions,
     IOKMessageDialogOptions,
@@ -43,6 +44,9 @@ export class DialogState {
     public messageDialog: IMessageDialogState | undefined;
 
     @ignore
+    public throwOutQuestionDialog: IThrowOutQuestionDialogState | undefined;
+
+    @ignore
     public renamePlayerDialog: RenamePlayerDialogState | undefined;
 
     @ignore
@@ -64,6 +68,7 @@ export class DialogState {
         this.fontDialog = undefined;
         this.importFromQBJDialog = undefined;
         this.messageDialog = undefined;
+        this.throwOutQuestionDialog = undefined;
         this.renamePlayerDialog = undefined;
         this.renameTeamDialog = undefined;
         this.reorderPlayersDialog = undefined;
@@ -121,6 +126,18 @@ export class DialogState {
         if (this.visibleDialog === ModalVisibilityStatus.Message) {
             this.hideModalDialog();
         }
+    }
+
+    public hideThrowOutQuestionDialog(): void {
+        this.throwOutQuestionDialog = undefined;
+        if (this.visibleDialog === ModalVisibilityStatus.ThrowOutQuestion) {
+            this.hideModalDialog();
+        }
+    }
+
+    public showThrowOutQuestionDialog(options: IThrowOutQuestionDialogState): void {
+        this.throwOutQuestionDialog = options;
+        this.visibleDialog = ModalVisibilityStatus.ThrowOutQuestion;
     }
 
     public hideRenamePlayerDialog(): void {

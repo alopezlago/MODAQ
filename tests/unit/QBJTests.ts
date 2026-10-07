@@ -729,6 +729,75 @@ describe("QBJTests", () => {
 
             verifyFromQBJRoundtrip(game);
         });
+        it("Roundtrip with tossup protest replacement", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            // Protest replacement: throw out the first tossup and read the last tossup in the packet (index 3)
+            // instead of the next sequential one, then take a correct buzz on that replacement.
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addThrownOutTossup(0, 3);
+            firstCycle.addCorrectBuzz(
+                { player: firstTeamPlayers[0], points: 10, position: 1 },
+                3,
+                game.gameFormat,
+                0,
+                3
+            );
+
+            // Sanity check: the source game reads back the replacement question, not the original
+            expect(game.getTossupIndex(0)).to.equal(3);
+
+            // The full round trip preserves the thrown-out tossup (with its replacement index) and the correct buzz
+            verifyFromQBJRoundtrip(game);
+
+            // Loading the exported QBJ shows the replacement question, not the original or the next sequential one
+            const qbj: IMatch = QBJ.toQBJ(game, "Packet", 1);
+            const roundtripped: IResult<GameState> = QBJ.fromQBJ(qbj, game.packet, game.gameFormat);
+            if (!roundtripped.success) {
+                assert.fail(`Failed to parse the QBJ. Error: '${roundtripped.message}'`);
+            }
+            expect(roundtripped.value.getTossupIndex(0)).to.equal(3);
+            // The protest replacement doesn't shift later cycles: the next cycle still reads its sequential tossup
+            expect(roundtripped.value.getTossupIndex(1)).to.equal(1);
+        });
+        it("Roundtrip with bonus protest replacement", () => {
+            const game: GameState = new GameState();
+            game.loadPacket(defaultPacket);
+            game.setPlayers(players);
+            game.setGameFormat(GameFormats.ACFGameFormat);
+
+            // Get the tossup so the bonus comes into play, then throw out the bonus and read the last bonus in the
+            // packet (index 3) instead of the sequential one, answering the first part of that replacement.
+            const firstCycle: Cycle = game.cycles[0];
+            firstCycle.addCorrectBuzz(
+                { player: firstTeamPlayers[0], points: 10, position: 1 },
+                0,
+                game.gameFormat,
+                0,
+                3
+            );
+            firstCycle.addThrownOutBonus(0, 3);
+            firstCycle.setBonusPartAnswer(0, firstTeamPlayers[0].teamName, 10);
+
+            // Sanity check: the source game reads back the replacement bonus, not the original
+            expect(game.getBonusIndex(0)).to.equal(3);
+
+            // The full round trip preserves the thrown-out bonus (with its replacement index) and the bonus answer
+            verifyFromQBJRoundtrip(game);
+
+            // Loading the exported QBJ shows the replacement bonus
+            const qbj: IMatch = QBJ.toQBJ(game, "Packet", 1);
+            const roundtripped: IResult<GameState> = QBJ.fromQBJ(qbj, game.packet, game.gameFormat);
+            if (!roundtripped.success) {
+                assert.fail(`Failed to parse the QBJ. Error: '${roundtripped.message}'`);
+            }
+            expect(roundtripped.value.getBonusIndex(0)).to.equal(3);
+            // The protest replacement doesn't shift later cycles: the next cycle still reads its sequential bonus
+            expect(roundtripped.value.getBonusIndex(1)).to.equal(1);
+        });
     });
     describe("toQBJ", () => {
         it("No buzz game", () => {
@@ -1566,6 +1635,87 @@ describe("QBJTests", () => {
                 }
             );
         });
+        it("Thrown out tossup with protest replacement", () => {
+            verifyToQBJ(
+                (game) => {
+                    // Protest replacement: throw out the first tossup and replace it with the last tossup in the
+                    // packet (index 3) rather than the next sequential one.
+                    game.cycles[0].addThrownOutTossup(0, 3);
+                    game.cycles[0].addCorrectBuzz(
+                        {
+                            player: firstTeamPlayers[0],
+                            points: 10,
+                            position: 1,
+                            isLastWord: true,
+                        },
+                        3,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+                },
+                (match) => {
+                    const replacementTossup: QBJ.IQuestion | undefined =
+                        match.match_questions[0].replacement_tossup_question;
+                    if (replacementTossup == undefined) {
+                        assert.fail("Replacement tossup was undefined");
+                    }
+
+                    // The replacement points at the specific question that was read, not the next sequential one
+                    expect(replacementTossup.question_number).to.equal(4);
+                    expect(replacementTossup.type).to.equal("tossup");
+
+                    // A protest replacement doesn't shift the questions used by later cycles, so the tossup numbers
+                    // stay on the sequential track instead of drifting by one
+                    expect(match.match_questions.map((q) => q.tossup_question.question_number)).to.deep.equal([
+                        1, 2, 3, 4,
+                    ]);
+                }
+            );
+        });
+        it("Thrown out bonus with protest replacement", () => {
+            verifyToQBJ(
+                (game) => {
+                    // Protest replacement: get the tossup, then throw out the bonus and read the last bonus in the
+                    // packet (index 3) rather than the sequential one, answering its first part.
+                    game.cycles[0].addCorrectBuzz(
+                        { player: firstTeamPlayers[0], points: 10, position: 1 },
+                        0,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+                    game.cycles[0].addThrownOutBonus(0, 3);
+                    game.cycles[0].setBonusPartAnswer(0, firstTeamPlayers[0].teamName, 10);
+                },
+                (match) => {
+                    // The answered conversion lives on replacement_bonus (the bonus actually read), pointing at the
+                    // specific bonus that replaced the thrown-out one
+                    const replacementBonus: QBJ.IMatchQuestionBonus | undefined =
+                        match.match_questions[0].replacement_bonus;
+                    if (replacementBonus == undefined || replacementBonus.question == undefined) {
+                        assert.fail("Replacement bonus was undefined");
+                    }
+
+                    expect(replacementBonus.question.question_number).to.equal(4);
+                    expect(replacementBonus.question.type).to.equal("bonus");
+                    expect(replacementBonus.parts[0].controlled_points).to.equal(10);
+
+                    // bonus keeps the scheduled number as a bare marker with no conversion
+                    const scheduledBonus: QBJ.IMatchQuestionBonus | undefined = match.match_questions[0].bonus;
+                    if (scheduledBonus == undefined || scheduledBonus.question == undefined) {
+                        assert.fail("Scheduled bonus was undefined");
+                    }
+                    expect(scheduledBonus.question.question_number).to.equal(1);
+                    expect(scheduledBonus.parts).to.deep.equal([]);
+
+                    // A protest replacement doesn't shift later cycles, so the scheduled bonus numbers stay sequential
+                    expect(
+                        match.match_questions.map((q) => q.bonus?.question?.question_number)
+                    ).to.deep.equal([1, undefined, undefined, undefined]);
+                }
+            );
+        });
         it("Thrown out bonus", () => {
             verifyToQBJ(
                 (game) => {
@@ -2020,6 +2170,148 @@ describe("QBJTests", () => {
                 (match) => {
                     expect(match.match_questions[0].bonus).to.be.undefined;
                     expect(match.match_questions[1].bonus).to.not.be.undefined;
+                }
+            );
+        });
+        it("Export without overtime leaves out overtime_tossups_read", () => {
+            verifyToQBJ(
+                (game) => {
+                    // The packet is shorter than regulation, so no question can be an overtime one
+                    game.setGameFormat(GameFormats.ACFGameFormat);
+                    game.cycles[0].addCorrectBuzz(
+                        { player: firstTeamPlayers[0], points: 10, position: 1 },
+                        0,
+                        game.gameFormat,
+                        0,
+                        3
+                    );
+                },
+                (match) => {
+                    expect(match.tossups_read).to.equal(defaultPacket.tossups.length);
+                    expect(match.overtime_tossups_read).to.be.undefined;
+
+                    // No overtime means no overtime breakdown for YellowFruit either
+                    expect(match.match_teams.every((team) => team.YfData == undefined)).to.be.true;
+                }
+            );
+        });
+        it("Export with sudden death overtime reports the overtime tossups", () => {
+            verifyToQBJ(
+                (game) => {
+                    // Regulation ends after 3 tossups, and overtime is sudden death, so the 4th tossup is overtime
+                    game.setGameFormat({ ...GameFormats.ACFGameFormat, regulationTossupCount: 3 });
+
+                    // Nobody buzzes in regulation, so the game is tied 0-0 and goes to overtime, where the first
+                    // team converts the tiebreaker
+                    game.cycles[3].addCorrectBuzz(
+                        { player: firstTeamPlayers[0], points: 10, position: 1 },
+                        3,
+                        game.gameFormat,
+                        3,
+                        3
+                    );
+                },
+                (match, game) => {
+                    expect(game.playableCycles.length).to.equal(4);
+
+                    // tossups_read includes the overtime tossup, and overtime_tossups_read says how many of those
+                    // weren't regulation questions
+                    expect(match.tossups_read).to.equal(4);
+                    expect(match.overtime_tossups_read).to.equal(1);
+
+                    // YellowFruit needs the overtime buzzes to see that regulation ended tied
+                    expect(match.match_teams[0].YfData?.overTimeBuzzes).to.deep.equal([
+                        { answer: { value: 10 }, number: 1 },
+                    ]);
+                    expect(match.match_teams[1].YfData?.overTimeBuzzes).to.deep.equal([]);
+                }
+            );
+        });
+        it("Export with fixed overtime block reports every overtime tossup", () => {
+            verifyToQBJ(
+                (game) => {
+                    // Regulation ends after 2 tossups, and overtime is played in blocks of 2
+                    game.setGameFormat({
+                        ...GameFormats.ACFGameFormat,
+                        regulationTossupCount: 2,
+                        minimumOvertimeQuestionCount: 2,
+                    });
+
+                    // The game is tied 0-0 after regulation, so both overtime tossups are played even though the
+                    // second team takes the lead on the last one
+                    game.cycles[3].addCorrectBuzz(
+                        { player: secondTeamPlayer, points: 10, position: 1 },
+                        3,
+                        game.gameFormat,
+                        3,
+                        3
+                    );
+                },
+                (match, game) => {
+                    expect(game.playableCycles.length).to.equal(4);
+                    expect(match.tossups_read).to.equal(4);
+                    expect(match.overtime_tossups_read).to.equal(2);
+
+                    // Both overtime tossups count, and only the second team buzzed in them
+                    expect(match.match_teams[0].YfData?.overTimeBuzzes).to.deep.equal([]);
+                    expect(match.match_teams[1].YfData?.overTimeBuzzes).to.deep.equal([
+                        { answer: { value: 10 }, number: 1 },
+                    ]);
+                }
+            );
+        });
+        it("Overtime buzzes include negs, ordered by descending point value", () => {
+            verifyToQBJ(
+                (game) => {
+                    // Regulation ends after 2 tossups, and both tossups of the overtime block are played
+                    game.setGameFormat({
+                        ...GameFormats.StandardPowersMACFGameFormat,
+                        regulationTossupCount: 2,
+                        minimumOvertimeQuestionCount: 2,
+                    });
+
+                    // Tied 0-0 after regulation. The first team negs on the first overtime tossup and converts the
+                    // second, so it has two kinds of overtime buzz
+                    game.cycles[2].addWrongBuzz(
+                        { player: firstTeamPlayers[0], points: -5, position: 0, isLastWord: false },
+                        2,
+                        game.gameFormat
+                    );
+                    game.cycles[3].addCorrectBuzz(
+                        { player: firstTeamPlayers[0], points: 10, position: 1 },
+                        3,
+                        game.gameFormat,
+                        3,
+                        3
+                    );
+                },
+                (match, game) => {
+                    expect(game.playableCycles.length).to.equal(4);
+                    expect(match.overtime_tossups_read).to.equal(2);
+
+                    // Powers first, negs last, matching how YellowFruit sorts answer counts
+                    expect(match.match_teams[0].YfData?.overTimeBuzzes).to.deep.equal([
+                        { answer: { value: 10 }, number: 1 },
+                        { answer: { value: -5 }, number: 1 },
+                    ]);
+                    expect(match.match_teams[1].YfData?.overTimeBuzzes).to.deep.equal([]);
+
+                    // The regulation score YellowFruit derives (total minus overtime) is tied, which is what stops
+                    // the "score wasn't tied after regulation" warning
+                    const regulationScores: number[] = match.match_teams.map((team) => {
+                        const total: number = team.match_players.reduce(
+                            (sum, player) =>
+                                sum +
+                                player.answer_counts.reduce((count, ac) => count + ac.answer.value * ac.number, 0),
+                            team.bonus_points
+                        );
+                        const overtimePoints: number = (team.YfData?.overTimeBuzzes ?? []).reduce(
+                            (sum, ac) => sum + ac.answer.value * ac.number,
+                            0
+                        );
+                        return total - overtimePoints;
+                    });
+                    expect(regulationScores[0]).to.equal(regulationScores[1]);
                 }
             );
         });

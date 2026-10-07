@@ -33,7 +33,7 @@ export const PacketLoader = observer(function PacketLoader(props: IPacketLoaderP
     const parserLink = props.appState.uiState.packetParserLink;
 
     return (
-        <div>
+        <div className="packet-loader">
             <Stack>
                 <StackItem>
                     <FilePickerWithStatus
@@ -162,7 +162,7 @@ function loadJsonPacket(props: IPacketLoaderProps, json: string): void {
 
     const existingPacketName: string | undefined = props.updateFilename
         ? uiState.packetFilename
-        : props.appState.game.packet.name;
+        : props.appState.activeGame.packet.name;
     const packet: PacketState | undefined = PacketLoaderController.loadPacket(
         props.appState,
         parsedPacket,

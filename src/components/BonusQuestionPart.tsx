@@ -101,7 +101,7 @@ export const BonusQuestionPart = observer(function BonusQuestionPart(props: IBon
                 );
 
                 return (
-                    <div className={classes.bonusPartContainer}>
+                    <div className={`${classes.bonusPartContainer} bonus-part-${props.partNumber}`}>
                         <div className={classes.bonusPartQuestionText}>
                             {correctnessMarker}
                             <span>

@@ -8,9 +8,9 @@ import { useAppState } from "../contexts/StateContext";
 export const PacketNameLabel = observer(function PacketNameLabel() {
     const appState: AppState = useAppState();
 
-    if (!(appState.game.packet.name || appState.uiState.packetFilename)) {
+    if (!(appState.activeGame.packet.name || appState.uiState.packetFilename)) {
         return <></>;
     }
 
-    return <Text>Packet: {appState.game.packet.name ?? appState.uiState.packetFilename}</Text>;
+    return <Text>Packet: {appState.activeGame.packet.name ?? appState.uiState.packetFilename}</Text>;
 });

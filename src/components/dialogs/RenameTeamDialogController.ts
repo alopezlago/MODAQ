@@ -3,7 +3,7 @@ import { GameState } from "../../state/GameState";
 import { RenameTeamDialogState } from "../../state/RenameTeamDialogState";
 
 export function renameTeam(appState: AppState): void {
-    const game: GameState = appState.game;
+    const game: GameState = appState.activeGame;
     const renameDialogState: RenameTeamDialogState | undefined = appState.uiState.dialogState.renameTeamDialog;
     if (renameDialogState == undefined) {
         return;
@@ -62,7 +62,7 @@ export function validate(appState: AppState): string | undefined {
         return "Name cannot be blank";
     }
 
-    if (appState.game.teamNames.indexOf(renameTeamDialog.newName) >= 0) {
+    if (appState.activeGame.teamNames.indexOf(renameTeamDialog.newName) >= 0) {
         return "Team name already exists";
     }
 

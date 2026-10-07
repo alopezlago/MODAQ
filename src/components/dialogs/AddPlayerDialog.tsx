@@ -34,7 +34,11 @@ export const AddPlayerDialog = observer(function AddPlayerDialog(): JSX.Element 
         >
             <AddPlayerDialogBody appState={appState} />
             <DialogFooter>
-                <PrimaryButton text="Add" onClick={() => AddPlayerDialogController.addPlayer(appState)} />
+                <PrimaryButton
+                    text="Add"
+                    onClick={() => AddPlayerDialogController.addPlayer(appState)}
+                    className="add-player-submit"
+                />
                 <DefaultButton text="Cancel" onClick={() => AddPlayerDialogController.hideDialog(appState)} />
             </DialogFooter>
         </ModalDialog>
@@ -60,7 +64,7 @@ const AddPlayerDialogBody = observer(function AddPlayerDialogBody(props: IAddPla
 
     const newPlayer: IPlayer = addPlayerDialogState.player;
 
-    const teamOptions: IDropdownOption[] = appState.game.teamNames.map((teamName, index) => {
+    const teamOptions: IDropdownOption[] = appState.activeGame.teamNames.map((teamName, index) => {
         return {
             key: index,
             text: teamName,
@@ -71,10 +75,11 @@ const AddPlayerDialogBody = observer(function AddPlayerDialogBody(props: IAddPla
     return (
         <Stack tokens={dialogStackTokens}>
             <StackItem>
-                <Dropdown label="Team" options={teamOptions} onChange={teamChangeHandler} />
+                <Dropdown className="add-player-team" label="Team" options={teamOptions} onChange={teamChangeHandler} />
             </StackItem>
             <StackItem>
                 <TextField
+                    inputClassName="add-player-name"
                     label="Name"
                     value={newPlayer.name}
                     required={true}

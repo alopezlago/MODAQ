@@ -331,6 +331,35 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
         let latestBonusIndex: number = previousBonusIndex + 1;
         let latestTossupIndex: number = previousTossupIndex + 1;
 
+        // A protest replacement records the specific question that was actually read (e.g. the last tossup in the
+        // packet) in replacement_tossup_question, while tossup_question keeps the scheduled sequential number. A
+        // sequential (procedural) replacement instead advances both to the same number, so we only treat the
+        // replacement as a protest when the two differ. Sequential throw-outs are still inferred from gaps in the
+        // tossup_question numbers below.
+        const scheduledTossupIndex: number = question.tossup_question.question_number - 1;
+        const protestReplacementIndex: number | undefined =
+            question.replacement_tossup_question != undefined &&
+            question.replacement_tossup_question.question_number !== question.tossup_question.question_number
+                ? question.replacement_tossup_question.question_number - 1
+                : undefined;
+        // The tossup actually read (and buzzed on) is the protest replacement when present, otherwise the scheduled one.
+        const playedTossupIndex: number = protestReplacementIndex ?? scheduledTossupIndex;
+
+        // Bonuses mirror the tossup logic: a protest bonus replacement records the answered bonus in replacement_bonus
+        // (the one actually read) while bonus keeps the scheduled number as a bare marker. Detect the protest the same
+        // way, by the two bonus numbers differing.
+        const scheduledBonusIndex: number | undefined =
+            question.bonus?.question != undefined ? question.bonus.question.question_number - 1 : undefined;
+        const protestBonusReplacementIndex: number | undefined =
+            question.replacement_bonus?.question != undefined &&
+            question.bonus?.question != undefined &&
+            question.replacement_bonus.question.question_number !== question.bonus.question.question_number
+                ? question.replacement_bonus.question.question_number - 1
+                : undefined;
+        // The bonus actually read and answered is the protest replacement when present, otherwise the scheduled bonus.
+        const playedBonus: IMatchQuestionBonus | undefined =
+            protestBonusReplacementIndex != undefined ? question.replacement_bonus : question.bonus;
+
         // The correct buzz needs to be added after throwing out any tossups, so we have to delay adding it to the cycle
         let addCorrectBuzzEvent: undefined | (() => void);
 
@@ -394,15 +423,15 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
                 buzzMarker.isLastWord = buzz.buzz_position.word_index >= tossupLength - 1;
             }
 
-            const tossupIndex: number = question.tossup_question.question_number - 1;
+            const tossupIndex: number = playedTossupIndex;
             latestTossupIndex = Math.max(tossupIndex, latestTossupIndex);
 
             if (buzz.result.value > 0) {
                 let bonusQuestionNumber: number | undefined;
                 let bonusQuestionPartsLength: number | undefined;
-                if (question.bonus && question.bonus.question) {
-                    bonusQuestionNumber = question.bonus.question.question_number - 1;
-                    bonusQuestionPartsLength = question.bonus.parts.length;
+                if (playedBonus && playedBonus.question) {
+                    bonusQuestionNumber = playedBonus.question.question_number - 1;
+                    bonusQuestionPartsLength = playedBonus.parts.length;
                 }
 
                 correctTeamName = buzz.team.name;
@@ -429,22 +458,35 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
             };
         }
 
-        for (let j = previousTossupIndex + 1; j < latestTossupIndex; j++) {
-            // We must have thrown out the other questions
-            cycle.addThrownOutTossup(j);
+        if (protestReplacementIndex != undefined) {
+            // The file explicitly recorded a protest replacement: the scheduled tossup was thrown out and a specific
+            // question was read instead. Reconstruct it directly so getTossupIndex returns that question. Protest
+            // replacements don't shift the sequential order, so we don't infer any gap throw-outs here.
+            cycle.addThrownOutTossup(scheduledTossupIndex, protestReplacementIndex);
+        } else {
+            for (let j = previousTossupIndex + 1; j < latestTossupIndex; j++) {
+                // We must have thrown out the other questions
+                cycle.addThrownOutTossup(j);
+            }
         }
 
         if (addCorrectBuzzEvent) {
             addCorrectBuzzEvent();
         }
 
-        for (let j = previousBonusIndex + 1; j < latestBonusIndex; j++) {
-            cycle.addThrownOutBonus(j);
+        if (protestBonusReplacementIndex != undefined && scheduledBonusIndex != undefined) {
+            // A protest bonus replacement was recorded: rebuild it directly so getBonusIndex returns that bonus.
+            // Like tossups, protest replacements don't shift the sequential order, so we don't infer gap throw-outs.
+            cycle.addThrownOutBonus(scheduledBonusIndex, protestBonusReplacementIndex);
+        } else {
+            for (let j = previousBonusIndex + 1; j < latestBonusIndex; j++) {
+                cycle.addThrownOutBonus(j);
+            }
         }
 
-        if (question.bonus && question.bonus.question && question.bonus.parts && correctTeamName) {
-            for (let j = 0; j < question.bonus.parts.length; j++) {
-                const part = question.bonus.parts[j];
+        if (playedBonus && playedBonus.question && playedBonus.parts && correctTeamName) {
+            for (let j = 0; j < playedBonus.parts.length; j++) {
+                const part = playedBonus.parts[j];
 
                 // To match the current behavior, only set the part if someone scored
                 if (part.controlled_points == 0) {
@@ -466,8 +508,13 @@ export function fromQBJ(qbj: IMatch, packet: PacketState, gameFormat: IGameForma
             }
         }
 
-        previousTossupIndex = latestTossupIndex;
-        previousBonusIndex = latestBonusIndex;
+        // A protest replacement pulls a question out of sequence without consuming the sequential track, so advance
+        // by the scheduled index rather than the (possibly end-of-packet) replacement that was actually read.
+        previousTossupIndex = protestReplacementIndex != undefined ? scheduledTossupIndex : latestTossupIndex;
+        previousBonusIndex =
+            protestBonusReplacementIndex != undefined && scheduledBonusIndex != undefined
+                ? scheduledBonusIndex
+                : latestBonusIndex;
     }
 
     return {
@@ -609,6 +656,9 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
     let bonusNumber = 1;
     const teamChangesInCycle: Set<string> = new Set<string>();
 
+    // Overtime buzzes, tracked per team and point value for YellowFruit (see IYellowFruitMatchTeamData)
+    const overtimeBuzzCounts: Map<string, Map<number, number>> = new Map<string, Map<number, number>>();
+
     // TODO: Loop until the end of the game, not the number of cycles
     for (let i = 0; i < game.playableCycles.length; i++) {
         const cycle: Cycle = game.playableCycles[i];
@@ -702,26 +752,51 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
             }
         }
 
+        // replacement_tossup_question only supports a single replacement per cycle (see IMatchQuestion), so a cycle
+        // with multiple thrown out tossups keeps the last one here, while GameState.getTossupIndex uses the first
+        // with a defined replacement. Cycles with multiple replacements are out of scope for now.
         let replacementTossup: IQuestion | undefined = undefined;
         if (cycle.thrownOutTossups) {
             for (const thrownOutTossup of cycle.thrownOutTossups) {
                 noteworthyEvents.push(`Tossup thrown out on question ${thrownOutTossup.questionIndex + 1}`);
-                tossupNumber++;
-                replacementTossup = {
-                    parts: 1,
-                    question_number: tossupNumber,
-                    type: "tossup",
-                    question_hash: tossupHash(game, tossupNumber),
-                };
+                if (thrownOutTossup.replacementQuestionIndex == undefined) {
+                    // Sequential replacement: the next tossup in the packet is used, so advance the running counter.
+                    tossupNumber++;
+                    replacementTossup = {
+                        parts: 1,
+                        question_number: tossupNumber,
+                        type: "tossup",
+                        question_hash: tossupHash(game, tossupNumber),
+                    };
+                } else {
+                    // Protest replacement: pulls a specific question (usually the last in the packet) and doesn't
+                    // shift the questions later cycles use, so leave the running counter alone. GameState
+                    // .getTossupIndex likewise ignores these when computing its sequential offset.
+                    replacementTossup = {
+                        parts: 1,
+                        question_number: thrownOutTossup.replacementQuestionIndex + 1,
+                        type: "tossup",
+                        question_hash: tossupHash(game, thrownOutTossup.replacementQuestionIndex + 1),
+                    };
+                }
             }
         }
 
+        // replacement_bonus mirrors replacement_tossup_question: it records a protest replacement, and (like tossups)
+        // only supports a single replacement per cycle, so a cycle with multiple thrown out bonuses keeps the last.
+        let replacementBonusIndex: number | undefined = undefined;
         if (cycle.thrownOutBonuses) {
             for (const thrownOutBonus of cycle.thrownOutBonuses) {
-                // TODO: Unclear on how thrown out bonuses should be handled, since the replacement_bonus is just the
-                // bonus right now. Just add an event for now
                 noteworthyEvents.push(`Bonus thrown out on question ${thrownOutBonus.questionIndex + 1}`);
-                bonusNumber++;
+                if (thrownOutBonus.replacementQuestionIndex == undefined) {
+                    // Sequential replacement: the next bonus in the packet is used, so advance the running counter.
+                    bonusNumber++;
+                } else {
+                    // Protest replacement: pulls a specific bonus and doesn't shift the bonuses later cycles use, so
+                    // leave the running counter alone. It's recorded in replacement_bonus below. See
+                    // GameState.getBonusIndex, which likewise ignores these when computing its sequential offset.
+                    replacementBonusIndex = thrownOutBonus.replacementQuestionIndex;
+                }
             }
         }
 
@@ -736,10 +811,10 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
                 question_hash: tossupHash(game, tossupNumber),
             },
             replacement_tossup_question: replacementTossup,
-            // TODO: Figure out how to set replacement_bonus. Doesn't really make sense right now, since it seems to be
-            // the same as bonus
             bonus: undefined,
         };
+
+        const isOvertimeCycle: boolean = i >= game.gameFormat.regulationTossupCount;
 
         let isFirstBuzz = true;
         for (const buzz of cycle.orderedBuzzes) {
@@ -747,6 +822,10 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
             if (matchBuzz != undefined) {
                 matchQuestion.buzzes.push(matchBuzz);
                 updateAnswerCount(matchTeams, matchBuzz);
+
+                if (isOvertimeCycle) {
+                    updateOvertimeBuzzCount(overtimeBuzzCounts, matchBuzz);
+                }
             }
 
             isFirstBuzz = false;
@@ -783,16 +862,40 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
                 parts.push(matchPart);
             }
 
-            const matchBonus: IMatchQuestionBonus = {
-                question: {
-                    parts: cycle.bonusAnswer.parts.length,
-                    type: "bonus",
-                    question_number: bonusNumber,
-                    question_hash: bonusHash(game, bonusNumber),
-                },
-                parts,
-            };
-            matchQuestion.bonus = matchBonus;
+            if (replacementBonusIndex != undefined) {
+                // Protest replacement (mirrors replacement_tossup_question): the bonus actually read and answered is
+                // the replacement, so the conversion goes in replacement_bonus, while bonus keeps the scheduled
+                // number as a bare marker with no parts.
+                matchQuestion.replacement_bonus = {
+                    question: {
+                        parts: cycle.bonusAnswer.parts.length,
+                        type: "bonus",
+                        question_number: replacementBonusIndex + 1,
+                        question_hash: bonusHash(game, replacementBonusIndex + 1),
+                    },
+                    parts,
+                };
+                matchQuestion.bonus = {
+                    question: {
+                        parts: cycle.bonusAnswer.parts.length,
+                        type: "bonus",
+                        question_number: bonusNumber,
+                        question_hash: bonusHash(game, bonusNumber),
+                    },
+                    parts: [],
+                };
+            } else {
+                const matchBonus: IMatchQuestionBonus = {
+                    question: {
+                        parts: cycle.bonusAnswer.parts.length,
+                        type: "bonus",
+                        question_number: bonusNumber,
+                        question_hash: bonusHash(game, bonusNumber),
+                    },
+                    parts,
+                };
+                matchQuestion.bonus = matchBonus;
+            }
 
             bonusNumber++;
         }
@@ -827,9 +930,38 @@ export function toQBJ(game: GameState, packetName?: string, round?: number): IMa
         tossupNumber++;
     }
 
+    // tossups_read counts every tossup read, including overtime ones, so any cycle past the format's regulation
+    // length has to be reported in overtime_tossups_read too. Otherwise stats programs treat the whole game as
+    // regulation and flag it for running longer than the format allows (e.g. a game ending on question 21 in a
+    // 20 tossup format).
+    const overtimeTossupsRead: number = Math.max(
+        0,
+        game.playableCycles.length - game.gameFormat.regulationTossupCount
+    );
+
+    if (overtimeTossupsRead > 0) {
+        // Only include the overtime breakdown when there was overtime, so regular games export the same QBJ as before
+        for (const matchTeam of matchTeams.values()) {
+            const countsByValue: Map<number, number> | undefined = overtimeBuzzCounts.get(matchTeam.team.name);
+            const overTimeBuzzes: IPlayerAnswerCount[] = [];
+
+            // Skip 0 point buzzes. They don't affect the score, and YellowFruit drops them when its rule set has no
+            // matching answer type
+            for (const [value, count] of countsByValue ?? []) {
+                if (value !== 0) {
+                    overTimeBuzzes.push({ answer: { value }, number: count });
+                }
+            }
+
+            // Descending by point value, matching how YellowFruit sorts its own answer counts (powers first)
+            overTimeBuzzes.sort((left, right) => right.answer.value - left.answer.value);
+            matchTeam.YfData = { overTimeBuzzes };
+        }
+    }
+
     const match: IMatch = {
-        // TODO: This should take the format into account, based on how long regular matches should be, plus overtimes
         tossups_read: game.playableCycles.length,
+        overtime_tossups_read: overtimeTossupsRead > 0 ? overtimeTossupsRead : undefined,
         match_teams: [...matchTeams.values()],
         match_questions: matchQuestions,
         notes: noteworthyEvents.length > 0 ? noteworthyEvents.join("\n") : undefined,
@@ -956,10 +1088,24 @@ function updateAnswerCount(matchTeams: Map<string, IMatchTeam>, buzz: IMatchQues
     answerCount.number++;
 }
 
+function updateOvertimeBuzzCount(
+    overtimeBuzzCounts: Map<string, Map<number, number>>,
+    buzz: IMatchQuestionBuzz
+): void {
+    let countsByValue: Map<number, number> | undefined = overtimeBuzzCounts.get(buzz.team.name);
+    if (countsByValue == undefined) {
+        countsByValue = new Map<number, number>();
+        overtimeBuzzCounts.set(buzz.team.name, countsByValue);
+    }
+
+    const points: number = buzz.result.value;
+    countsByValue.set(points, (countsByValue.get(points) ?? 0) + 1);
+}
+
 // Adapted from https://schema.quizbowl.technology/match
 export interface IMatch {
-    tossups_read: number;
-    overtime_tossups_read?: number; //(leave empty for now, until formats are more integrated)
+    tossups_read: number; // Includes overtime tossups
+    overtime_tossups_read?: number; // How many of tossups_read were played in overtime. Omitted when there's no overtime
     match_teams: IMatchTeam[];
     match_questions: IMatchQuestion[];
     notes?: string; // For storing protest info and thrown out Qs
@@ -983,6 +1129,17 @@ export interface IMatchTeam {
     bonus_bounceback_points?: number;
     match_players: IMatchPlayer[];
     lineups: ILineup[]; // Lineups seen. New entries happen when there are changes in the lineup
+    YfData?: IYellowFruitMatchTeamData;
+}
+
+// Not part of the QBJ spec. YellowFruit checks that an overtime game was tied at the end of regulation by
+// subtracting each team's overtime points from its total, and it only learns those points from this block: its
+// importer never derives them from match_questions, and it writes but never reads correct_tossups_without_bonuses.
+// Without this, every point looks like a regulation point and YellowFruit warns that the score wasn't tied after
+// regulation. See MatchTeam's YfData and FileParsing's parseMatchTeam in https://github.com/ANadig/YellowFruit.
+export interface IYellowFruitMatchTeamData {
+    // YellowFruit tracks these per team rather than per player, since it doesn't record who buzzed in overtime
+    overTimeBuzzes: IPlayerAnswerCount[];
 }
 
 export interface IMatchPlayer {

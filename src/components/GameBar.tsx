@@ -30,10 +30,9 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     // This should pop up the new game handler
     const appState: AppState = useAppState();
     const uiState: UIState = appState.uiState;
-    const game: GameState = appState.game;
+    const game: GameState = appState.activeGame;
     const tiebreakers = useTiebreakers();
     const { onNewGameRequested } = React.useContext(HostNewGameContext);
-
     const newGameHandler = React.useCallback(() => {
         // A host that starts games its own way takes it from here, including whatever it wants to do about a game
         // that hasn't been exported.
@@ -113,45 +112,47 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     const items: ICommandBarItemProps[] = appState.uiState.hideNewGame
         ? []
         : [
-              {
-                  key: "newGame",
-                  text: "New game",
-                  iconProps: { iconName: "Add" },
-                  split: true,
-                  subMenuProps: {
-                      items: [
-                          {
-                              key: "newGameSubMenuItem",
-                              text: "New game...",
-                              iconProps: { iconName: "Add" },
-                              onClick: newGameHandler,
-                          },
-                          {
-                              key: "importQBJ",
-                              text: "Import from QBJ...",
-                              iconProps: { iconName: "Download" },
-                              onClick: importFromQBJHandler,
-                          },
-                          {
-                              key: "importGame",
-                              text: "Import raw game...",
-                              iconProps: { iconName: "Download" },
-                              onClick: importGameHandler,
-                          },
-                      ],
-                  },
-                  onClick: newGameHandler,
-              },
-          ];
+            {
+                key: "newGame",
+                text: "New game",
+                iconProps: { iconName: "Add" },
+                split: true,
+                subMenuProps: {
+                    items: [
+                        {
+                            key: "newGameSubMenuItem",
+                            text: "New game...",
+                            iconProps: { iconName: "Add" },
+                            onClick: newGameHandler,
+                        },
+                        {
+                            key: "importQBJ",
+                            text: "Import from QBJ...",
+                            iconProps: { iconName: "Download" },
+                            onClick: importFromQBJHandler,
+                        },
+                        {
+                            key: "importGame",
+                            text: "Import raw game...",
+                            iconProps: { iconName: "Download" },
+                            onClick: importGameHandler,
+                        },
+                    ],
+                },
+                onClick: newGameHandler,
+            },
+        ];
 
     const optionsSubMenuItems: ICommandBarItemProps[] = getOptionsSubMenuItems(appState);
-    items.push({
-        key: "options",
-        text: "Options",
-        subMenuProps: {
-            items: optionsSubMenuItems,
-        },
-    });
+    if (optionsSubMenuItems.length > 0) {
+        items.push({
+            key: "options",
+            text: "Options",
+            subMenuProps: {
+                items: optionsSubMenuItems,
+            },
+        });
+    }
 
     const viewSubMenuItems: ICommandBarItemProps[] = getViewSubMenuItems(appState);
     items.push({
@@ -180,8 +181,23 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         },
     });
 
-    // If a custom export option is given, only show a button for that export
-    if (appState.uiState.customExportOptions == undefined) {
+    // In TMS-managed mode, only show a button for exporting a backup, gated behind a confirmation dialog.
+    // Otherwise show the custom export button (if given) or the standard export submenu.
+    if (uiState.hostSettings.promptBeforeExport) {
+        items.push({
+            key: "exportBackup",
+            text: "Export Backup",
+            disabled: appState.game.cycles.length === 0,
+            onClick: () => {
+                uiState.dialogState.showOKCancelMessageDialog({
+                    title: "Export Backup",
+                    message: `This function is intended for downloading a backup file for an emergency migration to MODAQ outside of ${uiState.hostSettings.productName ?? "the host application"}. Are you sure you want to proceed?`,
+                    onOK: () => uiState.dialogState.showExportToJsonDialog(),
+                    okLabel: "Yes, Export Backup",
+                });
+            },
+        });
+    } else if (appState.uiState.customExportOptions == undefined) {
         const exportSubMenuItems: ICommandBarItemProps[] = getExportSubMenuItems(appState);
         items.push({
             key: "export",
@@ -229,7 +245,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         onClick: openHelpHandler,
     });
 
-    return <CommandBar items={items} overflowButtonProps={overflowProps} />;
+    return <CommandBar className="game-bar" items={items} overflowButtonProps={overflowProps} />;
 });
 
 async function exportToSheets(appState: AppState): Promise<void> {
@@ -248,7 +264,7 @@ function getActionSubMenuItems(
 ): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
     const uiState: UIState = appState.uiState;
-    const game: GameState = appState.game;
+    const game: GameState = appState.activeGame;
 
     const playerManagementSection: ICommandBarItemProps = getPlayerManagementSubMenuItems(
         appState,
@@ -277,11 +293,11 @@ function getActionSubMenuItems(
                     onClick: () =>
                         TossupQuestionController.throwOutTossup(
                             appState,
-                            appState.game.cycles[appState.uiState.cycleIndex],
-                            appState.game.getTossupIndex(appState.uiState.cycleIndex) + 1,
+                            appState.activeGame.cycles[appState.uiState.cycleIndex],
+                            appState.activeGame.getTossupIndex(appState.uiState.cycleIndex) + 1,
                             onTossupThrownOut
                         ),
-                    disabled: appState.game.cycles.length === 0,
+                    disabled: appState.activeGame.cycles.length === 0,
                 },
                 {
                     key: "removeBonus",
@@ -289,10 +305,10 @@ function getActionSubMenuItems(
                     onClick: () =>
                         BonusQuestionController.throwOutBonus(
                             appState,
-                            appState.game.cycles[appState.uiState.cycleIndex],
-                            appState.game.getBonusIndex(appState.uiState.cycleIndex)
+                            appState.activeGame.cycles[appState.uiState.cycleIndex],
+                            appState.activeGame.getBonusIndex(appState.uiState.cycleIndex)
                         ),
-                    disabled: appState.game.cycles.length === 0,
+                    disabled: appState.activeGame.cycles.length === 0,
                 },
             ],
         },
@@ -310,7 +326,7 @@ function getActionSubMenuItems(
                     key: "addMoreQuestions",
                     text: "Add questions...",
                     onClick: addQuestionsHandler,
-                    disabled: appState.game.cycles.length === 0,
+                    disabled: appState.activeGame.cycles.length === 0,
                 },
             ],
         },
@@ -347,6 +363,12 @@ function getExportSubMenuItems(appState: AppState): ICommandBarItemProps[] {
 
 function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
+
+    // Changing the game format isn't applicable in TMS-managed mode, where the format is set in TMS. Font moves
+    // to the View menu in that case, so Options would otherwise be left with a single, oddly-scoped item.
+    if (appState.uiState.hostSettings.disableChangeFormat) {
+        return items;
+    }
 
     items.push(
         {
@@ -547,6 +569,22 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
         },
     ]);
 
+    if (appState.uiState.hostSettings.disableChangeFormat) {
+        items = items.concat([
+            {
+                key: "viewDividerFont",
+                itemType: ContextualMenuItemType.Divider,
+            },
+            {
+                key: "font",
+                text: "Font...",
+                onClick: () => {
+                    appState.uiState.showFontDialog();
+                },
+            },
+        ]);
+    }
+
     items = items.concat([
         {
             key: "viewDivider2",
@@ -555,7 +593,7 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
         {
             key: "scoresheet",
             text: "Scoresheet...",
-            disabled: appState.game.cycles.length === 0,
+            disabled: appState.activeGame.cycles.length === 0,
             onClick: () => {
                 appState.uiState.dialogState.showScoresheetDialog();
             },
@@ -641,9 +679,14 @@ function getPlayerManagementSubMenuItems(
                 // TODO: should this be styled in a different color?
             };
 
-            const items: ICommandBarItemProps[] = isActivePlayer
-                ? [subMenuSectionItem, changeActivityItem, renameItem]
-                : [changeActivityItem, renameItem];
+            // Renaming players isn't applicable in TMS-managed mode, where players are managed in TMS.
+            const items: ICommandBarItemProps[] = uiState.hostSettings.restrictRosterChanges
+                ? isActivePlayer
+                    ? [subMenuSectionItem, changeActivityItem]
+                    : [changeActivityItem]
+                : isActivePlayer
+                    ? [subMenuSectionItem, changeActivityItem, renameItem]
+                    : [changeActivityItem, renameItem];
 
             activePlayerMenuItems.push({
                 key: `active_${teamName}_${player.name}`,
@@ -684,7 +727,7 @@ function getPlayerManagementSubMenuItems(
     //       existing action (sub vs join)
     //     - Should there be a color code for active players?
 
-    const gameMenuItemsDisabled: boolean = appState.game.cycles.length === 0;
+    const gameMenuItemsDisabled: boolean = appState.activeGame.cycles.length === 0;
 
     const addPlayerItem: ICommandBarItemProps = {
         key: "addNewPlayer",
@@ -716,9 +759,14 @@ function getPlayerManagementSubMenuItems(
 
     // When every competitor is their own team there are no teams to rename or
     // reorder, and no one to reorder within one; renaming a competitor is the
-    // player's own Rename, under "Player".
+    // player's own Rename, under "Player". Add Player and Rename Team aren't
+    // applicable in TMS-managed mode, where rosters/teams are managed in TMS.
     const items: ICommandBarItemProps[] = game.isIndividualGame
-        ? [playerActionsItem, addPlayerItem]
+        ? uiState.hostSettings.restrictRosterChanges
+            ? [playerActionsItem]
+            : [playerActionsItem, addPlayerItem]
+        : uiState.hostSettings.restrictRosterChanges
+        ? [playerActionsItem, reorderPlayersItem, reorderTeamsItem]
         : [playerActionsItem, addPlayerItem, reorderPlayersItem, reorderTeamsItem, renameTeamItem];
 
     return {
@@ -924,7 +972,7 @@ function onPlayerEnterClick(
     }
 
     const appState: AppState = item.data.appState;
-    appState.game.addInactivePlayer(item.data.activePlayer, appState.uiState.cycleIndex);
+    appState.activeGame.addInactivePlayer(item.data.activePlayer, appState.uiState.cycleIndex);
 }
 
 function onProtestTossupClick(
@@ -937,7 +985,7 @@ function onProtestTossupClick(
         return;
     }
 
-    const { game, uiState } = item.data.appState;
+    const { activeGame: game, uiState } = item.data.appState;
 
     const cycle: Cycle = game.cycles[uiState.cycleIndex];
     if (cycle?.orderedBuzzes == undefined) {
@@ -963,7 +1011,7 @@ function onProtestTossupClick(
 }
 
 function buildCopyTossupProtestInfoText(appState: AppState, cycle: Cycle, protest: ITossupProtestEvent): string {
-    const game: GameState = appState.game;
+    const game: GameState = appState.activeGame;
     const uiState: UIState = appState.uiState;
     const packetName: string = uiState.packetFilename != undefined ? `"${uiState.packetFilename}"` : "";
 
@@ -975,20 +1023,19 @@ function buildCopyTossupProtestInfoText(appState: AppState, cycle: Cycle, protes
 * **Packet Answerline**: ${tossup.answer}
 * **Player Answer**: ${protest.givenAnswer}
 * **Buzzpoint**: Word #${protest.position} (${tossup
-        .getWords(game.gameFormat)
-        .filter((w) => w.canBuzzOn)
+            .getWords(game.gameFormat)
+            .filter((w) => w.canBuzzOn)
         [protest.position].word.map((w) => w.text)
-        .join(" ")})
-* **Moderator Judgment**: ${
-        cycle.correctBuzz == undefined || cycle.correctBuzz.marker.player.teamName !== protest.teamName
+            .join(" ")})
+* **Moderator Judgment**: ${cycle.correctBuzz == undefined || cycle.correctBuzz.marker.player.teamName !== protest.teamName
             ? "Incorrect"
             : "Correct"
-    }
+        }
 * **Justification**: ${protest.reason}`;
 }
 
 function buildCopyBonusProtestInfoText(appState: AppState, cycle: Cycle, protest: IBonusProtestEvent): string {
-    const game: GameState = appState.game;
+    const game: GameState = appState.activeGame;
     const uiState: UIState = appState.uiState;
     const packetName: string = uiState.packetFilename != undefined ? `"${uiState.packetFilename}"` : "";
     const bonus: Bonus = game.packet.bonuses[protest.questionIndex];
@@ -999,11 +1046,10 @@ function buildCopyBonusProtestInfoText(appState: AppState, cycle: Cycle, protest
 * **Metadata**: ${bonus.metadata}
 * **Packet Answerline**: ${bonus.parts[protest.partIndex].answer}
 * **Player Answer**: ${protest.givenAnswer}
-* **Moderator Judgment**: ${
-        cycle.bonusAnswer === undefined || cycle.bonusAnswer.parts[protest.partIndex].points <= 0
+* **Moderator Judgment**: ${cycle.bonusAnswer === undefined || cycle.bonusAnswer.parts[protest.partIndex].points <= 0
             ? "Incorrect"
             : "Correct"
-    }
+        }
 * **Justification**: ${protest.reason}`;
 }
 
@@ -1049,7 +1095,7 @@ function onPlayerLeaveClick(
         message: `Are you sure you want to let the player "${item.data.activePlayer.name}" from team "${
             item.data.activePlayer.teamName
         }" leave the game before question #${appState.uiState.cycleIndex + 1}?`,
-        onOK: () => appState.game.cycles[appState.uiState.cycleIndex].addPlayerLeaves(item.data.activePlayer),
+        onOK: () => appState.activeGame.cycles[appState.uiState.cycleIndex].addPlayerLeaves(item.data.activePlayer),
     });
 }
 
@@ -1077,7 +1123,7 @@ function onSwapPlayerClick(
         return;
     }
 
-    const { uiState, game } = item.data.appState;
+    const { uiState, activeGame: game } = item.data.appState;
     const cycleIndex: number = uiState.cycleIndex;
     const halftimeIndex: number = Math.floor(game.gameFormat.regulationTossupCount / 2);
 
@@ -1095,8 +1141,7 @@ function onSwapPlayerClick(
     item.data.appState.uiState.dialogState.showOKCancelMessageDialog({
         title: "Substitute Player",
         message:
-            `You are substituting players outside of a normal time (beginning of the game, after halftime, overtime). Are you sure you want to substitute before question #${
-                cycleIndex + 1
+            `You are substituting players outside of a normal time (beginning of the game, after halftime, overtime). Are you sure you want to substitute before question #${cycleIndex + 1
             }?` + additionalHint,
         onOK: () => game.cycles[uiState.cycleIndex].addSwapSubstitution(item.data.player, item.data.activePlayer),
     });

@@ -41,6 +41,7 @@ import { IPlayer, Player } from "../state/TeamState";
 import { PendingGameType } from "../state/IPendingNewGame";
 import { Bonus, ITossupWord, PacketState, Tossup } from "../state/PacketState";
 import { ICustomExport } from "../state/CustomExport";
+import { IHostSettings } from "../state/IHostSettings";
 import { Cycle } from "../state/Cycle";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
 import { IPacketParserLink } from "../state/UIState";
@@ -53,6 +54,7 @@ import {
 } from "./HostGameController";
 
 export type { IHostNewGame, IHostTeam, ILiveTeam };
+import { IStatus } from "../IStatus";
 
 // Initialize Fluent UI icons when this is loaded, before the first render
 initializeIcons();
@@ -532,6 +534,10 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
             if (packet) {
                 appState.game.loadPacket(packet);
             }
+
+            // The "Packet loaded" message from this initial load has no UI surface of its own; clear it so it
+            // doesn't leak into other UI (e.g. the Add Questions dialog) that reads packetParseStatus.
+            appState.uiState.clearPacketStatus();
         }
     }, [appState, props.packet]);
     React.useEffect(() => {
@@ -792,6 +798,14 @@ export interface IModaqControlProps {
     onDarkModeChange?: (dark: boolean) => void;
 
     /**
+     * If provided, the Add Questions dialog switches to a secret-code lookup mode: instead of uploading a packet
+     * file, the user enters an ID, and this callback is given that ID and should resolve to the replacement
+     * question packet (an `IPacket`), or an `IStatus` describing why the lookup failed. MODAQ has no knowledge of
+     * how or where the question is stored; the host application owns that lookup.
+     */
+    onFetchQuestionById?: (id: string) => Promise<IPacket | IStatus>;
+
+    /**
      * The packet for the current game. This should only be set once.
      */
     packet?: IPacket;
@@ -823,6 +837,13 @@ export interface IModaqControlProps {
      * render.
      */
     storeName?: string | undefined;
+
+    /**
+     * Settings supplied by the host application to gate host-managed UI behavior: backup-only export,
+     * QBJ-only export dialog, substitutions-only roster, and host-managed game format. See
+     * {@link IHostSettings} for the individual flags.
+     */
+    hostSettings?: IHostSettings;
 
     /**
      * The URL to a Yet Another Packet Parser (YAPP) compatible service, which parses docx files. If this value isn't
@@ -1113,10 +1134,10 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
     switch (event.key.toUpperCase()) {
         case "E":
             // Go to the end of a tossup and open up the buzz menu.
-            const tossup: Tossup | undefined = appState.game.getTossup(appState.uiState.cycleIndex);
+            const tossup: Tossup | undefined = appState.activeGame.getTossup(appState.uiState.cycleIndex);
             if (tossup) {
                 // Issue is that this removes parens, so we don't have all the info we need
-                const words: ITossupWord[] = tossup.getWords(appState.game.gameFormat);
+                const words: ITossupWord[] = tossup.getWords(appState.activeGame.gameFormat);
                 const index: number = words.filter((word) => word.canBuzzOn).length - 1;
 
                 appState.uiState.setSelectedWordIndex(index);
@@ -1174,7 +1195,7 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
             // This shortcut is only supported when bouncebacks are disabled. We could add support for it later and just
             // toggle through all the fields, but the logic is slightly more complicated and very few formats use
             // bouncebacks.
-            if (appState.game.gameFormat.bonusesBounceBack) {
+            if (appState.activeGame.gameFormat.bonusesBounceBack) {
                 event.preventDefault();
                 event.stopPropagation();
 
@@ -1190,8 +1211,8 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
             // to. Reading the cycle without asking whether it exists is what
             // put "Cannot read properties of undefined (reading 'correctBuzz')"
             // on the screen instead of a reader's game.
-            const cycle: Cycle | undefined = appState.game.cycles[cycleIndex];
-            const bonus: Bonus | undefined = appState.game.getBonus(cycleIndex);
+            const cycle: Cycle | undefined = appState.activeGame.cycles[cycleIndex];
+            const bonus: Bonus | undefined = appState.activeGame.getBonus(cycleIndex);
             if (cycle?.correctBuzz == undefined || bonus == undefined) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -1274,6 +1295,22 @@ function update(appState: AppState, props: IModaqControlProps): void {
     const currentHostBuzzer = appState.uiState.hostBuzzer;
     if (queueCount !== (currentHostBuzzer?.queueCount ?? 0) || props.onWithdrawBuzz !== currentHostBuzzer?.onWithdraw) {
         appState.uiState.setHostBuzzer({ queueCount, onWithdraw: props.onWithdrawBuzz });
+    }
+
+    const nextHostSettings: IHostSettings | undefined = props.hostSettings;
+    const currentHostSettings = appState.uiState.hostSettings;
+    if (
+        (nextHostSettings?.promptBeforeExport ?? false) !== currentHostSettings.promptBeforeExport ||
+        (nextHostSettings?.onlyAllowQbjExport ?? false) !== currentHostSettings.onlyAllowQbjExport ||
+        (nextHostSettings?.restrictRosterChanges ?? false) !== currentHostSettings.restrictRosterChanges ||
+        (nextHostSettings?.disableChangeFormat ?? false) !== currentHostSettings.disableChangeFormat ||
+        nextHostSettings?.productName !== currentHostSettings.productName
+    ) {
+        appState.uiState.setHostSettings(nextHostSettings);
+    }
+
+    if (props.onFetchQuestionById !== appState.uiState.onFetchQuestionById) {
+        appState.uiState.setOnFetchQuestionById(props.onFetchQuestionById);
     }
 
     if (props.packetName !== appState.uiState.packetFilename && props.packetName !== appState.game.packet.name) {

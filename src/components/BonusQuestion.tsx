@@ -32,8 +32,8 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
     };
     const formattedLeadin: IFormattedText[] = React.useMemo(
         () =>
-            PacketState.getBonusWords(`${props.bonusIndex + 1}. ${props.bonus.leadin}`, props.appState.game.gameFormat),
-        [props.bonusIndex, props.bonus.leadin, props.appState.game.gameFormat]
+            PacketState.getBonusWords(`${props.bonusIndex + 1}. ${props.bonus.leadin}`, props.appState.activeGame.gameFormat),
+        [props.bonusIndex, props.bonus.leadin, props.appState.activeGame.gameFormat]
     );
     const [lastBonus, setLastBonus] = React.useState(props.bonus);
 
@@ -68,13 +68,6 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
     }
 
     const disabled = !props.inPlay;
-    const disableThrowOutButton: boolean =
-        disabled ||
-        props.appState.game.cycles.some(
-            (cycle) => cycle.bonusAnswer != undefined && cycle.bonusAnswer.bonusIndex > props.bonusIndex
-        );
-    const throwOutButtonTooltip: string =
-        disableThrowOutButton && !disabled ? "Cannot throw out bonus if future bonuses have events" : "Throw out bonus";
 
     const parts: JSX.Element[] = props.bonus.parts.map((bonusPartProps, index) => {
         return (
@@ -82,9 +75,9 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
                 key={index}
                 bonusPart={bonusPartProps}
                 cycle={props.cycle}
-                gameFormat={props.appState.game.gameFormat}
+                gameFormat={props.appState.activeGame.gameFormat}
                 partNumber={index + 1}
-                teamNames={props.appState.game.teamNames}
+                teamNames={props.appState.activeGame.teamNames}
                 disabled={disabled}
             />
         );
@@ -103,7 +96,7 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
                 ) : undefined;
 
                 return (
-                    <div className={classes.bonusContainer}>
+                    <div className={`${classes.bonusContainer} bonus`}>
                         <BonusProtestDialog appState={props.appState} bonus={props.bonus} cycle={props.cycle} />
                         <Stack horizontal={true}>
                             <StackItem id={bonusQuestionTextId} styles={stackItemStyles}>
@@ -123,8 +116,9 @@ export const BonusQuestion = observer(function BonusQuestion(props: IBonusQuesti
                             <StackItem className={classes.questionButtons}>
                                 <ErrataButton questionNumber={props.bonusIndex + 1} questionType="bonus" />
                                 <CancelButton
-                                    disabled={disableThrowOutButton}
-                                    tooltip={throwOutButtonTooltip}
+                                    className="throw-out-bonus"
+                                    disabled={disabled}
+                                    tooltip="Throw out bonus"
                                     onClick={throwOutClickHandler}
                                 />
                             </StackItem>

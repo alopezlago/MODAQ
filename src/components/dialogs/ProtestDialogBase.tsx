@@ -28,6 +28,7 @@ export const ProtestDialogBase = observer(function ProtestDialogBase(
         <ModalDialog title="Add Protest" visibilityStatus={props.visibilityStatus} onDismiss={cancelHandler}>
             {props.children}
             <TextField
+                inputClassName="protest-given-answer"
                 label="Given answer"
                 value={props.givenAnswer}
                 multiline={true}
@@ -35,6 +36,7 @@ export const ProtestDialogBase = observer(function ProtestDialogBase(
                 autoFocus={props.autoFocusOnGivenAnswer}
             />
             <TextField
+                inputClassName="protest-reason"
                 label="Reason for the protest"
                 value={props.reason}
                 multiline={true}

@@ -128,20 +128,12 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
             buzzSoundDetector?.stop();
         };
     }, [props.appState, props.tossup, gameFormat, isReaderFollowingEnabled, isTossupOver, useWhisperWebEngine]);
-
-    const disableThrowOutButton: boolean = props.appState.game.cycles.some(
-        (cycle) => cycle.orderedBuzzes.length > 0 && cycle.orderedBuzzes[0].tossupIndex + 1 > props.tossupNumber
-    );
-    const throwOutButtonTooltip: string = disableThrowOutButton
-        ? "Cannot throw out tossup if future tossups have events"
-        : "Throw out tossup";
-
     const correctBuzzIndex: number = props.cycle.correctBuzz?.marker.position ?? -1;
     const wrongBuzzIndexes: number[] = (props.cycle.wrongBuzzes ?? [])
         .filter((buzz) => buzz.tossupIndex === props.tossupNumber - 1)
         .map((buzz) => buzz.marker.position);
 
-    const words: ITossupWord[] = props.tossup.getWords(props.appState.game.gameFormat);
+    const words: ITossupWord[] = props.tossup.getWords(props.appState.activeGame.gameFormat);
 
     // In type-word-number mode, the space for the numbers is held open above every word so the numbers appearing
     // doesn't shift the question text. Moderators who'd rather keep the question's normal line spacing can turn
@@ -204,7 +196,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
 
     // Need tossuptext/answer in one container, X in the other
     return (
-        <div className={classes.tossupContainer}>
+        <div className={`${classes.tossupContainer} tossup`}>
             <TossupProtestDialog appState={props.appState} cycle={props.cycle} />
             <div ref={tossupTextRef}>
                 <FocusZone
@@ -226,8 +218,8 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
             <div className={classes.questionButtons}>
                 <ErrataButton questionNumber={props.tossupNumber} questionType="tossup" />
                 <CancelButton
-                    disabled={disableThrowOutButton}
-                    tooltip={throwOutButtonTooltip}
+                    className="throw-out-tossup"
+                    tooltip="Throw out tossup"
                     onClick={throwOutClickHandler}
                 />
             </div>
