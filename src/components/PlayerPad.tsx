@@ -231,7 +231,7 @@ function PlayerPadSeat(props: IPlayerPadSeatProps): JSX.Element {
                 (props.isTeamOut && !hasBuzz ? `${classes.seat} ${classes.seatOut}` : classes.seat) +
                 (props.hasBuzzer ? ` ${classes.seatHasBuzzer}` : "")
             }
-            title={props.hasBuzzer ? `${row.player.name} has the buzzer` : undefined}
+            title={props.hasBuzzer ? `${row.player.name} buzzed in` : undefined}
         >
             <span className={classes.playerName} title={row.player.name}>
                 {row.player.name}
@@ -307,7 +307,7 @@ function PlayerPadLine(props: IPlayerPadSeatProps): JSX.Element {
         >
             <span className={classes.lineName} title={row.player.name}>
                 {row.player.name}
-                {props.hasBuzzer && <span className={classes.lineTag}> has the buzzer</span>}
+                {props.hasBuzzer && <span className={classes.lineTag}> buzzed in</span>}
             </span>
             <button
                 className={`${classes.lineButton} ${classes.correctButton} ${

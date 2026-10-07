@@ -458,7 +458,9 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                             /* a transient inconsistent state shouldn't crash the reader */
                         }
                     }
-                }, 1200);
+                    // Short enough that the room sees a ruling land as it is made (Klaxon pops it over each
+                    // player's buzzer), long enough that a run of bonus-part clicks goes out as one update
+                }, 400);
             }
         );
         return () => {

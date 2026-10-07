@@ -316,7 +316,7 @@ function buildPlayerMenuItem(
             text: numbered && globalIndex < 9 ? `${globalIndex + 1}. ${player.name}` : player.name,
             // Right-aligned, so the name still reads straight down the menu: the player who has the buzzer, or one
             // who has already answered this tossup and cannot have it again.
-            secondaryText: emphasize ? "has the buzzer" : alreadyBuzzed,
+            secondaryText: emphasize ? "buzzed in" : alreadyBuzzed,
             title: alreadyBuzzed != undefined ? `${player.name} already buzzed on this tossup (${alreadyBuzzed})` : undefined,
             style: {
                 // + "20" makes the background translucent by 32/255 ~15%
