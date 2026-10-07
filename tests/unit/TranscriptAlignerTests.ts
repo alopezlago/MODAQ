@@ -1,11 +1,7 @@
 import { expect } from "chai";
 
-import {
-    ConfirmingTranscriptProcessor,
-    IncrementalTranscriptProcessor,
-    TranscriptAligner,
-    normalizeSpokenWord,
-} from "src/speech/TranscriptAligner";
+import { TranscriptAligner, UtteranceTranscriptProcessor, normalizeSpokenWord } from "src/speech/TranscriptAligner";
+import { getTokenSimilarity, tokenizeSpeechText } from "src/speech/SpeechText";
 
 // A target with a phrase ("beta gamma") that repeats, so a spoken occurrence can match a later position than
 // the reader is actually at -- the situation that lets a speculative interim overshoot.
@@ -28,6 +24,47 @@ describe("TranscriptAlignerTests", () => {
         });
     });
 
+    describe("tokenizeSpeechText", () => {
+        it("Splits hyphenated and slashed words", () => {
+            expect(tokenizeSpeechText("Franco-Prussian")).to.deep.equal(["franco", "prussian"]);
+            expect(tokenizeSpeechText("and/or")).to.deep.equal(["and", "or"]);
+            expect(tokenizeSpeechText("war—the")).to.deep.equal(["war", "the"]);
+        });
+        it("Strips punctuation, apostrophes, and abbreviation periods", () => {
+            expect(tokenizeSpeechText('"Don\'t," (U.S.)')).to.deep.equal(["dont", "us"]);
+        });
+        it("Spells out years in pairs", () => {
+            expect(tokenizeSpeechText("1848")).to.deep.equal(["eighteen", "forty", "eight"]);
+            expect(tokenizeSpeechText("1905")).to.deep.equal(["nineteen", "oh", "five"]);
+            expect(tokenizeSpeechText("1900")).to.deep.equal(["nineteen", "hundred"]);
+        });
+        it("Spells out other numbers", () => {
+            expect(tokenizeSpeechText("15")).to.deep.equal(["fifteen"]);
+            expect(tokenizeSpeechText("10,000")).to.deep.equal(["ten", "thousand"]);
+            expect(tokenizeSpeechText("3.5")).to.deep.equal(["three", "point", "five"]);
+            expect(tokenizeSpeechText("2003")).to.deep.equal(["two", "thousand", "three"]);
+        });
+        it("Spells out ordinals and decades", () => {
+            expect(tokenizeSpeechText("19th")).to.deep.equal(["nineteenth"]);
+            expect(tokenizeSpeechText("21st")).to.deep.equal(["twenty", "first"]);
+            expect(tokenizeSpeechText("1960s")).to.deep.equal(["nineteen", "sixties"]);
+        });
+    });
+
+    describe("getTokenSimilarity", () => {
+        it("Identical words are fully similar", () => {
+            expect(getTokenSimilarity("zinc", "zinc")).to.equal(1);
+        });
+        it("Spelling variants are similar", () => {
+            expect(getTokenSimilarity("gray", "grey")).to.be.at.least(0.7);
+            expect(getTokenSimilarity("chaikovsky", "tchaikovsky")).to.be.at.least(0.8);
+        });
+        it("Different short words aren't similar", () => {
+            expect(getTokenSimilarity("in", "on")).to.be.below(0.65);
+            expect(getTokenSimilarity("the", "to")).to.be.below(0.65);
+        });
+    });
+
     describe("processTranscript", () => {
         it("Initial position is -1", () => {
             const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
@@ -38,6 +75,12 @@ describe("TranscriptAlignerTests", () => {
             expect(aligner.processTranscript("In one experiment")).to.equal(2);
             expect(aligner.processTranscript("this scientist shined")).to.equal(5);
         });
+        it("Follows word by word", () => {
+            const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
+            questionWords.forEach((word, index) => {
+                expect(aligner.processTranscript(word)).to.equal(index);
+            });
+        });
         it("Ignores punctuation and casing differences", () => {
             const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
             expect(aligner.processTranscript("in ONE experiment this")).to.equal(3);
@@ -46,7 +89,17 @@ describe("TranscriptAlignerTests", () => {
             const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
 
             // "shined" misheard as "shy and"; the aligner should pick back up at "light"
-            expect(aligner.processTranscript("this scientist shy and light on a zinc")).to.equal(9);
+            expect(aligner.processTranscript("In one experiment this scientist shy and light on a zinc")).to.equal(9);
+        });
+        it("Keeps going through scattered misrecognitions", () => {
+            const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
+            aligner.processTranscript("In one experiment");
+
+            // Every other content word is wrong, so there's never a run of consecutive matches; the alignment
+            // still lines up the words that did match
+            expect(
+                aligner.processTranscript("this signed his shined light on a sink plate to demonstrate the")
+            ).to.equal(13);
         });
         it("Handles a stumble that repeats recent words", () => {
             const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
@@ -58,25 +111,47 @@ describe("TranscriptAlignerTests", () => {
         });
         it("Handles a stumbled word fragment", () => {
             const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
-            aligner.processTranscript("In one experiment this scientist shined light on a zinc plate to demonstrate the photo");
+            aligner.processTranscript(
+                "In one experiment this scientist shined light on a zinc plate to demonstrate the"
+            );
+            expect(aligner.currentPosition).to.equal(13);
 
-            // The fragment "photo" matches "photoelectric" via the prefix rule
-            expect(aligner.currentPosition).to.equal(questionWords.indexOf("photoelectric"));
-
-            // Re-reading the stumbled word shouldn't move us past it, and the rest of the reading should continue
-            // from there
+            // Re-reading after a fragment continues from there
+            aligner.processTranscript("photo");
             expect(aligner.processTranscript("the photoelectric effect")).to.equal(questionWords.length - 1);
         });
         it("Matches slightly misrecognized long words", () => {
             const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
             expect(aligner.processTranscript("in one experimence")).to.equal(2);
         });
+        it("Matches a hyphenated word read as two words", () => {
+            const aligner: TranscriptAligner = new TranscriptAligner("the Franco-Prussian War ended".split(" "));
+            expect(aligner.processTranscript("the franco prussian war")).to.equal(2);
+        });
+        it("Matches a word the recognizer split in two", () => {
+            const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
+            aligner.processTranscript(
+                "In one experiment this scientist shined light on a zinc plate to demonstrate the"
+            );
+            expect(aligner.processTranscript("photo electric effect")).to.equal(questionWords.length - 1);
+        });
+        it("Matches a year written as digits when it's heard as words, and vice versa", () => {
+            const text: string[] = "In 1848 revolutions spread across Europe".split(" ");
+
+            const wordsAligner: TranscriptAligner = new TranscriptAligner(text);
+            expect(wordsAligner.processTranscript("in eighteen forty eight revolutions")).to.equal(2);
+
+            const digitsAligner: TranscriptAligner = new TranscriptAligner(
+                "In eighteen forty-eight revolutions".split(" ")
+            );
+            expect(digitsAligner.processTranscript("in 1848 revolutions")).to.equal(3);
+        });
         it("Doesn't fuzzily match short words", () => {
             const aligner: TranscriptAligner = new TranscriptAligner(["a", "cat", "sat"]);
             expect(aligner.processTranscript("b")).to.equal(-1);
             expect(aligner.processTranscript("can")).to.equal(-1);
         });
-        it("Never moves backwards", () => {
+        it("Doesn't move backwards on re-heard words", () => {
             const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
             aligner.processTranscript("In one experiment this scientist shined light");
             const position: number = aligner.currentPosition;
@@ -98,12 +173,14 @@ describe("TranscriptAlignerTests", () => {
             ).split(" ");
             const aligner: TranscriptAligner = new TranscriptAligner(text);
 
-            aligner.processTranscript("Sulfides lost from");
+            aligner.processTranscript("Sulfides lost from", 1000);
             expect(aligner.currentPosition).to.equal(2);
 
-            // The recognizer mangled a long stretch and the reader is now far ahead; several consecutive words
-            // agreeing at the new location resync the position
-            aligner.processTranscript("Regions of cracked sandstone can be perched");
+            // The recognizer mangled a long stretch and the reader is now far ahead; several words agreeing at the
+            // new location resync the position
+            aligner.processTranscript("boks were structures and the super jean accumulate it this", 4000);
+            aligner.processTranscript("entity witch separate oxide processes from reducing", 6000);
+            aligner.processTranscript("Regions of cracked sandstone can be perched", 8000);
             expect(aligner.currentPosition).to.equal(text.indexOf("perched"));
         });
         it("Ignores unrelated speech", () => {
@@ -126,33 +203,22 @@ describe("TranscriptAlignerTests", () => {
             // Continuing normally still works afterwards
             expect(aligner.processTranscript("shined light")).to.equal(6);
         });
-        it("A single dropped word recovers with two agreeing words", () => {
+        it("A single dropped word recovers on the next content word", () => {
             const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
             aligner.processTranscript("In one experiment this scientist");
 
-            // The recognizer missed "shined"; "light" alone is tentative, and "on" right after confirms the
-            // near skip
+            // The recognizer missed "shined"
             expect(aligner.processTranscript("light on")).to.equal(7);
         });
-        it("A far skip needs three agreeing words", () => {
+        it("A far skip needs more than a couple of weak words", () => {
             const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
             aligner.processTranscript("In one experiment this scientist");
 
-            // The recognizer missed "shined light"; two matching words further ahead aren't enough...
+            // The recognizer missed "shined light"; "on a" further ahead isn't enough...
             expect(aligner.processTranscript("on a")).to.equal(4);
 
-            // ...but a third agreeing word commits the skip
+            // ...but a distinctive word agreeing with them commits the skip
             expect(aligner.processTranscript("zinc")).to.equal(9);
-        });
-        it("A distinctive word match needs more words to skip far ahead", () => {
-            const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
-            aligner.processTranscript("In one experiment this scientist", 1000);
-
-            // A few seconds later the reader is at "demonstrate" (a plausible distance for the elapsed time).
-            // Even longer words can repeat within a question, so a skip match alone doesn't move the position,
-            // and far skips need three agreeing words.
-            expect(aligner.processTranscript("demonstrate the", 4000)).to.equal(4);
-            expect(aligner.processTranscript("photoelectric", 4500)).to.equal(questionWords.indexOf("photoelectric"));
         });
         it("A re-heard repeated phrase doesn't jump to its next occurrence", () => {
             const text: string[] = (
@@ -171,51 +237,64 @@ describe("TranscriptAlignerTests", () => {
             // Reading on normally still works
             expect(aligner.processTranscript("A man at this place watches")).to.equal(17);
         });
+        it("A re-heard phrase doesn't skip a word to reach its next occurrence", () => {
+            const aligner: TranscriptAligner = new TranscriptAligner(repeatedPhraseWords);
+            expect(aligner.processTranscript("alpha beta gamma")).to.equal(2);
+            expect(aligner.processTranscript("beta gamma")).to.equal(2);
+            expect(aligner.processTranscript("delta beta gamma")).to.equal(5);
+        });
         it("Recognizer spelling differences still match", () => {
             const aligner: TranscriptAligner = new TranscriptAligner(["the", "grey", "eyes"]);
 
             // Speech recognizers normalize spelling ("gray" for "grey"); that shouldn't break the next-word match
             expect(aligner.processTranscript("the gray eyes")).to.equal(2);
         });
-        it("Rejects a far jump that outpaces the reading speed in a short time", () => {
+        it("Rejects a far jump that outpaces the reading speed", () => {
             const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
             aligner.processTranscript("In one", 1000);
 
-            // "demonstrate the photoelectric effect" matches far ahead, but only 0.2s passed — the reader
-            // couldn't have read that far that fast, so the jump needs more evidence than these words provide
-            expect(aligner.processTranscript("demonstrate the photoelectric effect", 1200)).to.equal(1);
+            // "demonstrate the photoelectric" matches far ahead, but only 0.2s passed and only three words were
+            // heard -- the reader couldn't have read that far that fast, so they aren't enough evidence
+            expect(aligner.processTranscript("demonstrate the photoelectric", 1200)).to.equal(1);
         });
         it("Allows the same far jump once enough time has passed (resync from being stuck)", () => {
             const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
             aligner.processTranscript("In one", 1000);
 
-            // The position stalled for 5s while the reader kept going; the jump is now plausible and the stuck
-            // position should resync
-            expect(aligner.processTranscript("demonstrate the photoelectric effect", 6000)).to.equal(15);
+            // The position stalled for 5s while the reader kept going; the jump is now plausible
+            expect(aligner.processTranscript("demonstrate the photoelectric", 6000)).to.equal(14);
         });
-        it("An unconfirmed pending skip is discarded", () => {
-            const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
-            aligner.processTranscript("In one experiment this scientist");
+        it("Recovers from a wrong jump ahead when the reading continues behind it", () => {
+            const text: string[] = (
+                "This author wrote about a lighthouse keeper whose daughter marries a sailor. " +
+                "In another novel by this author a lighthouse keeper whose daughter rows out in a storm " +
+                "saves a ship and later becomes famous for it before she dies of consumption"
+            ).split(" ");
+            const aligner: TranscriptAligner = new TranscriptAligner(text);
+            aligner.processTranscript("This author wrote about", 1000);
 
-            // "on" suggests a skip, but unrelated speech follows, so the skip never happens
-            aligner.processTranscript("on whatever");
-            expect(aligner.currentPosition).to.equal(4);
+            // Simulate an earlier bad jump to the second "lighthouse keeper whose daughter"
+            const secondKeeper: number = text.lastIndexOf("daughter");
+            aligner.setState({ ...aligner.getState(), tokenPosition: secondKeeper });
+
+            // The reader is really in the first sentence and keeps reading it
+            aligner.processTranscript("a lighthouse keeper whose daughter marries a sailor", 3000);
+            expect(aligner.currentPosition).to.equal(text.indexOf("sailor."));
         });
     });
 
-    describe("IncrementalTranscriptProcessor", () => {
-        it("Growing partial transcripts don't double-count words", () => {
-            const processor: IncrementalTranscriptProcessor = new IncrementalTranscriptProcessor(
+    describe("UtteranceTranscriptProcessor", () => {
+        it("Advances as partial transcripts grow", () => {
+            const processor: UtteranceTranscriptProcessor = new UtteranceTranscriptProcessor(
                 new TranscriptAligner(questionWords)
             );
 
-            // The same utterance grows as the recognizer hears more; words shouldn't be processed twice
             expect(processor.process("u1", "In", false).position).to.equal(0);
             expect(processor.process("u1", "In one", false).position).to.equal(1);
             expect(processor.process("u1", "In one experiment", false).position).to.equal(2);
         });
         it("Reports only new words", () => {
-            const processor: IncrementalTranscriptProcessor = new IncrementalTranscriptProcessor(
+            const processor: UtteranceTranscriptProcessor = new UtteranceTranscriptProcessor(
                 new TranscriptAligner(questionWords)
             );
 
@@ -225,125 +304,84 @@ describe("TranscriptAlignerTests", () => {
             // The repeated transcript has no new words
             expect(processor.process("u1", "In one correct", false).newWords).to.deep.equal([]);
         });
-        it("Final transcript processes remaining words and starts a new utterance", () => {
-            const processor: IncrementalTranscriptProcessor = new IncrementalTranscriptProcessor(
+        it("A final transcript ends the utterance; the next one continues from it", () => {
+            const processor: UtteranceTranscriptProcessor = new UtteranceTranscriptProcessor(
                 new TranscriptAligner(questionWords)
             );
 
             processor.process("u1", "In one", false);
             expect(processor.process("u1", "In one experiment", true).position).to.equal(2);
-
-            // A new utterance starts fresh; its words are all new
             expect(processor.process("u2", "this scientist", false).position).to.equal(4);
         });
-        it("New utterance key resets consumption", () => {
-            const processor: IncrementalTranscriptProcessor = new IncrementalTranscriptProcessor(
+        it("A new utterance key keeps the unfinalized previous utterance's position", () => {
+            const processor: UtteranceTranscriptProcessor = new UtteranceTranscriptProcessor(
                 new TranscriptAligner(questionWords)
             );
 
             processor.process("u1", "In one experiment", false);
-
-            // The recognizer never finalized u1, but a new utterance arrived; all of its words should process
             expect(processor.process("u2", "this scientist shined", false).position).to.equal(5);
         });
-        it("Shortened revisions don't reprocess words", () => {
-            const processor: IncrementalTranscriptProcessor = new IncrementalTranscriptProcessor(
-                new TranscriptAligner(questionWords)
-            );
-
-            processor.process("u1", "In one experiment", false);
-
-            // The recognizer revised its guess to fewer words; nothing new should process
-            expect(processor.process("u1", "In one", false).position).to.equal(2);
-
-            // And re-growing to the same length shouldn't re-process "experiment"
-            expect(processor.process("u1", "In one experiment", false).position).to.equal(2);
-
-            // But growing beyond it should pick up the new word
-            expect(processor.process("u1", "In one experiment this", false).position).to.equal(3);
-        });
-    });
-
-    describe("TranscriptAligner commit/rollback", () => {
-        it("rollbackToCommitted restores the position to the last commit", () => {
-            const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
-
-            expect(aligner.processTranscript("In one experiment")).to.equal(2);
-            aligner.commit();
-
-            // Advance past the commit, then roll back; the advance is discarded
-            expect(aligner.processTranscript("this scientist shined")).to.equal(5);
-            aligner.rollbackToCommitted();
-            expect(aligner.currentPosition).to.equal(2);
-
-            // After rolling back, the aligner keeps working from the committed position
-            expect(aligner.processTranscript("this scientist")).to.equal(4);
-        });
-        it("rollbackToCommitted with no commit returns to the start", () => {
-            const aligner: TranscriptAligner = new TranscriptAligner(questionWords);
-
-            expect(aligner.processTranscript("In one experiment")).to.equal(2);
-            aligner.rollbackToCommitted();
-            expect(aligner.currentPosition).to.equal(-1);
-        });
-    });
-
-    describe("ConfirmingTranscriptProcessor", () => {
-        it("Advances on interims like the incremental processor for clean reading", () => {
-            const processor: ConfirmingTranscriptProcessor = new ConfirmingTranscriptProcessor(
-                new TranscriptAligner(questionWords)
-            );
-
-            expect(processor.process("u1", "In", false).position).to.equal(0);
-            expect(processor.process("u1", "In one", false).position).to.equal(1);
-            expect(processor.process("u1", "In one experiment", false).position).to.equal(2);
-        });
         it("Retracts an interim overshoot when the interim is revised", () => {
-            const processor: ConfirmingTranscriptProcessor = new ConfirmingTranscriptProcessor(
+            const processor: UtteranceTranscriptProcessor = new UtteranceTranscriptProcessor(
                 new TranscriptAligner(repeatedPhraseWords)
             );
 
-            // First utterance is confirmed at "gamma" (index 2)
             expect(processor.process("u1", "alpha beta gamma", true).position).to.equal(2);
 
-            // A speculative interim adds the repeated phrase "beta gamma", which matches the LATER occurrence
-            // (indices 4-5), overshooting to index 5
+            // A speculative interim runs ahead to the second "beta gamma"...
             expect(processor.process("u2", "delta beta gamma", false).position).to.equal(5);
 
-            // The recognizer revises the interim back to just "delta"; re-evaluating from the confirmed position
-            // retracts the overshoot to "delta" (index 3)
+            // ...then the recognizer revises it back to just "delta"; the overshoot is undone
             expect(processor.process("u2", "delta", false).position).to.equal(3);
-
-            // Contrast: the incremental processor stays stuck at the overshoot, since it never reprocesses
-            const incremental: IncrementalTranscriptProcessor = new IncrementalTranscriptProcessor(
-                new TranscriptAligner(repeatedPhraseWords)
-            );
-            incremental.process("u1", "alpha beta gamma", true);
-            expect(incremental.process("u2", "delta beta gamma", false).position).to.equal(5);
-            expect(incremental.process("u2", "delta", false).position).to.equal(5);
         });
-        it("A finalized utterance commits, so a later utterance can't retract past it", () => {
-            const processor: ConfirmingTranscriptProcessor = new ConfirmingTranscriptProcessor(
+        it("A revised word is reprocessed", () => {
+            const processor: UtteranceTranscriptProcessor = new UtteranceTranscriptProcessor(
+                new TranscriptAligner(questionWords)
+            );
+
+            // The recognizer first hears "this scientist cried", then corrects it to "shined"
+            expect(processor.process("u1", "In one experiment this scientist cried", false).position).to.equal(4);
+            expect(processor.process("u1", "In one experiment this scientist shined", false).position).to.equal(5);
+        });
+        it("Follows a long utterance that grows word by word while earlier words get reformatted", () => {
+            // Safari reports each utterance as one growing, formatted transcript, and it revises earlier words as
+            // it hears more. Spelling out numbers already makes "ten" and "10" the same token, so revise a word
+            // into a different one to force the transcript after it to be reprocessed.
+            const text: string[] = [];
+            for (let sentence = 0; sentence < 6; sentence++) {
+                text.push(
+                    ..."For ten points name this author of a novel about a whale and its obsessive captain".split(" "),
+                    `clue${sentence}`
+                );
+            }
+
+            const processor: UtteranceTranscriptProcessor = new UtteranceTranscriptProcessor(
+                new TranscriptAligner(text, 0)
+            );
+            const startTime: number = Date.now();
+            let position = -1;
+            for (let i = 0; i < text.length; i++) {
+                const heard: string[] = text.slice(0, i + 1);
+                if (i % 7 === 0) {
+                    // Revise an early word, which changes the transcript near its start
+                    heard[1] = "tin";
+                }
+
+                position = processor.process("u1", heard.join(" "), false, i * 300).position;
+            }
+
+            expect(position).to.equal(text.length - 1);
+            expect(Date.now() - startTime).to.be.below(2000);
+        });
+        it("Revisions never retract past a finalized utterance", () => {
+            const processor: UtteranceTranscriptProcessor = new UtteranceTranscriptProcessor(
                 new TranscriptAligner(questionWords)
             );
 
             expect(processor.process("u1", "In one experiment", true).position).to.equal(2);
-
-            // A new utterance's interim is re-evaluated from the committed position (2), not from scratch
             expect(processor.process("u2", "this scientist", false).position).to.equal(4);
-            // Shrinking the interim only rolls back to the commit, never before it
             expect(processor.process("u2", "this", false).position).to.equal(3);
             expect(processor.process("u2", "", false).position).to.equal(2);
-        });
-        it("Reports only the new words of an utterance, for buzz-resolution detection", () => {
-            const processor: ConfirmingTranscriptProcessor = new ConfirmingTranscriptProcessor(
-                new TranscriptAligner(questionWords)
-            );
-
-            expect(processor.process("u1", "In one", false).newWords).to.deep.equal(["In", "one"]);
-            expect(processor.process("u1", "In one experiment", false).newWords).to.deep.equal(["experiment"]);
-            // Re-evaluating the same transcript reports nothing new even though the whole utterance is re-aligned
-            expect(processor.process("u1", "In one experiment", false).newWords).to.deep.equal([]);
         });
     });
 });

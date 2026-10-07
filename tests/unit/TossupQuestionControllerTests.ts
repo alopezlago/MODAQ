@@ -38,7 +38,7 @@ describe("TossupQuestionControllerTests", () => {
         });
     });
 
-    describe("openBuzzMenuAtBuzzPoint", () => {
+    describe("handleBuzzShortcut", () => {
         function createAppStateWithPacket(): AppState {
             const appState: AppState = new AppState();
             appState.game.addNewPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
@@ -46,38 +46,379 @@ describe("TossupQuestionControllerTests", () => {
             const packet: PacketState = new PacketState();
             packet.setTossups([new Tossup("This is the first question", "Answer")]);
             appState.game.loadPacket(packet);
+            appState.uiState.setTrackReaderWithMicrophone(true);
             return appState;
         }
 
-        it("Anchors to the live reading position when the mouse hasn't been on the text", () => {
+        it("Places the buzz point at the live reading position and opens the pad", () => {
             const appState: AppState = createAppStateWithPacket();
             appState.uiState.setReaderFollowerLivePosition(3);
 
-            TossupQuestionController.openBuzzMenuAtBuzzPoint(appState, /* now */ 1000000);
+            TossupQuestionController.handleBuzzShortcut(appState, /* now */ 1000000);
 
             expect(appState.uiState.selectedWordIndex).to.equal(3);
-            expect(appState.uiState.buzzMenuState.visible).to.be.true;
+            expect(appState.uiState.buzzPointPlacement).to.not.be.undefined;
         });
-        it("Keeps the selection when the mouse was recently on the text", () => {
+        it("A second press keeps the pad open at the placed word", () => {
+            const appState: AppState = createAppStateWithPacket();
+            appState.uiState.setReaderFollowerLivePosition(3);
+
+            TossupQuestionController.handleBuzzShortcut(appState, 1000000);
+            TossupQuestionController.moveBuzzPoint(appState, -1);
+            TossupQuestionController.handleBuzzShortcut(appState, 1000500);
+
+            expect(appState.uiState.selectedWordIndex).to.equal(2);
+            expect(appState.uiState.buzzPointPlacement).to.not.be.undefined;
+        });
+        it("A buzzer sound opens the pad at the reader's position, and Space confirms it", () => {
+            const appState: AppState = createAppStateWithPacket();
+            appState.uiState.setReaderFollowerLivePosition(2);
+
+            TossupQuestionController.handleBuzzSound(appState, 1000000);
+            expect(appState.uiState.selectedWordIndex).to.equal(2);
+            expect(appState.uiState.buzzPointPlacement?.startedByBuzzSound).to.be.true;
+
+            appState.uiState.setReaderFollowerLivePosition(3);
+            TossupQuestionController.handleBuzzShortcut(appState, 1000400);
+            expect(appState.uiState.selectedWordIndex).to.equal(2);
+            expect(appState.uiState.buzzPointPlacement?.startedByBuzzSound).to.be.false;
+        });
+        it("Clicking a word opens the pad there; the reader's position doesn't move it", () => {
+            const appState: AppState = createAppStateWithPacket();
+            appState.uiState.setReaderFollowerLivePosition(1);
+
+            TossupQuestionController.placeBuzzPointAt(appState, 4, /* anchorToWord */ true, 1000000);
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, 2, 1000100);
+
+            expect(appState.uiState.selectedWordIndex).to.equal(4);
+            expect(appState.uiState.buzzPointPlacement).to.not.be.undefined;
+        });
+        it("Applies the buzz point offset", () => {
+            const appState: AppState = createAppStateWithPacket();
+            appState.uiState.setReaderFollowerLivePosition(3);
+            appState.uiState.setBuzzPointWordOffset(-2);
+
+            TossupQuestionController.handleBuzzShortcut(appState, 1000000);
+
+            expect(appState.uiState.selectedWordIndex).to.equal(1);
+        });
+        it("With the microphone on, starts at the reader's position even if another word is selected", () => {
             const appState: AppState = createAppStateWithPacket();
             appState.uiState.setReaderFollowerLivePosition(3);
             appState.uiState.setSelectedWordIndex(1);
 
-            const now = 1000000;
-            appState.uiState.setLastQuestionTextMouseMoveTime(now - 500);
-            TossupQuestionController.openBuzzMenuAtBuzzPoint(appState, now);
+            TossupQuestionController.handleBuzzShortcut(appState, 1000000);
 
-            expect(appState.uiState.selectedWordIndex).to.equal(1);
-            expect(appState.uiState.buzzMenuState.visible).to.be.true;
+            expect(appState.uiState.selectedWordIndex).to.equal(3);
         });
-        it("Falls back to the end of the question with no reading position or selection", () => {
+        it("With the microphone on and nothing recognized yet, starts at the first word", () => {
             const appState: AppState = createAppStateWithPacket();
 
-            TossupQuestionController.openBuzzMenuAtBuzzPoint(appState, /* now */ 1000000);
+            TossupQuestionController.handleBuzzShortcut(appState, 1000000);
+
+            expect(appState.uiState.selectedWordIndex).to.equal(0);
+        });
+        it("With the microphone off, falls back to the end of the question with no selection", () => {
+            const appState: AppState = createAppStateWithPacket();
+            appState.uiState.setTrackReaderWithMicrophone(false);
+
+            TossupQuestionController.handleBuzzShortcut(appState, /* now */ 1000000);
+
+            // "This is the first question" plus the end-of-question marker; the last buzzable index is 5
+            expect(appState.uiState.selectedWordIndex).to.equal(5);
+        });
+        it("A stale placement is replaced by a new one at the reader's position", () => {
+            const appState: AppState = createAppStateWithPacket();
+            appState.uiState.setReaderFollowerLivePosition(1);
+            TossupQuestionController.handleBuzzShortcut(appState, 1000000);
+
+            appState.uiState.setReaderFollowerLivePosition(4);
+            TossupQuestionController.handleBuzzShortcut(appState, 1010000);
+
+            expect(appState.uiState.selectedWordIndex).to.equal(4);
+            expect(appState.uiState.buzzPointPlacement).to.not.be.undefined;
+        });
+        it("Escape cancels placement and clears the selection", () => {
+            const appState: AppState = createAppStateWithPacket();
+            appState.uiState.setReaderFollowerLivePosition(3);
+            TossupQuestionController.handleBuzzShortcut(appState, 1000000);
+
+            TossupQuestionController.cancelBuzzPointPlacement(appState);
+
+            expect(appState.uiState.buzzPointPlacement).to.be.undefined;
+            expect(appState.uiState.selectedWordIndex).to.equal(-1);
+        });
+        it("Moving to another question ends placement", () => {
+            const appState: AppState = createAppStateWithPacket();
+            appState.uiState.setReaderFollowerLivePosition(3);
+            TossupQuestionController.handleBuzzShortcut(appState, 1000000);
+
+            appState.uiState.nextCycle();
+
+            expect(appState.uiState.buzzPointPlacement).to.be.undefined;
+        });
+    });
+
+    describe("buzz menu option", () => {
+        function createGame(): AppState {
+            const appState: AppState = new AppState();
+            appState.game.addNewPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
+
+            const packet: PacketState = new PacketState();
+            packet.setTossups([new Tossup("This is the first question", "Answer")]);
+            appState.game.loadPacket(packet);
+            appState.uiState.setTrackReaderWithMicrophone(true);
+            return appState;
+        }
+
+        it("Is off by default", () => {
+            expect(new AppState().uiState.useBuzzMenu).to.be.false;
+        });
+        it("With the buzz menu, the second Space opens it on the placed word", () => {
+            const appState: AppState = createGame();
+            appState.uiState.toggleUseBuzzMenu();
+            appState.uiState.setReaderFollowerLivePosition(3);
+
+            TossupQuestionController.handleBuzzShortcut(appState, 1000000);
+            expect(appState.uiState.buzzMenuState.visible).to.be.false;
+            TossupQuestionController.moveBuzzPoint(appState, -1);
+            TossupQuestionController.handleBuzzShortcut(appState, 1000500);
+
+            expect(appState.uiState.buzzMenuState.visible).to.be.true;
+            expect(appState.uiState.buzzMenuState.clearSelectedWordOnClose).to.be.true;
+            expect(appState.uiState.selectedWordIndex).to.equal(2);
+            expect(appState.uiState.buzzPointPlacement).to.be.undefined;
+        });
+        it("Without the buzz menu, the second Space keeps the pad open", () => {
+            const appState: AppState = createGame();
+            appState.uiState.setReaderFollowerLivePosition(3);
+
+            TossupQuestionController.handleBuzzShortcut(appState, 1000000);
+            TossupQuestionController.handleBuzzShortcut(appState, 1000500);
+
+            expect(appState.uiState.buzzMenuState.visible).to.be.false;
+            expect(appState.uiState.buzzPointPlacement).to.not.be.undefined;
+        });
+        it("With the buzz menu, E opens it at the end of the question", () => {
+            const appState: AppState = createGame();
+            appState.uiState.toggleUseBuzzMenu();
+
+            TossupQuestionController.placeBuzzPointAtEnd(appState);
 
             // "This is the first question" plus the end-of-question marker; the last buzzable index is 5
             expect(appState.uiState.selectedWordIndex).to.equal(5);
             expect(appState.uiState.buzzMenuState.visible).to.be.true;
+            expect(appState.uiState.buzzPointPlacement).to.be.undefined;
+        });
+        it("The reader's position doesn't move the selected word while the buzz menu is open", () => {
+            const appState: AppState = createGame();
+            appState.uiState.setSelectedWordIndex(2);
+            appState.uiState.showBuzzMenu(/* clearSelectedWordOnClose */ true);
+
+            TossupQuestionController.updateBuzzPointFromReader(appState, 4);
+            expect(appState.uiState.selectedWordIndex).to.equal(2);
+        });
+    });
+
+    describe("catchUpBuzzPointPlacement", () => {
+        function startPlacement(livePosition: number): AppState {
+            const appState: AppState = new AppState();
+            const packet: PacketState = new PacketState();
+            packet.setTossups([new Tossup("One two three four five six seven eight", "Answer")]);
+            appState.game.loadPacket(packet);
+            appState.uiState.setTrackReaderWithMicrophone(true);
+            appState.uiState.setReaderFollowerLivePosition(livePosition);
+            TossupQuestionController.handleBuzzShortcut(appState, /* now */ 1000000);
+            return appState;
+        }
+
+        it("Words recognized just after Space move the buzz point forward", () => {
+            const appState: AppState = startPlacement(2);
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, 4, 1000400);
+            expect(appState.uiState.selectedWordIndex).to.equal(4);
+        });
+        it("A word or two recognized long after Space doesn't move it", () => {
+            const appState: AppState = startPlacement(2);
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, 4, 1005000);
+            expect(appState.uiState.selectedWordIndex).to.equal(2);
+            expect(appState.uiState.buzzPointPlacement).to.not.be.undefined;
+        });
+        it("Reading clearly resuming after Space drops the placement", () => {
+            const appState: AppState = startPlacement(2);
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, 6, 1005000);
+            expect(appState.uiState.buzzPointPlacement).to.be.undefined;
+            expect(appState.uiState.selectedWordIndex).to.equal(-1);
+        });
+        it("Doesn't override a buzz point the moderator moved", () => {
+            const appState: AppState = startPlacement(2);
+            TossupQuestionController.moveBuzzPoint(appState, -1);
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, 4, 1000400);
+            expect(appState.uiState.selectedWordIndex).to.equal(1);
+        });
+        it("Doesn't move it backwards", () => {
+            const appState: AppState = startPlacement(2);
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, 1, 1000400);
+            expect(appState.uiState.selectedWordIndex).to.equal(2);
+        });
+    });
+
+    describe("recordPlayerPadBuzz", () => {
+        function createGame(): AppState {
+            const appState: AppState = new AppState();
+            appState.game.addNewPlayers([new Player("Alice", "Alpha", true), new Player("Bob", "Beta", true)]);
+
+            const packet: PacketState = new PacketState();
+            packet.setTossups([new Tossup("One two three four five six seven eight", "Answer")]);
+            appState.game.loadPacket(packet);
+            return appState;
+        }
+
+        it("Records a correct buzz at the reader's position, with the offset", () => {
+            const appState: AppState = createGame();
+            appState.uiState.setTrackReaderWithMicrophone(true);
+            appState.uiState.setReaderFollowerLivePosition(4);
+            appState.uiState.setBuzzPointWordOffset(-1);
+
+            expect(TossupQuestionController.recordPlayerPadBuzz(appState, 0, /* isCorrect */ true)).to.be.true;
+
+            const cycle: Cycle = appState.game.cycles[0];
+            expect(cycle.correctBuzz?.marker.player.name).to.equal("Alice");
+            expect(cycle.correctBuzz?.marker.position).to.equal(3);
+        });
+        it("Records a wrong buzz for the player at that index", () => {
+            const appState: AppState = createGame();
+            appState.uiState.setTrackReaderWithMicrophone(true);
+            appState.uiState.setReaderFollowerLivePosition(2);
+
+            TossupQuestionController.recordPlayerPadBuzz(appState, 1, /* isCorrect */ false);
+
+            const cycle: Cycle = appState.game.cycles[0];
+            expect(cycle.wrongBuzzes?.length).to.equal(1);
+            expect(cycle.wrongBuzzes?.[0].marker.player.name).to.equal("Bob");
+            expect(cycle.wrongBuzzes?.[0].marker.position).to.equal(2);
+        });
+        it("Uses the placed buzz point after Space, and ends placement", () => {
+            const appState: AppState = createGame();
+            appState.uiState.setTrackReaderWithMicrophone(true);
+            appState.uiState.setReaderFollowerLivePosition(4);
+            TossupQuestionController.handleBuzzShortcut(appState, 1000000);
+            TossupQuestionController.moveBuzzPoint(appState, -2);
+
+            TossupQuestionController.recordPlayerPadBuzz(appState, 0, /* isCorrect */ true);
+
+            expect(appState.game.cycles[0].correctBuzz?.marker.position).to.equal(2);
+            expect(appState.uiState.buzzPointPlacement).to.be.undefined;
+            expect(appState.uiState.selectedWordIndex).to.equal(-1);
+        });
+        it("Without the microphone, uses the end of the question when nothing is selected", () => {
+            const appState: AppState = createGame();
+
+            TossupQuestionController.recordPlayerPadBuzz(appState, 1, /* isCorrect */ false);
+
+            // Eight words plus the end-of-question marker
+            expect(appState.game.cycles[0].wrongBuzzes?.[0].marker.position).to.equal(8);
+        });
+        it("Pressing a player's wrong shortcut again removes their wrong buzz", () => {
+            const appState: AppState = createGame();
+            appState.uiState.setTrackReaderWithMicrophone(true);
+            appState.uiState.setReaderFollowerLivePosition(2);
+            TossupQuestionController.recordPlayerPadBuzz(appState, 1, /* isCorrect */ false);
+
+            // The reader has moved on; the second press still finds Bob's buzz
+            appState.uiState.setReaderFollowerLivePosition(5);
+            TossupQuestionController.recordPlayerPadBuzz(appState, 1, /* isCorrect */ false);
+
+            expect(appState.game.cycles[0].wrongBuzzes ?? []).to.be.empty;
+        });
+        it("A protest starts for a player who buzzed, at their buzz", () => {
+            const appState: AppState = createGame();
+            appState.uiState.setTrackReaderWithMicrophone(true);
+            appState.uiState.setReaderFollowerLivePosition(2);
+            TossupQuestionController.recordPlayerPadBuzz(appState, 1, /* isCorrect */ false);
+
+            TossupQuestionController.togglePlayerPadProtest(appState, 1);
+
+            expect(appState.uiState.pendingTossupProtestEvent?.teamName).to.equal("Beta");
+            expect(appState.uiState.pendingTossupProtestEvent?.position).to.equal(2);
+        });
+        it("No protest for a player who didn't buzz", () => {
+            const appState: AppState = createGame();
+            TossupQuestionController.togglePlayerPadProtest(appState, 0);
+            expect(appState.uiState.pendingTossupProtestEvent).to.be.undefined;
+        });
+        it("An index past the players does nothing", () => {
+            const appState: AppState = createGame();
+            expect(TossupQuestionController.recordPlayerPadBuzz(appState, 5, /* isCorrect */ true)).to.be.false;
+            expect(appState.game.cycles[0].correctBuzz).to.be.undefined;
+        });
+    });
+
+    describe("findWordOnAdjacentLine", () => {
+        // Three lines of words, 20px tall, laid out like rendered text:
+        //   0 1 2 3
+        //   4 5 6
+        //   7 8
+        const boxes: TossupQuestionController.IWordBox[] = [
+            { index: 0, left: 0, right: 40, top: 0, bottom: 20 },
+            { index: 1, left: 50, right: 90, top: 0, bottom: 20 },
+            { index: 2, left: 100, right: 160, top: 0, bottom: 20 },
+            { index: 3, left: 170, right: 200, top: 0, bottom: 20 },
+            { index: 4, left: 0, right: 70, top: 25, bottom: 45 },
+            { index: 5, left: 80, right: 120, top: 25, bottom: 45 },
+            { index: 6, left: 130, right: 200, top: 25, bottom: 45 },
+            { index: 7, left: 0, right: 100, top: 50, bottom: 70 },
+            { index: 8, left: 110, right: 150, top: 50, bottom: 70 },
+        ];
+
+        it("Up goes to the horizontally closest word on the line above", () => {
+            expect(TossupQuestionController.findWordOnAdjacentLine(boxes, 5, -1)).to.equal(1);
+            expect(TossupQuestionController.findWordOnAdjacentLine(boxes, 6, -1)).to.equal(3);
+        });
+        it("Down goes to the horizontally closest word on the line below", () => {
+            expect(TossupQuestionController.findWordOnAdjacentLine(boxes, 2, 1)).to.equal(5);
+            expect(TossupQuestionController.findWordOnAdjacentLine(boxes, 5, 1)).to.equal(8);
+        });
+        it("Skips only one line at a time", () => {
+            expect(TossupQuestionController.findWordOnAdjacentLine(boxes, 8, -1)).to.equal(5);
+        });
+        it("Stays put at the first or last line", () => {
+            expect(TossupQuestionController.findWordOnAdjacentLine(boxes, 1, -1)).to.be.undefined;
+            expect(TossupQuestionController.findWordOnAdjacentLine(boxes, 7, 1)).to.be.undefined;
+        });
+    });
+
+    describe("getOrderedPlayers", () => {
+        it("Players are ordered by team then player", () => {
+            const appState: AppState = new AppState();
+            appState.game.addNewPlayers([
+                new Player("Alice", "Alpha", true),
+                new Player("Bob", "Beta", true),
+                new Player("Carol", "Alpha", true),
+            ]);
+            const packet: PacketState = new PacketState();
+            packet.setTossups([new Tossup("One two three", "Answer")]);
+            appState.game.loadPacket(packet);
+
+            const names: string[] = TossupQuestionController.getOrderedPlayers(appState).map((player) => player.name);
+            expect(names).to.deep.equal(["Alice", "Carol", "Bob"]);
+        });
+    });
+
+    describe("updateBuzzPointFromReader", () => {
+        it("Moves the selected word", () => {
+            const appState: AppState = new AppState();
+            TossupQuestionController.updateBuzzPointFromReader(appState, 5);
+            expect(appState.uiState.selectedWordIndex).to.equal(5);
+        });
+        it("Doesn't move the selected word while the pad is open", () => {
+            const appState: AppState = new AppState();
+            const packet: PacketState = new PacketState();
+            packet.setTossups([new Tossup("One two three four five six", "Answer")]);
+            appState.game.loadPacket(packet);
+            TossupQuestionController.placeBuzzPointAt(appState, 3, /* anchorToWord */ true);
+
+            TossupQuestionController.updateBuzzPointFromReader(appState, 5);
+            expect(appState.uiState.selectedWordIndex).to.equal(3);
         });
     });
 
@@ -153,19 +494,50 @@ describe("TossupQuestionControllerTests", () => {
         });
     });
 
-    describe("updateBuzzPointFromReader", () => {
-        it("Moves the selected word", () => {
-            const appState: AppState = new AppState();
-            TossupQuestionController.updateBuzzPointFromReader(appState, 5);
-            expect(appState.uiState.selectedWordIndex).to.equal(5);
-        });
-        it("Doesn't move the selected word while the buzz menu is open", () => {
-            const appState: AppState = new AppState();
-            appState.uiState.setSelectedWordIndex(3);
-            appState.uiState.showBuzzMenu(/* clearSelectedWordOnClose */ true);
 
-            TossupQuestionController.updateBuzzPointFromReader(appState, 5);
-            expect(appState.uiState.selectedWordIndex).to.equal(3);
+    describe("player pad scoring", () => {
+        // A shootout is played in an individual format, where every wrong buzz before the end is a neg -- not only
+        // the first, as in a team game. The pad has to score it the way the buzz menu does.
+        function createIndividualGame(): AppState {
+            const appState: AppState = new AppState();
+            appState.game.setGameFormat(GameFormats.IPNCTGameFormat);
+            appState.game.addNewPlayers([new Player("Ann", "Ann", true), new Player("Bo", "Bo", true)]);
+
+            const packet: PacketState = new PacketState();
+            packet.setTossups([new Tossup("One two three four five six seven eight", "Answer")]);
+            appState.game.loadPacket(packet);
+            appState.uiState.setSelectedWordIndex(2);
+            return appState;
+        }
+
+        it("Every wrong buzz is a neg in an individual format", () => {
+            const appState: AppState = createIndividualGame();
+
+            TossupQuestionController.recordPlayerPadBuzz(appState, 0, /* isCorrect */ false);
+            appState.uiState.setSelectedWordIndex(3);
+            TossupQuestionController.recordPlayerPadBuzz(appState, 1, /* isCorrect */ false);
+
+            const points: number[] = (appState.game.cycles[0].wrongBuzzes ?? []).map((buzz) => buzz.marker.points);
+            expect(points).to.deep.equal([-5, -5]);
+        });
+        it("C/W act on the player the host says has the buzzer", () => {
+            const appState: AppState = createIndividualGame();
+            appState.uiState.setBuzzedInPlayer({ name: "Bo", teamName: "Bo" });
+
+            expect(TossupQuestionController.getBuzzedInPlayerIndex(appState)).to.equal(1);
+            expect(TossupQuestionController.recordBuzzedInPlayerBuzz(appState, /* isCorrect */ false)).to.be.true;
+            expect(appState.game.cycles[0].wrongBuzzes?.[0].marker.player.name).to.equal("Bo");
+
+            appState.uiState.setBuzzedInPlayer({ name: "Nobody", teamName: "Nobody" });
+            expect(TossupQuestionController.recordBuzzedInPlayerBuzz(appState, true)).to.be.false;
+        });
+        it("A correct buzz in a tossups-only format has no bonus", () => {
+            const appState: AppState = createIndividualGame();
+
+            TossupQuestionController.recordPlayerPadBuzz(appState, 0, /* isCorrect */ true);
+
+            expect(appState.game.cycles[0].correctBuzz?.marker.player.name).to.equal("Ann");
+            expect(appState.game.cycles[0].bonusAnswer).to.be.undefined;
         });
     });
 
@@ -198,158 +570,6 @@ describe("TossupQuestionControllerTests", () => {
 
             expect(cycle.thrownOutTossups[0].questionIndex).to.equal(0);
             expect(appState.game.getTossupIndex(0)).to.equal(1);
-        });
-    });
-
-    describe("type word number auto-commit", () => {
-        function createAppStateWithLongTossup(): AppState {
-            const appState: AppState = new AppState();
-            appState.game.addNewPlayers([new Player("Alice", "Alpha", true)]);
-
-            const packet: PacketState = new PacketState();
-            // 15 buzzable words, so word numbers up to 15 are valid
-            packet.setTossups([
-                new Tossup(
-                    "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen",
-                    "Answer"
-                ),
-            ]);
-            appState.game.loadPacket(packet);
-            return appState;
-        }
-
-        // The controller schedules the auto-commit with window.setTimeout, which doesn't exist under Node; fake it
-        let originalWindow: unknown;
-        let scheduled: { callback: () => void; delay: number } | undefined;
-
-        beforeEach(() => {
-            originalWindow = (globalThis as unknown as { window: unknown }).window;
-            scheduled = undefined;
-            (globalThis as unknown as { window: unknown }).window = {
-                setTimeout: (callback: () => void, delay: number): number => {
-                    scheduled = { callback, delay };
-                    return 1;
-                },
-                clearTimeout: (): void => {
-                    scheduled = undefined;
-                },
-            };
-        });
-
-        afterEach(() => {
-            (globalThis as unknown as { window: unknown }).window = originalWindow;
-        });
-
-        it("Arms a 2-second timer and commits after a 2-digit number is idle", () => {
-            const appState: AppState = createAppStateWithLongTossup();
-            TossupQuestionController.startBuzzIndexEntry(appState);
-            TossupQuestionController.appendBuzzIndexDigit(appState, "1");
-            TossupQuestionController.appendBuzzIndexDigit(appState, "2");
-
-            expect(scheduled, "a timer should be armed after two digits").to.not.be.undefined;
-            expect(scheduled?.delay).to.equal(2000);
-
-            // Firing the timer should set the buzz point at word 12 (index 11) and open the menu
-            scheduled?.callback();
-            expect(appState.uiState.selectedWordIndex).to.equal(11);
-            expect(appState.uiState.buzzMenuState.visible).to.be.true;
-            expect(appState.uiState.isEnteringBuzzIndex).to.be.false;
-        });
-
-        it("Does not arm a timer for a single digit", () => {
-            const appState: AppState = createAppStateWithLongTossup();
-            TossupQuestionController.startBuzzIndexEntry(appState);
-            TossupQuestionController.appendBuzzIndexDigit(appState, "5");
-
-            expect(scheduled).to.be.undefined;
-        });
-
-        it("Resets the timer on each new keystroke", () => {
-            const appState: AppState = createAppStateWithLongTossup();
-            TossupQuestionController.startBuzzIndexEntry(appState);
-            TossupQuestionController.appendBuzzIndexDigit(appState, "1");
-            TossupQuestionController.appendBuzzIndexDigit(appState, "2");
-            TossupQuestionController.appendBuzzIndexDigit(appState, "3");
-
-            // The latest armed timer reflects "123", which clamps to the last buzzable position (the
-            // end-of-question marker after the 15 words, index 15)
-            expect(scheduled).to.not.be.undefined;
-            scheduled?.callback();
-            expect(appState.uiState.selectedWordIndex).to.equal(15);
-            expect(appState.uiState.buzzMenuState.visible).to.be.true;
-        });
-
-        it("A manual commit cancels the pending timer", () => {
-            const appState: AppState = createAppStateWithLongTossup();
-            TossupQuestionController.startBuzzIndexEntry(appState);
-            TossupQuestionController.appendBuzzIndexDigit(appState, "1");
-            TossupQuestionController.appendBuzzIndexDigit(appState, "2");
-            expect(scheduled).to.not.be.undefined;
-
-            TossupQuestionController.commitBuzzIndexEntry(appState);
-            expect(scheduled, "commit should clear the timer").to.be.undefined;
-        });
-    });
-
-    describe("word number visibility", () => {
-        function createAppStateWithPacket(): AppState {
-            const appState: AppState = new AppState();
-            appState.game.addNewPlayers([new Player("Alice", "Alpha", true)]);
-
-            const packet: PacketState = new PacketState();
-            packet.setTossups([new Tossup("one two three four five", "Answer")]);
-            appState.game.loadPacket(packet);
-            return appState;
-        }
-
-        it("Numbers are hidden until entry starts", () => {
-            const appState: AppState = createAppStateWithPacket();
-            appState.uiState.toggleTypeBuzzIndexMode();
-
-            expect(appState.uiState.buzzIndexesVisible, "turning the mode on shouldn't show the numbers").to.be
-                .false;
-
-            TossupQuestionController.startBuzzIndexEntry(appState);
-            expect(appState.uiState.buzzIndexesVisible).to.be.true;
-        });
-
-        it("Numbers stay up through the buzz menu and go away when it closes", () => {
-            const appState: AppState = createAppStateWithPacket();
-            TossupQuestionController.startBuzzIndexEntry(appState);
-            TossupQuestionController.appendBuzzIndexDigit(appState, "3");
-            TossupQuestionController.commitBuzzIndexEntry(appState);
-
-            expect(appState.uiState.buzzMenuState.visible).to.be.true;
-            expect(appState.uiState.buzzIndexesVisible, "numbers should stay up while the menu is open").to.be.true;
-
-            appState.uiState.hideBuzzMenu();
-            expect(appState.uiState.buzzIndexesVisible).to.be.false;
-        });
-
-        it("Committing with nothing typed hides the numbers", () => {
-            const appState: AppState = createAppStateWithPacket();
-            TossupQuestionController.startBuzzIndexEntry(appState);
-            TossupQuestionController.commitBuzzIndexEntry(appState);
-
-            expect(appState.uiState.buzzMenuState.visible).to.be.false;
-            expect(appState.uiState.buzzIndexesVisible).to.be.false;
-        });
-
-        it("Canceling entry hides the numbers", () => {
-            const appState: AppState = createAppStateWithPacket();
-            TossupQuestionController.startBuzzIndexEntry(appState);
-            TossupQuestionController.appendBuzzIndexDigit(appState, "2");
-            TossupQuestionController.cancelBuzzIndexEntry(appState);
-
-            expect(appState.uiState.buzzIndexesVisible).to.be.false;
-        });
-
-        it("Moving to the next question hides the numbers", () => {
-            const appState: AppState = createAppStateWithPacket();
-            TossupQuestionController.startBuzzIndexEntry(appState);
-            appState.uiState.nextCycle();
-
-            expect(appState.uiState.buzzIndexesVisible).to.be.false;
         });
     });
 });

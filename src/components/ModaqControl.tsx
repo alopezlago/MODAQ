@@ -39,10 +39,11 @@ import { IGameFormat } from "../state/IGameFormat";
 import { IPacket } from "../state/IPacket";
 import { IPlayer, Player } from "../state/TeamState";
 import { PendingGameType } from "../state/IPendingNewGame";
-import { Bonus, ITossupWord, PacketState, Tossup } from "../state/PacketState";
+import { Bonus, PacketState, Tossup } from "../state/PacketState";
 import { ICustomExport } from "../state/CustomExport";
 import { IHostSettings } from "../state/IHostSettings";
 import { Cycle } from "../state/Cycle";
+import { UIState } from "../state/UIState";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
 import { IPacketParserLink } from "../state/UIState";
 import {
@@ -967,6 +968,19 @@ function initializeControl(appState: AppState, props: IModaqControlProps, onRead
         buzzMenuShortcutHandler(event, appState);
     document.addEventListener("keydown", buzzMenuKeyListener, /* useCapture */ true);
 
+    // While the buzz point is being placed (after the first Space), arrow keys move it. They're handled on keydown
+    // so holding one repeats, and in the capture phase so focused controls don't scroll or move focus instead.
+    const buzzPointPlacementKeyListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) =>
+        buzzPointPlacementShortcutHandler(event, appState);
+    document.addEventListener("keydown", buzzPointPlacementKeyListener, /* useCapture */ true);
+
+    // While a tossup is live, 1-8 mark that player's buzz correct and Shift+1-8 wrong. These act on keydown; the
+    // same key's keyup must then not also reach shortcutHandler, where numbers toggle bonus parts once a tossup
+    // is answered correctly.
+    const playerShortcutKeyListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) =>
+        playerShortcutHandler(event, appState);
+    document.addEventListener("keydown", playerShortcutKeyListener, /* useCapture */ true);
+
     // Space is the buzz shortcut, but it acts on keyup (above). Stop its keydown from scrolling the page (or
     // clicking a focused button) when it's serving as the shortcut -- i.e. not while typing or in a dialog.
     const preventSpaceScrollListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) => {
@@ -980,11 +994,6 @@ function initializeControl(appState: AppState, props: IModaqControlProps, onRead
         }
     };
     document.addEventListener("keydown", preventSpaceScrollListener);
-
-    // Capture phase so it beats the question text's FocusZone to Space/Enter while typing a word number
-    const typeBuzzIndexListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) =>
-        typeBuzzIndexKeydownHandler(event, appState);
-    document.addEventListener("keydown", typeBuzzIndexListener, /* useCapture */ true);
 
     // Clicking a text box while the buzz menu is open — the host's chat, say, which is exactly where someone
     // goes mid-buzz. The menu dismisses itself on an outside click, but it puts focus back where it was (the
@@ -1008,8 +1017,9 @@ function initializeControl(appState: AppState, props: IModaqControlProps, onRead
     return () => {
         document.removeEventListener("keyup", keydownListener);
         document.removeEventListener("keydown", buzzMenuKeyListener, /* useCapture */ true);
+        document.removeEventListener("keydown", buzzPointPlacementKeyListener, /* useCapture */ true);
+        document.removeEventListener("keydown", playerShortcutKeyListener, /* useCapture */ true);
         document.removeEventListener("keydown", preventSpaceScrollListener);
-        document.removeEventListener("keydown", typeBuzzIndexListener, /* useCapture */ true);
         document.removeEventListener("pointerdown", textFocusListener, /* useCapture */ true);
     };
 }
@@ -1065,43 +1075,85 @@ function buzzMenuShortcutHandler(event: KeyboardEvent, appState: AppState): void
     event.stopPropagation();
 }
 
-// Drives "type word number to buzz" mode on a capture-phase keydown, so it runs before the question text's
-// FocusZone (which would otherwise turn Space/Enter on a focused word into a click and open the normal buzz
-// menu -- the reason this mode didn't work unless the mic happened to hold focus elsewhere). Space starts entry;
-// once entering, digits/Enter/Backspace/Escape drive it. Other situations fall through to the normal handlers.
-function typeBuzzIndexKeydownHandler(event: KeyboardEvent, appState: AppState): void {
-    const uiState = appState.uiState;
+// The keyup of a key whose keydown was already handled as a player shortcut, so it isn't handled twice
+let handledPlayerShortcutCode: string | undefined;
+
+// 1-8 mark the player at that position (the player pad's order) correct; Shift+1-8 mark them wrong. They act while
+// the tossup is live or the player pad is open; once a tossup is answered, the numbers toggle bonus parts instead.
+function playerShortcutHandler(event: KeyboardEvent, appState: AppState): void {
+    const uiState: UIState = appState.uiState;
     if (
-        !uiState.typeBuzzIndexMode ||
         uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None ||
         uiState.buzzMenuState.visible ||
+        isTextEntryElement(event.target) ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey
+    ) {
+        return;
+    }
+
+    // Use the physical key, since Shift changes event.key ("1" becomes "!"). C and W mark whoever has the host's
+    // buzzer (Klaxon's queue), for a room with more players than number keys.
+    const match: RegExpExecArray | null = /^(?:Digit|Numpad)([1-8])$/.exec(event.code);
+    const buzzedInKey: boolean =
+        (event.code === "KeyC" || event.code === "KeyW") &&
+        !event.shiftKey &&
+        TossupQuestionController.getBuzzedInPlayerIndex(appState) >= 0;
+    const cycle: Cycle | undefined = appState.activeGame.cycles[uiState.cycleIndex];
+    if (
+        (match == null && !buzzedInKey) ||
+        cycle == undefined ||
+        (cycle.correctBuzz != undefined && uiState.buzzPointPlacement == undefined)
+    ) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.repeat) {
+        return;
+    }
+
+    handledPlayerShortcutCode = event.code;
+    if (match == null) {
+        TossupQuestionController.recordBuzzedInPlayerBuzz(appState, /* isCorrect */ event.code === "KeyC");
+        return;
+    }
+
+    TossupQuestionController.recordPlayerPadBuzz(appState, Number(match[1]) - 1, /* isCorrect */ !event.shiftKey);
+}
+
+// While the player pad is open, the arrow keys move the buzz point: Left/Right by a word, Up/Down to the word above
+// or below it on the page. Escape closes the pad.
+function buzzPointPlacementShortcutHandler(event: KeyboardEvent, appState: AppState): void {
+    if (
+        appState.uiState.buzzPointPlacement == undefined ||
+        appState.uiState.buzzMenuState.visible ||
+        appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None ||
         isTextEntryElement(event.target)
     ) {
         return;
     }
 
-    if (uiState.isEnteringBuzzIndex) {
-        buzzIndexEntryHandler(event, appState);
-    } else if (event.key === " ") {
-        TossupQuestionController.startBuzzIndexEntry(appState);
-        event.preventDefault();
-        event.stopPropagation();
-    }
-}
-
-// While typing a word number (Space in "type word number" mode), digits build the number, Enter sets the buzz
-// point at that word and opens the buzz menu, Backspace edits the number, and Escape cancels.
-function buzzIndexEntryHandler(event: KeyboardEvent, appState: AppState): void {
-    if (event.key.length === 1 && event.key >= "0" && event.key <= "9") {
-        TossupQuestionController.appendBuzzIndexDigit(appState, event.key);
-    } else if (event.key === "Enter") {
-        TossupQuestionController.commitBuzzIndexEntry(appState);
-    } else if (event.key === "Backspace") {
-        TossupQuestionController.backspaceBuzzIndexDigit(appState);
-    } else if (event.key === "Escape") {
-        TossupQuestionController.cancelBuzzIndexEntry(appState);
-    } else {
-        return;
+    switch (event.key) {
+        case "ArrowLeft":
+            TossupQuestionController.moveBuzzPoint(appState, -1);
+            break;
+        case "ArrowRight":
+            TossupQuestionController.moveBuzzPoint(appState, 1);
+            break;
+        case "ArrowUp":
+            TossupQuestionController.moveBuzzPointVertically(appState, -1);
+            break;
+        case "ArrowDown":
+            TossupQuestionController.moveBuzzPointVertically(appState, 1);
+            break;
+        case "Escape":
+            TossupQuestionController.cancelBuzzPointPlacement(appState);
+            break;
+        default:
+            return;
     }
 
     event.preventDefault();
@@ -1109,14 +1161,16 @@ function buzzIndexEntryHandler(event: KeyboardEvent, appState: AppState): void {
 }
 
 function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
-    // Disable shortcuts if there's a modal dialog open
-    if (appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None) {
+    // This key's keydown was a player shortcut (playerShortcutHandler); don't treat its keyup as another shortcut
+    if (handledPlayerShortcutCode != undefined && event.code === handledPlayerShortcutCode) {
+        handledPlayerShortcutCode = undefined;
+        event.preventDefault();
+        event.stopPropagation();
         return;
     }
 
-    // The buzz menu's keys (numbers, C, W) are handled by buzzMenuShortcutHandler on keydown; while the menu
-    // is open, don't let the same keys also trigger the shortcuts below
-    if (appState.uiState.buzzMenuState.visible) {
+    // Disable shortcuts if there's a modal dialog open
+    if (appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None) {
         return;
     }
 
@@ -1125,47 +1179,23 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
         return;
     }
 
-    // While typing a word number, the keys are handled on keydown (typeBuzzIndexKeydownHandler); don't also run
-    // the shortcuts below on keyup
-    if (appState.uiState.isEnteringBuzzIndex) {
+    // While the buzz menu is open it handles the keyboard
+    if (appState.uiState.buzzMenuState.visible) {
         return;
     }
 
     switch (event.key.toUpperCase()) {
         case "E":
-            // Go to the end of a tossup and open up the buzz menu.
-            const tossup: Tossup | undefined = appState.activeGame.getTossup(appState.uiState.cycleIndex);
-            if (tossup) {
-                // Issue is that this removes parens, so we don't have all the info we need
-                const words: ITossupWord[] = tossup.getWords(appState.activeGame.gameFormat);
-                const index: number = words.filter((word) => word.canBuzzOn).length - 1;
-
-                appState.uiState.setSelectedWordIndex(index);
-                appState.uiState.showBuzzMenu(/* clearSelectedWordOnClose */ false);
-
-                // An alternate approach, if we want to keep keyboard focus there. For now users would probably just
-                // keep pressing E, and this way looks uglier (flash of focus, keeps focus after the buzzer is selected)
-                // This requires adding the class "word" to the span in QuestionWord.tsx
-                // // const index: number = words.length - 1;
-                // // const wordElement = document.getElementsByClassName("word").item(index) as HTMLSpanElement;
-                // // if (wordElement) {
-                // //     wordElement.focus();
-                // //     wordElement.click();
-                // // }
-            }
-
+            // Open the player pad at the end of the tossup
+            TossupQuestionController.placeBuzzPointAtEnd(appState);
             event.preventDefault();
             event.stopPropagation();
-
             break;
 
         case " ":
-            // In "type word number" mode, Space is handled on keydown (typeBuzzIndexKeydownHandler) so it beats
-            // the FocusZone. Otherwise it opens the buzz menu at the buzz point, anchoring it to the most recently
-            // read word when the mic is tracking and the user isn't picking a word with the mouse.
-            if (!appState.uiState.typeBuzzIndexMode) {
-                TossupQuestionController.openBuzzMenuAtBuzzPoint(appState);
-            }
+            // Space is the buzz shortcut: it marks the buzz point (where the reader is, when the microphone is
+            // tracking them) and opens the player pad there
+            TossupQuestionController.handleBuzzShortcut(appState);
 
             event.preventDefault();
             event.stopPropagation();

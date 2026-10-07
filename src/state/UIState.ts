@@ -68,7 +68,6 @@ export class UIState {
     public selectedWordIndex: number;
 
     @ignore
-    public buzzMenuState: BuzzMenuState;
 
     @ignore
     public customExportOptions: ICustomExport | undefined;
@@ -141,27 +140,25 @@ export class UIState {
     // When true, listen to the microphone and move the buzz point as the reader reads the tossup
     public trackReaderWithMicrophone: boolean;
 
-    // When true, microphone tracking doesn't move the highlight on its own; it stays put until the user presses
-    // B, which jumps it to where the reader currently is. The live position is still tracked in the background.
-    public holdReaderHighlightUntilBuzz: boolean;
+    // When true, buzzes are recorded with the original buzz menu (a dropdown on the word) instead of the player pad
+    public useBuzzMenu: boolean;
 
-    // When true, microphone tracking moves the highlight to the reader's position immediately, instead of
-    // waiting for the reading to pause. More responsive, but the highlight jitters with the recognizer's bursts.
-    // Has no effect when holdReaderHighlightUntilBuzz is on (the highlight is held until B regardless).
+    public buzzMenuState: BuzzMenuState;
+
+
+
+    // When true, microphone tracking highlights where the reader is while they read. By default the reader's
+    // position is tracked in the background and only shown when the user presses Space (the buzz shortcut).
+    public showReaderPositionWhileReading: boolean;
+
+    // When true, the highlight shown while reading (see showReaderPositionWhileReading) moves to the reader's
+    // position immediately, instead of waiting for the reading to pause. More responsive, but it jitters with
+    // the recognizer's bursts.
     public instantReaderHighlight: boolean;
 
     // Words to offset the buzz point from the reader's detected position when pressing Space (-4 to +4). Lets
     // the user compensate for recognition lag/lead so the buzz lands on the right word. 0 means no offset.
     public buzzPointWordOffset: number;
-
-    // When true, pressing Space shows a number above each word and the user types a word's number (then Enter)
-    // to set the buzz point there, instead of opening the buzz menu at the detected position right away.
-    public typeBuzzIndexMode: boolean;
-
-    // When true, the space above the words that the numbers use isn't held open while reading, so the question
-    // keeps its normal line spacing. The numbers still appear when the moderator presses Space, but showing them
-    // shifts the text down, which is what reserving the space avoids.
-    public collapseBuzzIndexSpacing: boolean;
 
     // When true, YAPP2 pronunciation anchors (the <pg>-tagged words a guide is coming for) are drawn like any
     // other word, instead of being colored maroon. The guides themselves still read as usual.
@@ -175,27 +172,8 @@ export class UIState {
     // cycle has no bonus to read, so read it through CycleChooserController rather than on its own.
     public showingBonus: boolean;
 
-    // When true, microphone tracking transcribes with OpenAI's Whisper running in the browser (transformers.js)
-    // instead of the Web Speech API / Vosk. More accurate, fully on-device, but heavier (model download) and
-    // slower, and not streaming. Requires reloading the tossup (toggling mic tracking) to take effect.
-    public useWhisperWebEngine: boolean;
-
-    // Whether we're currently waiting for the user to type a word number (after pressing Space in the mode above)
-    @ignore
-    public isEnteringBuzzIndex: boolean;
-
-    // Whether the numbers above the words are showing. They only appear once the moderator presses Space, and
-    // stay up through the buzz menu that word-number entry opens, so the numbers aren't a constant distraction
-    // while reading.
-    @ignore
-    public buzzIndexesVisible: boolean;
-
-    // The digits typed so far while entering a word number
-    @ignore
-    public buzzIndexEntryValue: string;
-
-    // When true, show diagnostics for the microphone tracking (engine, status, last heard words). On by default
-    // while the feature is being tuned.
+    // When true, show diagnostics for the microphone tracking (engine, status, last heard words, and the reader's
+    // position).
     @ignore
     public showReaderFollowerDebug: boolean;
 
@@ -216,10 +194,19 @@ export class UIState {
     @ignore
     public readerFollowerLastCue: string | undefined;
 
-    // When the mouse last moved over the question text. Used to decide if the user is picking a buzz point
-    // manually (so keyboard shortcuts shouldn't move it) or relying on the microphone tracking.
+
+    // Set while the moderator is placing the buzz point with the keyboard: Space picks a starting word, the arrow
+    // keys move it, and Space again opens the buzz menu there
     @ignore
-    public lastQuestionTextMouseMoveTime: number;
+    public buzzPointPlacement: IBuzzPointPlacement | undefined;
+
+    // Incremented to make microphone tracking restart (e.g. after a faster speech model was installed)
+    @ignore
+    public readerFollowerRestartCount: number;
+
+    // The buzz just recorded from the player pad, shown briefly so it's clear who got it right or wrong
+    @ignore
+    public buzzFeedback: IBuzzFeedback | undefined;
 
     public pronunciationGuideColor: string | undefined;
 
@@ -245,11 +232,6 @@ export class UIState {
         this.dialogState = new DialogState();
         this.isEditingCycleIndex = false;
         this.selectedWordIndex = -1;
-        this.buzzMenuState = {
-            clearSelectedWordOnClose: true,
-            visible: false,
-            selectedPlayerIndex: undefined,
-        };
         this.customExportOptions = undefined;
         this.customExportIntervalId = undefined;
         this.customExportStatus = undefined;
@@ -282,25 +264,27 @@ export class UIState {
         this.pendingSheet = undefined;
         this.pendingTossupProtestEvent = undefined;
         this.trackReaderWithMicrophone = false;
-        this.holdReaderHighlightUntilBuzz = false;
+        this.useBuzzMenu = false;
+        this.buzzMenuState = {
+            clearSelectedWordOnClose: true,
+            visible: false,
+            selectedPlayerIndex: undefined,
+        };
+        this.showReaderPositionWhileReading = false;
         this.instantReaderHighlight = false;
         this.buzzPointWordOffset = 0;
-        this.typeBuzzIndexMode = false;
-        this.collapseBuzzIndexSpacing = false;
+        this.showReaderFollowerDebug = false;
         this.hidePronunciationAnchors = false;
         this.oneQuestionAtATime = false;
         this.showingBonus = false;
-        this.isEnteringBuzzIndex = false;
-        this.buzzIndexesVisible = false;
-        this.buzzIndexEntryValue = "";
-        this.useWhisperWebEngine = false;
-        this.showReaderFollowerDebug = true;
         this.readerFollowerEngine = undefined;
         this.readerFollowerStatus = undefined;
         this.readerFollowerTranscript = undefined;
         this.readerFollowerLivePosition = -1;
         this.readerFollowerLastCue = undefined;
-        this.lastQuestionTextMouseMoveTime = 0;
+        this.buzzPointPlacement = undefined;
+        this.readerFollowerRestartCount = 0;
+        this.buzzFeedback = undefined;
         this.useDarkMode = false;
         this.yappServiceUrl = undefined;
         this.packetParserLink = undefined;
@@ -747,10 +731,7 @@ export class UIState {
 
             // Clear the selected words, since it's not relevant to the next question
             this.selectedWordIndex = -1;
-
-            // Any in-progress word-number entry belongs to the previous question
-            this.endBuzzIndexEntry();
-            this.hideBuzzIndexes();
+            this.buzzPointPlacement = undefined;
         }
     }
 
@@ -911,8 +892,8 @@ export class UIState {
         this.selectedWordIndex = newIndex;
     }
 
-    public toggleHoldReaderHighlightUntilBuzz(): void {
-        this.holdReaderHighlightUntilBuzz = !this.holdReaderHighlightUntilBuzz;
+    public toggleShowReaderPositionWhileReading(): void {
+        this.showReaderPositionWhileReading = !this.showReaderPositionWhileReading;
     }
 
     public toggleInstantReaderHighlight(): void {
@@ -922,19 +903,6 @@ export class UIState {
     public setBuzzPointWordOffset(offset: number): void {
         // Clamp to the supported range so a bad stored value can't push the buzz point wildly off
         this.buzzPointWordOffset = Math.max(-4, Math.min(4, Math.round(offset)));
-    }
-
-    public toggleTypeBuzzIndexMode(): void {
-        this.typeBuzzIndexMode = !this.typeBuzzIndexMode;
-        // Don't leave a half-finished entry around if the mode is turned off mid-entry
-        if (!this.typeBuzzIndexMode) {
-            this.endBuzzIndexEntry();
-            this.hideBuzzIndexes();
-        }
-    }
-
-    public toggleCollapseBuzzIndexSpacing(): void {
-        this.collapseBuzzIndexSpacing = !this.collapseBuzzIndexSpacing;
     }
 
     public togglePronunciationAnchors(): void {
@@ -953,32 +921,6 @@ export class UIState {
     public setShowingBonus(showingBonus: boolean): void {
         this.showingBonus = showingBonus;
     }
-
-    public toggleUseWhisperWebEngine(): void {
-        this.useWhisperWebEngine = !this.useWhisperWebEngine;
-    }
-
-    public startBuzzIndexEntry(): void {
-        this.isEnteringBuzzIndex = true;
-        this.buzzIndexesVisible = true;
-        this.buzzIndexEntryValue = "";
-    }
-
-    // Hides the numbers above the words. Entry ending doesn't hide them on its own, since committing a number
-    // opens the buzz menu and the numbers should stay up until that menu closes.
-    public hideBuzzIndexes(): void {
-        this.buzzIndexesVisible = false;
-    }
-
-    public setBuzzIndexEntryValue(value: string): void {
-        this.buzzIndexEntryValue = value;
-    }
-
-    public endBuzzIndexEntry(): void {
-        this.isEnteringBuzzIndex = false;
-        this.buzzIndexEntryValue = "";
-    }
-
     public setTrackReaderWithMicrophone(value: boolean): void {
         this.trackReaderWithMicrophone = value;
 
@@ -999,12 +941,6 @@ export class UIState {
         this.readerFollowerLastCue = cue;
     }
 
-    public setLastQuestionTextMouseMoveTime(time: number): void {
-        // Mouse move events fire constantly while the mouse is over the text; only record one every so often
-        if (time - this.lastQuestionTextMouseMoveTime >= 250) {
-            this.lastQuestionTextMouseMoveTime = time;
-        }
-    }
 
     public setReaderFollowerStatus(engine: string, status: string): void {
         this.readerFollowerEngine = engine;
@@ -1057,14 +993,6 @@ export class UIState {
 
     public toggleScoreVerticality(): void {
         this.isScoreVertical = !this.isScoreVertical;
-    }
-
-    public hideBuzzMenu(): void {
-        this.buzzMenuState.visible = false;
-        this.buzzMenuState.selectedPlayerIndex = undefined;
-
-        // The buzz is marked (or the menu was dismissed), so the word numbers have done their job
-        this.hideBuzzIndexes();
     }
 
     public setBuzzMenuSelectedPlayerIndex(index: number | undefined): void {
@@ -1129,11 +1057,64 @@ export class UIState {
         this.sheetsState.sheetType = undefined;
     }
 
+    public hideBuzzMenu(): void {
+        this.buzzMenuState.visible = false;
+        this.buzzMenuState.selectedPlayerIndex = undefined;
+    }
+
     public showBuzzMenu(clearSelectedWordOnClose: boolean): void {
+        this.buzzPointPlacement = undefined;
         this.buzzMenuState.visible = true;
         this.buzzMenuState.clearSelectedWordOnClose = clearSelectedWordOnClose;
         this.buzzMenuState.selectedPlayerIndex = undefined;
     }
+
+    public toggleUseBuzzMenu(): void {
+        this.useBuzzMenu = !this.useBuzzMenu;
+        this.buzzPointPlacement = undefined;
+        this.buzzMenuState.visible = false;
+    }
+
+    public startBuzzPointPlacement(placement: IBuzzPointPlacement): void {
+        this.buzzPointPlacement = placement;
+    }
+
+    public markBuzzPointPlacementMoved(): void {
+        if (this.buzzPointPlacement != undefined) {
+            this.buzzPointPlacement.movedManually = true;
+        }
+    }
+
+    public confirmBuzzPointPlacement(): void {
+        if (this.buzzPointPlacement != undefined) {
+            this.buzzPointPlacement.startedByBuzzSound = false;
+        }
+    }
+
+    public setBuzzPointPlacementLatestLivePosition(position: number): void {
+        if (this.buzzPointPlacement != undefined) {
+            this.buzzPointPlacement.latestLivePosition = position;
+        }
+    }
+
+    public endBuzzPointPlacement(): void {
+        this.buzzPointPlacement = undefined;
+    }
+
+    public showBuzzFeedback(feedback: Omit<IBuzzFeedback, "id">): void {
+        this.buzzFeedback = { ...feedback, id: (this.buzzFeedback?.id ?? 0) + 1 };
+    }
+
+    public clearBuzzFeedback(id: number): void {
+        if (this.buzzFeedback?.id === id) {
+            this.buzzFeedback = undefined;
+        }
+    }
+
+    public restartReaderFollower(): void {
+        this.readerFollowerRestartCount++;
+    }
+
 
     // We have to do this call here because this is where the information is available
     public showFontDialog(): void {
@@ -1191,4 +1172,59 @@ export interface IPacketParserLink {
     // The link text, e.g. "Convert a .docx with the packet parser".
     text: string;
     url: string;
+}
+
+/**
+ * The buzz point being placed with the keyboard (see UIState.buzzPointPlacement).
+ */
+export interface IBuzzPointPlacement {
+    /** When placement started (ms) */
+    startTime: number;
+
+    /**
+     * The reader's position when placement started, or -1 if unknown. Words recognized shortly afterward were
+     * spoken before the buzz, so they still move the buzz point forward (see TossupQuestionController).
+     */
+    startLivePosition: number;
+
+    /** The configured buzz point offset at the time, applied to late-recognized words too */
+    wordOffset: number;
+
+    /** Whether the moderator has moved the buzz point with the arrow keys; then late words don't move it */
+    movedManually: boolean;
+
+    /** The furthest reading position seen during placement (the start position, plus any late words) */
+    latestLivePosition: number;
+
+    /**
+     * Whether a buzzer sound started this placement rather than Space. The moderator's Space right after the buzzer
+     * then confirms it instead of opening the buzz menu.
+     */
+    startedByBuzzSound: boolean;
+
+    /**
+     * Whether the moderator picked the word directly (a click or Enter on it), so the player pad opens next to it.
+     * Otherwise (Space) it floats at the bottom of the window, out of the way of the reading.
+     */
+    anchoredToWord: boolean;
+}
+
+/**
+ * A buzz just recorded (or removed) from the player pad, shown briefly (see UIState.buzzFeedback).
+ */
+export interface IBuzzFeedback {
+    /** Changes with every buzz, so the animation restarts even for the same player */
+    id: number;
+
+    kind: "correct" | "wrong" | "removed";
+
+    playerName: string;
+
+    teamName: string;
+
+    /** Points the buzz scored (negative for a neg); 0 for a removal or a wrong buzz without a penalty */
+    points: number;
+
+    /** The word the buzz is on */
+    position: number;
 }

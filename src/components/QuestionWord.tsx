@@ -1,6 +1,6 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { mergeStyleSets, memoizeFunction, ThemeContext, Theme } from "@fluentui/react";
+import { keyframes, mergeStyleSets, memoizeFunction, ThemeContext, Theme } from "@fluentui/react";
 
 import type { IFormattedText } from "../parser/IFormattedText";
 import { FormattedText } from "./FormattedText";
@@ -9,17 +9,14 @@ export const QuestionWord = observer(function QuestionWord(props: IQuestionWordP
     return (
         <ThemeContext.Consumer>
             {(theme) => {
-                // The space above the word is held open while numbering is on, so numbers appearing don't shift
-                // the text. When the moderator would rather keep the line spacing tight, it isn't reserved, and
-                // the row only shows up for the words that have a number to show.
-                const showIndexLabel: boolean = props.reserveIndexSpace === true || props.displayIndex != undefined;
                 const classes = getClassNames(
                     theme,
                     props.selected,
                     props.correct,
                     props.wrong,
                     props.index != undefined,
-                    showIndexLabel
+                    props.placing,
+                    props.flash
                 );
                 return (
                     <span
@@ -28,13 +25,6 @@ export const QuestionWord = observer(function QuestionWord(props: IQuestionWordP
                         data-is-focusable="true"
                         className={props.index != undefined ? `${classes.word} word-${props.index}` : classes.word}
                     >
-                        {showIndexLabel && (
-                            // Render the number for buzzable words, or a blank placeholder otherwise, so every
-                            // word (and the question number / power mark) reserves the same space above it
-                            <span className={classes.indexLabel}>
-                                {props.displayIndex != undefined ? props.displayIndex : " "}
-                            </span>
-                        )}
                         <FormattedText segments={props.word} />
                     </span>
                 );
@@ -46,12 +36,11 @@ export const QuestionWord = observer(function QuestionWord(props: IQuestionWordP
 interface IQuestionWordProps {
     word: IFormattedText[];
     index: number | undefined;
-    // When set, the number to display above the word (used while typing a word number to set the buzz point)
-    displayIndex?: number;
-    // When true, reserve the space above the word for the number, even if this word has no number, so every
-    // word (and the question number / power mark) keeps consistent vertical spacing
-    reserveIndexSpace?: boolean;
     selected?: boolean;
+    // The buzz point is being placed with the keyboard and is on this word
+    placing?: boolean;
+    // A buzz on this word was just recorded (or removed); the word flashes to show it
+    flash?: "correct" | "wrong" | "removed";
     correct?: boolean;
     wrong?: boolean;
     hovered?: boolean;
@@ -60,8 +49,16 @@ interface IQuestionWordProps {
 
 interface IQuestionWordClassNames {
     word: string;
-    indexLabel: string;
 }
+
+// A strong colored pulse that fades back to the word's normal look
+const getFlashAnimation = memoizeFunction((color: string): string =>
+    keyframes({
+        "0%": { background: color, color: "white", transform: "scale(1.25)" },
+        "40%": { background: color, color: "white", transform: "scale(1)" },
+        "100%": { transform: "scale(1)" },
+    })
+);
 
 // This would be a great place for theming or settings
 const getClassNames = memoizeFunction(
@@ -71,26 +68,37 @@ const getClassNames = memoizeFunction(
         correct: boolean | undefined,
         wrong: boolean | undefined,
         isIndexDefined: boolean,
-        showIndexLabel: boolean
+        placing: boolean | undefined,
+        flash: "correct" | "wrong" | "removed" | undefined
     ): IQuestionWordClassNames =>
         mergeStyleSets({
-            indexLabel: {
-                // Small, non-bold number sitting directly above the word. The numbers only show while the
-                // moderator is marking a buzz, so they're dark enough to read at a glance.
-                fontSize: "0.7em",
-                lineHeight: 1,
-                fontWeight: "normal",
-                color: theme ? theme.palette.neutralSecondary : "rgb(96, 96, 96)",
-                userSelect: "none",
-            },
             word: [
-                // While numbering words, stack the number on top of the word; otherwise lay words out inline
-                showIndexLabel
-                    ? { display: "inline-flex", flexDirection: "column", alignItems: "center" }
-                    : { display: "inline-flex" },
+                { display: "inline-flex" },
                 selected && {
                     fontWeight: "bold",
                     background: theme ? theme.palette.themeLight : "rgb(192, 192, 192)",
+                },
+                placing && {
+                    outline: "2px solid " + (theme ? theme.palette.themePrimary : "rgb(0, 120, 212)"),
+                    outlineOffset: "1px",
+                },
+                flash != undefined && {
+                    animationName: getFlashAnimation(
+                        flash === "correct"
+                            ? theme
+                                ? theme.palette.green
+                                : "rgb(16, 124, 16)"
+                            : flash === "wrong"
+                            ? theme
+                                ? theme.palette.red
+                                : "rgb(232, 17, 35)"
+                            : theme
+                            ? theme.palette.neutralTertiary
+                            : "gray"
+                    ),
+                    animationDuration: "1.2s",
+                    animationTimingFunction: "ease-out",
+                    borderRadius: "3px",
                 },
                 correct && {
                     background: theme ? theme.palette.tealLight + "20" : "rbg(0, 128, 128)",

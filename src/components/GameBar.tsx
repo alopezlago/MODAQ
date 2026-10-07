@@ -405,23 +405,50 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             },
         },
         {
-            key: "holdReaderHighlight",
-            text: "Hold highlight until I press Space",
-            title: "In microphone mode, don't move the highlight automatically; pressing Space jumps it to where the reader is",
+            key: "showReaderPosition",
+            text: "Show reader position while reading",
+            title: "In microphone mode, highlight where the reader is as they read. Otherwise it's only shown when you press Space.",
             canCheck: true,
-            checked: appState.uiState.holdReaderHighlightUntilBuzz,
+            checked: appState.uiState.showReaderPositionWhileReading,
             disabled: !appState.uiState.trackReaderWithMicrophone,
-            onClick: () => appState.uiState.toggleHoldReaderHighlightUntilBuzz(),
+            onClick: () => appState.uiState.toggleShowReaderPositionWhileReading(),
         },
         {
             key: "instantReaderHighlight",
             text: "Move highlight instantly (no delay)",
-            title: "In microphone mode, move the highlight to the reader's position immediately instead of waiting for a pause",
+            title: "When showing the reader position while reading, move it immediately instead of waiting for a pause",
             canCheck: true,
             checked: appState.uiState.instantReaderHighlight,
-            disabled: !appState.uiState.trackReaderWithMicrophone || appState.uiState.holdReaderHighlightUntilBuzz,
+            disabled:
+                !appState.uiState.trackReaderWithMicrophone || !appState.uiState.showReaderPositionWhileReading,
             onClick: () => appState.uiState.toggleInstantReaderHighlight(),
         },
+        ...(ReaderFollower.mayOfferFasterModel()
+            ? [
+                  {
+                      key: "installSpeechModel",
+                      text: "Download on-device speech model (lower latency)",
+                      title: "Recognize speech on this computer instead of an online service, which responds faster",
+                      onClick: () => {
+                          void ReaderFollower.installFasterModel().then((result) => {
+                              if (result === "installed") {
+                                  appState.uiState.restartReaderFollower();
+                              }
+
+                              appState.uiState.dialogState.showOKMessageDialog({
+                                  title: "On-device Speech Model",
+                                  message:
+                                      result === "installed"
+                                          ? "The on-device speech model is installed and will be used for microphone tracking. The debug info shows \"Listening (on-device)\" when it's in use."
+                                          : result === "unsupported"
+                                          ? "This browser doesn't offer an on-device speech model, so microphone tracking uses its online speech service. Chrome 139 or later offers one on some platforms."
+                                          : "The browser couldn't install an on-device speech model for this language. Microphone tracking will keep using the online speech service.",
+                              });
+                          });
+                      },
+                  },
+              ]
+            : []),
         {
             key: "buzzPointOffset",
             text: "Buzz point offset (Space)",
@@ -436,32 +463,6 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
                     onClick: () => appState.uiState.setBuzzPointWordOffset(offset),
                 })),
             },
-        },
-        {
-            key: "typeBuzzIndexMode",
-            text: "Type word number to buzz (Space)",
-            title: "When you press Space, show a number above each word; type a word's number and press Enter to set the buzz point there",
-            canCheck: true,
-            checked: appState.uiState.typeBuzzIndexMode,
-            onClick: () => appState.uiState.toggleTypeBuzzIndexMode(),
-        },
-        {
-            key: "reserveBuzzIndexSpace",
-            text: "Reserve space for word numbers",
-            title: "Hold the space above each word open so the numbers appearing doesn't move the question text. Turn this off to keep the question's normal line spacing; the numbers then push the text down while they show.",
-            canCheck: true,
-            checked: !appState.uiState.collapseBuzzIndexSpacing,
-            disabled: !appState.uiState.typeBuzzIndexMode,
-            onClick: () => appState.uiState.toggleCollapseBuzzIndexSpacing(),
-        },
-        {
-            key: "useWhisperWebEngine",
-            text: "Use in-browser Whisper (more accurate, on-device)",
-            title: "Transcribe with OpenAI's Whisper running locally in the browser instead of the Web Speech API. More accurate and fully on-device, but downloads a model on first use and is slower. Toggle microphone tracking off and on to apply.",
-            canCheck: true,
-            checked: appState.uiState.useWhisperWebEngine,
-            disabled: !appState.uiState.trackReaderWithMicrophone,
-            onClick: () => appState.uiState.toggleUseWhisperWebEngine(),
         },
         {
             key: "trackReaderDebug",
@@ -525,6 +526,14 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             canCheck: true,
             checked: !appState.uiState.hidePronunciationAnchors,
             onClick: () => appState.uiState.togglePronunciationAnchors(),
+        },
+        {
+            key: "useBuzzMenu",
+            text: "Use buzz menu instead of player pad",
+            title: "Record buzzes with the dropdown menu on the word instead of the floating player pad",
+            canCheck: true,
+            checked: appState.uiState.useBuzzMenu,
+            onClick: () => appState.uiState.toggleUseBuzzMenu(),
         },
     ];
 

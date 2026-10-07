@@ -11,7 +11,6 @@ import { useAppState } from "../contexts/StateContext";
 import { Clock } from "./Clock";
 import { ExportStatus } from "./ExportStatus";
 import { PacketNameLabel } from "./PacketNameLabel";
-import { BuzzIndexPrompt } from "./BuzzIndexPrompt";
 
 const scoreboardAndQuestionViewerTokens: IStackTokens = { childrenGap: 20 };
 
@@ -53,9 +52,6 @@ export const GameViewer = observer(function GameViewer() {
                         <StackItem>
                             <QuestionViewerContainer />
                         </StackItem>
-                        {/* Not wrapped in a StackItem: that renders a div even with nothing in it, which would
-                            leave the stack's gap below the question box for everyone not using the mode */}
-                        <BuzzIndexPrompt />
                         <StackItem>{packetName}</StackItem>
                         <StackItem>
                             <ExportStatus />

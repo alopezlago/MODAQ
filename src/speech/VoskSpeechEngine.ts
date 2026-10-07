@@ -1,5 +1,6 @@
 import type { KaldiRecognizer, Model } from "vosk-browser";
 
+import { keepAudioContextRunning } from "./AudioContextUtils";
 import { ISpeechEngine, ISpeechEngineCallbacks } from "./SpeechEngine";
 
 // vosk-browser doesn't re-export its message types, so declare the fields we read
@@ -14,6 +15,10 @@ interface IVoskResultMessage {
         text: string;
     };
 }
+
+// Samples per chunk sent to the recognizer. Smaller chunks reach it sooner (2048 samples is ~43 ms at 48 kHz),
+// which lowers latency; they cost a few more messages to the recognizer worker.
+const audioBufferSize = 2048;
 
 // A small (~40 MB) English model hosted by the vosk-browser project. The browser caches the download.
 const defaultModelUrl = "https://ccoreilly.github.io/vosk-browser/models/vosk-model-small-en-us-0.15.tar.gz";
@@ -48,9 +53,6 @@ function getModel(modelUrl: string): Promise<Model> {
 export class VoskSpeechEngine implements ISpeechEngine {
     public readonly name: string = "Vosk (WebAssembly)";
 
-    // Vosk emits partialresult events that it revises as it decodes more audio.
-    public readonly hasSpeculativePartials: boolean = true;
-
     private readonly callbacks: ISpeechEngineCallbacks;
 
     private readonly modelUrl: string;
@@ -61,11 +63,17 @@ export class VoskSpeechEngine implements ISpeechEngine {
 
     private audioContext: AudioContext | undefined;
 
+    private stopResumingAudioContext: (() => void) | undefined;
+
     private processorNode: ScriptProcessorNode | undefined;
+
+    private model: Model | undefined;
 
     private recognizer: KaldiRecognizer | undefined;
 
     private utteranceCount: number;
+
+    private vocabulary: string[];
 
     constructor(callbacks: ISpeechEngineCallbacks, modelUrl?: string) {
         this.callbacks = callbacks;
@@ -73,9 +81,12 @@ export class VoskSpeechEngine implements ISpeechEngine {
         this.active = false;
         this.mediaStream = undefined;
         this.audioContext = undefined;
+        this.stopResumingAudioContext = undefined;
         this.processorNode = undefined;
+        this.model = undefined;
         this.recognizer = undefined;
         this.utteranceCount = 0;
+        this.vocabulary = [];
     }
 
     public static isSupported(): boolean {
@@ -94,6 +105,15 @@ export class VoskSpeechEngine implements ISpeechEngine {
     public stop(): void {
         this.active = false;
         this.cleanUp();
+    }
+
+    public setVocabulary(words: string[]): void {
+        this.vocabulary = words;
+
+        // The vocabulary is fixed when a recognizer is created, so replace the running one
+        if (this.recognizer != undefined) {
+            this.createRecognizer();
+        }
     }
 
     private async initialize(): Promise<void> {
@@ -120,29 +140,16 @@ export class VoskSpeechEngine implements ISpeechEngine {
 
             this.mediaStream = mediaStream;
             this.audioContext = new AudioContext();
+            this.stopResumingAudioContext = keepAudioContextRunning(this.audioContext);
 
-            const recognizer: KaldiRecognizer = new model.KaldiRecognizer(this.audioContext.sampleRate);
-            recognizer.on("partialresult", (message) => {
-                const partial: string = (message as unknown as IVoskPartialResultMessage).result.partial;
-                if (partial !== "") {
-                    this.callbacks.onPartialTranscript(`vosk-${this.utteranceCount}`, partial);
-                }
-            });
-            recognizer.on("result", (message) => {
-                const text: string = (message as unknown as IVoskResultMessage).result.text;
-                if (text !== "") {
-                    this.callbacks.onFinalTranscript(`vosk-${this.utteranceCount}`, text);
-                }
-
-                this.utteranceCount++;
-            });
-            this.recognizer = recognizer;
+            this.model = model;
+            this.createRecognizer();
 
             const source: MediaStreamAudioSourceNode = this.audioContext.createMediaStreamSource(mediaStream);
 
             // ScriptProcessorNode is deprecated but still the simplest way to stream samples that works in every
             // browser; AudioWorklet requires serving a separate module file
-            const processorNode: ScriptProcessorNode = this.audioContext.createScriptProcessor(4096, 1, 1);
+            const processorNode: ScriptProcessorNode = this.audioContext.createScriptProcessor(audioBufferSize, 1, 1);
             processorNode.onaudioprocess = (event: AudioProcessingEvent) => {
                 if (this.active && this.recognizer != undefined) {
                     try {
@@ -172,7 +179,44 @@ export class VoskSpeechEngine implements ISpeechEngine {
         }
     }
 
-    private cleanUp(): void {
+    // Creates a recognizer (replacing any current one) that only recognizes the vocabulary, if one was given. The
+    // small Vosk models support a runtime grammar; restricting it to the words of the tossup (plus "[unk]" for
+    // anything else) makes recognition of what's read far more accurate than open dictation.
+    private createRecognizer(): void {
+        if (this.model == undefined || this.audioContext == undefined) {
+            return;
+        }
+
+        this.removeRecognizer();
+
+        // Every utterance of the old recognizer is over
+        this.utteranceCount++;
+
+        const grammar: string | undefined =
+            this.vocabulary.length > 0 ? JSON.stringify([...this.vocabulary, "[unk]"]) : undefined;
+        const recognizer: KaldiRecognizer = new this.model.KaldiRecognizer(this.audioContext.sampleRate, grammar);
+        recognizer.on("partialresult", (message) => {
+            const partial: string = ((message as unknown) as IVoskPartialResultMessage).result.partial;
+            if (partial !== "" && this.recognizer === recognizer) {
+                this.callbacks.onPartialTranscript(`vosk-${this.utteranceCount}`, partial);
+            }
+        });
+        recognizer.on("result", (message) => {
+            if (this.recognizer !== recognizer) {
+                return;
+            }
+
+            const text: string = ((message as unknown) as IVoskResultMessage).result.text;
+            if (text !== "") {
+                this.callbacks.onFinalTranscript(`vosk-${this.utteranceCount}`, text);
+            }
+
+            this.utteranceCount++;
+        });
+        this.recognizer = recognizer;
+    }
+
+    private removeRecognizer(): void {
         if (this.recognizer != undefined) {
             try {
                 this.recognizer.remove();
@@ -182,12 +226,19 @@ export class VoskSpeechEngine implements ISpeechEngine {
 
             this.recognizer = undefined;
         }
+    }
+
+    private cleanUp(): void {
+        this.removeRecognizer();
 
         if (this.processorNode != undefined) {
             this.processorNode.onaudioprocess = null;
             this.processorNode.disconnect();
             this.processorNode = undefined;
         }
+
+        this.stopResumingAudioContext?.();
+        this.stopResumingAudioContext = undefined;
 
         if (this.audioContext != undefined) {
             void this.audioContext.close().catch(() => undefined);

@@ -1,23 +1,23 @@
 /**
  * A source of speech transcripts from the microphone. Implementations wrap a specific recognition technology
  * (the native Web Speech API, or a WASM recognizer for browsers without one).
+ *
+ * An engine keeps listening across tossups; only its vocabulary hint changes. Restarting recognition for every
+ * tossup loses the first words read, since recognizers take a moment to start.
  */
 export interface ISpeechEngine {
     /** Human-readable name shown in the debug window */
     readonly name: string;
 
-    /**
-     * Whether this engine's partial (non-final) transcripts are speculative guesses it revises as it hears more,
-     * versus stable transcriptions of the audio so far. The Web Speech API and Vosk emit speculative interims
-     * that can run ahead and then get walked back; the Whisper engine re-transcribes complete audio, so its
-     * partials are stable. The reader-follow modes that guard against interim overshoot only apply to engines
-     * with speculative partials.
-     */
-    readonly hasSpeculativePartials: boolean;
-
     start(): void;
 
     stop(): void;
+
+    /**
+     * Hints the words the speaker is likely to say (the current tossup), so engines that support it can bias
+     * recognition toward them. Optional to honor; engines that can't bias just ignore it.
+     */
+    setVocabulary(words: string[]): void;
 }
 
 export interface ISpeechEngineCallbacks {
@@ -35,4 +35,7 @@ export interface ISpeechEngineCallbacks {
 
     /** Called when the engine can't keep running (e.g. microphone access was denied). */
     onPermanentError(message: string): void;
+
+    /** Optional: called when the engine couldn't capture audio from the microphone; it will retry. */
+    onAudioCaptureError?(): void;
 }

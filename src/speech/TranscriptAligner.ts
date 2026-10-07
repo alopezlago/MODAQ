@@ -1,100 +1,153 @@
-// Skips within this distance are "ordinary": the recognizer dropped a few words. Beyond it, moving is a resync
-// (the position fell badly behind, e.g. a stretch of misrecognized words), which needs more evidence.
-const lookaheadWindow = 8;
+import { getSoundKey, getTokenSimilarity, getTokenWeight, tokenizeSpeechText } from "./SpeechText";
 
-// Short, common words ("on", "the", "a") appear everywhere, so only let them start a skip when they're right
-// around where we expect the reader to be. Longer words can start a skip anywhere ahead, which is what lets the
-// position resync when it falls far behind.
-const shortWordLookaheadWindow = 3;
-const shortWordLength = 4;
+export { normalizeSpokenWord } from "./SpeechText";
 
-// How many consecutive spoken words have to match at a skipped-to location before the position moves there.
-// Single words and short phrases ("this place", "this entity") repeat within questions, so small skips need two
-// agreeing words, larger skips need three, and a long-range resync needs four.
-const nearSkipRequiredWordCount = 2;
-const farSkipRequiredWordCount = 3;
-const resyncRequiredWordCount = 4;
+// How the aligner decides where the reader is
+// ------------------------------------------
+// Every time a word is heard, the most recent spoken tokens (the "window") are aligned against the tossup text
+// with a fuzzy local alignment (Smith-Waterman): matches score by how alike the words are and how distinctive
+// the packet word is, and the alignment can step over spoken words that don't match anything (misrecognitions,
+// "um") or packet words the recognizer never reported. The column where the best alignment ends is where the
+// window says the reader is.
+//
+// Aligning a window, instead of matching one word at a time, is what makes this robust: one misheard word no
+// longer breaks a run of evidence, and a window of words read a few seconds ago that also appears later in the
+// question ("this place") is explained by where it was actually read rather than pulling the position ahead.
+//
+// The position only moves forward when the alignment has enough evidence *past* the current position -- one
+// word for the very next word, more for longer jumps, more still for jumps faster than anyone reads. Words the
+// window explains at or behind the position (a stumble, a recognizer re-emitting part of a sentence) are not
+// progress.
 
-// Skips of at most this distance count as "near" (e.g. the recognizer missing one word)
+// How many of the most recently heard tokens are aligned against the text
+const windowSize = 10;
+
+// How far behind the position an alignment may start. Enough to cover a full window of words already read, plus
+// some words the recognizer skipped.
+const behindSearchTokens = 30;
+
+// Spoken/target similarity below this is a mismatch; at or above, a match whose score scales with the similarity
+const matchThreshold = 0.65;
+
+// Score for a spoken token aligned with a packet token it doesn't match
+const mismatchScore = -0.4;
+
+// Cost of a spoken token the alignment skips (misrecognition, filler word, moderator aside)
+const spokenGapCost = 0.4;
+
+// Cost of skipping a packet token, i.e. assuming the recognizer missed it. Weak words are dropped by recognizers
+// more often, and say less, so skipping them is cheaper.
+const targetGapBaseCost = 0.15;
+const targetGapWeightCost = 0.3;
+
+// Evidence (the match score earned on words past the current position) needed to move there, by how far the move
+// is. Any match moves to the very next word; skipping a word takes about one content word; longer skips need a
+// couple of agreeing content words; resyncs far ahead need several.
+const nextWordRequiredEvidence = 0.01;
 const nearSkipDistance = 2;
+const nearSkipRequiredEvidence = 0.9;
+const farSkipDistance = 8;
+const farSkipRequiredEvidence = 1.5;
+const resyncRequiredEvidence = 2.6;
 
-// Temporal expectations about a moderator reading aloud:
-//  - They read at a bounded pace, so the position shouldn't suddenly jump much farther than they could have
-//    read in the time elapsed. A jump that outpaces this needs extra corroboration (guards against a stray
-//    far match yanking the position ahead).
-//  - They don't dwell on a single word for many seconds. If the position has been stuck for a while but words
-//    are still being heard, matching has fallen behind, so ease the bar to let it resync.
-// A generous reading rate (typical is ~2.5-3) so genuine fast readers aren't penalized.
-const assumedWordsPerSecond = 4;
+// A mild preference for nearer positions, so a phrase that repeats resolves to the nearer occurrence
+const distancePenaltyPerToken = 0.03;
 
-// Allowance on top of the rate, for recognition bursts and brief pauses
-const temporalSlackWords = 5;
+// Reading-pace expectations. A reader can't advance much faster than they speak, so a jump of more tokens than
+// have been heard since the last progress needs extra evidence. The time-based allowance covers stretches where
+// the recognizer reported nothing (e.g. a session restart), capped so a long silence doesn't make any jump free.
+const allowedTokensPerHeardToken = 1.5;
+const assumedTokensPerSecond = 4;
+const maximumTimeAllowanceTokens = 25;
+const baseAllowanceTokens = 4;
+const overreachEvidencePerToken = 0.35;
+const maximumOverreachEvidence = 4;
 
-// Extra agreeing words required to commit a jump that's farther than the time elapsed makes plausible
-const temporalOverreachPenaltyWords = 2;
+// If the recent window lines up strongly, right up to the newest word, with text well behind the position --
+// much better than it lines up with the text around the position -- an earlier jump was wrong; move back. Kept
+// strict so stumbles (which re-read only the last few words) never trigger it.
+const recoveryMinimumDistance = 8;
+const recoveryRequiredScore = 3.5;
+const recoveryRequiredMarginOverPosition = 2;
+const recoveryNearPositionTokens = 3;
 
-// After the position has been stuck this long, treat it as fallen-behind and ease the resync requirement
-const stuckSeconds = 4;
+// The spoken tokens a sound-alike similarity cache keeps before it's cleared
+const similarityCacheLimit = 256;
 
-// How many words behind (including the current position) to treat a spoken word as a repeat. Moderators
-// stumble and re-read recent words, and speech recognizers re-emit parts of a sentence when they revise their
-// guess. Questions also repeat phrases ("this place"), so a re-heard word from the current sentence must be
-// treated as a repeat rather than matching the phrase's next occurrence. This check runs after the next-word
-// check, so a large window doesn't stall normal reading.
-const repeatWindow = 10;
+// A word the recognizer split in two (or two words it joined into one) is only considered when the lengths are
+// this close; otherwise a word that merely starts the pair ("gamma" for "gamma delta") would match it
+const maximumJoinedLengthDifference = 2;
+
+// How many tokens back from the end of an utterance a revision to its transcript is reprocessed
+const maximumRevisionDepth = 30;
+
+interface ITargetToken {
+    text: string;
+
+    soundKey: string;
+
+    /** This token joined to the one before it, for when a recognizer writes two words as one */
+    joinedWithPrevious: string | undefined;
+
+    joinedWithPreviousSoundKey: string | undefined;
+
+    /** Index of the buzzable word this token is part of */
+    wordIndex: number;
+
+    weight: number;
+}
 
 /**
- * Follows along a known piece of text (the tossup) given an incoming stream of spoken words. The position only
- * moves forward, words are matched fuzzily to tolerate misrecognitions and mispronunciations, and recently read
- * words are treated as stumbles/repeats instead of new progress.
+ * The aligner's mutable state. It's a plain value so callers can snapshot and restore it, which is how revised
+ * interim transcripts are replayed (see UtteranceTranscriptProcessor).
+ */
+export interface IAlignerState {
+    /** Index into the target tokens of the last token believed read, or -1 */
+    readonly tokenPosition: number;
+
+    /** The most recently heard tokens, oldest first, at most windowSize of them */
+    readonly recentTokens: readonly string[];
+
+    /** Tokens heard since the position last moved */
+    readonly tokensSinceProgress: number;
+
+    /** Time (ms) the position last moved, or the aligner was created */
+    readonly lastProgressTime: number;
+}
+
+/**
+ * Follows along a known piece of text (the tossup) given an incoming stream of spoken words, reporting the index
+ * of the last word read. Matching is fuzzy and windowed, so it tolerates misrecognitions, words the recognizer
+ * drops, stumbles, and phrases that repeat within the question.
  */
 export class TranscriptAligner {
-    private readonly targetWords: string[];
+    private readonly tokens: ITargetToken[];
 
-    private position: number;
+    private state: IAlignerState;
 
-    // A candidate skip: a run of spoken words matching consecutively at a spot further ahead. The position only
-    // moves there once enough words in a row agree.
-    private pendingSkip: IPendingSkip | undefined;
+    // Similarities of a spoken token (or two joined spoken tokens) to every target token, cached since each heard
+    // token is compared against the text once per window it's in
+    private readonly similarityCache: Map<string, ISpokenTokenSimilarities>;
 
-    // Wall-clock time the position last advanced, for the temporal checks. 0 means it hasn't advanced yet.
-    private lastProgressTime: number;
-
-    // The last position confirmed via commit(). rollbackToCommitted() returns the aligner here, which lets a
-    // caller advance the position on speculative (interim) words and then discard that advance if it isn't
-    // borne out -- see ConfirmingTranscriptProcessor.
-    private committedState: IAlignerState;
-
-    constructor(targetWords: string[]) {
-        this.targetWords = targetWords.map(normalizeSpokenWord);
-        this.position = -1;
-        this.pendingSkip = undefined;
-        this.lastProgressTime = 0;
-        this.committedState = { position: -1, pendingSkip: undefined, lastProgressTime: 0 };
+    constructor(targetWords: string[], now: number = Date.now()) {
+        this.tokens = tokenizeTargetWords(targetWords);
+        this.state = { tokenPosition: -1, recentTokens: [], tokensSinceProgress: 0, lastProgressTime: now };
+        this.similarityCache = new Map();
     }
 
     /**
      * The index of the last word in the target text that we believe has been read, or -1 if none have been.
      */
     public get currentPosition(): number {
-        return this.position;
+        return this.state.tokenPosition < 0 ? -1 : this.tokens[this.state.tokenPosition].wordIndex;
     }
 
-    /** Marks the current position as confirmed; a later rollbackToCommitted() returns the aligner here. */
-    public commit(): void {
-        this.committedState = {
-            position: this.position,
-            pendingSkip: this.pendingSkip == undefined ? undefined : { ...this.pendingSkip },
-            lastProgressTime: this.lastProgressTime,
-        };
+    public getState(): IAlignerState {
+        return this.state;
     }
 
-    /** Discards any advancement made since the last commit() (or since construction, if none). */
-    public rollbackToCommitted(): void {
-        this.position = this.committedState.position;
-        this.pendingSkip =
-            this.committedState.pendingSkip == undefined ? undefined : { ...this.committedState.pendingSkip };
-        this.lastProgressTime = this.committedState.lastProgressTime;
+    public setState(state: IAlignerState): void {
+        this.state = state;
     }
 
     /**
@@ -102,219 +155,359 @@ export class TranscriptAligner {
      * it's a parameter so the temporal logic can be tested deterministically.
      */
     public processTranscript(transcript: string, now: number = Date.now()): number {
-        for (const rawWord of transcript.split(/\s+/)) {
-            const word: string = normalizeSpokenWord(rawWord);
-            if (word !== "") {
-                this.advance(word, now);
-            }
+        for (const token of tokenizeSpeechText(transcript)) {
+            this.processToken(token, now);
         }
 
-        return this.position;
+        return this.currentPosition;
     }
 
-    private advance(word: string, now: number): void {
-        // The most likely case: the word is the next one in the question
-        const next: number = this.position + 1;
-        if (next < this.targetWords.length && wordsMatch(word, this.targetWords[next])) {
-            this.position = next;
-            this.pendingSkip = undefined;
-            this.lastProgressTime = now;
-            return;
+    /** Processes one already-tokenized spoken token (see tokenizeSpeechText). */
+    public processToken(token: string, now: number): void {
+        const recentTokens: string[] = this.state.recentTokens.concat(token);
+        if (recentTokens.length > windowSize) {
+            recentTokens.shift();
         }
 
-        // If the word matches something just read, the moderator stumbled and repeated themselves, or the
-        // recognizer re-emitted part of the sentence while revising its guess. Don't move the position, and
-        // don't let it count as evidence for a pending skip; re-heard phrases also appear later in the question
-        // ("this place"), and matching them ahead is how false jumps happen.
-        const repeatStart: number = Math.max(0, this.position - repeatWindow + 1);
-        for (let i = repeatStart; i <= this.position; i++) {
-            if (wordsMatch(word, this.targetWords[i])) {
-                return;
-            }
-        }
-
-        // If a skip is pending and this word continues it, it's more evidence the reader is really there. Only
-        // move once enough words in a row agree.
-        if (
-            this.pendingSkip != undefined &&
-            this.pendingSkip.nextExpectedIndex < this.targetWords.length &&
-            wordsMatch(word, this.targetWords[this.pendingSkip.nextExpectedIndex])
-        ) {
-            this.pendingSkip.matchedWordCount++;
-            this.pendingSkip.nextExpectedIndex++;
-
-            const requiredWordCount: number = this.requiredWordCountForSkip(this.pendingSkip.distance, now);
-            if (this.pendingSkip.matchedWordCount >= requiredWordCount) {
-                this.position = this.pendingSkip.nextExpectedIndex - 1;
-                this.pendingSkip = undefined;
-                this.lastProgressTime = now;
-            }
-
-            return;
-        }
-
-        // Look for the start of a skip: the recognizer may have missed words, or the position may have fallen
-        // far behind after a stretch of misrecognitions. Longer words can start a skip anywhere in the rest of
-        // the question (a far skip needs several consecutive matches anyway); short common words only nearby.
-        // The position never moves on a single match; this just starts collecting evidence.
-        const end: number =
-            word.length < shortWordLength
-                ? Math.min(this.targetWords.length, this.position + 1 + shortWordLookaheadWindow)
-                : this.targetWords.length;
-        for (let i = this.position + 2; i < end; i++) {
-            if (wordsMatch(word, this.targetWords[i])) {
-                this.pendingSkip = {
-                    nextExpectedIndex: i + 1,
-                    matchedWordCount: 1,
-                    distance: i - this.position,
-                };
-                return;
-            }
-        }
-
-        // No match anywhere; the word was misrecognized, part of a stumble, or unrelated speech. Clear any
-        // pending skip, since the words after it didn't continue it.
-        this.pendingSkip = undefined;
-    }
-
-    // How many consecutive agreeing words a skip of the given distance needs before the position moves there.
-    // Starts from the distance-based requirement, then applies temporal expectations.
-    private requiredWordCountForSkip(distance: number, now: number): number {
-        let required: number =
-            distance <= nearSkipDistance
-                ? nearSkipRequiredWordCount
-                : distance <= lookaheadWindow
-                ? farSkipRequiredWordCount
-                : resyncRequiredWordCount;
-
-        // 0 means the position hasn't advanced yet (e.g. tracking started mid-question); don't constrain the
-        // first sync by time.
-        const secondsSinceProgress: number =
-            this.lastProgressTime === 0 ? Number.POSITIVE_INFINITY : (now - this.lastProgressTime) / 1000;
-
-        // A jump farther than the reader could have plausibly read in the elapsed time is suspect; demand more
-        const plausibleWords: number = temporalSlackWords + secondsSinceProgress * assumedWordsPerSecond;
-        if (distance > plausibleWords) {
-            required += temporalOverreachPenaltyWords;
-        }
-
-        // The reader won't dwell on one word for seconds; if we've been stuck that long, matching has fallen
-        // behind, so make it easier to catch up
-        if (secondsSinceProgress >= stuckSeconds) {
-            required = Math.max(nearSkipRequiredWordCount, required - 1);
-        }
-
-        return required;
-    }
-}
-
-interface IPendingSkip {
-    /** The next word index this skip expects to match */
-    nextExpectedIndex: number;
-
-    /** How many consecutive spoken words have matched at this skip so far */
-    matchedWordCount: number;
-
-    /** How far ahead of the position the skip started */
-    distance: number;
-}
-
-// A snapshot of the aligner's mutable state, captured by commit() and restored by rollbackToCommitted().
-interface IAlignerState {
-    position: number;
-    pendingSkip: IPendingSkip | undefined;
-    lastProgressTime: number;
-}
-
-/**
- * Feeds an engine's growing/revisable utterance transcripts into a TranscriptAligner and reports the resulting
- * position. Implementations differ in how much they trust speculative (interim) transcripts.
- */
-export interface ITranscriptProcessor {
-    /** The aligner's current position. */
-    readonly position: number;
-
-    /**
-     * Processes the latest transcript for an utterance. `isFinal` means the utterance is complete and the next
-     * call belongs to a new utterance.
-     */
-    process(utteranceKey: string, transcript: string, isFinal: boolean): IProcessResult;
-}
-
-/**
- * Feeds growing/revisable utterance transcripts into a TranscriptAligner without double-counting words.
- * Speech recognizers emit partial transcripts that grow (and occasionally get revised) as the speaker keeps
- * talking, then a final transcript when the utterance ends. Each utterance is identified by a key; words
- * already consumed from the current utterance aren't fed to the aligner again.
- */
-export class IncrementalTranscriptProcessor implements ITranscriptProcessor {
-    private readonly aligner: TranscriptAligner;
-
-    private currentUtteranceKey: string | undefined;
-
-    private wordsConsumed: number;
-
-    constructor(aligner: TranscriptAligner) {
-        this.aligner = aligner;
-        this.currentUtteranceKey = undefined;
-        this.wordsConsumed = 0;
-    }
-
-    public get position(): number {
-        return this.aligner.currentPosition;
-    }
-
-    /**
-     * Processes the latest transcript for an utterance and returns the aligner's position along with the words
-     * that hadn't been heard before this call. `isFinal` means the utterance is complete and the next call will
-     * belong to a new utterance.
-     */
-    public process(utteranceKey: string, transcript: string, isFinal: boolean): IProcessResult {
-        if (utteranceKey !== this.currentUtteranceKey) {
-            this.currentUtteranceKey = utteranceKey;
-            this.wordsConsumed = 0;
-        }
-
-        const words: string[] = transcript.split(/\s+/).filter((word) => word !== "");
-        const newWords: string[] = words.slice(this.wordsConsumed);
-        if (newWords.length > 0) {
-            this.aligner.processTranscript(newWords.join(" "));
-        }
-
-        if (isFinal) {
-            this.currentUtteranceKey = undefined;
-            this.wordsConsumed = 0;
-        } else {
-            // If a revision shortened the transcript, keep the old count so re-added words aren't double-counted
-            this.wordsConsumed = Math.max(this.wordsConsumed, words.length);
-        }
-
-        return {
-            position: this.aligner.currentPosition,
-            newWords,
+        const heardState: IAlignerState = {
+            ...this.state,
+            recentTokens,
+            tokensSinceProgress: this.state.tokensSinceProgress + 1,
         };
+
+        const newPosition: number = this.findPosition(heardState, now);
+        this.state =
+            newPosition === heardState.tokenPosition
+                ? heardState
+                : { tokenPosition: newPosition, recentTokens, tokensSinceProgress: 0, lastProgressTime: now };
+    }
+
+    private findPosition(state: IAlignerState, now: number): number {
+        const spoken: readonly string[] = state.recentTokens;
+        const position: number = state.tokenPosition;
+        const start: number = Math.max(0, position - behindSearchTokens);
+        const columnCount: number = this.tokens.length - start;
+        if (columnCount <= 0 || spoken.length === 0) {
+            return position;
+        }
+
+        const similarities: ISpokenTokenSimilarities[] = spoken.map((token) => this.getSimilarities(token));
+        const endings: IAlignmentEnding[] = this.align(spoken, similarities, start, position);
+
+        // Pick where to move. Forward candidates need enough evidence past the position, and have to explain the
+        // window at least as well as staying put does.
+        const allowance: number =
+            baseAllowanceTokens +
+            state.tokensSinceProgress * allowedTokensPerHeardToken +
+            Math.min(
+                maximumTimeAllowanceTokens,
+                (Math.max(0, now - state.lastProgressTime) / 1000) * assumedTokensPerSecond
+            );
+
+        let bestStayScore = 0;
+        let bestStayColumn = -1;
+        let bestScoreNearPosition = 0;
+        let bestForwardColumn = -1;
+        let bestForwardAdjustedScore = Number.NEGATIVE_INFINITY;
+        let bestForwardScore = 0;
+        for (let column = 0; column < columnCount; column++) {
+            const target: number = start + column;
+            const ending: IAlignmentEnding = endings[column];
+            if (ending.score <= 0) {
+                continue;
+            }
+
+            if (target <= position) {
+                if (ending.score > bestStayScore) {
+                    bestStayScore = ending.score;
+                    bestStayColumn = column;
+                }
+
+                if (target >= position - recoveryNearPositionTokens) {
+                    bestScoreNearPosition = Math.max(bestScoreNearPosition, ending.score);
+                }
+
+                continue;
+            }
+
+            const distance: number = target - position;
+            if (ending.progressEvidence < requiredEvidence(distance, allowance)) {
+                continue;
+            }
+
+            const adjustedScore: number = ending.score - distance * distancePenaltyPerToken;
+            if (adjustedScore > bestForwardAdjustedScore) {
+                bestForwardAdjustedScore = adjustedScore;
+                bestForwardColumn = column;
+                bestForwardScore = ending.score;
+            }
+        }
+
+        if (bestForwardColumn >= 0 && bestForwardScore >= bestStayScore) {
+            return start + bestForwardColumn;
+        }
+
+        // Recovery from an earlier wrong jump: the latest words line up strongly, all the way to the newest word,
+        // with text well behind the position, while nothing near the position is supported
+        if (bestStayColumn >= 0) {
+            const stayTarget: number = start + bestStayColumn;
+            const stayEnding: IAlignmentEnding = endings[bestStayColumn];
+            if (
+                position - stayTarget >= recoveryMinimumDistance &&
+                stayEnding.score >= recoveryRequiredScore &&
+                stayEnding.endsAtNewestToken &&
+                stayEnding.score - bestScoreNearPosition >= recoveryRequiredMarginOverPosition
+            ) {
+                return stayTarget;
+            }
+        }
+
+        return position;
+    }
+
+    // Local alignment of the spoken window against target tokens [start, end). For each target column, returns the
+    // best alignment ending there (allowing unexplained trailing spoken tokens at a cost), along with how much of
+    // its score comes from target tokens past `position` -- the evidence that the reader has moved on.
+    private align(
+        spoken: readonly string[],
+        similarities: ISpokenTokenSimilarities[],
+        start: number,
+        position: number
+    ): IAlignmentEnding[] {
+        const rows: number = spoken.length + 1;
+        const columns: number = this.tokens.length - start + 1;
+        const score: Float64Array = new Float64Array(rows * columns);
+        const evidence: Float64Array = new Float64Array(rows * columns);
+        const at = (row: number, column: number): number => row * columns + column;
+
+        for (let row = 1; row < rows; row++) {
+            const rowSimilarities: ISpokenTokenSimilarities = similarities[row - 1];
+            const splitSimilarities: Float32Array | undefined =
+                row >= 2 ? this.getSimilarities(spoken[row - 2] + spoken[row - 1]).single : undefined;
+            for (let column = 1; column < columns; column++) {
+                const target: number = start + column - 1;
+                const token: ITargetToken = this.tokens[target];
+                const isPastPosition: boolean = target > position;
+
+                // Start fresh here (local alignment)
+                let bestScore = 0;
+                let bestEvidence = 0;
+
+                // Spoken token aligned with this target token, as a match or a mismatch
+                const pairScore: number = getPairScore(rowSimilarities.single[target], token.weight);
+                const diagonal: number = score[at(row - 1, column - 1)] + pairScore;
+                if (diagonal > bestScore) {
+                    bestScore = diagonal;
+                    bestEvidence = evidence[at(row - 1, column - 1)] + (isPastPosition ? pairScore : 0);
+                }
+
+                // Spoken token skipped
+                const up: number = score[at(row - 1, column)] - spokenGapCost;
+                if (up > bestScore) {
+                    bestScore = up;
+                    bestEvidence = evidence[at(row - 1, column)];
+                }
+
+                // Target token skipped (the recognizer missed it)
+                const gapCost: number = targetGapBaseCost + targetGapWeightCost * Math.min(1, token.weight);
+                const left: number = score[at(row, column - 1)] - gapCost;
+                if (left > bestScore) {
+                    bestScore = left;
+                    bestEvidence = evidence[at(row, column - 1)];
+                }
+
+                // Two spoken tokens for one packet word: the recognizer split it ("photo electric")
+                if (
+                    splitSimilarities != undefined &&
+                    token.text.length >= 5 &&
+                    Math.abs(spoken[row - 2].length + spoken[row - 1].length - token.text.length) <=
+                        maximumJoinedLengthDifference
+                ) {
+                    const mergedScore: number = getPairScore(splitSimilarities[target], token.weight);
+                    const value: number = score[at(row - 2, column - 1)] + mergedScore;
+                    if (mergedScore > 0 && value > bestScore) {
+                        bestScore = value;
+                        bestEvidence = evidence[at(row - 2, column - 1)] + (isPastPosition ? mergedScore : 0);
+                    }
+                }
+
+                // One spoken token for two packet words: the recognizer joined them ("baseball" for "base ball")
+                if (column >= 2 && spoken[row - 1].length >= 5) {
+                    const mergedScore: number = getPairScore(
+                        rowSimilarities.joinedTargets[target],
+                        Math.max(this.tokens[target - 1].weight, token.weight)
+                    );
+                    const value: number = score[at(row - 1, column - 2)] + mergedScore;
+                    if (mergedScore > 0 && value > bestScore) {
+                        bestScore = value;
+                        bestEvidence = evidence[at(row - 1, column - 2)] + (isPastPosition ? mergedScore : 0);
+                    }
+                }
+
+                score[at(row, column)] = bestScore;
+                evidence[at(row, column)] = bestEvidence;
+            }
+        }
+
+        // For each target column, the best alignment ending there; spoken tokens after the alignment's end are
+        // unexplained and cost the same as skipped spoken tokens
+        const endings: IAlignmentEnding[] = [];
+        for (let column = 1; column < columns; column++) {
+            let best: IAlignmentEnding = { score: 0, progressEvidence: 0, endsAtNewestToken: false };
+            for (let row = 1; row < rows; row++) {
+                const trailingTokens: number = rows - 1 - row;
+                const value: number = score[at(row, column)] - trailingTokens * spokenGapCost;
+                if (value > best.score) {
+                    best = {
+                        score: value,
+                        progressEvidence: evidence[at(row, column)],
+                        endsAtNewestToken: trailingTokens === 0,
+                    };
+                }
+            }
+
+            endings.push(best);
+        }
+
+        return endings;
+    }
+
+    private getSimilarities(spokenToken: string): ISpokenTokenSimilarities {
+        let similarities: ISpokenTokenSimilarities | undefined = this.similarityCache.get(spokenToken);
+        if (similarities == undefined) {
+            const soundKey: string = getSoundKey(spokenToken);
+            similarities = {
+                single: new Float32Array(this.tokens.length),
+                joinedTargets: new Float32Array(this.tokens.length),
+            };
+            for (let i = 0; i < this.tokens.length; i++) {
+                const token: ITargetToken = this.tokens[i];
+                similarities.single[i] = getTokenSimilarity(spokenToken, token.text, soundKey, token.soundKey);
+                if (
+                    token.joinedWithPrevious != undefined &&
+                    Math.abs(token.joinedWithPrevious.length - spokenToken.length) <= maximumJoinedLengthDifference
+                ) {
+                    similarities.joinedTargets[i] = getTokenSimilarity(
+                        spokenToken,
+                        token.joinedWithPrevious,
+                        soundKey,
+                        token.joinedWithPreviousSoundKey
+                    );
+                }
+            }
+
+            if (this.similarityCache.size >= similarityCacheLimit) {
+                this.similarityCache.clear();
+            }
+
+            this.similarityCache.set(spokenToken, similarities);
+        }
+
+        return similarities;
     }
 }
 
+interface ISpokenTokenSimilarities {
+    /** Similarity to each target token */
+    single: Float32Array;
+
+    /** Similarity to each target token joined to the one before it (0 for the first) */
+    joinedTargets: Float32Array;
+}
+
+interface IAlignmentEnding {
+    /** Score of the best alignment ending at this target token */
+    score: number;
+
+    /** The part of that score earned on target tokens past the current position */
+    progressEvidence: number;
+
+    /** Whether the alignment explains the window right up to the most recently heard token */
+    endsAtNewestToken: boolean;
+}
+
+function getPairScore(similarity: number, weight: number): number {
+    if (similarity < matchThreshold) {
+        return mismatchScore;
+    }
+
+    // A match at the threshold earns a quarter of the word's weight; an exact match earns all of it
+    return weight * (0.25 + (0.75 * (similarity - matchThreshold)) / (1 - matchThreshold));
+}
+
+function requiredEvidence(distance: number, allowance: number): number {
+    const base: number =
+        distance <= 1
+            ? nextWordRequiredEvidence
+            : distance <= nearSkipDistance
+            ? nearSkipRequiredEvidence
+            : distance <= farSkipDistance
+            ? farSkipRequiredEvidence
+            : resyncRequiredEvidence;
+
+    // Moving faster than the reader could have read needs extra corroboration
+    const overreach: number =
+        distance > allowance
+            ? Math.min(maximumOverreachEvidence, (distance - allowance) * overreachEvidencePerToken)
+            : 0;
+
+    return base + overreach;
+}
+
+function tokenizeTargetWords(targetWords: string[]): ITargetToken[] {
+    const tokenTexts: { text: string; wordIndex: number }[] = [];
+    targetWords.forEach((word, wordIndex) => {
+        for (const text of tokenizeSpeechText(word)) {
+            tokenTexts.push({ text, wordIndex });
+        }
+    });
+
+    const occurrences: Map<string, number> = new Map();
+    for (const token of tokenTexts) {
+        occurrences.set(token.text, (occurrences.get(token.text) ?? 0) + 1);
+    }
+
+    return tokenTexts.map((token, index) => {
+        const joinedWithPrevious: string | undefined = index > 0 ? tokenTexts[index - 1].text + token.text : undefined;
+        return {
+            ...token,
+            soundKey: getSoundKey(token.text),
+            joinedWithPrevious,
+            joinedWithPreviousSoundKey: joinedWithPrevious == undefined ? undefined : getSoundKey(joinedWithPrevious),
+            weight: getTokenWeight(token.text, occurrences.get(token.text) ?? 1),
+        };
+    });
+}
+
 /**
- * Like IncrementalTranscriptProcessor, but treats interim (non-final) transcripts as provisional: each
- * utterance is re-aligned from the last confirmed position, so a revised interim that no longer contains an
- * earlier (mis)guess pulls the position back instead of leaving it stuck forward. Only a finalized utterance --
- * or the start of the next utterance -- confirms the position. This guards against speculative interims (which
- * can run ahead of the audio, then get walked back) pinning the position past where the reader actually is.
+ * Feeds a speech engine's utterance transcripts into a TranscriptAligner. Recognizers emit partial transcripts
+ * that grow -- and get revised -- while the speaker talks, then a final transcript when the utterance ends.
+ *
+ * Every transcript of an utterance is compared with the previous one: words in the unchanged prefix were already
+ * processed, so processing resumes from the aligner state saved after that prefix. A revision that drops or
+ * changes an earlier (mis)guess therefore undoes whatever that guess did to the position, while unchanged words
+ * aren't reprocessed. A new utterance builds on wherever the previous one left the aligner.
  */
-export class ConfirmingTranscriptProcessor implements ITranscriptProcessor {
+export class UtteranceTranscriptProcessor {
     private readonly aligner: TranscriptAligner;
 
     private currentUtteranceKey: string | undefined;
+
+    // Tokens of the current utterance processed so far, and the aligner state after each prefix of them
+    // (statesAfterTokens[0] is the state when the utterance began)
+    private utteranceTokens: string[];
+
+    private statesAfterTokens: IAlignerState[];
 
     // Words already reported as "new" for the current utterance, so newWords stays a delta (for buzz-resolution
-    // word detection) even though the position is recomputed from the whole utterance each call.
+    // word detection) even when the utterance is revised
     private wordsReported: number;
 
     constructor(aligner: TranscriptAligner) {
         this.aligner = aligner;
         this.currentUtteranceKey = undefined;
+        this.utteranceTokens = [];
+        this.statesAfterTokens = [aligner.getState()];
         this.wordsReported = 0;
     }
 
@@ -322,30 +515,56 @@ export class ConfirmingTranscriptProcessor implements ITranscriptProcessor {
         return this.aligner.currentPosition;
     }
 
-    public process(utteranceKey: string, transcript: string, isFinal: boolean): IProcessResult {
+    /**
+     * Processes the latest transcript for an utterance. `isFinal` means the utterance is complete and the next
+     * call belongs to a new utterance.
+     */
+    public process(
+        utteranceKey: string,
+        transcript: string,
+        isFinal: boolean,
+        now: number = Date.now()
+    ): IProcessResult {
         if (utteranceKey !== this.currentUtteranceKey) {
-            // A new utterance began; whatever the previous one settled on is now confirmed (its final may have
-            // been missed, and the reader has moved on regardless).
-            this.aligner.commit();
-            this.currentUtteranceKey = utteranceKey;
-            this.wordsReported = 0;
+            // A new utterance began; whatever the previous one settled on stands (its final may have been missed,
+            // and the reader has moved on regardless)
+            this.startUtterance(utteranceKey);
         }
+
+        const tokens: string[] = tokenizeSpeechText(transcript);
+        let commonPrefixLength = 0;
+        while (
+            commonPrefixLength < tokens.length &&
+            commonPrefixLength < this.utteranceTokens.length &&
+            tokens[commonPrefixLength] === this.utteranceTokens[commonPrefixLength]
+        ) {
+            commonPrefixLength++;
+        }
+
+        // Rewind to just after the unchanged prefix, then process what's new or revised. Revisions far behind the
+        // end of a long utterance (Safari reports whole utterances as one growing transcript and keeps polishing
+        // them) are too old to change where the reader is now, so don't rewind further than a few windows.
+        const resumeIndex: number = Math.max(
+            commonPrefixLength,
+            Math.min(tokens.length, this.utteranceTokens.length) - maximumRevisionDepth
+        );
+        this.aligner.setState(this.statesAfterTokens[resumeIndex]);
+        this.statesAfterTokens.length = resumeIndex + 1;
+        for (let i = resumeIndex; i < tokens.length; i++) {
+            this.aligner.processToken(tokens[i], now);
+            this.statesAfterTokens.push(this.aligner.getState());
+        }
+
+        this.utteranceTokens = tokens;
 
         const words: string[] = transcript.split(/\s+/).filter((word) => word !== "");
-
-        // Re-evaluate this utterance from the last confirmed position. Re-aligning the whole utterance each time
-        // (rather than only its new words) is what lets a shortened/revised interim retract an earlier overshoot.
-        this.aligner.rollbackToCommitted();
-        if (words.length > 0) {
-            this.aligner.processTranscript(words.join(" "));
-        }
-
         const newWords: string[] = words.slice(this.wordsReported);
         this.wordsReported = Math.max(this.wordsReported, words.length);
 
         if (isFinal) {
-            this.aligner.commit();
             this.currentUtteranceKey = undefined;
+            this.utteranceTokens = [];
+            this.statesAfterTokens = [this.aligner.getState()];
             this.wordsReported = 0;
         }
 
@@ -353,6 +572,13 @@ export class ConfirmingTranscriptProcessor implements ITranscriptProcessor {
             position: this.aligner.currentPosition,
             newWords,
         };
+    }
+
+    private startUtterance(utteranceKey: string): void {
+        this.currentUtteranceKey = utteranceKey;
+        this.utteranceTokens = [];
+        this.statesAfterTokens = [this.aligner.getState()];
+        this.wordsReported = 0;
     }
 }
 
@@ -362,63 +588,4 @@ export interface IProcessResult {
 
     /** The words in this transcript that hadn't been processed before */
     newWords: string[];
-}
-
-/**
- * Normalizes a word so spoken transcripts can be compared with packet text: lowercases it and strips accents
- * and any punctuation.
- */
-export function normalizeSpokenWord(word: string): string {
-    // NFD splits accented letters into the base letter plus combining marks, which the second replace strips out
-    // along with any punctuation
-    return word
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[^a-z0-9]/g, "");
-}
-
-function wordsMatch(spoken: string, target: string): boolean {
-    if (spoken === target) {
-        return true;
-    }
-
-    // Treat one word being a prefix of the other as a match (e.g. plurals, or the recognizer cutting a word short).
-    // Require a few characters so short words like "a"/"an" don't match everything.
-    const minimumLength: number = Math.min(spoken.length, target.length);
-    if (minimumLength >= 4 && (spoken.startsWith(target) || target.startsWith(spoken))) {
-        return true;
-    }
-
-    // Allow some misspellings/misrecognitions for longer words (e.g. recognizers write "gray" for "grey")
-    const maximumLength: number = Math.max(spoken.length, target.length);
-    if (maximumLength >= 4) {
-        const maximumDistance: number = maximumLength >= 8 ? 2 : 1;
-        return isWithinEditDistance(spoken, target, maximumDistance);
-    }
-
-    return false;
-}
-
-function isWithinEditDistance(first: string, second: string, maximumDistance: number): boolean {
-    if (Math.abs(first.length - second.length) > maximumDistance) {
-        return false;
-    }
-
-    // Standard Levenshtein distance with two rows; words are short so this stays cheap
-    let previousRow: number[] = [];
-    for (let i = 0; i <= second.length; i++) {
-        previousRow.push(i);
-    }
-
-    for (let i = 0; i < first.length; i++) {
-        const currentRow: number[] = [i + 1];
-        for (let j = 0; j < second.length; j++) {
-            const substitutionCost: number = first[i] === second[j] ? 0 : 1;
-            currentRow.push(Math.min(currentRow[j] + 1, previousRow[j + 1] + 1, previousRow[j] + substitutionCost));
-        }
-
-        previousRow = currentRow;
-    }
-
-    return previousRow[second.length] <= maximumDistance;
 }

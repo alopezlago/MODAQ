@@ -135,22 +135,5 @@ describe("UIStateTests", () => {
             appState.uiState.togglePronunciationAnchors();
             expect(appState.uiState.hidePronunciationAnchors).to.be.false;
         });
-
-        it("the space for word numbers is reserved by default and can be collapsed", () => {
-            const appState: AppState = new AppState();
-
-            expect(appState.uiState.collapseBuzzIndexSpacing).to.be.false;
-
-            appState.uiState.toggleCollapseBuzzIndexSpacing();
-            expect(appState.uiState.collapseBuzzIndexSpacing).to.be.true;
-
-            // Turning word numbering off and on doesn't undo the moderator's spacing choice
-            appState.uiState.toggleTypeBuzzIndexMode();
-            appState.uiState.toggleTypeBuzzIndexMode();
-            expect(appState.uiState.collapseBuzzIndexSpacing).to.be.true;
-
-            appState.uiState.toggleCollapseBuzzIndexSpacing();
-            expect(appState.uiState.collapseBuzzIndexSpacing).to.be.false;
-        });
     });
 });

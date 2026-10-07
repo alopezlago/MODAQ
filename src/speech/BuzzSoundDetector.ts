@@ -1,6 +1,9 @@
-// Buzzers produce a loud, sustained, narrowband tone, which looks very different from speech (broadband) in a
-// frequency spectrum. Detect one by looking for a dominant frequency bin that stands far above the rest of the
-// spectrum for a couple of consecutive analysis frames.
+import { keepAudioContextRunning } from "./AudioContextUtils";
+
+// Buzzers produce a loud, sustained, narrowband tone at a fixed pitch, which looks very different from speech in a
+// frequency spectrum. Detect one by looking for a dominant frequency that stands far above the rest of the
+// spectrum and holds the same pitch for a quarter of a second. Speech can briefly look tonal too (a held vowel), but
+// its pitch keeps moving, so the steady-pitch requirement is what keeps a reader's voice from counting as a buzz.
 
 // How often to analyze the spectrum
 const analysisIntervalInMs = 40;
@@ -13,10 +16,14 @@ const maximumToneFrequencyInHz = 4000;
 const minimumPeakInDb = -45;
 
 // ...and stand this far above the median of the band to count as a tone rather than speech
-const minimumPeakOverMedianInDb = 25;
+const minimumPeakOverMedianInDb = 30;
 
-// Require consecutive tone frames so a click or pop doesn't trigger it
-const requiredConsecutiveFrames = 2;
+// The tone has to last this many consecutive frames (~250 ms), so clicks, pops and short tonal bits of speech don't
+// count; buzzers sound for half a second or more
+const requiredConsecutiveFrames = 7;
+
+// ...at a steady pitch: the peak stays within this many frequency bins (about ±50 Hz) of where the tone started
+const maximumPitchDriftInBins = 2;
 
 // Ignore further tones for a bit after firing, since one buzz sound spans many frames
 const cooldownInMs = 1500;
@@ -37,7 +44,12 @@ export class BuzzSoundDetector {
 
     private intervalId: number | undefined;
 
+    private stopResumingAudioContext: (() => void) | undefined;
+
     private consecutiveToneFrames: number;
+
+    // The frequency bin of the current run of tone frames' first peak
+    private toneStartBin: number;
 
     private lastFiredTime: number;
 
@@ -48,7 +60,9 @@ export class BuzzSoundDetector {
         this.audioContext = undefined;
         this.analyser = undefined;
         this.intervalId = undefined;
+        this.stopResumingAudioContext = undefined;
         this.consecutiveToneFrames = 0;
+        this.toneStartBin = -1;
         this.lastFiredTime = 0;
     }
 
@@ -74,6 +88,9 @@ export class BuzzSoundDetector {
         }
 
         this.analyser = undefined;
+
+        this.stopResumingAudioContext?.();
+        this.stopResumingAudioContext = undefined;
 
         if (this.audioContext != undefined) {
             void this.audioContext.close().catch(() => undefined);
@@ -104,6 +121,7 @@ export class BuzzSoundDetector {
 
             this.mediaStream = mediaStream;
             this.audioContext = new AudioContext();
+            this.stopResumingAudioContext = keepAudioContextRunning(this.audioContext);
 
             const source: MediaStreamAudioSourceNode = this.audioContext.createMediaStreamSource(mediaStream);
             const analyser: AnalyserNode = this.audioContext.createAnalyser();
@@ -136,11 +154,13 @@ export class BuzzSoundDetector {
 
         const band: number[] = [];
         let peak = -Infinity;
+        let peakBin = -1;
         for (let i = startBin; i <= endBin; i++) {
             const value: number = spectrum[i];
             band.push(value);
             if (value > peak) {
                 peak = value;
+                peakBin = i;
             }
         }
 
@@ -153,6 +173,12 @@ export class BuzzSoundDetector {
         if (!isTone) {
             this.consecutiveToneFrames = 0;
             return;
+        }
+
+        // A tone whose pitch moved is a new tone (or speech), so the run starts over from here
+        if (this.consecutiveToneFrames === 0 || Math.abs(peakBin - this.toneStartBin) > maximumPitchDriftInBins) {
+            this.toneStartBin = peakBin;
+            this.consecutiveToneFrames = 0;
         }
 
         this.consecutiveToneFrames++;

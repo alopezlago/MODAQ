@@ -54,15 +54,20 @@ export const ReaderFollowerDebug = observer(function ReaderFollowerDebug(props: 
 });
 
 function getQuestionWords(appState: AppState): string[] {
-    const tossup: Tossup | undefined = appState.game.getTossup(appState.uiState.cycleIndex);
+    const tossup: Tossup | undefined = appState.activeGame.getTossup(appState.uiState.cycleIndex);
     if (tossup == undefined) {
         return [];
     }
 
     return tossup
-        .getWords(appState.game.gameFormat)
+        .getWords(appState.activeGame.gameFormat)
         .filter((word) => word.canBuzzOn)
-        .map((word) => word.word.map((segment) => segment.text).join("").trim());
+        .map((word) =>
+            word.word
+                .map((segment) => segment.text)
+                .join("")
+                .trim()
+        );
 }
 
 // Shows the word index plus a snippet of the question around it, with the word itself in brackets, so it's easy

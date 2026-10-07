@@ -3,27 +3,26 @@ import { observer } from "mobx-react-lite";
 import { FocusZone, FocusZoneDirection, mergeStyleSets } from "@fluentui/react";
 
 import * as TossupQuestionController from "./TossupQuestionController";
-import { UIState } from "../state/UIState";
+import { IBuzzFeedback, UIState } from "../state/UIState";
 import { ITossupWord, Tossup } from "../state/PacketState";
 import { QuestionWord } from "./QuestionWord";
-import { Cycle } from "../state/Cycle";
 import { BuzzMenu } from "./BuzzMenu";
+import { Cycle } from "../state/Cycle";
 import { Answer } from "./Answer";
-import { ErrataButton } from "./ErrataButton";
 import type { IFormattedText } from "../parser/IFormattedText";
 import { TossupProtestDialog } from "./dialogs/TossupProtestDialog";
 import { CancelButton } from "./CancelButton";
 import { AppState } from "../state/AppState";
 import { PostQuestionMetadata } from "./PostQuestionMetadata";
-import { BuzzSoundDetector } from "../speech/BuzzSoundDetector";
-import { ReaderFollower } from "../speech/ReaderFollower";
+import { IGameFormat } from "../state/IGameFormat";
+import { BuzzFeedback } from "./BuzzFeedback";
+import { PlayerPad } from "./PlayerPad";
 import { ReaderFollowerDebug } from "./ReaderFollowerDebug";
+import { ReaderFollowerIndicator } from "./ReaderFollowerIndicator";
+import { ReaderFollowerSession } from "./ReaderFollowerSession";
+import { ErrataButton } from "./ErrataButton";
 import { useTiebreakers } from "../contexts/TiebreakerContext";
 import { BelowTossupContext } from "../contexts/BelowTossupContext";
-
-// How long the reading has to pause (no new matched words) before the buzz point moves to the reader's position.
-// Speech recognizers emit words in bursts while someone is talking, so this also smooths out mid-sentence jitter.
-const readerPauseDelayInMs = 500;
 
 export const TossupQuestion = observer(function TossupQuestion(props: IQuestionProps): JSX.Element {
     const classes: ITossupQuestionClassNames = getClassNames();
@@ -38,96 +37,42 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
         if (tossupTextRef.current != null) {
             // Reset the scrollbar to go back to the top so they can read from the beginning
             tossupTextRef.current.scrollTop = 0;
+
+            // The new question's words reuse the old ones' elements by position, so a word that had keyboard focus
+            // would show its focus box on the same spot in the new question
+            const focusedElement: Element | null = document.activeElement;
+            if (focusedElement instanceof HTMLElement && tossupTextRef.current.contains(focusedElement)) {
+                focusedElement.blur();
+            }
         }
     }
 
-    // Follow the reader with the microphone, if it's enabled. Once there's a correct buzz the tossup is over (the
-    // reader moves on to the bonus), so stop listening then. Wrong buzzes keep the tossup live, so keep following.
+    // Follow the reader with the microphone, if it's enabled. Listening starts when the feature is turned on and
+    // keeps running from tossup to tossup; only the words being followed change.
     const isReaderFollowingEnabled: boolean = props.appState.uiState.trackReaderWithMicrophone;
-    const isTossupOver: boolean = props.cycle.correctBuzz != undefined;
-    const gameFormat = props.appState.game.gameFormat;
-    // Restart the follower when this changes so switching engines takes effect on the current tossup
-    const useWhisperWebEngine: boolean = props.appState.uiState.useWhisperWebEngine;
+    const readerFollowerRestartCount: number = props.appState.uiState.readerFollowerRestartCount;
+    const readerFollowerSessionRef: React.MutableRefObject<ReaderFollowerSession | undefined> = React.useRef();
     React.useEffect(() => {
-        if (!isReaderFollowingEnabled || isTossupOver) {
+        if (!isReaderFollowingEnabled) {
             return;
         }
 
-        // While the reader is actively speaking, position updates stream in constantly, and moving the highlight
-        // word-by-word is distracting. Only move the buzz point once updates pause (the reader stopped because
-        // someone buzzed, or paused at the end of a clue). A buzzer sound or a buzz resolution word ("correct",
-        // "neg") means a buzz definitely happened, so those move it immediately.
-        let latestWordIndex = -1;
-        let pauseTimerId: number | undefined = undefined;
-        const clearPauseTimer = (): void => {
-            if (pauseTimerId != undefined) {
-                window.clearTimeout(pauseTimerId);
-                pauseTimerId = undefined;
-            }
-        };
-
-        // When this is on, the reader follower never moves the highlight on its own; the live position is still
-        // tracked so pressing Space can jump to it. Read fresh each call so toggling it doesn't restart the mic.
-        const holdHighlightUntilBuzz = (): boolean => props.appState.uiState.holdReaderHighlightUntilBuzz;
-
-        // When this is on, move the highlight to the reader's position immediately instead of waiting for a
-        // pause. Read fresh each call so toggling it doesn't restart the mic.
-        const moveHighlightInstantly = (): boolean => props.appState.uiState.instantReaderHighlight;
-
-        const flushBuzzPoint = (cue: string): void => {
-            clearPauseTimer();
-            TossupQuestionController.updateReaderFollowerCue(props.appState, cue);
-            if (latestWordIndex >= 0 && !holdHighlightUntilBuzz()) {
-                TossupQuestionController.updateBuzzPointFromReader(props.appState, latestWordIndex);
-            }
-        };
-
-        const onPositionChanged = (wordIndex: number): void => {
-            latestWordIndex = wordIndex;
-            TossupQuestionController.updateReaderFollowerLivePosition(props.appState, wordIndex);
-
-            clearPauseTimer();
-            if (holdHighlightUntilBuzz()) {
-                return;
-            }
-
-            // Instant mode: follow the reader word-by-word with no pause delay
-            if (moveHighlightInstantly()) {
-                TossupQuestionController.updateBuzzPointFromReader(props.appState, latestWordIndex);
-                return;
-            }
-
-            pauseTimerId = window.setTimeout(() => {
-                pauseTimerId = undefined;
-                TossupQuestionController.updateBuzzPointFromReader(props.appState, latestWordIndex);
-            }, readerPauseDelayInMs);
-        };
-
-        const follower: ReaderFollower = new ReaderFollower({
-            onPositionChanged,
-            onPermanentError: (message) => TossupQuestionController.onReaderFollowerError(props.appState, message),
-            onBuzzResolutionWord: (word) => flushBuzzPoint(`heard "${word}"`),
-            onStatusChanged: (engine, status) =>
-                TossupQuestionController.updateReaderFollowerStatus(props.appState, engine, status),
-            onTranscript: (transcript) =>
-                TossupQuestionController.updateReaderFollowerTranscript(props.appState, transcript),
-        });
-        follower.start(
-            TossupQuestionController.getWordsForReaderFollower(props.tossup, gameFormat),
-            useWhisperWebEngine
-        );
-
-        const buzzSoundDetector: BuzzSoundDetector | undefined = BuzzSoundDetector.isSupported()
-            ? new BuzzSoundDetector(() => flushBuzzPoint("buzz sound"))
-            : undefined;
-        buzzSoundDetector?.start();
-
+        const session: ReaderFollowerSession = new ReaderFollowerSession(props.appState);
+        readerFollowerSessionRef.current = session;
         return () => {
-            clearPauseTimer();
-            follower.stop();
-            buzzSoundDetector?.stop();
+            readerFollowerSessionRef.current = undefined;
+            session.dispose();
         };
-    }, [props.appState, props.tossup, gameFormat, isReaderFollowingEnabled, isTossupOver, useWhisperWebEngine]);
+    }, [props.appState, isReaderFollowingEnabled, readerFollowerRestartCount]);
+
+    // Once there's a correct buzz the tossup is over (the reader moves on to the bonus), so stop following it.
+    // Wrong buzzes keep the tossup live, so keep following.
+    const isTossupOver: boolean = props.cycle.correctBuzz != undefined;
+    const gameFormat: IGameFormat = props.appState.activeGame.gameFormat;
+    React.useEffect(() => {
+        readerFollowerSessionRef.current?.setTossup(isTossupOver ? undefined : props.tossup, gameFormat);
+    }, [props.tossup, gameFormat, isReaderFollowingEnabled, isTossupOver, readerFollowerRestartCount]);
+
     const correctBuzzIndex: number = props.cycle.correctBuzz?.marker.position ?? -1;
     const wrongBuzzIndexes: number[] = (props.cycle.wrongBuzzes ?? [])
         .filter((buzz) => buzz.tossupIndex === props.tossupNumber - 1)
@@ -135,24 +80,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
 
     const words: ITossupWord[] = props.tossup.getWords(props.appState.activeGame.gameFormat);
 
-    // In type-word-number mode, the space for the numbers is held open above every word so the numbers appearing
-    // doesn't shift the question text. Moderators who'd rather keep the question's normal line spacing can turn
-    // that off, and the space only opens up while the numbers are actually showing.
-    const reserveIndexSpace: boolean =
-        props.appState.uiState.typeBuzzIndexMode && !props.appState.uiState.collapseBuzzIndexSpacing;
-
-    // Give the question number the same space above it as the words, so it lines up with them instead of floating
-    // higher
-    let questionWords: JSX.Element[] = [
-        reserveIndexSpace || props.appState.uiState.buzzIndexesVisible ? (
-            <span key="tuNumber" className={classes.questionNumberStacked}>
-                <span className={classes.indexSpacePlaceholder}>&nbsp;</span>
-                {props.tossupNumber}.&nbsp;
-            </span>
-        ) : (
-            <span key="tuNumber">{props.tossupNumber}. </span>
-        ),
-    ];
+    let questionWords: JSX.Element[] = [<span key="tuNumber">{props.tossupNumber}. </span>];
 
     questionWords = questionWords.concat(
         words.map((word) => (
@@ -161,7 +89,6 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
                 correctBuzzIndex={correctBuzzIndex}
                 index={word.canBuzzOn ? word.wordIndex : undefined}
                 isLastWord={word.canBuzzOn && word.isLastWord}
-                reserveIndexSpace={reserveIndexSpace}
                 selectedWordRef={selectedWordRef}
                 word={word.word}
                 wrongBuzzIndexes={wrongBuzzIndexes}
@@ -188,11 +115,9 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
     // Only on the question being read: the event log's past tossups have nothing new to show.
     const hostBelowTossup: React.ReactNode = React.useContext(BelowTossupContext);
     const belowTossup: React.ReactNode =
-        props.cycle === props.appState.game.cycles[props.appState.uiState.cycleIndex] ? hostBelowTossup : undefined;
-    const mouseMoveHandler = React.useCallback(
-        () => props.appState.uiState.setLastQuestionTextMouseMoveTime(Date.now()),
-        [props.appState]
-    );
+        props.cycle === props.appState.activeGame.cycles[props.appState.uiState.cycleIndex]
+            ? hostBelowTossup
+            : undefined;
 
     // Need tossuptext/answer in one container, X in the other
     return (
@@ -206,22 +131,24 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
                     direction={FocusZoneDirection.bidirectional}
                     onClick={selectWordFromClickHandler}
                     onDoubleClick={selectWordFromClickHandler}
-                    onMouseMove={mouseMoveHandler}
                 >
                     {questionWords}
                 </FocusZone>
                 {belowTossup}
                 <Answer text={props.tossup.answer} />
                 <PostQuestionMetadata metadata={props.tossup.metadata} />
+                <PlayerPad appState={props.appState} tossup={props.tossup} />
+                <BuzzFeedback appState={props.appState} />
                 <ReaderFollowerDebug appState={props.appState} />
             </div>
-            <div className={classes.questionButtons}>
+            <div className={classes.sideButtons}>
                 <ErrataButton questionNumber={props.tossupNumber} questionType="tossup" />
                 <CancelButton
                     className="throw-out-tossup"
                     tooltip="Throw out tossup"
                     onClick={throwOutClickHandler}
                 />
+                <ReaderFollowerIndicator uiState={props.appState.uiState} />
             </div>
         </div>
     );
@@ -231,6 +158,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
 const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuestionWordWrapperProps) {
     const uiState: UIState = props.appState.uiState;
     const selected: boolean = props.index === uiState.selectedWordIndex;
+    const buzzFeedback: IBuzzFeedback | undefined = uiState.buzzFeedback;
 
     const buzzMenu: JSX.Element | undefined =
         selected && props.index != undefined && uiState.buzzMenuState.visible ? (
@@ -250,14 +178,10 @@ const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuesti
         <>
             <QuestionWord
                 index={props.index}
-                // In "type word number to buzz" mode, show each buzzable word's 1-based number above it once the
-                // moderator presses Space, and keep it up until the buzz menu closes. The space above every word
-                // (including non-buzzable ones) is reserved the whole time, so the numbers appearing and
-                // disappearing doesn't shift the text around.
-                displayIndex={uiState.buzzIndexesVisible && props.index != undefined ? props.index + 1 : undefined}
-                reserveIndexSpace={props.reserveIndexSpace}
                 word={props.word}
                 selected={props.index === uiState.selectedWordIndex}
+                placing={selected && uiState.buzzPointPlacement != undefined}
+                flash={buzzFeedback != undefined && buzzFeedback.position === props.index ? buzzFeedback.kind : undefined}
                 correct={props.index === props.correctBuzzIndex}
                 wrong={props.wrongBuzzIndexes.findIndex((position) => position === props.index) >= 0}
                 componentRef={selected ? props.selectedWordRef : undefined}
@@ -283,7 +207,6 @@ interface IQuestionWordWrapperProps {
     cycle: Cycle;
     index?: number;
     isLastWord: boolean;
-    reserveIndexSpace: boolean;
     selectedWordRef: React.MutableRefObject<null>;
     tossup: Tossup;
     tossupNumber: number;
@@ -294,9 +217,7 @@ interface IQuestionWordWrapperProps {
 interface ITossupQuestionClassNames {
     tossupContainer: string;
     tossupQuestionText: string;
-    questionButtons: string;
-    questionNumberStacked: string;
-    indexSpacePlaceholder: string;
+    sideButtons: string;
 }
 
 const getClassNames = (): ITossupQuestionClassNames =>
@@ -306,25 +227,14 @@ const getClassNames = (): ITossupQuestionClassNames =>
             display: "flex",
             justifyContent: "space-between",
         },
-        // Keeps the errata and throw-out buttons together in the question's top-right corner
-        questionButtons: {
-            display: "flex",
-            alignItems: "flex-start",
-            whiteSpace: "nowrap",
-        },
         tossupQuestionText: {
             display: "inline-block",
             marginBottom: "0.5em",
         },
-        // Stacks an (empty) index row above the question number so it lines up with the numbered words
-        questionNumberStacked: {
-            display: "inline-flex",
+        // The errata and throw-out buttons, with the microphone indicator under them when follow-along is on
+        sideButtons: {
+            display: "flex",
             flexDirection: "column",
             alignItems: "center",
-        },
-        // Reserves the same height as a word's number label, matching QuestionWord's indexLabel
-        indexSpacePlaceholder: {
-            fontSize: "0.7em",
-            lineHeight: 1,
         },
     });
