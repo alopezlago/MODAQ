@@ -27,6 +27,15 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
     const appState: AppState = props.appState;
     const uiState = appState.uiState;
 
+    // The compact pad opened on a word is as wide as the question column it is kept over. Re-measured when the
+    // window changes size, since the column does too.
+    const [, setWindowWidth] = React.useState<number>(typeof window !== "undefined" ? window.innerWidth : 0);
+    React.useEffect(() => {
+        const onResize = (): void => setWindowWidth(window.innerWidth);
+        window.addEventListener("resize", onResize);
+        return () => window.removeEventListener("resize", onResize);
+    }, []);
+
     // Dereference the observables in the component body so mobx tracks them; reads inside the ThemeContext.Consumer
     // callback aren't tracked
     const wordIndex: number = uiState.selectedWordIndex;
@@ -71,6 +80,7 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
                         }
                         role="dialog"
                         aria-label="Record buzz"
+                        style={compact && anchoredToWord ? { width: compactAnchoredWidth() } : undefined}
                     >
                         <div className={classes.header}>
                             <span className={classes.title}>
@@ -177,6 +187,13 @@ function questionColumnBounds(): Rectangle | undefined {
     const rect: DOMRect = tossup.getBoundingClientRect();
     // Fluent places the callout using right and bottom too, so a plain {left, top, width, height} won't do
     return new Rectangle(rect.left, rect.right, 0, window.innerHeight);
+}
+
+// The compact pad's width when it opens on a word: the question column, up to 720px. A fixed 720px in a narrower
+// column was cut off by the callout's bounds, taking the buttons with it.
+function compactAnchoredWidth(): number {
+    const column: number = questionColumnBounds()?.width ?? 720;
+    return Math.max(240, Math.min(720, Math.floor(column)));
 }
 
 // Don't let the pad's buttons take focus on click: a focused button would also be pressed by Space, the buzz
@@ -417,10 +434,13 @@ const getClassNames = memoizeFunction(
                 boxShadow: theme ? theme.effects.elevation16 : "0 6px 16px rgba(0, 0, 0, 0.2)",
                 zIndex: 1000,
             },
+            // Wraps: in a narrow column the hint goes under the title rather than past the edge
             header: {
                 display: "flex",
+                flexWrap: "wrap",
                 alignItems: "center",
-                gap: "12px",
+                columnGap: "12px",
+                rowGap: "2px",
                 marginBottom: "8px",
             },
             title: {
