@@ -773,14 +773,13 @@ function ModeratorBody(): JSX.Element {
         const client = new KlaxonClient(code);
         clientRef.current = client;
         // Two ways in: the room's reader link (staff token), or a logged-in
-        // account the director approved for this tournament.
+        // account the director approved for this tournament. Without either,
+        // this address is just the room's: a moderator who copies it out of
+        // the address bar has sent a player link, so that's what it opens. A
+        // moderator on a new device signs in from the player page's gate, or
+        // uses the reader invite link.
         if (!client.token && !sessionToken()) {
-            setFatal(
-                "You don't have a reader link for this room on this device. " +
-                    "Sign in with your reader account (if the director added you as a moderator), or open the room from your reader link."
-            );
-            setSignInUrl(`/account?return=${encodeURIComponent(`/modaq?room=${code}`)}`);
-            setPhase("error");
+            window.location.replace(`/r/${code}`);
             return;
         }
 
@@ -819,6 +818,14 @@ function ModeratorBody(): JSX.Element {
                 setPhase("setup");
             })
             .catch((error: Error & { denyReason?: string; state?: IPublicRoomState }) => {
+                // Signed in to an account that can't moderate this room, with no
+                // reader link: a player who was sent the moderator's address.
+                // Send them to the room. (With a token that doesn't match, keep
+                // the explanation: that is a moderator with a stale link.)
+                if (error.denyReason != undefined && !client.token) {
+                    window.location.replace(`/r/${code}`);
+                    return;
+                }
                 if (error.denyReason === "not_logged_in") {
                     setFatal(
                         "Sign in with your reader account to moderate this room (the director must have added or approved you)."

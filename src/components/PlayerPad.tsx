@@ -1,6 +1,15 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { Callout, DirectionalHint, Layer, memoizeFunction, mergeStyleSets, Theme, ThemeContext } from "@fluentui/react";
+import {
+    Callout,
+    DirectionalHint,
+    Layer,
+    memoizeFunction,
+    mergeStyleSets,
+    Rectangle,
+    Theme,
+    ThemeContext,
+} from "@fluentui/react";
 
 import * as TossupQuestionController from "./TossupQuestionController";
 import { AppState } from "../state/AppState";
@@ -44,6 +53,11 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
     const teamsWithWrongBuzz: Set<string> = new Set(
         rows.filter((row) => row.isWrong).map((row) => row.player.teamName)
     );
+    // A room of twenty (a shootout), or more players than the number keys reach: a seat card each made the pad as
+    // wide as the window, over the question and the host's panel. Instead the player with the buzzer gets a row of
+    // their own on top, and everyone else a compact grid of name, correct and wrong.
+    const compact: boolean = isIndividualGame || players.length > TossupQuestionController.maximumPlayerPadShortcuts;
+    const buzzedInRow: IPlayerPadRow | undefined = buzzedInIndex >= 0 ? rows[buzzedInIndex] : undefined;
 
     return (
         <ThemeContext.Consumer>
@@ -51,7 +65,10 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
                 const classes: IPlayerPadClassNames = getClassNames(theme);
                 const pad: JSX.Element = (
                     <div
-                        className={anchoredToWord ? classes.pad : `${classes.pad} ${classes.floatingPad}`}
+                        className={
+                            (anchoredToWord ? classes.pad : `${classes.pad} ${classes.floatingPad}`) +
+                            (compact ? ` ${classes.compactPad}` : "")
+                        }
                         role="dialog"
                         aria-label="Record buzz"
                     >
@@ -73,27 +90,55 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
                                 ✕
                             </button>
                         </div>
-                        <div className={classes.teams}>
-                            {teamNames.map((teamName) => (
-                                <div key={teamName} className={classes.team}>
-                                    {!isIndividualGame && <div className={classes.teamName}>{teamName}</div>}
-                                    <div className={classes.seats}>
-                                        {rows
-                                            .filter((row) => row.player.teamName === teamName)
-                                            .map((row) => (
-                                                <PlayerPadSeat
-                                                    key={`${teamName}_${row.index}`}
-                                                    appState={appState}
-                                                    classes={classes}
-                                                    row={row}
-                                                    isTeamOut={teamsWithWrongBuzz.has(teamName)}
-                                                    hasBuzzer={row.index === buzzedInIndex}
-                                                />
-                                            ))}
-                                    </div>
+                        {compact ? (
+                            <>
+                                {buzzedInRow != undefined && (
+                                    <PlayerPadLine
+                                        appState={appState}
+                                        classes={classes}
+                                        row={buzzedInRow}
+                                        isTeamOut={false}
+                                        hasBuzzer={true}
+                                    />
+                                )}
+                                <div className={classes.grid}>
+                                    {rows
+                                        .filter((row) => row.index !== buzzedInIndex)
+                                        .map((row) => (
+                                            <PlayerPadLine
+                                                key={`${row.player.teamName}_${row.index}`}
+                                                appState={appState}
+                                                classes={classes}
+                                                row={row}
+                                                isTeamOut={teamsWithWrongBuzz.has(row.player.teamName)}
+                                                hasBuzzer={false}
+                                            />
+                                        ))}
                                 </div>
-                            ))}
-                        </div>
+                            </>
+                        ) : (
+                            <div className={classes.teams}>
+                                {teamNames.map((teamName) => (
+                                    <div key={teamName} className={classes.team}>
+                                        {!isIndividualGame && <div className={classes.teamName}>{teamName}</div>}
+                                        <div className={classes.seats}>
+                                            {rows
+                                                .filter((row) => row.player.teamName === teamName)
+                                                .map((row) => (
+                                                    <PlayerPadSeat
+                                                        key={`${teamName}_${row.index}`}
+                                                        appState={appState}
+                                                        classes={classes}
+                                                        row={row}
+                                                        isTeamOut={teamsWithWrongBuzz.has(teamName)}
+                                                        hasBuzzer={row.index === buzzedInIndex}
+                                                    />
+                                                ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 );
 
@@ -109,6 +154,8 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
                         preventDismissOnLostFocus={true}
                         preventDismissOnScroll={true}
                         preventDismissOnResize={true}
+                        // The compact pad stays over the question column, off whatever the host has beside it
+                        bounds={compact ? questionColumnBounds : undefined}
                     >
                         {pad}
                     </Callout>
@@ -119,6 +166,18 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
         </ThemeContext.Consumer>
     );
 });
+
+// The question's column, from the top of the window to the bottom: where a compact pad opened on a word may go.
+function questionColumnBounds(): Rectangle | undefined {
+    const tossup: Element | null = document.querySelector(".tossup");
+    if (tossup == null) {
+        return undefined;
+    }
+
+    const rect: DOMRect = tossup.getBoundingClientRect();
+    // Fluent places the callout using right and bottom too, so a plain {left, top, width, height} won't do
+    return new Rectangle(rect.left, rect.right, 0, window.innerHeight);
+}
 
 // Don't let the pad's buttons take focus on click: a focused button would also be pressed by Space, the buzz
 // shortcut, and focus would leave the question
@@ -211,6 +270,70 @@ function PlayerPadSeat(props: IPlayerPadSeatProps): JSX.Element {
     );
 }
 
+// One player in the compact pad: their name, then correct and wrong, on one line. The player with the buzzer gets
+// the C and W keys; the first eight keep their number keys. Protest shows only once the player has buzzed.
+function PlayerPadLine(props: IPlayerPadSeatProps): JSX.Element {
+    const { appState, classes, row } = props;
+    const number: string | undefined =
+        row.index < TossupQuestionController.maximumPlayerPadShortcuts ? String(row.index + 1) : undefined;
+    const correctKey: string | undefined = props.hasBuzzer ? "C" : number;
+    const wrongKey: string | undefined = props.hasBuzzer ? "W" : number != undefined ? `Shift+${number}` : undefined;
+    const hasBuzz: boolean = row.buzzPosition >= 0;
+
+    return (
+        <div
+            className={
+                classes.line +
+                (props.hasBuzzer ? ` ${classes.lineHasBuzzer}` : "") +
+                (props.isTeamOut && !hasBuzz ? ` ${classes.seatOut}` : "")
+            }
+        >
+            <span className={classes.lineName} title={row.player.name}>
+                {row.player.name}
+                {props.hasBuzzer && <span className={classes.lineTag}> has the buzzer</span>}
+            </span>
+            <button
+                className={`${classes.lineButton} ${classes.correctButton} ${
+                    row.isCorrect ? classes.correctChecked : ""
+                }`}
+                title={`${row.isCorrect ? "Remove correct buzz" : "Correct"}${
+                    correctKey != undefined ? ` (${correctKey})` : ""
+                }`}
+                aria-label={`${row.player.name}: ${row.isCorrect ? "remove correct buzz" : "correct"}`}
+                aria-pressed={row.isCorrect}
+                onMouseDown={preventFocus}
+                onClick={() => TossupQuestionController.recordPlayerPadBuzz(appState, row.index, /* isCorrect */ true)}
+            >
+                ✓{props.hasBuzzer && <span className={classes.shortcut}>C</span>}
+            </button>
+            <button
+                className={`${classes.lineButton} ${classes.wrongButton} ${row.isWrong ? classes.wrongChecked : ""}`}
+                title={`${row.isWrong ? "Remove wrong buzz" : "Wrong"}${wrongKey != undefined ? ` (${wrongKey})` : ""}`}
+                aria-label={`${row.player.name}: ${row.isWrong ? "remove wrong buzz" : "wrong"}`}
+                aria-pressed={row.isWrong}
+                onMouseDown={preventFocus}
+                onClick={() => TossupQuestionController.recordPlayerPadBuzz(appState, row.index, /* isCorrect */ false)}
+            >
+                ✗{props.hasBuzzer && <span className={classes.shortcut}>W</span>}
+            </button>
+            {hasBuzz && (
+                <button
+                    className={`${classes.lineButton} ${classes.protestButton} ${
+                        row.hasProtest ? classes.protestChecked : ""
+                    }`}
+                    title={row.hasProtest ? "Remove protest" : "Protest this buzz"}
+                    aria-label={`${row.player.name}: ${row.hasProtest ? "remove protest" : "protest"}`}
+                    aria-pressed={row.hasProtest}
+                    onMouseDown={preventFocus}
+                    onClick={() => TossupQuestionController.togglePlayerPadProtest(appState, row.index)}
+                >
+                    ⚑
+                </button>
+            )}
+        </div>
+    );
+}
+
 export interface IPlayerPadProps {
     appState: AppState;
     tossup: Tossup;
@@ -258,6 +381,13 @@ interface IPlayerPadClassNames {
     protestButton: string;
     protestChecked: string;
     shortcut: string;
+    compactPad: string;
+    grid: string;
+    line: string;
+    lineHasBuzzer: string;
+    lineName: string;
+    lineTag: string;
+    lineButton: string;
 }
 
 const getClassNames = memoizeFunction(
@@ -409,6 +539,61 @@ const getClassNames = memoizeFunction(
             },
             protestChecked: {
                 background: quietColor + "30",
+            },
+            // Big rooms: about 700px wide whatever the count, scrolling past half the window's height
+            compactPad: {
+                width: "min(720px, calc(100vw - 32px))",
+                maxHeight: "50vh",
+                overflowY: "auto",
+            },
+            grid: {
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+                gap: "2px 14px",
+            },
+            line: {
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                minWidth: 0,
+                padding: "2px 4px",
+                borderRadius: "4px",
+            },
+            lineHasBuzzer: {
+                marginBottom: "8px",
+                padding: "6px 8px",
+                outline: "2px solid " + (theme ? theme.palette.themePrimary : "rgb(0, 120, 212)"),
+                fontSize: "15px",
+            },
+            lineName: {
+                flex: "1 1 auto",
+                minWidth: 0,
+                fontSize: "13px",
+                fontWeight: 600,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+            },
+            lineTag: {
+                fontWeight: 400,
+                fontSize: "12px",
+                color: quietColor,
+            },
+            lineButton: {
+                flex: "none",
+                minWidth: "30px",
+                height: "24px",
+                padding: "0 6px",
+                borderRadius: "6px",
+                borderWidth: "1px",
+                borderStyle: "solid",
+                background: "transparent",
+                cursor: "pointer",
+                fontSize: "13px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "4px",
             },
             shortcut: {
                 display: "inline-flex",
