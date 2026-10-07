@@ -3,17 +3,23 @@ import { observer } from "mobx-react-lite";
 import { FocusZone, FocusZoneDirection, mergeStyleSets } from "@fluentui/react";
 
 import * as TossupQuestionController from "./TossupQuestionController";
-import { UIState } from "../state/UIState";
+import { IBuzzFeedback, UIState } from "../state/UIState";
 import { ITossupWord, Tossup } from "../state/PacketState";
 import { QuestionWord } from "./QuestionWord";
-import { Cycle } from "../state/Cycle";
 import { BuzzMenu } from "./BuzzMenu";
+import { Cycle } from "../state/Cycle";
 import { Answer } from "./Answer";
 import type { IFormattedText } from "../parser/IFormattedText";
 import { TossupProtestDialog } from "./dialogs/TossupProtestDialog";
 import { CancelButton } from "./CancelButton";
 import { AppState } from "../state/AppState";
 import { PostQuestionMetadata } from "./PostQuestionMetadata";
+import { IGameFormat } from "../state/IGameFormat";
+import { BuzzFeedback } from "./BuzzFeedback";
+import { PlayerPad } from "./PlayerPad";
+import { ReaderFollowerDebug } from "./ReaderFollowerDebug";
+import { ReaderFollowerIndicator } from "./ReaderFollowerIndicator";
+import { ReaderFollowerSession } from "./ReaderFollowerSession";
 
 export const TossupQuestion = observer(function TossupQuestion(props: IQuestionProps): JSX.Element {
     const classes: ITossupQuestionClassNames = getClassNames();
@@ -27,8 +33,41 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
         if (tossupTextRef.current != null) {
             // Reset the scrollbar to go back to the top so they can read from the beginning
             tossupTextRef.current.scrollTop = 0;
+
+            // The new question's words reuse the old ones' elements by position, so a word that had keyboard focus
+            // would show its focus box on the same spot in the new question
+            const focusedElement: Element | null = document.activeElement;
+            if (focusedElement instanceof HTMLElement && tossupTextRef.current.contains(focusedElement)) {
+                focusedElement.blur();
+            }
         }
     }
+
+    // Follow the reader with the microphone, if it's enabled. Listening starts when the feature is turned on and
+    // keeps running from tossup to tossup; only the words being followed change.
+    const isReaderFollowingEnabled: boolean = props.appState.uiState.trackReaderWithMicrophone;
+    const readerFollowerRestartCount: number = props.appState.uiState.readerFollowerRestartCount;
+    const readerFollowerSessionRef: React.MutableRefObject<ReaderFollowerSession | undefined> = React.useRef();
+    React.useEffect(() => {
+        if (!isReaderFollowingEnabled) {
+            return;
+        }
+
+        const session: ReaderFollowerSession = new ReaderFollowerSession(props.appState);
+        readerFollowerSessionRef.current = session;
+        return () => {
+            readerFollowerSessionRef.current = undefined;
+            session.dispose();
+        };
+    }, [props.appState, isReaderFollowingEnabled, readerFollowerRestartCount]);
+
+    // Once there's a correct buzz the tossup is over (the reader moves on to the bonus), so stop following it.
+    // Wrong buzzes keep the tossup live, so keep following.
+    const isTossupOver: boolean = props.cycle.correctBuzz != undefined;
+    const gameFormat: IGameFormat = props.appState.activeGame.gameFormat;
+    React.useEffect(() => {
+        readerFollowerSessionRef.current?.setTossup(isTossupOver ? undefined : props.tossup, gameFormat);
+    }, [props.tossup, gameFormat, isReaderFollowingEnabled, isTossupOver, readerFollowerRestartCount]);
 
     const correctBuzzIndex: number = props.cycle.correctBuzz?.marker.position ?? -1;
     const wrongBuzzIndexes: number[] = (props.cycle.wrongBuzzes ?? [])
@@ -80,13 +119,17 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
                 </FocusZone>
                 <Answer text={props.tossup.answer} />
                 <PostQuestionMetadata metadata={props.tossup.metadata} />
+                <PlayerPad appState={props.appState} tossup={props.tossup} />
+                <BuzzFeedback appState={props.appState} />
+                <ReaderFollowerDebug appState={props.appState} />
             </div>
-            <div>
+            <div className={classes.sideButtons}>
                 <CancelButton
                     className="throw-out-tossup"
                     tooltip="Throw out tossup"
                     onClick={throwOutClickHandler}
                 />
+                <ReaderFollowerIndicator uiState={props.appState.uiState} />
             </div>
         </div>
     );
@@ -96,6 +139,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
 const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuestionWordWrapperProps) {
     const uiState: UIState = props.appState.uiState;
     const selected: boolean = props.index === uiState.selectedWordIndex;
+    const buzzFeedback: IBuzzFeedback | undefined = uiState.buzzFeedback;
 
     const buzzMenu: JSX.Element | undefined =
         selected && props.index != undefined && uiState.buzzMenuState.visible ? (
@@ -117,6 +161,8 @@ const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuesti
                 index={props.index}
                 word={props.word}
                 selected={props.index === uiState.selectedWordIndex}
+                placing={selected && uiState.buzzPointPlacement != undefined}
+                flash={buzzFeedback != undefined && buzzFeedback.position === props.index ? buzzFeedback.kind : undefined}
                 correct={props.index === props.correctBuzzIndex}
                 wrong={props.wrongBuzzIndexes.findIndex((position) => position === props.index) >= 0}
                 componentRef={selected ? props.selectedWordRef : undefined}
@@ -152,6 +198,7 @@ interface IQuestionWordWrapperProps {
 interface ITossupQuestionClassNames {
     tossupContainer: string;
     tossupQuestionText: string;
+    sideButtons: string;
 }
 
 const getClassNames = (): ITossupQuestionClassNames =>
@@ -164,5 +211,11 @@ const getClassNames = (): ITossupQuestionClassNames =>
         tossupQuestionText: {
             display: "inline-block",
             marginBottom: "0.5em",
+        },
+        // The throw-out button, with the microphone indicator under it when follow-along is on
+        sideButtons: {
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
         },
     });
