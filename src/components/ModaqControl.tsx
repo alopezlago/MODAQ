@@ -16,8 +16,8 @@ import {
     Theme,
     IPalette,
 } from "@fluentui/react";
-import { AsyncTrunk } from "mobx-sync";
-import { configure } from "mobx";
+import { AsyncTrunk, KeyDefaultKey } from "mobx-sync";
+import { comparer, configure, IReactionDisposer, reaction } from "mobx";
 import { observer } from "mobx-react-lite";
 
 import * as PacketLoaderController from "./PacketLoaderController";
@@ -31,6 +31,7 @@ import { IPlayer, Player } from "../state/TeamState";
 import { Bonus, ITossupWord, PacketState, Tossup } from "../state/PacketState";
 import { ICustomExport } from "../state/CustomExport";
 import { IHostSettings } from "../state/IHostSettings";
+import { IViewSettings } from "../state/IViewSettings";
 import { Cycle } from "../state/Cycle";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
 import { IStatus } from "../IStatus";
@@ -97,7 +98,9 @@ const darkModePalette: Partial<IPalette> = {
 };
 
 export const ModaqControl = observer(function ModaqControl(props: IModaqControlProps): JSX.Element {
-    const [appState]: [AppState, React.Dispatch<React.SetStateAction<AppState>>] = React.useState(() => new AppState());
+    const [appState]: [AppState, React.Dispatch<React.SetStateAction<AppState>>] = React.useState(() =>
+        createAppState(props)
+    );
 
     // We only want to run this effect once, which requires passing in an empty array of dependencies
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -239,13 +242,67 @@ export interface IModaqControlProps {
     hostSettings?: IHostSettings;
 
     /**
+     * The moderator's display preferences (dark mode, font, hidden panels, etc.) to start with. This is only read on the
+     * first render. If `persistState` is true and there's already saved state for `storeName` (i.e. a game is being
+     * resumed), the saved state wins and these are ignored, since it reflects what the moderator last chose for that
+     * game.
+     */
+    initialViewSettings?: Partial<IViewSettings>;
+
+    /**
+     * Called with all of the current view settings whenever the moderator changes one of them, such as toggling dark
+     * mode or changing the font. It isn't called for the initial settings or for settings loaded from saved state.
+     */
+    onViewSettingsChange?: (settings: IViewSettings) => void;
+
+    /**
      * The URL to a Yet Another Packet Parser (YAPP) compatible service, which parses docx files. If this value isn't
      * defined, then packets must be in a JSON format.
      */
     yappServiceUrl?: string;
 }
 
+function createAppState(props: IModaqControlProps): AppState {
+    const appState: AppState = new AppState();
+
+    // Apply these before the first render so a new game doesn't flash the default settings. When resuming a game, the
+    // saved state is loaded asynchronously and would overwrite these anyway, so let the saved state win.
+    if (props.initialViewSettings != undefined && !hasSavedState(props)) {
+        appState.uiState.setViewSettings(props.initialViewSettings);
+    }
+
+    return appState;
+}
+
+function hasSavedState(props: IModaqControlProps): boolean {
+    if (!(props.persistState ?? true)) {
+        return false;
+    }
+
+    try {
+        return localStorage.getItem(props.storeName ?? KeyDefaultKey) != undefined;
+    } catch {
+        return false;
+    }
+}
+
 function initializeControl(appState: AppState, props: IModaqControlProps): () => void {
+    let isDisposed = false;
+    let disposeViewSettingsReaction: IReactionDisposer | undefined;
+
+    // Only start listening once any saved state has loaded, so the host is only told about the moderator's changes
+    const listenForViewSettingsChanges = (): void => {
+        if (isDisposed) {
+            return;
+        }
+
+        disposeViewSettingsReaction = reaction(
+            () => appState.uiState.viewSettings,
+            (settings: IViewSettings) => appState.uiState.onViewSettingsChange?.(settings),
+            { equals: comparer.structural }
+        );
+    };
+
     if (props.persistState) {
         configure({ enforceActions: "observed", computedRequiresReaction: true });
         const trunk = new AsyncTrunk(appState, { storage: localStorage, storageKey: props.storeName, delay: 200 });
@@ -263,7 +320,11 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
                     },
                 });
             }
+
+            listenForViewSettingsChanges();
         });
+    } else {
+        listenForViewSettingsChanges();
     }
 
     // We have to add the listener at the document layer, otherwise the event isn't picked up if the user clicks on
@@ -273,6 +334,8 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
 
     return () => {
         document.removeEventListener("keyup", keydownListener);
+        isDisposed = true;
+        disposeViewSettingsReaction?.();
     };
 }
 
@@ -425,6 +488,10 @@ function update(appState: AppState, props: IModaqControlProps): void {
 
     if (props.onFetchQuestionById !== appState.uiState.onFetchQuestionById) {
         appState.uiState.setOnFetchQuestionById(props.onFetchQuestionById);
+    }
+
+    if (props.onViewSettingsChange !== appState.uiState.onViewSettingsChange) {
+        appState.uiState.setOnViewSettingsChange(props.onViewSettingsChange);
     }
 
     if (props.packetName !== appState.uiState.packetFilename && props.packetName !== appState.game.packet.name) {

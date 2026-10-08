@@ -24,6 +24,7 @@ import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 import { IPacketParseStatus } from "./IPacketParseStatus";
 import { IPacket } from "./IPacket";
 import { IHostSettings } from "./IHostSettings";
+import { IViewSettings } from "./IViewSettings";
 
 // TODO: Look into breaking this up into individual UI component states. Lots of pendingX fields, which could be in
 // their own (see CustomizeGameFormatDialogState)
@@ -82,6 +83,10 @@ export class UIState {
     // lookup failed.
     @ignore
     public onFetchQuestionById: ((id: string) => Promise<IPacket | IStatus>) | undefined;
+
+    // Injected by the host. Called with the current view settings whenever the moderator changes one of them.
+    @ignore
+    public onViewSettingsChange: ((settings: IViewSettings) => void) | undefined;
 
     @ignore
     public importGameStatus: IStatus | undefined;
@@ -159,6 +164,7 @@ export class UIState {
             productName: undefined,
         };
         this.onFetchQuestionById = undefined;
+        this.onViewSettingsChange = undefined;
 
         // Default to Fabric UI's default font (Segoe UI), then Times New Roman
         this.fontFamily = DefaultFontFamily;
@@ -185,6 +191,23 @@ export class UIState {
         // The default font size is 16px
         this.questionFontSize = 16;
         this.sheetsState = new SheetState();
+    }
+
+    public get viewSettings(): IViewSettings {
+        return {
+            isClockHidden: this.isClockHidden,
+            isEventLogHidden: this.isEventLogHidden,
+            isPacketNameHidden: this.isPacketNameHidden,
+            isCustomExportStatusHidden: this.isCustomExportStatusHidden,
+            isScoreVertical: this.isScoreVertical,
+            noBonusHighlight: this.noBonusHighlight,
+            hideBonusOnDeadTossup: this.hideBonusOnDeadTossup,
+            useDarkMode: this.useDarkMode,
+            fontFamily: this.fontFamily,
+            questionFontSize: this.questionFontSize,
+            questionFontColor: this.questionFontColor,
+            pronunciationGuideColor: this.pronunciationGuideColor,
+        };
     }
 
     // TODO: Feels off. Could generalize to array of teams
@@ -537,6 +560,53 @@ export class UIState {
 
     public setOnFetchQuestionById(callback: ((id: string) => Promise<IPacket | IStatus>) | undefined): void {
         this.onFetchQuestionById = callback;
+    }
+
+    public setOnViewSettingsChange(callback: ((settings: IViewSettings) => void) | undefined): void {
+        this.onViewSettingsChange = callback;
+    }
+
+    // Applies only the fields present in settings. Values are assigned as-is (e.g. fontFamily doesn't get the default
+    // fonts appended), so a value read from viewSettings round-trips unchanged.
+    public setViewSettings(settings: Partial<IViewSettings>): void {
+        if (settings.isClockHidden != undefined) {
+            this.isClockHidden = settings.isClockHidden;
+        }
+        if (settings.isEventLogHidden != undefined) {
+            this.isEventLogHidden = settings.isEventLogHidden;
+        }
+        if (settings.isPacketNameHidden != undefined) {
+            this.isPacketNameHidden = settings.isPacketNameHidden;
+        }
+        if (settings.isCustomExportStatusHidden != undefined) {
+            this.isCustomExportStatusHidden = settings.isCustomExportStatusHidden;
+        }
+        if (settings.isScoreVertical != undefined) {
+            this.isScoreVertical = settings.isScoreVertical;
+        }
+        if (settings.noBonusHighlight != undefined) {
+            this.noBonusHighlight = settings.noBonusHighlight;
+        }
+        if (settings.hideBonusOnDeadTossup != undefined) {
+            this.hideBonusOnDeadTossup = settings.hideBonusOnDeadTossup;
+        }
+        if (settings.useDarkMode != undefined) {
+            this.useDarkMode = settings.useDarkMode;
+        }
+        if (settings.fontFamily != undefined && settings.fontFamily.trim() !== "") {
+            this.fontFamily = settings.fontFamily;
+        }
+        if (settings.questionFontSize != undefined && settings.questionFontSize > 0) {
+            this.questionFontSize = settings.questionFontSize;
+        }
+
+        // The colors can be explicitly reset to undefined (use the theme's color), so check for the key instead
+        if ("questionFontColor" in settings) {
+            this.questionFontColor = settings.questionFontColor;
+        }
+        if ("pronunciationGuideColor" in settings) {
+            this.pronunciationGuideColor = settings.pronunciationGuideColor;
+        }
     }
 
     public setImportGameStatus(status: IStatus): void {
