@@ -648,9 +648,31 @@ function RecentBuzzes(props: { events: IRecentEvent[]; onUndo: (id: string) => v
     // In a shootout it opens from a button in the panel's header, so it needs
     // no disclosure of its own.
     const Box = props.drawer ? "div" : "details";
+    // Collapsed, the list hides its Undo; the newest clear that can still be
+    // undone is offered on the summary line, so it is one click either way.
+    const undoable = props.drawer ? undefined : events.find((e) => e.undoId != undefined);
     return (
-        <Box className={"klaxon-recent" + (props.drawer ? " ks-drawer" : "")} open={props.drawer ? undefined : true}>
-            {props.drawer ? <h3>Recent buzzes</h3> : <summary>Recent buzzes</summary>}
+        <Box className={"klaxon-recent" + (props.drawer ? " ks-drawer" : "")}>
+            {props.drawer ? (
+                <h3>Recent buzzes</h3>
+            ) : (
+                <summary>
+                    Recent buzzes
+                    {undoable?.undoId != undefined && (
+                        <button
+                            className="kr-summary-undo"
+                            title="Put the cleared buzzes back in the queue"
+                            onClick={(event) => {
+                                // A button in a summary would also open or shut the list.
+                                event.preventDefault();
+                                onUndo(undoable.undoId as string);
+                            }}
+                        >
+                            Undo clear
+                        </button>
+                    )}
+                </summary>
+            )}
             {events.length === 0 ? (
                 <p className="klaxon-recent-empty">Nothing yet.</p>
             ) : (
@@ -1607,8 +1629,6 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
             {typedOption}
             {listedOption}
 
-            <RecentBuzzes events={recent} onUndo={undoClear} />
-
             <div className="klaxon-players">
                 <h3>
                     Players ({players.length}){offline > 0 && <span className="klaxon-offline"> · {offline} offline</span>}
@@ -1648,6 +1668,9 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
 
             {staleRow}
             {endRow}
+            {/* Below the controls a reader uses every question, and shut until
+                wanted: it is for working out what happened, not for reading. */}
+            <RecentBuzzes events={recent} onUndo={undoClear} />
             {hints}
         </div>
     );

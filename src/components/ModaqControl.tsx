@@ -118,6 +118,27 @@ const darkModePalette: Partial<IPalette> = {
     white: "#000000",
 };
 
+// How far back Ctrl+Z goes.
+const maximumUndoSteps = 100;
+
+interface IUndoState {
+    stack: string[];
+    current: string | undefined;
+    packet: PacketState | undefined;
+    restoring: boolean;
+}
+
+type ICycleSnapshot = ConstructorParameters<typeof Cycle>[0];
+
+// Typing keeps its own Ctrl+Z.
+function isTextEntry(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) {
+        return false;
+    }
+    const tag: string = target.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
+}
+
 export const ModaqControl = observer(function ModaqControl(props: IModaqControlProps): JSX.Element {
     const [appState]: [AppState, React.Dispatch<React.SetStateAction<AppState>>] = React.useState(() => new AppState());
 
@@ -359,12 +380,78 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
             }
             parseStore(appState, snapshot, false);
             lastAppliedRef.current = JSON.stringify(appState);
+            // The other reader's change isn't this reader's to undo.
+            undoRef.current = {
+                stack: [],
+                current: JSON.stringify(appState.game.cycles),
+                packet: appState.game.packet,
+                restoring: false,
+            };
         } catch {
             /* a bad snapshot from the host must not take down the reader */
         }
         // Only a new snapshot is applied; the theme changing on its own isn't one.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [appState, remoteState]);
+
+    // Ctrl+Z (Cmd+Z on a Mac) undoes the last change to the game's events: a buzz ruled, a bonus scored, a protest,
+    // a sub, a thrown-out question. Every one of those changes the cycles, so a snapshot of the cycles is kept
+    // before each change and the last one is put back. A new game or the other reader's change starts it afresh.
+    const undoRef = React.useRef<IUndoState>({ stack: [], current: undefined, packet: undefined, restoring: false });
+    React.useEffect(() => {
+        const dispose = reaction(
+            () => ({ json: JSON.stringify(appState.game.cycles), packet: appState.game.packet }),
+            ({ json, packet }) => {
+                const undo: IUndoState = undoRef.current;
+                if (packet !== undo.packet) {
+                    undoRef.current = { stack: [], current: json, packet, restoring: false };
+                    return;
+                }
+                if (!undo.restoring && undo.current != undefined && json !== undo.current) {
+                    undo.stack.push(undo.current);
+                    if (undo.stack.length > maximumUndoSteps) {
+                        undo.stack.shift();
+                    }
+                }
+                undo.current = json;
+                undo.restoring = false;
+            },
+            { fireImmediately: true }
+        );
+
+        const onKeyDown = (event: KeyboardEvent): void => {
+            if (
+                event.key.toLowerCase() !== "z" ||
+                !(event.ctrlKey || event.metaKey) ||
+                event.shiftKey ||
+                event.altKey ||
+                isTextEntry(event.target)
+            ) {
+                return;
+            }
+
+            const undo: IUndoState = undoRef.current;
+            const previous: string | undefined = undo.stack.pop();
+            if (previous == undefined) {
+                return;
+            }
+
+            event.preventDefault();
+            const game = appState.game;
+            const cycles: Cycle[] = (JSON.parse(previous) as ICycleSnapshot[]).map((c) => new Cycle(c));
+            for (const cycle of cycles) {
+                cycle.setUpdateHandler(() => game.markUpdateNeeded());
+            }
+            undo.restoring = true;
+            game.setCycles(cycles);
+            game.markUpdateNeeded();
+        };
+        document.addEventListener("keydown", onKeyDown);
+        return () => {
+            dispose();
+            document.removeEventListener("keydown", onKeyDown);
+        };
+    }, [appState]);
 
     React.useEffect(() => update(appState, props), [appState, props]);
 

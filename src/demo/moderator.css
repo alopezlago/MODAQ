@@ -535,34 +535,39 @@ body {
     gap: 6px;
     margin-bottom: 4px;
 }
+/* A list of released rounds: plain rows, the chosen one in the accent with a
+   check, so it reads as a selection rather than a status light. */
 .packet-choice {
     display: flex;
     align-items: center;
     gap: 10px;
     cursor: pointer;
     text-align: left;
+    color: inherit;
     background: var(--m-surface, #fff);
     border: 1px solid var(--m-control-line, #8a8886);
     border-radius: 6px;
-    padding: 8px 12px;
-    font-size: 0.9rem;
+    padding: 9px 12px;
+    font-size: 0.95rem;
 }
 .packet-choice:hover {
     background: var(--m-subtle, #f3f2f1);
 }
 .packet-choice.selected {
-    border-color: var(--m-ok-line, #0b6a0b);
-    border-width: 2px;
-    background: var(--m-ok-bg, #f1faf1);
+    border-color: var(--m-accent, #0078d4);
+    box-shadow: inset 3px 0 0 var(--m-accent, #0078d4);
+    background: color-mix(in srgb, var(--m-accent, #0078d4) 9%, var(--m-surface, #fff));
+    font-weight: 600;
+}
+.packet-choice-name {
+    flex: 1;
+    min-width: 0;
 }
 .packet-choice-check {
-    color: var(--m-ok, #0b6a0b);
-    font-size: 1rem;
-}
-.packet-choice-sub {
-    display: block;
-    color: var(--m-muted, #666);
-    font-size: 0.78rem;
+    color: var(--m-accent, #0078d4);
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
 }
 .packet-status {
     background: var(--m-warn-bg, #fff4ce);
@@ -572,9 +577,13 @@ body {
     margin: 6px 0 4px;
     font-size: 0.85rem;
 }
+/* Ready is the normal case: a quiet line, not a second green box. The warning
+   look stays for when something is missing. */
 .packet-status.ready {
-    background: var(--m-ok-bg, #f1faf1);
-    border-color: var(--m-ok-line, #0b6a0b);
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--m-muted, #666);
 }
 .mod-setup .chip.selected,
 .mod-setup .schedule-rounds button.selected {
@@ -1817,13 +1826,20 @@ a.kx-crumb:hover {
    Clears are the rows a moderator comes here for, so they stand out; one made
    without scoring is tinted as the slip it may have been. */
 .klaxon-recent {
-    margin: 0 0 14px;
+    margin: 14px 0;
 }
 .klaxon-recent summary {
     cursor: pointer;
     font-weight: 600;
     font-size: 0.95rem;
     margin-bottom: 4px;
+}
+.klaxon-recent .kr-summary-undo {
+    margin-left: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 1px 8px;
+    vertical-align: 1px;
 }
 .klaxon-recent ol {
     list-style: none;

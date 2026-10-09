@@ -39,7 +39,32 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
     // Dereference the observables in the component body so mobx tracks them; reads inside the ThemeContext.Consumer
     // callback aren't tracked
     const wordIndex: number = uiState.selectedWordIndex;
-    if (uiState.buzzPointPlacement == undefined || wordIndex < 0 || uiState.useBuzzMenu) {
+    const isOpen: boolean = uiState.buzzPointPlacement != undefined && wordIndex >= 0 && !uiState.useBuzzMenu;
+
+    // A click anywhere else closes the pad, as Escape does. Listening starts only once it is open, so the click that
+    // opened it has already gone by. Left alone: the pad itself, a word of the question (that click moves the buzz
+    // point, and the pad with it), and any other layer or dialog, which the pad may have opened.
+    React.useEffect(() => {
+        if (!isOpen) {
+            return;
+        }
+
+        const onPointerDown = (event: MouseEvent): void => {
+            const target: Element | null = event.target instanceof Element ? event.target : null;
+            if (
+                target == null ||
+                target.closest(".ms-Layer, [role='dialog'], .tossup span[data-index]") != null
+            ) {
+                return;
+            }
+
+            TossupQuestionController.cancelBuzzPointPlacement(appState);
+        };
+        document.addEventListener("mousedown", onPointerDown, true);
+        return () => document.removeEventListener("mousedown", onPointerDown, true);
+    }, [isOpen, appState]);
+
+    if (!isOpen || uiState.buzzPointPlacement == undefined) {
         return null;
     }
 
@@ -153,7 +178,8 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
                 );
 
                 // A Callout follows the word as the arrow keys move the buzz point. The pad closes itself (a
-                // recorded buzz, Escape, the close button, another question), so clicks elsewhere don't dismiss it.
+                // recorded buzz, Escape, the close button, a click outside it, another question), so the Callout's
+                // own dismissal is off.
                 return anchoredToWord ? (
                     <Callout
                         target={`.tossup span[data-index="${wordIndex}"]`}

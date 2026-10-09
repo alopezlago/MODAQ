@@ -1209,7 +1209,7 @@ function ModeratorBody(): JSX.Element {
 
                 <label>Packet</label>
                 {serverPackets.length > 0 ? (
-                    <div className="packet-choices">
+                    <div className="packet-choices" aria-label="Released tournament packets">
                         {serverPackets.map((r) => {
                             const active = !packetFile && trimmed === r;
                             return (
@@ -1219,11 +1219,12 @@ function ModeratorBody(): JSX.Element {
                                     aria-pressed={active}
                                     onClick={() => chooseRound(r)}
                                 >
-                                    <span className="packet-choice-check">{active ? "●" : "○"}</span>
-                                    <span>
-                                        <strong>Round {r}</strong>
-                                        <span className="packet-choice-sub">tournament packet</span>
-                                    </span>
+                                    <span className="packet-choice-name">Round {r}</span>
+                                    {active && (
+                                        <span className="packet-choice-check" aria-hidden="true">
+                                            ✓ Selected
+                                        </span>
+                                    )}
                                 </button>
                             );
                         })}
@@ -1256,7 +1257,7 @@ function ModeratorBody(): JSX.Element {
                     for you.
                 </p>
 
-                <p className={packetReady ? "packet-status ready" : "packet-status"}>
+                <p className={packetReady ? "packet-status ready hint" : "packet-status"}>
                     {packetFile
                         ? `Reading “${packetFile.name}” — it will be saved as the packet for round “${trimmed}”.`
                         : releasedForRound
