@@ -661,6 +661,13 @@ export class GameState {
     }
 
     public setGameFormat(gameFormat: IGameFormat): void {
+        // gameFormat is deeply observable, so what is stored is a copy and never === the object passed in. A host
+        // passing the same format on every render (ModaqControl's update() does) would otherwise mark the game
+        // updated each time -- and the game update re-renders the host: a loop that re-sent the whole game to Klaxon
+        // about twice a second from an idle reader.
+        if (JSON.stringify(gameFormat) === JSON.stringify(this.gameFormat)) {
+            return;
+        }
         this.gameFormat = gameFormat;
         this.markUpdateNeeded();
     }
