@@ -36,10 +36,8 @@ export const BuzzFeedback = observer(function BuzzFeedback(props: IBuzzFeedbackP
     const points: string =
         feedback.kind === "removed"
             ? "buzz removed"
-            : feedback.points > 0
-            ? `+${feedback.points}`
-            : feedback.points < 0
-            ? `−${-feedback.points}`
+            : feedback.points !== 0
+            ? `${feedback.points}`
             : "no penalty";
 
     return (
