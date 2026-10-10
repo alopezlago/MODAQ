@@ -164,6 +164,20 @@ body {
 .klaxon-players li.gone {
     color: var(--m-bad, #d13438);
 }
+/* A player here early for their own game: a label, not an alarm. */
+.klaxon-waiting {
+    flex: 0 0 auto;
+    margin-left: 6px;
+    padding: 0 5px;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    opacity: 0.6;
+    white-space: nowrap;
+}
+
 .klaxon-offline {
     color: var(--m-bad, #d13438);
     font-weight: 700;

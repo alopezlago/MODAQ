@@ -36,6 +36,10 @@ export interface IRoomMember {
     // their team's captain for the pick/ban.
     assignedTeam?: string | null;
     effectiveTeam?: string | null;
+    // Here for a later game: their team isn't in the one being read, so their
+    // buzzer is off until a New Game brings it in (Klaxon decides).
+    waiting?: boolean;
+    nextTeam?: string | null;
     isCaptain?: boolean;
 }
 

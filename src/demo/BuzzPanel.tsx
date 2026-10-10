@@ -1651,6 +1651,14 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                                     <span className="kp-label">{label}</span>
                                     {linkPicker(player, player.id)}
                                     {!player.connected && <span className="klaxon-offline">OFFLINE</span>}
+                                    {player.connected && player.waiting && (
+                                        <span
+                                            className="klaxon-waiting"
+                                            title={`On ${player.nextTeam ?? "another team"}, which isn't in this game: their buzzer is off until a New Game brings the team in.`}
+                                        >
+                                            NEXT GAME
+                                        </span>
+                                    )}
                                 </span>
                                 <button
                                     className="klaxon-remove"
