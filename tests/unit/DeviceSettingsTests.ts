@@ -1,6 +1,12 @@
 import { expect } from "chai";
 
-import { keepDeviceSettings, withDeviceSettings } from "src/state/DeviceSettings";
+import {
+    applyDeviceSettings,
+    keepDeviceSettings,
+    loadDeviceSettings,
+    saveDeviceSettings,
+    withDeviceSettings,
+} from "src/state/DeviceSettings";
 
 // The other moderator's screen: microphone tracking off, its own font size, on question 2
 const otherScreen = {
@@ -57,4 +63,30 @@ describe("DeviceSettingsTests", () => {
         const noUi = JSON.stringify({ game: {} });
         expect(withDeviceSettings(noUi, null)).to.equal(noUi);
     });
+    it("The device's settings are remembered apart from any game and come back in a new one", () => {
+        const store: Record<string, string> = {};
+        const storage = { getItem: (k: string) => store[k] ?? null, setItem: (k: string, v: string) => (store[k] = v) };
+        // Round 1: this moderator set a bigger font, a colour and read-along.
+        saveDeviceSettings(
+            { questionFontSize: 22, questionFontColor: "#003366", trackReaderWithMicrophone: true, cycleIndex: 7 },
+            storage
+        );
+        const saved = loadDeviceSettings(storage);
+        expect(saved).to.deep.equal({ questionFontSize: 22, questionFontColor: "#003366", trackReaderWithMicrophone: true });
+        // Round 2 opens with MODAQ's defaults: the saved settings go back in, and the game's own state is left alone.
+        const fresh: Record<string, unknown> = { questionFontSize: 16, questionFontColor: undefined, trackReaderWithMicrophone: false, cycleIndex: 0 };
+        applyDeviceSettings(fresh, saved);
+        expect(fresh.questionFontSize).to.equal(22);
+        expect(fresh.questionFontColor).to.equal("#003366");
+        expect(fresh.trackReaderWithMicrophone).to.equal(true);
+        expect(fresh.cycleIndex).to.equal(0);
+    });
+    it("Nothing saved, or unreadable storage, changes nothing", () => {
+        const ui: Record<string, unknown> = { questionFontSize: 16 };
+        applyDeviceSettings(ui, undefined);
+        expect(ui.questionFontSize).to.equal(16);
+        expect(loadDeviceSettings({ getItem: () => "not json" })).to.be.undefined;
+        expect(loadDeviceSettings(undefined)).to.be.undefined;
+    });
+
 });

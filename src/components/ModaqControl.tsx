@@ -17,7 +17,7 @@ import {
     IPalette,
 } from "@fluentui/react";
 import { AsyncTrunk, parseStore } from "mobx-sync";
-import { comparer, configure, reaction } from "mobx";
+import { comparer, configure, reaction, runInAction } from "mobx";
 import { observer } from "mobx-react-lite";
 import he from "he";
 
@@ -44,7 +44,13 @@ import { ICustomExport } from "../state/CustomExport";
 import { IHostSettings } from "../state/IHostSettings";
 import { Cycle } from "../state/Cycle";
 import { UIState } from "../state/UIState";
-import { keepDeviceSettings } from "../state/DeviceSettings";
+import {
+    applyDeviceSettings,
+    deviceLocalUiSettings,
+    keepDeviceSettings,
+    loadDeviceSettings,
+    saveDeviceSettings,
+} from "../state/DeviceSettings";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
 import { IPacketParserLink } from "../state/UIState";
 import {
@@ -366,6 +372,21 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
             }
         );
     }, [appState, onExported]);
+
+    // The device's own settings (font, colours, read-along, how it shows the game) follow it from game to game: put
+    // back once the game's store is restored, and remembered whenever they change (see DeviceSettings).
+    React.useEffect(() => {
+        if (!ready) {
+            return;
+        }
+        const uiState = (appState.uiState as unknown) as Record<string, unknown>;
+        runInAction(() => applyDeviceSettings(uiState, loadDeviceSettings()));
+        return reaction(
+            () => deviceLocalUiSettings.map((key) => uiState[key]),
+            () => saveDeviceSettings(uiState),
+            { equals: comparer.structural, fireImmediately: true }
+        );
+    }, [appState, ready]);
 
     const remoteState = props.remoteState;
     React.useEffect(() => {

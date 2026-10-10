@@ -32,6 +32,63 @@ export const deviceLocalUiSettings: readonly string[] = [
     "hideBonusOnDeadTossup",
 ];
 
+// --- remembered across games -------------------------------------------------
+// A host can give each game its own store (Klaxon: one per round), so a new
+// packet began with MODAQ's defaults: the font, the colours and the read-along
+// options reset every round. The device's settings are also kept here, apart
+// from any game, and put back whenever a game opens.
+const deviceSettingsKey = "modaq-device-settings";
+
+export function loadDeviceSettings(storage: Pick<Storage, "getItem"> | undefined = safeLocalStorage()): Record<
+    string,
+    unknown
+> | undefined {
+    try {
+        const text: string | null | undefined = storage?.getItem(deviceSettingsKey);
+        const parsed = text ? JSON.parse(text) : undefined;
+        return parsed != undefined && typeof parsed === "object" ? parsed : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+export function saveDeviceSettings(
+    uiState: Record<string, unknown>,
+    storage: Pick<Storage, "setItem"> | undefined = safeLocalStorage()
+): void {
+    const settings: Record<string, unknown> = {};
+    for (const key of deviceLocalUiSettings) {
+        if (uiState[key] !== undefined) {
+            settings[key] = uiState[key];
+        }
+    }
+    try {
+        storage?.setItem(deviceSettingsKey, JSON.stringify(settings));
+    } catch {
+        /* storage full or unavailable: the game's own store still has them */
+    }
+}
+
+/** The remembered values for the settings this device has saved; the rest stay as they are. */
+export function applyDeviceSettings(uiState: Record<string, unknown>, saved: Record<string, unknown> | undefined): void {
+    if (saved == undefined) {
+        return;
+    }
+    for (const key of deviceLocalUiSettings) {
+        if (key in saved && saved[key] !== undefined && key in uiState) {
+            uiState[key] = saved[key];
+        }
+    }
+}
+
+function safeLocalStorage(): Storage | undefined {
+    try {
+        return typeof localStorage === "undefined" ? undefined : localStorage;
+    } catch {
+        return undefined;
+    }
+}
+
 /**
  * Puts this screen's device-local settings into a shared snapshot about to be applied, so applying it leaves them
  * as they are. Only settings the snapshot carries are touched.
