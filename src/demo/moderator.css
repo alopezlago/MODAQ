@@ -61,7 +61,8 @@ body {
     color: var(--m-text-2, #444);
 }
 .klaxon-phase.buzzed {
-    background: var(--m-bad-fill, #d13438);
+    /* Klaxon's indigo, not red: red is a wrong answer */
+    background: var(--m-buzz-fill, #4f44c9);
     color: var(--m-on-strong, #fff);
 }
 /* A player reporting that the buzzer was never cleared — deliberately loud. */
@@ -808,7 +809,7 @@ body {
     --kx-ink: #17130d;
     --kx-muted: #6d6456;
     --kx-soft: #ddd5c5;
-    --kx-accent: #d8401f;
+    --kx-accent: #4338b8;
     --kx-surface: #fffdf7;
     display: flex;
     justify-content: space-between;
@@ -1108,7 +1109,7 @@ a.kx-crumb:hover {
     overflow-wrap: anywhere;
 }
 .klaxon-protest.st-open {
-    border-left-color: var(--m-kx-accent, #d8401f);
+    border-left-color: var(--m-kx-accent, #4338b8);
 }
 .klaxon-protest.st-filed {
     border-left-color: var(--m-ok-line, #2f7d4f);
@@ -1366,7 +1367,7 @@ a.kx-crumb:hover {
     font-size: 12px;
 }
 .kc-who.kc-staff {
-    color: var(--m-kx-accent, #d8401f);
+    color: var(--m-kx-accent, #4338b8);
 }
 .kc-text {
     display: block;
@@ -1508,7 +1509,8 @@ a.kx-crumb:hover {
     --m-warn-text: #f0c36d;
     --m-accent: #4aa8ff;
     --m-accent-fill: #0a6fc2;
-    --m-kx-accent: #ff7a55;
+    --m-kx-accent: #a99fff;
+    --m-buzz-fill: #5a4fd4;
 }
 :root[data-theme="dark"] body {
     background: var(--m-bg);
@@ -1519,7 +1521,7 @@ a.kx-crumb:hover {
     --kx-muted: #aba08d;
     --kx-soft: #474036;
     --kx-surface: #25211b;
-    --kx-accent: #ff7a55;
+    --kx-accent: #a99fff;
 }
 /* Klaxon's own controls only: MODAQ's (Fluent) controls follow MODAQ's palette. */
 :root[data-theme="dark"] :where(.mod-center, .mod-side, .mod-changebar, .pk-start) :is(input, select, textarea) {
@@ -2458,7 +2460,7 @@ a.kx-crumb:hover {
     animation: ks-in 0.25s ease-out;
 }
 .ks-first {
-    background: var(--m-bad-fill, #d13438);
+    background: var(--m-buzz-fill, #4f44c9);
     color: var(--m-on-strong, #fff);
     font-weight: 700;
 }
