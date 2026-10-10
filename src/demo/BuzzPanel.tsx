@@ -1386,7 +1386,10 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
 
     // The end of the evening. It sends the room home, so it asks first;
     // reopening doesn't, because nothing is lost by it.
-    const endRow = (
+    // Never in a tournament room: it is read in round after round, and ending it
+    // would turn the next round's players away. (Reopening stays, for a room
+    // ended before this rule.)
+    const endRow = state?.tournamentCode && state?.ended == undefined ? null : (
         <div className="klaxon-end">
             {state?.ended == undefined ? (
                 <button

@@ -3438,21 +3438,23 @@ function ShootoutReading(props: {
                     {/* The end of the evening, next to the export because that
                         is the order it happens in: save the games, then send
                         the room home. */}
-                    <button
-                        onClick={() => {
-                            if (
-                                window.confirm(
-                                    "End the game for everyone? The players are sent home and the room stops taking new ones. The scoresheet, the chat and the log stay, and you can reopen it from the buzzer panel."
-                                )
-                            ) {
-                                client.massinger({ action: "end_game", end: true });
-                            }
-                        }}
-                        disabled={busy !== "" || roomState?.ended != undefined}
-                        title="Send the players home and close the room"
-                    >
-                        {roomState?.ended != undefined ? "Game ended" : "End the game"}
-                    </button>
+                    {!roomState?.tournamentCode && (
+                        <button
+                            onClick={() => {
+                                if (
+                                    window.confirm(
+                                        "End the game for everyone? The players are sent home and the room stops taking new ones. The scoresheet, the chat and the log stay, and you can reopen it from the buzzer panel."
+                                    )
+                                ) {
+                                    client.massinger({ action: "end_game", end: true });
+                                }
+                            }}
+                            disabled={busy !== "" || roomState?.ended != undefined}
+                            title="Send the players home and close the room"
+                        >
+                            {roomState?.ended != undefined ? "Game ended" : "End the game"}
+                        </button>
+                    )}
                 </RoomToolbar>
                 {superMismatch && (
                     <div className="mod-warn" role="alert">
