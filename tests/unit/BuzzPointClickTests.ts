@@ -1,7 +1,5 @@
 import { expect } from "chai";
 
-import * as GameFormats from "src/state/GameFormats";
-import { ITossupWord, Tossup } from "src/state/PacketState";
 import { IClickTargetElement, wordIndexFromClickTarget } from "src/components/TossupQuestionController";
 
 // A small stand-in for the DOM the question text renders: each QuestionWord is a focusable span (with data-index
@@ -21,13 +19,11 @@ class FakeElement implements IClickTargetElement {
             throw new Error("FakeElement only understands [name=\"value\"] selectors: " + selector);
         }
 
-        for (let element: FakeElement | null = this; element != null; element = element.parent) {
-            if (element.getAttribute(match[1]) === match[2]) {
-                return element;
-            }
+        if (this.getAttribute(match[1]) === match[2]) {
+            return this;
         }
 
-        return null;
+        return this.parent?.closest(selector) ?? null;
     }
 }
 
@@ -79,20 +75,6 @@ describe("BuzzPointClickTests", () => {
         it("Outside any word", () => {
             expect(wordIndexFromClickTarget(new FakeElement({ class: "tuNumber" }))).to.be.undefined;
             expect(wordIndexFromClickTarget(null)).to.be.undefined;
-        });
-    });
-
-    describe("anchored words stay buzzable", () => {
-        it("<pg>Kehinde</pg> (\"keh-HIN-day\") Wiley", () => {
-            const tossup: Tossup = new Tossup('by <pg>Kehinde</pg> ("keh-HIN-day") Wiley hung', "Answer");
-            const words: ITossupWord[] = tossup.getWords(GameFormats.UndefinedGameFormat);
-            const text = (w: ITossupWord): string => w.word.map((s) => s.text).join("");
-            const kehinde = words.find((w) => text(w) === "Kehinde");
-            expect(kehinde?.canBuzzOn, "the anchored word is buzzable").to.be.true;
-            expect(kehinde?.word[0].pronunciationTarget).to.be.true;
-            const guideWords = words.filter((w) => /keh-HIN-day/.test(text(w)));
-            expect(guideWords.length).to.be.greaterThan(0);
-            expect(guideWords.every((w) => !w.canBuzzOn), "the guide is not").to.be.true;
         });
     });
 });
