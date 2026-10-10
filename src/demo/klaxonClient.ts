@@ -103,6 +103,8 @@ export interface IPublicRoomState {
     roster?: { name?: string; teamNames: string[]; teams: { name: string; players: string[] }[] } | null;
     queue: IBuzzQueueEntry[];
     members: IRoomMember[];
+    // Teams that have answered this tossup wrong (lower-cased names), whose players can't buzz on it again
+    lockedTeams?: string[];
     // Rationed withdrawals: questions until each waiting player's next free one (only players still waiting).
     withdrawWait?: Record<string, number> | null;
     // The typed-answer window for this cycle, when the room uses one. Nobody's
@@ -641,8 +643,9 @@ export class KlaxonClient {
      * is a knocked buzzer, not a wrong answer. The two are indistinguishable
      * after the reset, so the difference has to travel with the clear.
      */
-    public resetBuzzer(judged = false): void {
-        this.socket?.emit("reader_action", { action: "reset_buzzer", judged });
+    public resetBuzzer(judged = false, wrong = false): void {
+        // `wrong`: the ruling was a wrong answer, so the server locks that player's team out of the tossup at once
+        this.socket?.emit("reader_action", { action: "reset_buzzer", judged, wrong });
     }
 
     public nextBuzz(): void {

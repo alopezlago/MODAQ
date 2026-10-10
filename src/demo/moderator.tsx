@@ -340,7 +340,8 @@ function useJudgedHandler(client: KlaxonClient, roomState: IPublicRoomState | un
             } else {
                 // Judged: the buzz was scored, so this clear is NOT the
                 // moderator declaring an accidental buzz (see resetBuzzer).
-                client.resetBuzzer(true);
+                // A wrong one also locks that team out of the tossup.
+                client.resetBuzzer(true, !correct);
             }
         },
         [client, queueMode]
