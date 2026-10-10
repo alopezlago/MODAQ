@@ -45,11 +45,14 @@ function Standings(props: {
     packets?: number;
     at?: string;
     queue: IBuzzQueueEntry[];
+    // Rationed withdrawals: questions until each player's next free one, for those still waiting
+    withdrawWait?: Record<string, number> | null;
     label: (m: IRoomMember | undefined, fallback: string) => string;
     picker: (m: IRoomMember | undefined, playerId: string) => JSX.Element | null;
     onRemove: (m: IRoomMember) => void;
 }): JSX.Element {
     const { players, rows, queue } = props;
+    const wdLeft = (id: string): number => Number(props.withdrawWait?.[id]) || 0;
     const scoreOf = new Map(rows.map((r) => [boardKey(r.name), r]));
     const matched = new Set<string>();
     const entries = players.map((m, order) => {
@@ -94,6 +97,16 @@ function Standings(props: {
                 <span className="ks-name" title={m?.rosterPlayer ? `Joined as ${m.name}` : e.name}>
                     {e.name}
                 </span>
+                {wdLeft(e.id) > 0 && (
+                    <span
+                        className="ks-wd"
+                        title={`Used their free withdraw: withdrawing now costs them. Free again in ${wdLeft(e.id)} question${
+                            wdLeft(e.id) === 1 ? "" : "s"
+                        }.`}
+                    >
+                        WD in {wdLeft(e.id)}
+                    </span>
+                )}
                 {extra}
                 {picker}
                 <span className="ks-score" title={splitTitle(e)}>
@@ -1547,6 +1560,7 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
                     packets={state.shootout.packets}
                     at={packetLabel(state.shootout.session)}
                     queue={queue}
+                    withdrawWait={state.withdrawWait}
                     label={modaqLabel}
                     picker={linkPicker}
                     onRemove={removePlayer}

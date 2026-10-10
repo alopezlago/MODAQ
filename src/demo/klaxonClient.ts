@@ -103,6 +103,8 @@ export interface IPublicRoomState {
     roster?: { name?: string; teamNames: string[]; teams: { name: string; players: string[] }[] } | null;
     queue: IBuzzQueueEntry[];
     members: IRoomMember[];
+    // Rationed withdrawals: questions until each waiting player's next free one (only players still waiting).
+    withdrawWait?: Record<string, number> | null;
     // The typed-answer window for this cycle, when the room uses one. Nobody's
     // answer is in here — the moderator gets those on their own channel — only
     // whether a window is running and how many people have committed.

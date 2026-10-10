@@ -2483,6 +2483,16 @@ a.kx-crumb:hover {
     background: var(--m-surface, #fff);
     color: var(--m-bad, #a4262c);
 }
+.ks-wd {
+    flex: none;
+    padding: 0 4px;
+    border: 1px solid var(--m-warn-line, #c19c00);
+    border-radius: 3px;
+    font-size: 10.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--m-warn-text, #8a5a00);
+}
 .ks-behind .ks-badge {
     background: transparent;
     border: 1px solid var(--m-warn-line, #c19c00);
