@@ -1,8 +1,9 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { Callout, DirectionalHint, Layer, memoizeFunction, mergeStyleSets, Theme, ThemeContext } from "@fluentui/react";
+import { Layer, memoizeFunction, mergeStyleSets, Theme, ThemeContext } from "@fluentui/react";
 
 import * as TossupQuestionController from "./TossupQuestionController";
+import { choosePadPosition, IPadPosition, IPadRect } from "./PlayerPadPlacement";
 import { AppState } from "../state/AppState";
 import { ITossupWord, Tossup } from "../state/PacketState";
 import { Player } from "../state/TeamState";
@@ -113,22 +114,13 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
                     </div>
                 );
 
-                // A Callout follows the word as the arrow keys move the buzz point. The pad closes itself (a
-                // recorded buzz, Escape, the close button, a click outside it, another question), so the Callout's
-                // own dismissal is off.
+                // Next to the word, following it as the arrow keys move the buzz point, but never over the answer
+                // (see PlayerPadPlacement). The pad closes itself (a recorded buzz, Escape, the close button, a click
+                // outside it, another question).
                 return anchoredToWord ? (
-                    <Callout
-                        target={`.tossup span[data-index="${wordIndex}"]`}
-                        directionalHint={DirectionalHint.bottomLeftEdge}
-                        gapSpace={6}
-                        isBeakVisible={false}
-                        setInitialFocus={false}
-                        preventDismissOnLostFocus={true}
-                        preventDismissOnScroll={true}
-                        preventDismissOnResize={true}
-                    >
+                    <AnchoredPad wordIndex={wordIndex} className={classes.anchoredPad}>
                         {pad}
-                    </Callout>
+                    </AnchoredPad>
                 ) : (
                     <Layer>{pad}</Layer>
                 );
@@ -136,6 +128,82 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
         </ThemeContext.Consumer>
     );
 });
+
+// The pad opened on a word, placed by choosePadPosition and re-placed whenever the word, the page's scroll, the
+// window or the pad's own size changes. It stays hidden until it has been measured once, so it never flashes over
+// the answer on its way to its spot.
+function AnchoredPad(props: { wordIndex: number; className: string; children: React.ReactNode }): JSX.Element {
+    // The element as state, not a ref: Fluent's Layer mounts its contents a moment after the first render, so a ref
+    // was still empty when the first placement ran, nothing rendered again, and the pad stayed hidden for good.
+    // Arriving in the page is what triggers the first placement (and the observers).
+    const [element, setElement] = React.useState<HTMLDivElement | null>(null);
+    const [position, setPosition] = React.useState<IPadPosition | undefined>(undefined);
+    const { wordIndex } = props;
+
+    const place = React.useCallback((): void => {
+        const word: Element | null = document.querySelector(`.tossup span[data-index="${wordIndex}"]`);
+        if (element == null || word == null) {
+            return;
+        }
+
+        const answer: Element | null = document.querySelector(".tossup [data-tossup-answer]");
+        const next: IPadPosition = choosePadPosition({
+            word: toRect(word.getBoundingClientRect()),
+            answer: answer != null ? toRect(answer.getBoundingClientRect()) : undefined,
+            pad: { width: element.offsetWidth, height: element.offsetHeight },
+            viewport: { width: window.innerWidth, height: window.innerHeight },
+        });
+        setPosition((previous) =>
+            previous != undefined &&
+            previous.left === next.left &&
+            previous.top === next.top &&
+            previous.placement === next.placement
+                ? previous
+                : next
+        );
+    }, [wordIndex, element]);
+
+    // After every render: the word may have moved, and the pad's contents (who has the buzzer) its size
+    React.useLayoutEffect(place);
+
+    React.useEffect(() => {
+        // Capture, so a scrolling container around the question counts as well as the page
+        window.addEventListener("scroll", place, true);
+        window.addEventListener("resize", place);
+        const observer: ResizeObserver | undefined =
+            typeof ResizeObserver !== "undefined" && element != null ? new ResizeObserver(() => place()) : undefined;
+        if (observer != undefined && element != null) {
+            observer.observe(element);
+        }
+
+        return () => {
+            window.removeEventListener("scroll", place, true);
+            window.removeEventListener("resize", place);
+            observer?.disconnect();
+        };
+    }, [place, element]);
+
+    return (
+        <Layer>
+            <div
+                ref={setElement}
+                className={props.className}
+                data-placement={position?.placement}
+                style={{
+                    left: position?.left ?? 0,
+                    top: position?.top ?? 0,
+                    visibility: position == undefined ? "hidden" : "visible",
+                }}
+            >
+                {props.children}
+            </div>
+        </Layer>
+    );
+}
+
+function toRect(rect: DOMRect): IPadRect {
+    return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+}
 
 // Don't let the pad's buttons take focus on click: a focused button would also be pressed by Space, the buzz
 // shortcut, and focus would leave the question
@@ -246,6 +314,7 @@ interface IPlayerPadSeatProps {
 interface IPlayerPadClassNames {
     pad: string;
     floatingPad: string;
+    anchoredPad: string;
     header: string;
     title: string;
     hint: string;
@@ -291,6 +360,16 @@ const getClassNames = memoizeFunction(
                 borderRadius: "8px",
                 background: theme ? theme.palette.white : "white",
                 border: "1px solid " + (theme ? theme.palette.neutralLight : "lightgray"),
+                boxShadow: theme ? theme.effects.elevation16 : "0 6px 16px rgba(0, 0, 0, 0.2)",
+                zIndex: 1000,
+            },
+            // Opened on a word: placed in window coordinates by AnchoredPad, looking like the callout it replaced
+            anchoredPad: {
+                position: "fixed",
+                width: "max-content",
+                maxWidth: "calc(100vw - 16px)",
+                borderRadius: "4px",
+                background: theme ? theme.palette.white : "white",
                 boxShadow: theme ? theme.effects.elevation16 : "0 6px 16px rgba(0, 0, 0, 0.2)",
                 zIndex: 1000,
             },

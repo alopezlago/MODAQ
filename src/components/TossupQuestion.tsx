@@ -117,8 +117,11 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
                 >
                     {questionWords}
                 </FocusZone>
-                <Answer text={props.tossup.answer} />
-                <PostQuestionMetadata metadata={props.tossup.metadata} />
+                {/* The player pad keeps clear of this (see PlayerPadPlacement) */}
+                <div data-tossup-answer="true">
+                    <Answer text={props.tossup.answer} />
+                    <PostQuestionMetadata metadata={props.tossup.metadata} />
+                </div>
                 <PlayerPad appState={props.appState} tossup={props.tossup} />
                 <BuzzFeedback appState={props.appState} />
                 <ReaderFollowerDebug appState={props.appState} />
