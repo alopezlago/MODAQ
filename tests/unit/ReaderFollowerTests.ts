@@ -73,6 +73,36 @@ describe("ReaderFollowerTests", () => {
         expect(lastPosition(h.positions)).to.be.greaterThan(9);
     });
 
+    it("Reading the last word moves the position to the end of the question", () => {
+        const h: IHarness = newHarness();
+        h.follower.setTargetWords(firstTossup);
+        h.say("1-0", firstTossup);
+        // The end marker comes just after the last target word
+        expect(lastPosition(h.positions)).to.equal(firstTossup.length);
+    });
+
+    it("Doesn't reach the end before the last word is read", () => {
+        const h: IHarness = newHarness();
+        h.follower.setTargetWords(firstTossup);
+        h.say("1-0", firstTossup.slice(0, firstTossup.length - 1));
+        expect(lastPosition(h.positions)).to.be.lessThan(firstTossup.length - 1);
+        expect(h.positions).to.not.include(firstTossup.length);
+    });
+
+    it("Doesn't reach the end on a last word only partly heard", () => {
+        const h: IHarness = newHarness();
+        h.follower.setTargetWords(firstTossup);
+        // "electrodes" cut off as the recognizer's interim guess
+        h.say("1-0", [...firstTossup.slice(0, firstTossup.length - 1), "ele"], false);
+        expect(h.positions).to.not.include(firstTossup.length);
+        // ...and reaches it once the word is heard
+        const handle = (h.follower as unknown) as {
+            handleTranscript: (key: string, transcript: string, isFinal: boolean) => void;
+        };
+        handle.handleTranscript("1-0", firstTossup.join(" "), true);
+        expect(lastPosition(h.positions)).to.equal(firstTossup.length);
+    });
+
     it("Follows the second tossup after a recognition session restarts (new keys)", () => {
         const h: IHarness = newHarness();
         h.follower.setTargetWords(firstTossup);

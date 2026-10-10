@@ -51,7 +51,9 @@ export interface IReaderFollowerCallbacks {
 
 /**
  * Passively listens to the microphone and reports how far into a known piece of text (a tossup) the speaker has
- * read. Positions are word indexes into the target words passed to `setTargetWords`.
+ * read. Positions are word indexes into the target words passed to `setTargetWords`, and once the last of them
+ * has been read, the index just past it (`targetWords.length`): the end of the question, where a buzz after the
+ * whole tossup has been read belongs -- MODAQ's END marker, not the last word.
  *
  * Listening is started once and kept running while the target changes from tossup to tossup, so no words are
  * lost to recognizer start-up at the beginning of each question.
@@ -73,7 +75,11 @@ export class ReaderFollower {
 
     private lastUtterance: { key: string; wordCount: number } | undefined;
 
+    // How many target words there are, so reading the last one reports the end of the question
+    private targetWordCount: number;
+
     constructor(callbacks: IReaderFollowerCallbacks) {
+        this.targetWordCount = 0;
         this.callbacks = callbacks;
         this.engine = undefined;
         this.processor = undefined;
@@ -148,6 +154,7 @@ export class ReaderFollower {
      */
     public setTargetWords(targetWords: string[] | undefined): void {
         this.ignoredUtterance = this.lastUtterance;
+        this.targetWordCount = targetWords?.length ?? 0;
         this.processor =
             targetWords == undefined ? undefined : new UtteranceTranscriptProcessor(new TranscriptAligner(targetWords));
 
@@ -161,6 +168,12 @@ export class ReaderFollower {
 
             this.engine.setVocabulary([...vocabulary]);
         }
+    }
+
+    // The aligner only reaches the last word with the evidence it needs for any word, so the end of the question
+    // follows the same way: a last word half-heard (or not yet heard) leaves the position on the word before it.
+    private reportedPosition(position: number): number {
+        return this.targetWordCount > 0 && position === this.targetWordCount - 1 ? this.targetWordCount : position;
     }
 
     private handleTranscript(utteranceKey: string, transcript: string, isFinal: boolean): void {
@@ -187,10 +200,11 @@ export class ReaderFollower {
             );
         }
 
-        const oldPosition: number = this.processor.position;
+        const oldPosition: number = this.reportedPosition(this.processor.position);
         const result: IProcessResult = this.processor.process(utteranceKey, words.join(" "), isFinal);
-        if (result.position !== oldPosition) {
-            this.callbacks.onPositionChanged(result.position);
+        const newPosition: number = this.reportedPosition(result.position);
+        if (newPosition !== oldPosition) {
+            this.callbacks.onPositionChanged(newPosition);
         }
 
         if (this.callbacks.onBuzzResolutionWord != undefined) {
