@@ -6,6 +6,7 @@ import {
     TranscriptAligner,
     UtteranceTranscriptProcessor,
 } from "./TranscriptAligner";
+import { logReadAlong } from "./ReadAlongLog";
 import { VoskSpeechEngine } from "./VoskSpeechEngine";
 import { WebSpeechEngine } from "./WebSpeechEngine";
 
@@ -25,6 +26,9 @@ export const buzzResolutionWords: ReadonlySet<string> = new Set([
 
 // The most recent words of a transcript shown in the debug window
 const maximumDisplayedTranscriptWords = 40;
+
+// A recognizer that has heard nothing for this long when a new tossup comes up is restarted (see restartIfIdle)
+const idleRestartInMs = 10000;
 
 export interface IReaderFollowerCallbacks {
     /** Called when we believe the reader has read up to (and including) the given word index. */
@@ -119,6 +123,7 @@ export class ReaderFollower {
             onPartialTranscript: (utteranceKey, transcript) => this.handleTranscript(utteranceKey, transcript, false),
             onFinalTranscript: (utteranceKey, transcript) => this.handleTranscript(utteranceKey, transcript, true),
             onStatusChanged: (status) => {
+                logReadAlong("status", status);
                 if (this.callbacks.onStatusChanged != undefined && this.engine != undefined) {
                     this.callbacks.onStatusChanged(this.engine.name, status);
                 }
@@ -153,6 +158,21 @@ export class ReaderFollower {
      * undefined. Doesn't interrupt listening.
      */
     public setTargetWords(targetWords: string[] | undefined): void {
+        logReadAlong(
+            "target",
+            targetWords == undefined
+                ? "(none)"
+                : `${targetWords.length} words: ${targetWords.slice(0, 8).join(" ")}` +
+                      (this.lastUtterance != undefined
+                          ? ` | ignoring ${this.lastUtterance.wordCount} words of ${this.lastUtterance.key}`
+                          : "")
+        );
+        if (targetWords != undefined && this.engine?.restartIfIdle?.(idleRestartInMs) === true) {
+            // A fresh session: nothing in progress belongs to the previous question
+            this.lastUtterance = undefined;
+            logReadAlong("restart", `nothing heard for ${idleRestartInMs / 1000}s`);
+        }
+
         this.ignoredUtterance = this.lastUtterance;
         this.targetWordCount = targetWords?.length ?? 0;
         this.processor =
@@ -179,6 +199,11 @@ export class ReaderFollower {
     private handleTranscript(utteranceKey: string, transcript: string, isFinal: boolean): void {
         let words: string[] = transcript.split(/\s+/).filter((word) => word !== "");
         this.lastUtterance = isFinal ? undefined : { key: utteranceKey, wordCount: words.length };
+        logReadAlong(
+            isFinal ? "final" : "heard",
+            `${utteranceKey} (${words.length}) …${words.slice(-10).join(" ")}` +
+                (this.processor == undefined ? " [no tossup]" : "")
+        );
 
         if (this.processor == undefined) {
             return;
@@ -204,6 +229,7 @@ export class ReaderFollower {
         const result: IProcessResult = this.processor.process(utteranceKey, words.join(" "), isFinal);
         const newPosition: number = this.reportedPosition(result.position);
         if (newPosition !== oldPosition) {
+            logReadAlong("position", `${oldPosition} -> ${newPosition}`);
             this.callbacks.onPositionChanged(newPosition);
         }
 

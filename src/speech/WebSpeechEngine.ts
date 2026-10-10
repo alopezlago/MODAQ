@@ -128,6 +128,9 @@ export class WebSpeechEngine implements ISpeechEngine {
 
     private vocabulary: string[];
 
+    // When this session started or last delivered a result (see restartIfIdle)
+    private lastHeardTime: number;
+
     constructor(callbacks: ISpeechEngineCallbacks) {
         this.callbacks = callbacks;
         this.recognition = undefined;
@@ -139,6 +142,7 @@ export class WebSpeechEngine implements ISpeechEngine {
         this.processLocally = false;
         this.phrasesUnsupported = false;
         this.vocabulary = [];
+        this.lastHeardTime = 0;
     }
 
     public static isSupported(): boolean {
@@ -223,6 +227,40 @@ export class WebSpeechEngine implements ISpeechEngine {
         }
     }
 
+    public restartIfIdle(idleMs: number): boolean {
+        if (!this.active || this.recognition == undefined || this.restartTimerId != undefined) {
+            return false;
+        }
+
+        if (Date.now() - this.lastHeardTime < idleMs) {
+            return false;
+        }
+
+        const speechRecognitionConstructor:
+            | ISpeechRecognitionConstructor
+            | undefined = getSpeechRecognitionConstructor();
+        if (speechRecognitionConstructor == undefined) {
+            return false;
+        }
+
+        // Let the old session go without waiting for its end event: a session that stopped delivering results may
+        // never send one either
+        const stale: ISpeechRecognition = this.recognition;
+        stale.onresult = null;
+        stale.onerror = null;
+        stale.onend = null;
+        stale.onstart = null;
+        try {
+            stale.abort();
+        } catch (e) {
+            // Already over
+        }
+
+        this.callbacks.onStatusChanged("Nothing heard for a while; restarting recognition...");
+        this.startRecognitionSession(speechRecognitionConstructor);
+        return true;
+    }
+
     private async startListening(speechRecognitionConstructor: ISpeechRecognitionConstructor): Promise<void> {
         // Use on-device recognition if its model is already installed. Don't trigger the download ourselves.
         if (speechRecognitionConstructor.available != undefined) {
@@ -249,6 +287,7 @@ export class WebSpeechEngine implements ISpeechEngine {
     private startRecognitionSession(speechRecognitionConstructor: ISpeechRecognitionConstructor): void {
         this.sessionId++;
         this.sessionStartTime = Date.now();
+        this.lastHeardTime = this.sessionStartTime;
 
         const recognition: ISpeechRecognition = new speechRecognitionConstructor();
         recognition.continuous = true;
@@ -292,6 +331,7 @@ export class WebSpeechEngine implements ISpeechEngine {
     }
 
     private handleResult(event: ISpeechRecognitionEvent): void {
+        this.lastHeardTime = Date.now();
         for (let i = event.resultIndex; i < event.results.length; i++) {
             const result: ISpeechRecognitionResult = event.results[i];
             const utteranceKey = `${this.sessionId}-${i}`;
