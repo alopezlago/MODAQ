@@ -1241,10 +1241,10 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
         );
     };
 
+    // One player, at once: they can rejoin from the player link, so a stray tap
+    // costs nothing worth a dialog in the middle of a round.
     const removePlayer = (player: IRoomMember): void => {
-        if (window.confirm(`Remove ${player.name} from the room? They can rejoin from the player link.`)) {
-            client.massinger({ action: "remove_player", playerId: player.id });
-        }
+        client.massinger({ action: "remove_player", playerId: player.id });
     };
 
     const soundButton = (

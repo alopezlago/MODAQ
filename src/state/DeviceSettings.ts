@@ -19,6 +19,9 @@ export const deviceLocalUiSettings: readonly string[] = [
     "oneQuestionAtATime",
     "questionFontSize",
     "fontFamily",
+    // ...and the rest of the Font dialog
+    "questionFontColor",
+    "pronunciationGuideColor",
     "isScoreVertical",
     "isClockHidden",
     "isEventLogHidden",

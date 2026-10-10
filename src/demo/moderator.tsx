@@ -787,6 +787,24 @@ function ModeratorBody(): JSX.Element {
     const [rosterPlayers, setRosterPlayers] = React.useState<IPlayer[]>([]);
     const [centralRoster, setCentralRoster] = React.useState(false); // roster came from the tournament
     const [serverPackets, setServerPackets] = React.useState<string[]>([]);
+    // The rounds the director has released change during the day: the setup
+    // screen re-reads them whenever it is shown (Change round / teams comes
+    // back here) and whenever Klaxon says the releases changed.
+    React.useEffect(() => {
+        const client = clientRef.current;
+        if (phase !== "setup" || !client) {
+            return;
+        }
+        const refresh = (): void => {
+            KlaxonApi.listPackets(client.code, client.token)
+                .then(({ packets }) => setServerPackets(packets))
+                .catch(() => {
+                    /* keep the list we have */
+                });
+        };
+        refresh();
+        return client.onPacketsChanged(refresh);
+    }, [phase]);
     const [tournament, setTournament] = React.useState<ITournamentInfo | undefined>(undefined);
     const [tournamentFormat, setTournamentFormat] = React.useState<ITournamentFormat | undefined>(undefined);
     const [round, setRound] = React.useState<string>("1");
