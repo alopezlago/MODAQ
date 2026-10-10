@@ -37,18 +37,57 @@ export function getWrongBuzzPoints(
     return negBuzz == undefined || negBuzz.marker.player.teamName === player.teamName ? pointsAtPosition : 0;
 }
 
-export function selectWordFromClick(appState: AppState, event: React.MouseEvent<HTMLDivElement>): void {
-    const target = event.target as HTMLDivElement;
+/**
+ * The part of an element a click lands on that wordIndexFromClickTarget needs. A DOM Element is one; tests pass
+ * small fakes.
+ */
+export interface IClickTargetElement {
+    closest(selector: string): IClickTargetElement | null;
+    getAttribute(name: string): string | null;
+    readonly previousElementSibling: IClickTargetElement | null;
+}
 
-    // I'd like to avoid looking for a specific HTML element instead of a class. This would mean giving QuestionWord a
-    // fixed class.
-    const questionWord: HTMLSpanElement | null = target.closest("span");
-    if (questionWord == undefined || questionWord.getAttribute == undefined) {
-        return;
+const wordIndexOf = (element: IClickTargetElement): number | undefined => {
+    const index = parseInt(element.getAttribute("data-index") ?? "", 10);
+    return isNaN(index) || index < 0 ? undefined : index;
+};
+
+/**
+ * The buzzable word a click in the question text landed on, if any. The word is the QuestionWord element around the
+ * click -- the one every word, buzzable or not, marks as focusable -- not merely the nearest span: a word's text can
+ * sit in spans of its own (an anchored pronunciation guide's word is colored with one), and taking the nearest span
+ * made those words impossible to buzz on. A click on a pronunciation guide means the word it is for: the buzzable
+ * word before it.
+ */
+export function wordIndexFromClickTarget(target: IClickTargetElement | null | undefined): number | undefined {
+    const word: IClickTargetElement | null | undefined = target?.closest?.('[data-is-focusable="true"]');
+    if (word == undefined) {
+        return undefined;
     }
 
-    const index = parseInt(questionWord.getAttribute("data-index") ?? "", 10);
-    if (index < 0 || isNaN(index)) {
+    const own: number | undefined = wordIndexOf(word);
+    if (own != undefined || word.getAttribute("data-pronunciation") !== "true") {
+        return own;
+    }
+
+    // A guide may run over several words; step back over them (and anything between words that isn't one) to the
+    // word it follows. Anything else non-buzzable in the way (a power marker) means there is no such word.
+    let element: IClickTargetElement | null = word.previousElementSibling;
+    while (element != undefined) {
+        const isWord: boolean = element.getAttribute("data-is-focusable") === "true";
+        if (isWord && element.getAttribute("data-pronunciation") !== "true") {
+            return wordIndexOf(element);
+        }
+
+        element = element.previousElementSibling;
+    }
+
+    return undefined;
+}
+
+export function selectWordFromClick(appState: AppState, event: React.MouseEvent<HTMLDivElement>): void {
+    const index: number | undefined = wordIndexFromClickTarget(event.target as Element);
+    if (index == undefined) {
         return;
     }
 
@@ -73,7 +112,7 @@ export function selectWordFromClick(appState: AppState, event: React.MouseEvent<
     // The click also focused the word, and a focused word gets a focus box once the keyboard is used -- which
     // looks like a second buzz point, and stays at that position when the next question shows. The buzz point and
     // the shortcuts don't need focus on the word, so let it go.
-    questionWord.blur();
+    (event.target as Element).closest<HTMLElement>('[data-is-focusable="true"]')?.blur();
 
     event.preventDefault();
     event.stopPropagation();
