@@ -200,12 +200,14 @@ function AnchoredPad(props: {
     className: string;
     children: React.ReactNode;
 }): JSX.Element {
-    const ref = React.useRef<HTMLDivElement>(null);
+    // The element as state, not a ref: Fluent's Layer mounts its contents a moment after the first render, so a ref
+    // was still empty when the first placement ran, nothing rendered again, and the pad stayed hidden for good.
+    // Arriving in the page is what triggers the first placement (and the observers).
+    const [element, setElement] = React.useState<HTMLDivElement | null>(null);
     const [position, setPosition] = React.useState<IPadPosition | undefined>(undefined);
     const { wordIndex, compact } = props;
 
     const place = React.useCallback((): void => {
-        const element: HTMLDivElement | null = ref.current;
         const word: Element | null = document.querySelector(`.tossup span[data-index="${wordIndex}"]`);
         if (element == null || word == null) {
             return;
@@ -228,7 +230,7 @@ function AnchoredPad(props: {
                 ? previous
                 : next
         );
-    }, [wordIndex, compact]);
+    }, [wordIndex, compact, element]);
 
     // After every render: the word may have moved, and the pad's contents (who has the buzzer) its size
     React.useLayoutEffect(place);
@@ -237,7 +239,6 @@ function AnchoredPad(props: {
         // Capture, so a scrolling container around the question counts as well as the page
         window.addEventListener("scroll", place, true);
         window.addEventListener("resize", place);
-        const element: HTMLDivElement | null = ref.current;
         const observer: ResizeObserver | undefined =
             typeof ResizeObserver !== "undefined" && element != null ? new ResizeObserver(() => place()) : undefined;
         if (observer != undefined && element != null) {
@@ -249,12 +250,12 @@ function AnchoredPad(props: {
             window.removeEventListener("resize", place);
             observer?.disconnect();
         };
-    }, [place]);
+    }, [place, element]);
 
     return (
         <Layer>
             <div
-                ref={ref}
+                ref={setElement}
                 className={props.className}
                 data-placement={position?.placement}
                 style={{
