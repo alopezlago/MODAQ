@@ -2227,6 +2227,43 @@ function Reading(props: {
     const token = client.token;
     const round = config.round;
 
+    // The tiebreaker pool, kept current while reading: the director releases
+    // a tiebreaker when a room needs one, usually after the game has started.
+    // Re-read when the server says the releases changed, when the page comes
+    // back into view, and once a minute in case a push was missed.
+    const [tiebreakers, setTiebreakers] = React.useState<ITiebreakerItem[]>(config.tiebreakers);
+    React.useEffect(() => setTiebreakers(config.tiebreakers), [config.tiebreakers]);
+    React.useEffect(() => {
+        let cancelled = false;
+        let last = JSON.stringify(config.tiebreakers);
+        const refresh = (): void => {
+            KlaxonApi.getTiebreakers(code, token)
+                .then((res) => {
+                    const next = res.tiebreakers || [];
+                    const key = JSON.stringify(next);
+                    if (!cancelled && key !== last) {
+                        last = key;
+                        setTiebreakers(next);
+                    }
+                })
+                .catch(() => {
+                    /* keep what we have */
+                });
+        };
+        const offPush = client.onPacketsChanged(refresh);
+        const onVisible = (): void => {
+            if (document.visibilityState === "visible") refresh();
+        };
+        document.addEventListener("visibilitychange", onVisible);
+        const timer = setInterval(refresh, 60000);
+        return () => {
+            cancelled = true;
+            offPush();
+            document.removeEventListener("visibilitychange", onVisible);
+            clearInterval(timer);
+        };
+    }, [code, token, client, config.tiebreakers]);
+
     const customExport: ICustomExport = React.useMemo(
         () => ({
             label: "Autosaving to Klaxon",
@@ -2368,7 +2405,7 @@ function Reading(props: {
                     onExported={ending.onExported}
                     onPersistedState={shared.onPersistedState}
                     remoteState={shared.remoteState}
-                    tiebreakers={config.tiebreakers}
+                    tiebreakers={tiebreakers}
                     onTiebreakerUsed={onTiebreakerUsed}
                     customExport={customExport}
                 />

@@ -294,6 +294,7 @@ export class KlaxonClient {
     private readonly listeners: StateListener[] = [];
     private readonly messageListeners: MessageListener[] = [];
     private readonly stuckListeners: StuckListener[] = [];
+    private readonly packetsChangedListeners: Array<() => void> = [];
     private readonly chatListeners: ChatListener[] = [];
     private readonly chatTypingListeners: ChatTypingListener[] = [];
     private readonly sharedGameListeners: SharedGameListener[] = [];
@@ -332,6 +333,11 @@ export class KlaxonClient {
                 const s = args[0] as IPublicRoomState;
                 this.lastState = s;
                 for (const l of this.listeners) l(s);
+            });
+
+            // The director released (or hid, or reordered) a round or a tiebreaker.
+            socket.on("packets_changed", () => {
+                for (const l of this.packetsChangedListeners) l();
             });
 
             socket.on("director_message", (...args: unknown[]) => {
@@ -459,6 +465,15 @@ export class KlaxonClient {
         return () => {
             const i = this.messageListeners.indexOf(listener);
             if (i >= 0) this.messageListeners.splice(i, 1);
+        };
+    }
+
+    // What the director has released changed. Transient: a listener re-reads.
+    public onPacketsChanged(listener: () => void): () => void {
+        this.packetsChangedListeners.push(listener);
+        return () => {
+            const i = this.packetsChangedListeners.indexOf(listener);
+            if (i >= 0) this.packetsChangedListeners.splice(i, 1);
         };
     }
 
