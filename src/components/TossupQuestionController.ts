@@ -272,7 +272,9 @@ function startBuzzPointPlacement(appState: AppState, currentTime: number, starte
         wordOffset: uiState.buzzPointWordOffset,
         movedManually: false,
         startedByBuzzSound,
-        anchoredToWord: false,
+        // Next to the buzz point, as a click opens it: at the bottom of the window it was a long way from the word
+        // the reader stopped on, and the arrow keys moved a highlight the pad wasn't beside
+        anchoredToWord: true,
     });
 }
 
@@ -316,7 +318,7 @@ export function placeBuzzPointAtEnd(appState: AppState): void {
         return;
     }
 
-    placeBuzzPointAt(appState, lastBuzzableIndex, /* anchorToWord */ false);
+    placeBuzzPointAt(appState, lastBuzzableIndex, /* anchorToWord */ true);
 }
 
 /**
