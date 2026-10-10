@@ -543,7 +543,8 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                                 protests,
                                 categories,
                                 answers,
-                                questions
+                                questions,
+                                appState.game.lastUpdate?.getTime?.()
                             );
                         } catch {
                             /* a transient inconsistent state shouldn't crash the reader */
@@ -752,7 +753,11 @@ export interface IModaqControlProps {
         protests?: IGameUpdateProtest[],
         categories?: string[],
         answers?: string[],
-        questions?: string[]
+        questions?: string[],
+        // When the game last changed (the game's own lastUpdate, which travels
+        // with it to every screen sharing it): lets a host tell a late copy
+        // of an older moment from the current one.
+        lastUpdate?: number
     ) => void;
 
     /**

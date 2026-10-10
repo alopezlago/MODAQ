@@ -213,6 +213,7 @@ function useGameSync(
     categories?: string[],
     answers?: string[],
     questions?: string[],
+    lastUpdate?: number,
     exportAs?: IExportAs
 ) => void {
     const lastKey = React.useRef<string>("");
@@ -232,6 +233,7 @@ function useGameSync(
             categories?: string[],
             answers?: string[],
             questions?: string[],
+            lastUpdate?: number,
             exportAs?: IExportAs
         ) => {
             const lists = {
@@ -250,6 +252,7 @@ function useGameSync(
             const listsKey = JSON.stringify(lists);
             const update = {
                 action: "modaq_game",
+                lastUpdate,
                 qbj: match,
                 currentQuestion,
                 hasBonuses: hasBonuses !== false,
@@ -2377,7 +2380,8 @@ function Reading(props: {
             protests?: IGameUpdateProtest[],
             categories?: string[],
             answers?: string[],
-            questions?: string[]
+            questions?: string[],
+            lastUpdate?: number
         ) => {
             try {
                 localStorage.setItem("bz_modaqLive:" + code, round);
@@ -2385,7 +2389,7 @@ function Reading(props: {
                 /* storage may be unavailable; resume is best-effort */
             }
             // The stats file goes up with the update (see useGameSync).
-            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions, {
+            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions, lastUpdate, {
                 round,
                 inProgress: inProgress === true,
             });
@@ -3364,7 +3368,8 @@ function ShootoutReading(props: {
             protests?: IGameUpdateProtest[],
             categories?: string[],
             answers?: string[],
-            questions?: string[]
+            questions?: string[],
+            lastUpdate?: number
         ) => {
             const id = gamePacket.current;
             const p = packetsRef.current.find((x) => x.id === id);
@@ -3372,7 +3377,7 @@ function ShootoutReading(props: {
             // this one — not on the room's scoresheet either, which is what the
             // leaderboard and the banked score are read from.
             if (!id || (p && qbj.packets && qbj.packets !== p.name)) return;
-            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions, {
+            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions, lastUpdate, {
                 round: id,
                 inProgress: inProgress === true,
             });
