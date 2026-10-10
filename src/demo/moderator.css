@@ -215,7 +215,11 @@ body {
     margin: 14px 0 4px;
     font-weight: 600;
 }
+/* Every typed field on the setup screens looks the same: a password box used
+   to fall back to the browser's small default beside a full-width username. */
 .mod-setup input[type="text"],
+.mod-setup input[type="password"],
+.mod-setup input[type="email"],
 .mod-setup select {
     width: 100%;
     padding: 8px;
@@ -256,6 +260,31 @@ body {
     border-radius: 6px;
     background: var(--m-surface, #fff);
     cursor: pointer;
+}
+/* Log in / Create account: the one you're on is chosen, not unavailable. */
+.mod-setup .acct-mode {
+    display: inline-flex;
+    margin: 6px 0 4px;
+    border: 1px solid var(--m-control-line, #8a8886);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.mod-setup .acct-mode button {
+    padding: 6px 14px;
+    border: 0;
+    background: var(--m-surface, #fff);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+.mod-setup .acct-mode button + button {
+    border-left: 1px solid var(--m-control-line, #8a8886);
+}
+.mod-setup .acct-mode button[aria-pressed="true"] {
+    background: var(--m-accent-fill, #0078d4);
+    color: var(--m-on-strong, #fff);
+    font-weight: 600;
+    cursor: default;
 }
 .mod-setup .msg {
     margin-top: 12px;

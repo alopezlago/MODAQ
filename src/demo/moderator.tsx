@@ -3599,11 +3599,11 @@ function AccountGate(props: { tcode: string; onApproved: () => void; strict?: bo
             <div className="mod-center mod-setup">
                 <h1>Reader sign-in</h1>
                 <p className="hint">This tournament requires an approved reader account to read its packets.</p>
-                <div className="schedule-rounds">
-                    <button onClick={() => setMode("login")} disabled={mode === "login"}>
+                <div className="acct-mode" role="group" aria-label="Sign in or create an account">
+                    <button onClick={() => setMode("login")} aria-pressed={mode === "login"}>
                         Log in
                     </button>
-                    <button onClick={() => setMode("register")} disabled={mode === "register"}>
+                    <button onClick={() => setMode("register")} aria-pressed={mode === "register"}>
                         Create account
                     </button>
                 </div>
