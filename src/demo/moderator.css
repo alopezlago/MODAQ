@@ -164,6 +164,17 @@ body {
 .klaxon-players li.gone {
     color: var(--m-bad, #d13438);
 }
+/* A director correcting a finished tournament game in a correction room. */
+.mod-correction {
+    margin: 0 0 10px;
+    padding: 10px 14px;
+    border: 1px solid var(--m-accent-fill, #0078d4);
+    border-left-width: 4px;
+    border-radius: 6px;
+    background: var(--m-surface, #fff);
+    line-height: 1.45;
+}
+
 /* A player here early for their own game: a label, not an alarm. */
 .klaxon-waiting {
     flex: 0 0 auto;

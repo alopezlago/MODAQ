@@ -2535,8 +2535,19 @@ function LiteReading(props: {
     return (
         <div className="mod-shell">
             <div className="mod-main">
+                {roomState?.correction && (
+                    <div className="mod-correction" role="status">
+                        <strong>Correcting a tournament game</strong> —{" "}
+                        {roomState.correction.roomName || `Room ${roomState.correction.room}`}, round{" "}
+                        {roomState.correction.round}. Fix the event in MODAQ (click it in the event list, or Ctrl+Z
+                        to undo); every change here is saved into the tournament&apos;s stats. Close the tab when
+                        you&apos;re done.
+                    </div>
+                )}
                 <RoomToolbar code={code} label={`Room ${code} · MODAQ`}>
-                    {gameLoaded && !picking && <button onClick={() => setPicking(true)}>New packet</button>}
+                    {gameLoaded && !picking && !roomState?.correction && (
+                        <button onClick={() => setPicking(true)}>New packet</button>
+                    )}
                     <button onClick={() => setShowPrev((v) => !v)}>
                         {showPrev ? "Hide previous games" : "Previous games"}
                     </button>

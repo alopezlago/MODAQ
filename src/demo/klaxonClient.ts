@@ -132,6 +132,8 @@ export interface IPublicRoomState {
     listed?: boolean;
     // ...and/or called it over: players sent home, room closed to new ones.
     ended?: { at: number; by: string | null } | null;
+    // A tournament director correcting a finished game: what it writes back to.
+    correction?: { room: string; round: string; roomName: string } | null;
 }
 
 export type WithdrawMode = "free" | "none" | "typed" | "rationed";
