@@ -190,6 +190,13 @@ const teamsKey = (teams: IGameTeam[]): string => teams.map((t) => `${t.name}:${t
 // to MODAQ players — sent only when they actually change) and the match itself,
 // which the server cuts down to the player-safe scoresheet the room shows.
 // Called in every mode.
+// Where a live update should also be filed as the game's stats: the round (or
+// shootout packet id) it is filed under, and whether it is still being played.
+interface IExportAs {
+    round: string;
+    inProgress: boolean;
+}
+
 function useGameSync(
     client: KlaxonClient,
     // A shootout reads several packets; this says which one the game on screen
@@ -204,10 +211,16 @@ function useGameSync(
     protests?: IGameUpdateProtest[],
     categories?: string[],
     answers?: string[],
-    questions?: string[]
+    questions?: string[],
+    exportAs?: IExportAs
 ) => void {
     const lastKey = React.useRef<string>("");
     const hadEvents = React.useRef<boolean>(false);
+    // The categories, answers and questions come from the packet, so they are
+    // the same on every update of a game. They go up when they change, and
+    // otherwise `lists: "same"`: the server keeps them, and says `needLists`
+    // if it lost them (a restart), when they are sent again.
+    const listsSent = React.useRef<string>("");
     return React.useCallback(
         (
             match: IMatch,
@@ -217,14 +230,10 @@ function useGameSync(
             protests?: IGameUpdateProtest[],
             categories?: string[],
             answers?: string[],
-            questions?: string[]
+            questions?: string[],
+            exportAs?: IExportAs
         ) => {
-            client.massinger({
-                action: "modaq_game",
-                qbj: match,
-                currentQuestion,
-                hasBonuses: hasBonuses !== false,
-                protests: protests ?? [],
+            const lists = {
                 // The whole packet's categories, in packet order. The server
                 // alone decides which of them a player may see: it releases a
                 // category only once the room has finished that cycle.
@@ -236,9 +245,34 @@ function useGameSync(
                 // The questions themselves. Same rule again: the server decides
                 // who sees one, and how far behind the room it runs.
                 questions: questions ?? [],
+            };
+            const listsKey = JSON.stringify(lists);
+            const update = {
+                action: "modaq_game",
+                qbj: match,
+                currentQuestion,
+                hasBonuses: hasBonuses !== false,
+                protests: protests ?? [],
                 // Which of a shootout's packets this game is (null elsewhere).
                 packet: packetOf?.() ?? null,
-            });
+                // The live stats file rides on this update rather than on a
+                // request of its own: it is the same QBJ.
+                ...(exportAs ? { export: exportAs } : {}),
+            };
+            const same = listsKey === listsSent.current;
+            listsSent.current = listsKey;
+            (client.massinger(same ? { ...update, lists: "same" } : { ...update, ...lists }) as Promise<{
+                needLists?: boolean;
+            }>)
+                .then((r) => {
+                    if (r?.needLists) {
+                        // Once more with the lists (the stats were already filed).
+                        client.massinger({ ...update, ...lists, export: undefined });
+                    }
+                })
+                .catch(() => {
+                    listsSent.current = ""; // unsure what arrived: send them next time
+                });
             // A game with no events after one that had some is a new game, not
             // an edit of the loaded one: stop overwriting that archive.
             const events = (match.match_questions ?? []).reduce((n, q) => n + (q.buzzes?.length ?? 0), 0);
@@ -2327,9 +2361,10 @@ function Reading(props: {
             } catch {
                 /* storage may be unavailable; resume is best-effort */
             }
-            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions);
-            KlaxonApi.saveExport(code, token, round, qbj, inProgress === true, currentQuestion).catch(() => {
-                /* transient failures self-heal on the next change */
+            // The stats file goes up with the update (see useGameSync).
+            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions, {
+                round,
+                inProgress: inProgress === true,
             });
         },
         [code, token, round, syncGame]
@@ -3314,16 +3349,16 @@ function ShootoutReading(props: {
             // this one — not on the room's scoresheet either, which is what the
             // leaderboard and the banked score are read from.
             if (!id || (p && qbj.packets && qbj.packets !== p.name)) return;
-            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions);
+            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions, {
+                round: id,
+                inProgress: inProgress === true,
+            });
             lastGame.current = {
                 args: [qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions],
                 inProgress: inProgress === true,
                 question: currentQuestion,
             };
             setProgress({ question: currentQuestion ?? 0, inProgress: inProgress === true });
-            KlaxonApi.saveExport(code, client.token, id, qbj, inProgress === true, currentQuestion).catch(() => {
-                /* the next change saves it again */
-            });
         },
         [syncGame, code, client]
     );

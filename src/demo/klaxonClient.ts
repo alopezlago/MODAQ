@@ -243,6 +243,46 @@ export interface ISharedGame {
     json: string | null;
     by?: string;
     at?: number;
+    // The hash of the game's packet (see compactSharedGame), and whether `json`
+    // carries a placeholder in its place that this client fills in.
+    packetRef?: string;
+    compact?: boolean;
+}
+
+// --- sending the packet once --------------------------------------------------
+// The packet is ~95% of a serialized game and never changes during it. The
+// shared game goes up with a placeholder where game.packet is, and the packet
+// itself only when the server doesn't have it; the server puts it back with a
+// string replacement, and a page that holds the packet fills in a compact game
+// it is sent the same way. FNV-1a, folded twice: it only ever answers "is this
+// the same packet as that".
+function textHash(text: string): string {
+    const fnv = (seed: number): string => {
+        let h = seed;
+        for (let i = 0; i < text.length; i++) {
+            h ^= text.charCodeAt(i);
+            h = Math.imul(h, 0x01000193) >>> 0;
+        }
+        return h.toString(16).padStart(8, "0");
+    };
+    return fnv(0x811c9dc5) + fnv(0x9e3779b9);
+}
+const packetMarker = (hash: string): string => `__KLAXON_PACKET_${hash}__`;
+
+// A serialized game's packet, as text and hash, and the game with a
+// placeholder in its place. Undefined when there is no packet to take out.
+function compactSharedGame(json: string): { json: string; hash: string; packet: string } | undefined {
+    try {
+        const state = JSON.parse(json);
+        const packet = state?.game?.packet;
+        if (packet == undefined || typeof packet !== "object") return undefined;
+        const text = JSON.stringify(packet);
+        const hash = textHash(text);
+        state.game.packet = packetMarker(hash);
+        return { json: JSON.stringify(state), hash, packet: text };
+    } catch {
+        return undefined;
+    }
 }
 type SharedGameListener = (s: ISharedGame) => void;
 
@@ -304,6 +344,10 @@ export class KlaxonClient {
     private readonly chatListeners: ChatListener[] = [];
     private readonly chatTypingListeners: ChatTypingListener[] = [];
     private readonly sharedGameListeners: SharedGameListener[] = [];
+    // The packet this page holds (from its own game or one it was sent), to
+    // fill in a compact shared game; and the one the server is known to hold.
+    private packetCache: { hash: string; text: string } | undefined = undefined;
+    private serverPacket: string | undefined = undefined;
     private readonly buzzPendingListeners: ((wave: string) => void)[] = [];
     private readonly recentListeners: RecentListener[] = [];
     public recent: IRecentEvent[] = [];
@@ -395,8 +439,8 @@ export class KlaxonClient {
             });
 
             socket.on("modaq_state", (...args: unknown[]) => {
-                const s = args[0] as ISharedGame;
-                if (!s || typeof s.seq !== "number") return;
+                const s = this.expandSharedGame(args[0] as ISharedGame);
+                if (!s) return;
                 for (const l of this.sharedGameListeners) l(s);
             });
 
@@ -412,6 +456,8 @@ export class KlaxonClient {
                         // An approved tournament moderator account authorizes as
                         // reader even without the room's staff token.
                         sessionToken: sessionToken() || undefined,
+                        // This client fills in a compact shared game itself.
+                        caps: ["packetRef"],
                     },
                     (resp: {
                         ok?: boolean;
@@ -438,6 +484,9 @@ export class KlaxonClient {
                             reject(error);
                             return;
                         }
+                        // The server may have restarted since we last sent it the
+                        // packet: the next push carries it again.
+                        this.serverPacket = undefined;
                         // A rejoin after a dropped connection may have missed the
                         // other moderator's changes: fetch the current shared game
                         // and let the listeners decide whether it's newer.
@@ -514,12 +563,52 @@ export class KlaxonClient {
 
     // Push this screen's serialized game (null = we left the game). Resolves
     // with the sequence number the server minted for it.
-    public pushSharedGame(round: string, json: string | null): Promise<{ ok?: boolean; seq?: number; error?: string }> {
-        return this.massinger({ action: "modaq_state", round, json }) as Promise<{
-            ok?: boolean;
-            seq?: number;
-            error?: string;
-        }>;
+    public async pushSharedGame(
+        round: string,
+        json: string | null
+    ): Promise<{ ok?: boolean; seq?: number; error?: string }> {
+        type Ack = { ok?: boolean; seq?: number; error?: string };
+        const c = json == null ? undefined : compactSharedGame(json);
+        if (c == undefined) {
+            return (await this.massinger({ action: "modaq_state", round, json })) as Ack;
+        }
+        this.packetCache = { hash: c.hash, text: c.packet };
+        const send = (withPacket: boolean): Promise<Ack> =>
+            this.massinger({
+                action: "modaq_state",
+                round,
+                json: c.json,
+                packetRef: c.hash,
+                ...(withPacket ? { packet: c.packet } : {}),
+            }) as Promise<Ack>;
+        let r = await send(this.serverPacket !== c.hash);
+        if (r?.error === "need_packet") {
+            r = await send(true);
+        }
+        if (r?.ok) {
+            this.serverPacket = c.hash;
+        }
+        return r;
+    }
+
+    // A shared game as it arrived, made whole: a compact one gets this page's
+    // copy of its packet back (or, without one, the whole game is fetched); a
+    // whole one teaches this page its packet for the compact ones to come.
+    private expandSharedGame(s: ISharedGame | undefined): ISharedGame | undefined {
+        if (!s || typeof s.seq !== "number") return undefined;
+        if (s.compact && typeof s.json === "string" && s.packetRef) {
+            if (this.packetCache?.hash !== s.packetRef) {
+                this.refreshSharedGame();
+                return undefined;
+            }
+            const text = this.packetCache.text;
+            return { ...s, compact: false, json: s.json.replace(JSON.stringify(packetMarker(s.packetRef)), () => text) };
+        }
+        if (typeof s.json === "string" && s.packetRef && this.packetCache?.hash !== s.packetRef) {
+            const c = compactSharedGame(s.json);
+            if (c && c.hash === s.packetRef) this.packetCache = { hash: c.hash, text: c.packet };
+        }
+        return s;
     }
 
     // File the room's current shared game under previous games. Passing the id
@@ -535,7 +624,8 @@ export class KlaxonClient {
     private refreshSharedGame(): void {
         KlaxonApi.getSharedGame(this.code, this.token)
             .then(({ state }) => {
-                if (state) for (const l of this.sharedGameListeners) l(state);
+                const s = this.expandSharedGame(state ?? undefined);
+                if (s) for (const l of this.sharedGameListeners) l(s);
             })
             .catch(() => {
                 /* best-effort; the next change will bring us up to date */
