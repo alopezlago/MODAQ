@@ -18,6 +18,13 @@ export interface ISpeechEngine {
      * recognition toward them. Optional to honor; engines that can't bias just ignore it.
      */
     setVocabulary(words: string[]): void;
+
+    /**
+     * Optional: starts a fresh recognition session if nothing has been heard for `idleMs`. Recognizers sometimes
+     * stop delivering results without reporting an error, and a new tossup is the cheapest moment to find out.
+     * Returns whether it restarted.
+     */
+    restartIfIdle?(idleMs: number): boolean;
 }
 
 export interface ISpeechEngineCallbacks {

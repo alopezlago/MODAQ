@@ -5,6 +5,7 @@ import { memoizeFunction, mergeStyleSets, Theme, ThemeContext } from "@fluentui/
 import { AppState } from "../state/AppState";
 import { UIState } from "../state/UIState";
 import { Tossup } from "../state/PacketState";
+import { getReadAlongLog } from "../speech/ReadAlongLog";
 
 // How many words of question text to show on each side of a position in the debug snippets
 const snippetContextWordCount = 4;
@@ -46,12 +47,30 @@ export const ReaderFollowerDebug = observer(function ReaderFollowerDebug(props: 
                         <div>Live reader position: {livePosition}</div>
                         <div>Buzz point (set after a pause or cue): {buzzPoint}</div>
                         <div>Last immediate cue: {lastCue}</div>
+                        <div>
+                            <button type="button" onClick={copyLog}>
+                                Copy read-along log
+                            </button>
+                        </div>
                     </div>
                 );
             }}
         </ThemeContext.Consumer>
     );
 });
+
+// What read-along heard and decided recently, for a moderator to send along when it goes wrong
+function copyLog(event: React.MouseEvent<HTMLButtonElement>): void {
+    const button: HTMLButtonElement = event.currentTarget;
+    const done = (label: string) => {
+        button.textContent = label;
+        window.setTimeout(() => (button.textContent = "Copy read-along log"), 2000);
+    };
+    navigator.clipboard
+        ?.writeText(getReadAlongLog() || "(nothing logged yet)")
+        .then(() => done("Copied"))
+        .catch(() => done("Couldn't copy"));
+}
 
 function getQuestionWords(appState: AppState): string[] {
     const tossup: Tossup | undefined = appState.activeGame.getTossup(appState.uiState.cycleIndex);

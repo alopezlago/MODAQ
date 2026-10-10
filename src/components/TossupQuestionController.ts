@@ -11,6 +11,7 @@ import { IBuzzMarker } from "../state/IBuzzMarker";
 import { ITossupAnswerEvent } from "../state/Events";
 import * as PlayerUtils from "../state/PlayerUtils";
 import * as GameFormats from "../state/GameFormats";
+import { logReadAlong } from "../speech/ReadAlongLog";
 
 /**
  * The point value of an incorrect buzz at this word. Buzzing at the end of the question never costs points. In
@@ -171,6 +172,11 @@ export function updateBuzzPointFromReader(appState: AppState, wordIndex: number)
 // were most likely spoken before the buzz, so they still move the buzz point forward.
 const lateWordWindowInMs = 1500;
 
+// When Space came before the recognizer had reported anything for this tossup, the words it reports next were
+// still spoken before the buzz -- often a few seconds of them, if it was slow or had just restarted -- so they get
+// longer to catch up. Otherwise the buzz point stayed on the first word.
+const lateWordWindowWithNothingHeardInMs = 5000;
+
 // After the late-word window, the reader moving on this many words means reading resumed (the buzz was a false
 // alarm, or it was marked some other way), so the placement is dropped
 const resumedReadingWordCount = 3;
@@ -191,7 +197,9 @@ export function catchUpBuzzPointPlacement(appState: AppState, wordIndex: number,
         return;
     }
 
-    if (now - placement.startTime > lateWordWindowInMs) {
+    const lateWindow: number =
+        placement.startLivePosition < 0 ? lateWordWindowWithNothingHeardInMs : lateWordWindowInMs;
+    if (now - placement.startTime > lateWindow) {
         if (wordIndex >= placement.latestLivePosition + resumedReadingWordCount) {
             cancelBuzzPointPlacement(appState);
         }
@@ -297,6 +305,7 @@ function startBuzzPointPlacement(appState: AppState, currentTime: number, starte
     const livePosition: number = uiState.readerFollowerLivePosition;
     if (uiState.trackReaderWithMicrophone) {
         uiState.setReaderFollowerLastCue(startedByBuzzSound ? "buzz sound" : "pressed Space");
+        logReadAlong(startedByBuzzSound ? "buzz sound" : "Space", `reader at ${livePosition}`);
         const startPosition: number = livePosition >= 0 ? livePosition + uiState.buzzPointWordOffset : 0;
         uiState.setSelectedWordIndex(Math.max(0, Math.min(lastBuzzableIndex, startPosition)));
     } else if (uiState.selectedWordIndex < 0) {
