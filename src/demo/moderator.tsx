@@ -10,6 +10,7 @@ import { IPacket } from "../state/IPacket";
 import { IPlayer } from "../state/TeamState";
 import { IErratum } from "../state/IErratum";
 import { ITiebreakerItem } from "../contexts/TiebreakerContext";
+import { withDeviceSettings } from "../state/DeviceSettings";
 import { IGameFormat } from "../state/IGameFormat";
 import * as GameFormats from "../state/GameFormats";
 import { ICustomExport } from "../state/CustomExport";
@@ -373,7 +374,9 @@ async function seedSharedGame(
             return undefined;
         }
         if (state.seq > readSharedSeq(client.code)) {
-            localStorage.setItem(storeNameFor(state.round), state.json);
+            // The game is shared; this screen's settings (microphone tracking, how it shows the game) aren't.
+            const store = storeNameFor(state.round);
+            localStorage.setItem(store, withDeviceSettings(state.json, localStorage.getItem(store), ["useDarkMode"]));
             writeSharedSeq(client.code, state.seq);
         }
         return { round: state.round };
@@ -474,7 +477,9 @@ async function stagePreviousGame(
     storeNameFor: (round: string) => string
 ): Promise<IArchivedGame & { json: string }> {
     const { game } = await KlaxonApi.getGame(client.code, client.token, id);
-    localStorage.setItem(storeNameFor(game.round), game.json);
+    // Its score, not whoever-saved-it's settings (see withDeviceSettings).
+    const store = storeNameFor(game.round);
+    localStorage.setItem(store, withDeviceSettings(game.json, localStorage.getItem(store), ["useDarkMode"]));
     writeGameId(client.code, game.id);
     const r = await client.pushSharedGame(game.round, game.json);
     if (typeof r.seq === "number") {

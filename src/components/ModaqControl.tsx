@@ -44,6 +44,7 @@ import { ICustomExport } from "../state/CustomExport";
 import { IHostSettings } from "../state/IHostSettings";
 import { Cycle } from "../state/Cycle";
 import { UIState } from "../state/UIState";
+import { keepDeviceSettings } from "../state/DeviceSettings";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
 import { IPacketParserLink } from "../state/UIState";
 import {
@@ -373,11 +374,14 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
         }
         try {
             const snapshot = JSON.parse(remoteState.json);
-            // A host that owns the theme keeps this screen's: one moderator's dark mode isn't the other's, and two
-            // screens each putting theirs back would bounce the game between them forever.
-            if (props.darkMode != undefined && snapshot?.uiState != undefined) {
-                snapshot.uiState.useDarkMode = appState.uiState.useDarkMode;
-            }
+            // This screen's own settings (microphone tracking, how it shows the game) stay as they are: they're the
+            // moderator's, not the game's (see DeviceSettings). A host that owns the theme keeps this screen's dark
+            // mode the same way.
+            keepDeviceSettings(
+                snapshot,
+                (appState.uiState as unknown) as Record<string, unknown>,
+                props.darkMode != undefined ? ["useDarkMode"] : []
+            );
             parseStore(appState, snapshot, false);
             lastAppliedRef.current = JSON.stringify(appState);
             // The other reader's change isn't this reader's to undo.
