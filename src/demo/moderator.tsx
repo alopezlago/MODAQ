@@ -1409,6 +1409,15 @@ function ModeratorBody(): JSX.Element {
                         c.pushSharedGame(round, null);
                     });
                 }
+                // ...and so does this device's saved copy. Left behind, choosing
+                // the same round again restored it, MODAQ saw a game already
+                // loaded and never opened New Game: the teams couldn't change.
+                // The game is in previous games (archived above) to bring back.
+                try {
+                    localStorage.removeItem(`klaxon-${code}-${config?.round ?? round}`);
+                } catch {
+                    /* ignore */
+                }
                 setPhase("setup");
             }}
         />
