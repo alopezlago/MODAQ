@@ -17,13 +17,13 @@ export class ErrataDialogState {
      */
     public existed: boolean;
 
-    constructor(questionNumber: number, questionType: QuestionType, text: string) {
+    constructor(questionNumber: number, questionType: QuestionType, text: string, existed?: boolean) {
         makeAutoObservable(this);
 
         this.questionNumber = questionNumber;
         this.questionType = questionType;
         this.text = text;
-        this.existed = text.length > 0;
+        this.existed = existed ?? text.length > 0;
     }
 
     public setText(text: string): void {

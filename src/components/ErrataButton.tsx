@@ -18,7 +18,7 @@ export const ErrataButton = observer(function ErrataButton(props: IErrataButtonP
     const erratum: IErratum | undefined = appState.errata.getErratum(props.questionNumber, props.questionType);
     const questionName = `${props.questionType === "bonus" ? "bonus" : "tossup"} ${props.questionNumber}`;
     const tooltip: string =
-        erratum == undefined ? `Note an erratum for ${questionName}` : `Erratum: ${erratum.text}`;
+        erratum == undefined ? `Note an erratum for ${questionName} (E for quick notes)` : `Erratum: ${erratum.text}`;
 
     const onClick: () => void = () =>
         ErrataDialogController.showDialog(appState, props.questionNumber, props.questionType);

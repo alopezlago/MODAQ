@@ -81,6 +81,10 @@ const ErrataDialogBody = observer(function ErrataDialogBody(props: { appState: A
             <StackItem>
                 <TextField
                     autoFocus={true}
+                    onFocus={(event) => {
+                        const field = event.target as HTMLTextAreaElement;
+                        field.selectionStart = field.selectionEnd = field.value.length;
+                    }}
                     label="What was wrong with this question?"
                     multiline
                     rows={4}

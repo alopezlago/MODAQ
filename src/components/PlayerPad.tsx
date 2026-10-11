@@ -16,7 +16,7 @@ import { ITossupWord, Tossup } from "../state/PacketState";
 import { Player } from "../state/TeamState";
 
 /**
- * The floating pad for recording a tossup buzz. Players are laid out left to right, the way they sit. It opens on a buzz -- Space, a click on a word, or E -- with the
+ * The floating pad for recording a tossup buzz. Players are laid out left to right, the way they sit. It opens on a buzz -- Space, a click on a word, or Shift+E -- with the
  * buzz point on a word, and floats over the page so the question and bonus text don't move: next to the word when
  * it was clicked (a short mouse move to the buttons), otherwise at the bottom of the window. Each player has a correct (✓) and wrong (✗) button and a protest button; the first eight
  * players also have shortcuts (1-8 for correct, Shift+1-8 for wrong). The arrow keys move the buzz point and

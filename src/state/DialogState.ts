@@ -176,8 +176,8 @@ export class DialogState {
         this.visibleDialog = ModalVisibilityStatus.CustomizeGameFormat;
     }
 
-    public showErrataDialog(questionNumber: number, questionType: QuestionType, text: string): void {
-        this.errataDialog = new ErrataDialogState(questionNumber, questionType, text);
+    public showErrataDialog(questionNumber: number, questionType: QuestionType, text: string, existed?: boolean): void {
+        this.errataDialog = new ErrataDialogState(questionNumber, questionType, text, existed);
         this.visibleDialog = ModalVisibilityStatus.Errata;
     }
 

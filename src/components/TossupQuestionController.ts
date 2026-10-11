@@ -352,7 +352,7 @@ export function placeBuzzPointAt(appState: AppState, wordIndex: number, anchorTo
 }
 
 /**
- * The E shortcut: puts the buzz point on the end of the question and opens the player pad there, or the buzz menu
+ * The Shift+E shortcut: puts the buzz point on the end of the question and opens the player pad there, or the buzz menu
  * when that's used instead.
  */
 export function placeBuzzPointAtEnd(appState: AppState): void {

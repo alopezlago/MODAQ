@@ -22,6 +22,8 @@ import { observer } from "mobx-react-lite";
 import he from "he";
 
 import * as CycleChooserController from "./CycleChooserController";
+import * as ErrataPadController from "./ErrataPadController";
+import { ErrataPad } from "./ErrataPad";
 import * as PacketLoaderController from "./PacketLoaderController";
 import * as TossupQuestionController from "./TossupQuestionController";
 import { StateProvider } from "../contexts/StateContext";
@@ -692,6 +694,7 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
                     <ThemeProvider theme={theme} applyTo={applyTo}>
                         <div className="modaq-control">
                             <GameViewer />
+                            <ErrataPad appState={appState} />
                             <ModalDialogContainer />
                         </div>
                     </ThemeProvider>
@@ -1081,6 +1084,12 @@ function initializeControl(appState: AppState, props: IModaqControlProps, onRead
     const keydownListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) => shortcutHandler(event, appState);
     document.addEventListener("keyup", keydownListener);
 
+    // While the errata pad is open it has the keyboard: added first, so its keys never reach the player and bonus
+    // shortcuts below
+    const errataPadKeyListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) =>
+        errataPadShortcutHandler(event, appState);
+    document.addEventListener("keydown", errataPadKeyListener, /* useCapture */ true);
+
     // The buzz menu keys get a capture-phase keydown listener so they're seen before the menu's own keyboard
     // handling (which has focus while the menu is open) can react to or swallow them
     const buzzMenuKeyListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) =>
@@ -1135,6 +1144,7 @@ function initializeControl(appState: AppState, props: IModaqControlProps, onRead
 
     return () => {
         document.removeEventListener("keyup", keydownListener);
+        document.removeEventListener("keydown", errataPadKeyListener, /* useCapture */ true);
         document.removeEventListener("keydown", buzzMenuKeyListener, /* useCapture */ true);
         document.removeEventListener("keydown", buzzPointPlacementKeyListener, /* useCapture */ true);
         document.removeEventListener("keydown", playerShortcutKeyListener, /* useCapture */ true);
@@ -1153,6 +1163,55 @@ function isTextEntryElement(target: EventTarget | null): boolean {
 
     const tagName: string = element.tagName;
     return tagName === "INPUT" || tagName === "TEXTAREA" || element.isContentEditable === true;
+}
+
+// While the errata pad is open, 1-6 note that kind of error (Shift+1-6 opens the errata dialog to add details), T
+// and B choose the tossup or the bonus, Enter opens the dialog for a note written out by hand, and Escape closes the
+// pad. Every other key is swallowed, so a stray N or Space doesn't move the game on under the pad.
+function errataPadShortcutHandler(event: KeyboardEvent, appState: AppState): void {
+    if (
+        appState.uiState.errataPad == undefined ||
+        appState.uiState.dialogState.visibleDialog !== ModalVisibilityStatus.None ||
+        isTextEntryElement(event.target) ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey
+    ) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    // The keyup that follows must not act as a shortcut either (a number toggles a bonus part)
+    handledPlayerShortcutCode = event.code;
+    if (event.repeat) {
+        return;
+    }
+
+    const digit: RegExpExecArray | null = /^(?:Digit|Numpad)([1-9])$/.exec(event.code);
+    if (digit != null) {
+        ErrataPadController.noteErratum(appState, Number(digit[1]) - 1, /* describe */ event.shiftKey);
+        return;
+    }
+
+    switch (event.code) {
+        case "KeyT":
+            ErrataPadController.setQuestionType(appState, "tossup");
+            break;
+        case "KeyB":
+            ErrataPadController.setQuestionType(appState, "bonus");
+            break;
+        case "Enter":
+        case "NumpadEnter":
+            ErrataPadController.openDialog(appState);
+            break;
+        case "Escape":
+        case "KeyE":
+            ErrataPadController.hidePad(appState);
+            break;
+        default:
+            break;
+    }
 }
 
 // While the buzz menu is open, number keys pick a player and C/W mark their buzz as correct/wrong, and
@@ -1298,15 +1357,20 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
         return;
     }
 
-    // While the buzz menu is open it handles the keyboard
-    if (appState.uiState.buzzMenuState.visible) {
+    // While the buzz menu or the errata pad is open, it handles the keyboard
+    if (appState.uiState.buzzMenuState.visible || appState.uiState.errataPad != undefined) {
         return;
     }
 
     switch (event.key.toUpperCase()) {
         case "E":
-            // Open the player pad at the end of the tossup
-            TossupQuestionController.placeBuzzPointAtEnd(appState);
+            if (event.shiftKey) {
+                // Open the player pad at the end of the tossup
+                TossupQuestionController.placeBuzzPointAtEnd(appState);
+            } else {
+                // Note an erratum on the question being read
+                ErrataPadController.showPad(appState);
+            }
             event.preventDefault();
             event.stopPropagation();
             break;

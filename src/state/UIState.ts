@@ -200,6 +200,14 @@ export class UIState {
     @ignore
     public buzzPointPlacement: IBuzzPointPlacement | undefined;
 
+    // Open while the moderator is noting an erratum with the keyboard (E, then a number for the kind of error)
+    @ignore
+    public errataPad: IErrataPad | undefined;
+
+    // What the errata pad just noted, shown for a moment after it closes
+    @ignore
+    public errataNotice: string | undefined;
+
     // Incremented to make microphone tracking restart (e.g. after a faster speech model was installed)
     @ignore
     public readerFollowerRestartCount: number;
@@ -283,6 +291,8 @@ export class UIState {
         this.readerFollowerLivePosition = -1;
         this.readerFollowerLastCue = undefined;
         this.buzzPointPlacement = undefined;
+        this.errataPad = undefined;
+        this.errataNotice = undefined;
         this.readerFollowerRestartCount = 0;
         this.buzzFeedback = undefined;
         this.useDarkMode = false;
@@ -732,6 +742,7 @@ export class UIState {
             // Clear the selected words, since it's not relevant to the next question
             this.selectedWordIndex = -1;
             this.buzzPointPlacement = undefined;
+            this.errataPad = undefined;
         }
     }
 
@@ -1075,6 +1086,26 @@ export class UIState {
         this.buzzMenuState.visible = false;
     }
 
+    public showErrataPad(pad: IErrataPad): void {
+        this.buzzPointPlacement = undefined;
+        this.buzzMenuState.visible = false;
+        this.errataPad = pad;
+    }
+
+    public setErrataPadQuestionType(questionType: "tossup" | "bonus"): void {
+        if (this.errataPad != undefined) {
+            this.errataPad.questionType = questionType;
+        }
+    }
+
+    public hideErrataPad(): void {
+        this.errataPad = undefined;
+    }
+
+    public setErrataNotice(notice: string | undefined): void {
+        this.errataNotice = notice;
+    }
+
     public startBuzzPointPlacement(placement: IBuzzPointPlacement): void {
         this.buzzPointPlacement = placement;
     }
@@ -1177,6 +1208,26 @@ export interface IPacketParserLink {
 /**
  * The buzz point being placed with the keyboard (see UIState.buzzPointPlacement).
  */
+/**
+ * The errata pad: which question it notes an erratum for, and where the reader was when it opened.
+ */
+export interface IErrataPad {
+    /** The tossup's number in the packet (1-based) */
+    tossupNumber: number;
+
+    /** The bonus's number in the packet (1-based), or undefined when this question has no bonus */
+    bonusNumber: number | undefined;
+
+    /** Which of the two the erratum is for; starts at the one being read, and T / B switch it */
+    questionType: "tossup" | "bonus";
+
+    /**
+     * Where in the tossup the reader was when the pad opened, as read-along heard them (e.g. `at "Waterloo" (word
+     * 42 of 118)`), or undefined without the microphone. It only applies to the tossup.
+     */
+    tossupLocation: string | undefined;
+}
+
 export interface IBuzzPointPlacement {
     /** When placement started (ms) */
     startTime: number;
