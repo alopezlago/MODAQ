@@ -736,15 +736,17 @@ function KlaxonHeader(props: { code: string }): JSX.Element {
                 <button className="kx-action" onClick={copyLink} title="Copy this room's player join link">
                     {copied ? "Copied!" : "Copy player link"}
                 </button>
-                {/* ?plain=1 keeps the buzzer page from redirecting back here. */}
+                {/* The room's settings on a page of their own (not the plain
+                    buzzer view, whose game controls only muddied which page
+                    runs the game), beside this one so the game stays put. */}
                 <a
                     className="kx-action"
-                    href={`/r/${props.code}?plain=1`}
+                    href={`/r/${props.code}/options`}
                     target="_blank"
-                    rel="noopener noreferrer"
-                    title="Buzzer options and invite links, in the normal reader view"
+                    rel="opener"
+                    title="Buzzing, answers, chat, listing and invite links for this room"
                 >
-                    Buzzer options ↗
+                    Room options ↗
                 </a>
                 <span className="kx-pill">{creds.role === "co-reader" ? "co-reader" : "reader"}</span>
                 <ThemeToggle />
