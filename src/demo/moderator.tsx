@@ -3537,7 +3537,7 @@ function ShootoutReading(props: {
                         scoring in force ({scheme}) has no tier for them — every superpower will be scored as an
                         ordinary power.
                         <button onClick={() => void setScheme("20/15/10/-5")} disabled={busy !== ""}>
-                            Use 20 / 15 / 10 / \u22125
+                            Use 20 / 15 / 10 / {"\u2212"}5
                         </button>
                     </div>
                 )}
