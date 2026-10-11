@@ -2584,6 +2584,14 @@ function LiteReading(props: {
     // still gets the live scoresheet.
     const syncGame = useGameSync(client);
     const [showPrev, setShowPrev] = React.useState(false);
+    // How many games are filed in this room: no button until there is one.
+    // Re-counted when the room moves on to its next game.
+    const [prevCount, setPrevCount] = React.useState(0);
+    React.useEffect(() => {
+        KlaxonApi.listGames(code, client.token)
+            .then((r) => setPrevCount(r.games.length))
+            .catch(() => setPrevCount(0));
+    }, [code, client, roomState?.gameNumber]);
     // Loading a previous game remounts MODAQ so it reads the staged snapshot,
     // and takes it off screen while that is staged (see MODAQ_PERSIST_SETTLE_MS).
     const [gameKey, setGameKey] = React.useState(0);
@@ -2692,7 +2700,7 @@ function LiteReading(props: {
                     </div>
                 )}
                 <RoomToolbar code={code} label={`Room ${code} · Game ${roomState?.gameNumber ?? 1}`}>
-                    {!roomState?.correction && (
+                    {!roomState?.correction && prevCount > 0 && (
                         <button onClick={() => setShowPrev((v) => !v)}>
                             {showPrev ? "Hide previous games" : "Previous games"}
                         </button>
