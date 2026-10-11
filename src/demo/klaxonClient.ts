@@ -139,6 +139,8 @@ export interface IPublicRoomState {
     } | null;
     // The room's chat, which in a shootout is why half the people are there.
     chat?: IChatMessage[];
+    // Whether the room has a chat (its own setting; a shootout always had one).
+    chatOn?: boolean;
     // The host put this game on Klaxon's home page for anyone to join.
     listed?: boolean;
     // ...and/or called it over: players sent home, room closed to new ones.

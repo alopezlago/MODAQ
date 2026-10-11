@@ -1693,6 +1693,18 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
 
             {staleRow}
             {endRow}
+            {state?.chatOn && (
+                <RoomChat
+                    client={client}
+                    initial={state.chat ?? []}
+                    exportUrl={KlaxonApi.chatExportUrl(client.code, client.token)}
+                    people={(state.members ?? [])
+                        .filter((m) => m.id !== client.myId && m.role !== "spectator")
+                        .map((m) => ({ id: m.id, name: m.displayName ?? m.rosterPlayer ?? m.name }))
+                        .filter((p) => p.name !== "")}
+                    chatSound={chatSound}
+                />
+            )}
             {/* Below the controls a reader uses every question, and shut until
                 wanted: it is for working out what happened, not for reading. */}
             <RecentBuzzes events={recent} onUndo={undoClear} />
