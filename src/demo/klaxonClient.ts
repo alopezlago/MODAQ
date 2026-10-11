@@ -44,6 +44,11 @@ export interface IRoomMember {
 }
 
 export interface IRoomSettings {
+    // A shootout carries its score from packet to packet (a shootout tournament);
+    // otherwise each packet is its own game.
+    shootoutCarry?: boolean;
+    // Players joining mid-packet are added to the game (default on).
+    shootoutAutoAdd?: boolean;
     queueMode?: boolean;
     allowWithdraw?: boolean;
     autoClear?: boolean;

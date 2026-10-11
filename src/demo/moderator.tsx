@@ -3101,7 +3101,10 @@ function ShootoutSetup(props: {
                     <h1>{initial ? "Edit the shootout" : "Set up a Discord shootout"}</h1>
                     <p className="hint">
                         Everyone plays for themselves. Whoever opens the link is in the game as soon as they join — no
-                        roster to enter — and the scores add up across every packet you read.
+                        roster to enter.{" "}
+                        {roomState?.settings.shootoutCarry
+                            ? "The scores add up across every packet you read."
+                            : "Each packet is its own game: moving to the next one downloads its stats and starts the scores again."}
                     </p>
 
                     <label htmlFor="so-name">What are you playing?</label>
@@ -3287,6 +3290,12 @@ function ShootoutReading(props: {
 }): JSX.Element {
     const { code, client, roomState, onEditSession } = props;
     const session = roomState?.shootout?.session ?? null;
+    // A shootout tournament's evening carries the score from packet to packet;
+    // a shootout in a room is one game per packet, and the room starts fresh
+    // for each (see Next game).
+    const carry = roomState?.settings.shootoutCarry === true;
+    const clearRoom = !carry && !roomState?.tournamentCode;
+    const autoAdd = roomState?.settings.shootoutAutoAdd !== false;
     const onBuzzJudged = useJudgedHandler(client, roomState);
     const buzzedInPlayer = useBuzzedInPlayer(roomState);
     const hostBuzzer = useHostBuzzer(client, roomState);
@@ -3473,27 +3482,70 @@ function ShootoutReading(props: {
         [syncGame, code, client]
     );
 
-    const goNext = (): void => {
+    const goNext = async (): Promise<void> => {
         if (!next) {
             onEditSession();
             return;
         }
         const current = packets[index];
+        if (carry) {
+            if (
+                current &&
+                progress?.inProgress &&
+                !window.confirm(
+                    `${current.name} isn't finished (question ${progress.question} of ${current.tossups}). Start ${next.name} anyway?`
+                )
+            ) {
+                return;
+            }
+            startPacket(index + 1);
+            return;
+        }
+        // Each packet is its own game: its stats go to the reader, the scores
+        // start again, and (in a room) everyone is taken out to rejoin.
+        const qbj = lastGame.current?.args[0];
+        const playedNow = hasPlayed(qbj);
         if (
-            current &&
-            progress?.inProgress &&
             !window.confirm(
-                `${current.name} isn't finished (question ${progress.question} of ${current.tossups}). Start ${next.name} anyway?`
+                `Start the next game on ${next.name}?\n\n` +
+                    (playedNow ? "This game's stats are downloaded and kept. " : "") +
+                    "The scores start again from zero." +
+                    (clearRoom ? " Everyone is removed from the room; players can rejoin with the same link." : "")
             )
         ) {
             return;
         }
-        startPacket(index + 1);
+        setBusy("Starting the next game…");
+        try {
+            if (playedNow && qbj) {
+                downloadGameStats(code, qbj, roomState?.gameNumber ?? index + 1);
+            }
+            if (lastGame.current) {
+                syncGame(...lastGame.current.args);
+            }
+            await saveLast();
+            const leaving = gamePacket.current;
+            if (leaving) {
+                await client.archiveGame(leaving);
+            }
+            // Nothing more from the game just left reaches the room.
+            gamePacket.current = null;
+            lastGame.current = undefined;
+            if (clearRoom) {
+                await client.massinger({ action: "next_game" });
+                await startPacket(index + 1, true);
+            } else {
+                await startPacket(index + 1, true);
+                await client.massinger({ action: "shootout_reset" });
+            }
+        } finally {
+            setBusy("");
+        }
     };
     // MODAQ's New game command does the same, through a callback that never changes.
     const goNextRef = React.useRef(goNext);
     goNextRef.current = goNext;
-    const onNewGameRequested = React.useCallback(() => goNextRef.current(), []);
+    const onNewGameRequested = React.useCallback(() => void goNextRef.current(), []);
 
     const exportAll = async (): Promise<void> => {
         setBusy("Preparing the export…");
@@ -3536,7 +3588,7 @@ function ShootoutReading(props: {
         <div className="mod-shell">
             <div className="mod-main">
                 <RoomToolbar code={code} label={label}>
-                    {previous && (
+                    {carry && previous && (
                         <button
                             onClick={() => startPacket(index - 1)}
                             disabled={busy !== "" || gameLoaded === undefined}
@@ -3545,7 +3597,7 @@ function ShootoutReading(props: {
                             ← {previous.name}
                         </button>
                     )}
-                    {packets.length > 1 && (
+                    {carry && packets.length > 1 && (
                         <select
                             className="so-jump"
                             aria-label="Go to a packet"
@@ -3564,8 +3616,12 @@ function ShootoutReading(props: {
                             ))}
                         </select>
                     )}
-                    <button className="primary" onClick={goNext} disabled={busy !== "" || gameLoaded === undefined}>
-                        {next ? `Next packet: ${next.name} →` : "Add more packets"}
+                    <button
+                        className="primary"
+                        onClick={() => void goNext()}
+                        disabled={busy !== "" || gameLoaded === undefined}
+                    >
+                        {next ? (carry ? `Next packet: ${next.name} →` : `Next game: ${next.name} →`) : "Add more packets"}
                     </button>
                     <button
                         onClick={exportAll}
@@ -3654,7 +3710,8 @@ function ShootoutReading(props: {
                         onNewGameRequested={onNewGameRequested}
                         hostSettings={LITE_HOST_SETTINGS}
                         onGameLoadedChange={setGameLoaded}
-                        liveTeams={competitors}
+                        // Off, the game keeps the competitors it started the packet with.
+                        liveTeams={autoAdd ? competitors : undefined}
                     />
                 )}
             </div>
