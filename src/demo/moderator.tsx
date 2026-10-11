@@ -3461,7 +3461,7 @@ function TournamentShootoutSetup(props: {
                         <p className="hint">Loading the tournament&apos;s packets…</p>
                     ) : packets.length === 0 ? (
                         <p className="hint">
-                            No packets released yet. Release them in the director console, then refresh.
+                            No packets ready yet. Upload them in the director console&apos;s Packets tab (with several rooms, release them there too), then refresh.
                         </p>
                     ) : (
                         <ol className="so-packets">
