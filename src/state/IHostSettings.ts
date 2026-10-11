@@ -18,6 +18,12 @@ export interface IHostSettings {
     disableChangeFormat?: boolean;
 
     /**
+     * The host starts and loads games itself: the New game menu becomes a single "Next game" item (which calls the
+     * host's onNewGameRequested), without Import from QBJ or Import raw game.
+     */
+    hostManagesGames?: boolean;
+
+    /**
      * The name of the host product, used in dialogs that reference the host (e.g. the Export Backup confirmation
      * message). Falls back to a generic description if not provided.
      */

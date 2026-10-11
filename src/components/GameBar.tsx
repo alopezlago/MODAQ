@@ -111,6 +111,15 @@ export const GameBar = observer(function GameBar(): JSX.Element {
 
     const items: ICommandBarItemProps[] = appState.uiState.hideNewGame
         ? []
+        : uiState.hostSettings.hostManagesGames
+        ? [
+              {
+                  key: "newGame",
+                  text: "Next game",
+                  iconProps: { iconName: "Add" },
+                  onClick: newGameHandler,
+              },
+          ]
         : [
             {
                 key: "newGame",

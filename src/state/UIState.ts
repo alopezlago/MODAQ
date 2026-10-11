@@ -251,6 +251,7 @@ export class UIState {
             onlyAllowQbjExport: false,
             restrictRosterChanges: false,
             disableChangeFormat: false,
+            hostManagesGames: false,
             productName: undefined,
         };
         this.onFetchQuestionById = undefined;
@@ -784,6 +785,7 @@ export class UIState {
             onlyAllowQbjExport: value?.onlyAllowQbjExport ?? false,
             restrictRosterChanges: value?.restrictRosterChanges ?? false,
             disableChangeFormat: value?.disableChangeFormat ?? false,
+            hostManagesGames: value?.hostManagesGames ?? false,
             productName: value?.productName,
         };
     }

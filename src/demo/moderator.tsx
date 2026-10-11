@@ -4,6 +4,7 @@ import { initializeIcons } from "@fluentui/react";
 
 import "./moderator.css";
 import { IGameUpdateProtest, IHostNewGame, IHostTeam, ILiveTeam, ModaqControl } from "../components/ModaqControl";
+import { IHostSettings } from "../state/IHostSettings";
 import { PACKET_ACCEPT, readPacketFile, packetName as fileStem } from "./packetFile";
 import { PacketDrop } from "./PacketDrop";
 import { IPacket } from "../state/IPacket";
@@ -391,7 +392,10 @@ async function seedSharedGame(
 
 function useSharedGame(
     client: KlaxonClient,
-    round: string
+    round: string,
+    // The other moderator moved the room on (Next game): this screen follows,
+    // rather than keeping the old game open and pushing it back with its next edit.
+    onCleared?: () => void
 ): {
     remoteState: { json: string; seq: number } | undefined;
     onPersistedState: (json: string) => void;
@@ -399,6 +403,8 @@ function useSharedGame(
     const [remoteState, setRemoteState] = React.useState<{ json: string; seq: number } | undefined>(undefined);
     const seqRef = React.useRef<number>(readSharedSeq(client.code));
     const lastJsonRef = React.useRef<string | undefined>(undefined);
+    const onClearedRef = React.useRef(onCleared);
+    onClearedRef.current = onCleared;
 
     React.useEffect(
         () =>
@@ -409,7 +415,9 @@ function useSharedGame(
                 seqRef.current = s.seq;
                 writeSharedSeq(client.code, s.seq);
                 if (s.json == null) {
-                    return; // the other moderator left the game; ours stays open
+                    lastJsonRef.current = undefined;
+                    onClearedRef.current?.();
+                    return;
                 }
                 if (s.round !== round) {
                     // They moved on to another round: follow them (the boot
@@ -589,40 +597,28 @@ function downloadFullBuzz(client: KlaxonClient): void {
     }
 }
 
-// After the game is exported, "End game" hands the room back to the plain
-// Klaxon reader view (settings, players, invite links): MODAQ mode is turned
-// off for the room, and the shared game and the players' scoresheet are
-// retired with it. Re-entering MODAQ later is one click on that page.
-function useEndGame(
-    client: KlaxonClient,
-    round: string
-): { exported: boolean; onExported: () => void; endGame: () => void } {
-    const [exported, setExported] = React.useState(false);
-    const onExported = React.useCallback(() => setExported(true), []);
-    const endGame = React.useCallback(() => {
-        if (
-            !window.confirm(
-                "End this game and go back to the buzzer page? The room leaves MODAQ mode; you can start MODAQ again from there."
-            )
-        ) {
-            return;
-        }
-        try {
-            localStorage.removeItem("bz_modaqLive:" + client.code);
-        } catch {
-            /* ignore */
-        }
-        archiveCurrentGame(client)
-            .then(() => {
-                client.massinger({ action: "modaq_game", qbj: null });
-                client.pushSharedGame(round, null);
-                return client.massinger({ action: "set_options", options: { modaqMode: false, modaqLite: false } });
-            })
-            .then(() => {
-                location.href = `/r/${client.code}`;
-            });
-    }, [client, round]);
-    return { exported, onExported, endGame };
+// A game counts as played once a question has been read in it: an untouched
+// game has no stats worth handing over.
+function hasPlayed(qbj: IMatch | undefined): qbj is IMatch {
+    return (qbj?.match_questions?.length ?? 0) > 0;
+}
+
+// Starting the next game hands the reader the stats of the one just read, as
+// the QBJ MODAQ would export: outside a tournament nobody else keeps them.
+function downloadGameStats(code: string, qbj: IMatch, gameNumber: number): void {
+    try {
+        const blob = new Blob([JSON.stringify(qbj, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `klaxon_${code}_game${gameNumber}.qbj`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch {
+        /* best-effort */
+    }
 }
 
 // MODAQ's New Game dialog only shows its packet file picker when a parse
@@ -726,8 +722,8 @@ function KlaxonHeader(props: { code: string }): JSX.Element {
                     Klaxon
                 </a>
                 <span className="kx-sep">›</span>
-                <a className="kx-crumb" href="/" title="Create or join another game">
-                    New game
+                <a className="kx-crumb" href="/" title="Create or join another room">
+                    New room
                 </a>
                 <span className="kx-sep">›</span>
                 <span className="kx-code">{props.code}</span>
@@ -1475,6 +1471,17 @@ function ModeratorBody(): JSX.Element {
                 // loaded and never opened New Game: the teams couldn't change.
                 // The game is in previous games (archived above) to bring back.
                 try {
+                    localStorage.removeItem(`klaxon-${code}-${config?.round ?? round}`);
+                } catch {
+                    /* ignore */
+                }
+                setPhase("setup");
+            }}
+            onLeft={() => {
+                // The other moderator already filed the game and cleared what
+                // the room shows; this screen only lets go of its copy.
+                try {
+                    localStorage.removeItem("bz_modaqLive:" + code);
                     localStorage.removeItem(`klaxon-${code}-${config?.round ?? round}`);
                 } catch {
                     /* ignore */
@@ -2291,9 +2298,12 @@ function Reading(props: {
     client: KlaxonClient;
     config: IReadingConfig;
     roomState: IPublicRoomState | undefined;
+    // Leave this game for setup, filing it.
     onChange: () => void;
+    // The other moderator left it: follow them to setup.
+    onLeft: () => void;
 }): JSX.Element {
-    const { code, client, config, roomState, onChange } = props;
+    const { code, client, config, roomState, onChange, onLeft } = props;
     const token = client.token;
     const round = config.round;
 
@@ -2336,7 +2346,7 @@ function Reading(props: {
 
     const customExport: ICustomExport = React.useMemo(
         () => ({
-            label: "Autosaving to Klaxon",
+            label: "Finish & save to Klaxon",
             type: "QBJ",
             onExport: async (qbj: IMatch): Promise<IStatus> => {
                 try {
@@ -2369,8 +2379,30 @@ function Reading(props: {
     // the loaded game become the room's roster, so a buzz reports the player
     // MODAQ is scoring rather than whatever name they typed to join.
     const syncGame = useGameSync(client);
-    const shared = useSharedGame(client, round);
-    const ending = useEndGame(client, round);
+    const shared = useSharedGame(client, round, onLeft);
+
+    // The next game is always Klaxon's: back to setup for the round and teams,
+    // with this one filed. MODAQ's own New game would start a blank game under
+    // this round's name and overwrite its stats.
+    const nextGame = React.useCallback(() => {
+        if (
+            window.confirm(
+                "Start the next game? This game stays saved to Klaxon, and you pick the round and teams again."
+            )
+        ) {
+            onChange();
+        }
+    }, [onChange]);
+    const hostSettings: IHostSettings = React.useMemo(
+        () => ({
+            hostManagesGames: true,
+            // The tournament's roster and format are the director's.
+            restrictRosterChanges: config.rosters.length > 0,
+            disableChangeFormat: config.gameFormat != undefined,
+            productName: "Klaxon",
+        }),
+        [config.rosters, config.gameFormat]
+    );
 
     const onGameUpdate = React.useCallback(
         (
@@ -2438,16 +2470,9 @@ function Reading(props: {
         <div className="mod-shell">
             <div className="mod-main">
                 <RoomToolbar code={code} label={`Room ${code} · Round ${round}`}>
-                    <button onClick={onChange}>Change round / teams</button>
-                    {ending.exported && (
-                        <button
-                            className="mod-endgame"
-                            onClick={ending.endGame}
-                            title="Back to the buzzer page (settings, players)"
-                        >
-                            End game →
-                        </button>
-                    )}
+                    <button onClick={nextGame} title="Pick the round and teams for the next game">
+                        Next game
+                    </button>
                 </RoomToolbar>
                 <DirectorMessages client={client} />
                 <KlaxonModaq
@@ -2474,12 +2499,13 @@ function Reading(props: {
                     buzzedInPlayer={buzzedInPlayer}
                     buzzQueueCount={hostBuzzer.count}
                     onWithdrawBuzz={hostBuzzer.withdraw}
-                    onExported={ending.onExported}
                     onPersistedState={shared.onPersistedState}
                     remoteState={shared.remoteState}
                     tiebreakers={tiebreakers}
                     onTiebreakerUsed={onTiebreakerUsed}
                     customExport={customExport}
+                    hostSettings={hostSettings}
+                    onNewGameRequested={nextGame}
                 />
             </div>
             <div className="mod-side">
@@ -2557,8 +2583,6 @@ function LiteReading(props: {
     // New Game dialog still link the buzzers to real players, and the room
     // still gets the live scoresheet.
     const syncGame = useGameSync(client);
-    const shared = useSharedGame(client, "lite");
-    const ending = useEndGame(client, "lite");
     const [showPrev, setShowPrev] = React.useState(false);
     // Loading a previous game remounts MODAQ so it reads the staged snapshot,
     // and takes it off screen while that is staged (see MODAQ_PERSIST_SETTLE_MS).
@@ -2567,26 +2591,86 @@ function LiteReading(props: {
 
     // Starting a game is one step: drop the packet (PDF, Word, or JSON) and
     // MODAQ's New Game dialog opens with it loaded and the teams filled in from
-    // the room, so all that's left is Start. Shown whenever there's no game, and
-    // again when the reader picks New game.
+    // the room, so all that's left is Start. Shown whenever there's no game.
     const [gameLoaded, setGameLoaded] = React.useState<boolean | undefined>(undefined);
-    const [picking, setPicking] = React.useState(false);
     const [hostGame, setHostGame] = React.useState<IHostNewGame | undefined>(undefined);
     const [status, setStatus] = React.useState("");
     const [error, setError] = React.useState("");
     const teams = teamsFromRoom(roomState);
-    const onNewGameRequested = React.useCallback(() => setPicking(true), []);
+
+    // The game as MODAQ last reported it, for the stats handed over at Next game.
+    const lastQbjRef = React.useRef<IMatch | undefined>(undefined);
+    const onGameUpdate = React.useCallback(
+        (...args: Parameters<typeof syncGame>) => {
+            lastQbjRef.current = args[0];
+            syncGame(...args);
+        },
+        [syncGame]
+    );
+
+    // Let go of the game on screen: MODAQ off screen first (or its last save
+    // lands after the reset), then its saved copy is dropped and it comes back
+    // empty, so the next packet starts a new game.
+    const clearLocalGame = React.useCallback(async () => {
+        setStaging(true);
+        await wait(MODAQ_PERSIST_SETTLE_MS);
+        try {
+            localStorage.removeItem(`klaxon-lite-${code}`);
+        } catch {
+            /* ignore */
+        }
+        lastQbjRef.current = undefined;
+        setHostGame(undefined);
+        setShowPrev(false);
+        setGameKey((k) => k + 1);
+        setStaging(false);
+    }, [code]);
+    const shared = useSharedGame(client, "lite", clearLocalGame);
+
+    // A room holds one game at a time. The next one starts clean: this game's
+    // stats go to the reader and into Previous games, and everyone is taken out
+    // of the room (they can rejoin from the same link, for the new game's teams).
+    const [moving, setMoving] = React.useState(false);
+    const nextGame = React.useCallback(async () => {
+        if (roomState?.correction || moving) {
+            return;
+        }
+        const qbj = lastQbjRef.current;
+        const played = hasPlayed(qbj);
+        if (
+            !window.confirm(
+                (played
+                    ? "Start the next game?\n\nThis game's stats are downloaded and kept in Previous games. "
+                    : "Start the next game?\n\n") +
+                    "Everyone is removed from the room; players can rejoin with the same link."
+            )
+        ) {
+            return;
+        }
+        setMoving(true);
+        try {
+            if (played && qbj) {
+                downloadGameStats(code, qbj, roomState?.gameNumber ?? 1);
+            }
+            setStaging(true);
+            await wait(MODAQ_PERSIST_SETTLE_MS);
+            if (played) {
+                await archiveCurrentGame(client);
+            }
+            client.massinger({ action: "modaq_game", qbj: null });
+            await client.pushSharedGame("lite", null);
+            await client.massinger({ action: "next_game" });
+            await clearLocalGame();
+        } finally {
+            setMoving(false);
+        }
+    }, [client, code, roomState?.correction, roomState?.gameNumber, moving, clearLocalGame]);
 
     const onFiles = async (files: File[]): Promise<void> => {
         setError("");
         try {
             const { packet, name } = await readPacketFile(files[0], setStatus);
-            // The game on screen is filed first, so nothing is lost.
-            if (gameLoaded) {
-                await archiveCurrentGame(client);
-            }
             setHostGame({ packet, packetName: name, teams, confirm: true });
-            setPicking(false);
         } catch (e) {
             setError((e as Error).message);
         } finally {
@@ -2594,7 +2678,7 @@ function LiteReading(props: {
         }
     };
 
-    const showStart = gameLoaded === false || picking;
+    const showStart = gameLoaded === false;
     return (
         <div className="mod-shell">
             <div className="mod-main">
@@ -2607,20 +2691,20 @@ function LiteReading(props: {
                         you&apos;re done.
                     </div>
                 )}
-                <RoomToolbar code={code} label={`Room ${code} · MODAQ`}>
-                    {gameLoaded && !picking && !roomState?.correction && (
-                        <button onClick={() => setPicking(true)}>New packet</button>
+                <RoomToolbar code={code} label={`Room ${code} · Game ${roomState?.gameNumber ?? 1}`}>
+                    {!roomState?.correction && (
+                        <button onClick={() => setShowPrev((v) => !v)}>
+                            {showPrev ? "Hide previous games" : "Previous games"}
+                        </button>
                     )}
-                    <button onClick={() => setShowPrev((v) => !v)}>
-                        {showPrev ? "Hide previous games" : "Previous games"}
-                    </button>
-                    {ending.exported && (
+                    {gameLoaded && !roomState?.correction && (
                         <button
                             className="mod-endgame"
-                            onClick={ending.endGame}
-                            title="Back to the buzzer page (settings, players)"
+                            onClick={nextGame}
+                            disabled={moving}
+                            title="Hand over this game's stats, clear the room, and start a new game"
                         >
-                            End game →
+                            Next game →
                         </button>
                     )}
                 </RoomToolbar>
@@ -2650,12 +2734,7 @@ function LiteReading(props: {
                 {showStart && (
                     <div className="pk-start">
                         <div className="pk-start-head">
-                            <h2>{gameLoaded ? "Read another packet" : "Start a game"}</h2>
-                            {gameLoaded && (
-                                <button onClick={() => setPicking(false)} disabled={status !== ""}>
-                                    Back to the game
-                                </button>
-                            )}
+                            <h2>Start game {roomState?.gameNumber ?? 1}</h2>
                         </div>
                         <PacketDrop
                             pageWide
@@ -2685,19 +2764,17 @@ function LiteReading(props: {
                             packetParserLink={PACKET_PARSER_LINK}
                             persistState={true}
                             storeName={`klaxon-lite-${code}`}
-                            onGameUpdate={syncGame}
+                            onGameUpdate={onGameUpdate}
                             onBuzzJudged={onBuzzJudged}
                             buzzedInPlayer={buzzedInPlayer}
                             buzzQueueCount={hostBuzzer.count}
                             onWithdrawBuzz={hostBuzzer.withdraw}
-                            onExported={() => {
-                                ending.onExported();
-                                downloadFullBuzz(client);
-                            }}
+                            onExported={() => downloadFullBuzz(client)}
                             onPersistedState={shared.onPersistedState}
                             remoteState={shared.remoteState}
                             hostNewGame={hostGame}
-                            onNewGameRequested={onNewGameRequested}
+                            hostSettings={LITE_HOST_SETTINGS}
+                            onNewGameRequested={nextGame}
                             onGameLoadedChange={setGameLoaded}
                         />
                     )}
@@ -2709,6 +2786,10 @@ function LiteReading(props: {
         </div>
     );
 }
+
+// Games in a room start from Klaxon's Next game, never MODAQ's own New game or
+// imports (a loaded game comes in through Previous games, filed and named).
+const LITE_HOST_SETTINGS: IHostSettings = { hostManagesGames: true, productName: "Klaxon" };
 
 // The teams a room already knows about, for a game started from a dropped
 // packet: the room's roster if it has one (a previous game's teams, or a
@@ -3571,6 +3652,7 @@ function ShootoutReading(props: {
                         remoteState={shared.remoteState}
                         hostNewGame={hostGame}
                         onNewGameRequested={onNewGameRequested}
+                        hostSettings={LITE_HOST_SETTINGS}
                         onGameLoadedChange={setGameLoaded}
                         liveTeams={competitors}
                     />

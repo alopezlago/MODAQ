@@ -1517,6 +1517,7 @@ function update(appState: AppState, props: IModaqControlProps): void {
         (nextHostSettings?.onlyAllowQbjExport ?? false) !== currentHostSettings.onlyAllowQbjExport ||
         (nextHostSettings?.restrictRosterChanges ?? false) !== currentHostSettings.restrictRosterChanges ||
         (nextHostSettings?.disableChangeFormat ?? false) !== currentHostSettings.disableChangeFormat ||
+        (nextHostSettings?.hostManagesGames ?? false) !== currentHostSettings.hostManagesGames ||
         nextHostSettings?.productName !== currentHostSettings.productName
     ) {
         appState.uiState.setHostSettings(nextHostSettings);

@@ -92,6 +92,8 @@ export interface IPublicRoomState {
     tournamentCode: string | null;
     phase: "open" | "locked";
     cycleNo: number;
+    // Which game of the room this is (Next game counts up); 1 when never moved on.
+    gameNumber?: number;
     settings: IRoomSettings;
     // Server time of the buzz still waiting on the moderator (null when clear).
     lastBuzzAt?: number | null;
