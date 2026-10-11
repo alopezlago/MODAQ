@@ -59,6 +59,8 @@ export interface IRoomSettings {
     shootout?: boolean;
     typedAnswers?: boolean;
     lockedAnswers?: boolean;
+    // Questions a free withdrawal costs before the next is free (0 = always free).
+    withdrawCooldown?: number;
 }
 
 // One subcategory on a MASSINGER pick/ban board. `indexes` are 0-based tossup
@@ -162,7 +164,9 @@ export interface IShootoutSession {
     // ("rationed" only).
     withdrawCooldown?: number;
     scoring: { scheme: string; bonuses: boolean };
-    packets: { id: string; name: string; tossups: number; bonuses: number }[];
+    // `source`: the tournament round a packet is read from (a shootout
+    // tournament); otherwise it is stored under its own id.
+    packets: { id: string; name: string; tossups: number; bonuses: number; source?: string }[];
     current: string | null; // id of the packet being read
     currentIndex: number; // its place in `packets`, -1 before the first
 }
@@ -909,6 +913,11 @@ export interface IServerErratum {
 }
 
 export interface ITournamentFormat {
+    // "shootout": a Discord shootout tournament, whose rooms read the
+    // director's packets with the director's settings.
+    kind?: "teams" | "shootout";
+    // A shootout tournament's notes for the players.
+    notes?: string;
     hasBonuses: boolean;
     tossupScheme: string; // "15/10/-5" | "20/15/10/-5" | "20/10/0"
     // MASSINGER pick/ban before each game (subcategory protect/ban to 20).

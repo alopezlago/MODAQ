@@ -25,6 +25,7 @@ import {
     IRoomMember,
     MassingerControl,
     IPublicRoomState,
+    IRoomSettings,
     IServerErratum,
     ITournamentFormat,
     ITournamentInfo,
@@ -1158,7 +1159,16 @@ function ModeratorBody(): JSX.Element {
 
     if (phase === "shootout-setup") {
         const hasSession = (roomState?.shootout?.session?.packets.length ?? 0) > 0;
-        return (
+        return roomState?.tournamentCode ? (
+            <TournamentShootoutSetup
+                code={code}
+                tcode={roomState.tournamentCode}
+                client={clientRef.current!}
+                roomState={roomState}
+                onDone={() => setPhase("shootout")}
+                onCancel={hasSession ? () => setPhase("shootout") : undefined}
+            />
+        ) : (
             <ShootoutSetup
                 code={code}
                 client={clientRef.current!}
@@ -2422,10 +2432,21 @@ function Reading(props: {
                 /* storage may be unavailable; resume is best-effort */
             }
             // The stats file goes up with the update (see useGameSync).
-            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions, lastUpdate, {
-                round,
-                inProgress: inProgress === true,
-            });
+            syncGame(
+                qbj,
+                inProgress,
+                currentQuestion,
+                hasBonuses,
+                protests,
+                categories,
+                answers,
+                questions,
+                lastUpdate,
+                {
+                    round,
+                    inProgress: inProgress === true,
+                }
+            );
         },
         [code, token, round, syncGame]
     );
@@ -2694,8 +2715,8 @@ function LiteReading(props: {
                     <div className="mod-correction" role="status">
                         <strong>Correcting a tournament game</strong> —{" "}
                         {roomState.correction.roomName || `Room ${roomState.correction.room}`}, round{" "}
-                        {roomState.correction.round}. Fix the event in MODAQ (click it in the event list, or Ctrl+Z
-                        to undo); every change here is saved into the tournament&apos;s stats. Close the tab when
+                        {roomState.correction.round}. Fix the event in MODAQ (click it in the event list, or Ctrl+Z to
+                        undo); every change here is saved into the tournament&apos;s stats. Close the tab when
                         you&apos;re done.
                     </div>
                 )}
@@ -2912,7 +2933,10 @@ function shootoutGameFormat(
     // which is what crashed the reader's page.)
     tossupCount?: number
 ): IGameFormat | undefined {
-    const format = gameFormatFor({ tossupScheme: scoring?.scheme ?? "15/10/-5", hasBonuses: scoring?.bonuses === true });
+    const format = gameFormatFor({
+        tossupScheme: scoring?.scheme ?? "15/10/-5",
+        hasBonuses: scoring?.bonuses === true,
+    });
     if (format == undefined) {
         return undefined;
     }
@@ -2958,6 +2982,16 @@ const WITHDRAW_CHOICES: { value: WithdrawMode; label: string; detail: string }[]
 
 const DEFAULT_WITHDRAW_COOLDOWN = 5;
 
+// Which of those a room's settings amount to (the reverse of the server's
+// shootout.withdrawSettings).
+function withdrawModeOf(settings: IRoomSettings | undefined): WithdrawMode {
+    if (settings == undefined) return "free";
+    if (settings.lockedAnswers) return "typed";
+    if (settings.allowWithdraw === false) return "none";
+    if ((settings.withdrawCooldown ?? 0) > 0) return "rationed";
+    return "free";
+}
+
 interface ISetupRow {
     key: string;
     id?: string; // set once it's stored on the server
@@ -2991,9 +3025,16 @@ function ShootoutSetup(props: {
     const [initial] = React.useState<IShootoutSession | null>(() => roomState?.shootout?.session ?? null);
     const [name, setName] = React.useState(initial?.name ?? "");
     const [notes, setNotes] = React.useState(initial?.notes ?? "");
-    const [withdraw, setWithdraw] = React.useState<WithdrawMode>(initial?.withdraw ?? "free");
+    // A first setup starts from the rule the room was made with (a shootout
+    // tournament sets one for every room), read back off its settings.
+    const [withdraw, setWithdraw] = React.useState<WithdrawMode>(
+        () => initial?.withdraw ?? withdrawModeOf(roomState?.settings)
+    );
     const [cooldown, setCooldown] = React.useState<string>(
-        String(initial?.withdrawCooldown ?? DEFAULT_WITHDRAW_COOLDOWN)
+        String(
+            initial?.withdrawCooldown ??
+                (roomState?.settings.withdrawCooldown ? roomState.settings.withdrawCooldown : DEFAULT_WITHDRAW_COOLDOWN)
+        )
     );
     const [scheme, setScheme] = React.useState(initial?.scoring.scheme ?? "15/10/-5");
     const [bonuses, setBonuses] = React.useState(initial?.scoring.bonuses ?? false);
@@ -3241,8 +3282,8 @@ function ShootoutSetup(props: {
                     </div>
 
                     <label className="so-check so-listed">
-                        <input type="checkbox" checked={listed} onChange={(e) => setListed(e.target.checked)} />{" "}
-                        List this game on the Klaxon home page
+                        <input type="checkbox" checked={listed} onChange={(e) => setListed(e.target.checked)} /> List
+                        this game on the Klaxon home page
                     </label>
                     <p className="hint">
                         Anyone can find it and join &mdash; for open readings and playtests. It is listed only while
@@ -3281,6 +3322,191 @@ function ShootoutSetup(props: {
                                 ? "Add at least one packet to start."
                                 : "")}
                     </p>
+                </div>
+            </div>
+            <div className="mod-side">
+                <BuzzPanel client={client} state={roomState} />
+            </div>
+        </div>
+    );
+}
+
+// A packet's id in a shootout tournament's session, from its round: the same
+// round always gets the same id, so setting up again (after the director
+// releases more) keeps the games already filed against the packets read.
+function packetIdForRound(round: string): string {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < round.length; i++) {
+        h ^= round.charCodeAt(i);
+        h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return "pt" + h.toString(36);
+}
+
+// A room of a shootout tournament: what is read, how it is scored and how a
+// withdrawal works are the director's, so the room only confirms them. The
+// packets are the tournament's released rounds, in round order.
+function TournamentShootoutSetup(props: {
+    code: string;
+    tcode: string;
+    client: KlaxonClient;
+    roomState: IPublicRoomState | undefined;
+    onDone: () => void;
+    onCancel?: () => void;
+}): JSX.Element {
+    const { code, tcode, client, roomState, onDone, onCancel } = props;
+    const [tournament, setTournament] = React.useState<ITournamentInfo | null>(null);
+    const [packets, setPackets] = React.useState<IShootoutSession["packets"] | null>(null);
+    const [msg, setMsg] = React.useState("");
+    const [saving, setSaving] = React.useState(false);
+    const [copied, setCopied] = React.useState(false);
+    const settings = roomState?.settings;
+    const withdraw = withdrawModeOf(settings);
+    const cooldown = settings?.withdrawCooldown || DEFAULT_WITHDRAW_COOLDOWN;
+    const scheme = tournament?.format?.tossupScheme ?? "15/10/-5";
+    const bonuses = tournament?.format?.hasBonuses === true;
+
+    const load = React.useCallback(async (): Promise<void> => {
+        setMsg("");
+        try {
+            const [t, list] = await Promise.all([
+                KlaxonApi.getTournament(tcode),
+                KlaxonApi.listPackets(code, client.token),
+            ]);
+            setTournament(t);
+            const out: IShootoutSession["packets"] = [];
+            for (const round of list.packets) {
+                // A packet a room dropped in for itself, not one of the director's rounds.
+                if (/^p[0-9a-z]{1,16}$/.test(round)) continue;
+                const packet = await KlaxonApi.getPacket<IPacket>(code, client.token, round);
+                out.push({
+                    id: packetIdForRound(round),
+                    name: round,
+                    tossups: packet.tossups?.length ?? 0,
+                    bonuses: packet.bonuses?.length ?? 0,
+                    source: round,
+                });
+            }
+            setPackets(out);
+        } catch (e) {
+            setMsg("Couldn't load the tournament's packets: " + (e as Error).message);
+            setPackets([]);
+        }
+    }, [code, tcode, client]);
+    React.useEffect(() => {
+        void load();
+    }, [load]);
+
+    const save = async (): Promise<void> => {
+        if (!packets || packets.length === 0) return;
+        setSaving(true);
+        setMsg("");
+        try {
+            const r = await client.massinger({
+                action: "shootout_session",
+                session: {
+                    name: tournament?.name ?? "Shootout",
+                    notes: tournament?.format?.notes ?? "",
+                    withdraw,
+                    withdrawCooldown: cooldown,
+                    scoring: { scheme, bonuses },
+                    packets,
+                },
+            });
+            if (r.error) throw new Error(r.error);
+            onDone();
+        } catch (e) {
+            setMsg("Couldn't open the room: " + (e as Error).message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const link = `${location.origin}/${code}`;
+    const withdrawLabel = WITHDRAW_CHOICES.find((c) => c.value === withdraw)?.label ?? withdraw;
+    return (
+        <div className="mod-shell">
+            <div className="mod-main">
+                <div className="mod-center mod-setup so-setup">
+                    <h1>{tournament?.name ?? "Shootout"}</h1>
+                    <p className="hint">
+                        Everyone plays for themselves; whoever opens the link is in the game. The director set up this
+                        shootout, so the packets and rules come from the tournament.
+                    </p>
+                    <dl className="so-fixed">
+                        <dt>Scoring</dt>
+                        <dd>
+                            {SCHEMES.find((s) => s.value === scheme)?.label ?? scheme}
+                            {bonuses ? " · with bonuses" : ""}
+                        </dd>
+                        <dt>Withdrawing a buzz</dt>
+                        <dd>
+                            {withdrawLabel}
+                            {withdraw === "rationed" ? ` (wait ${cooldown} questions)` : ""}
+                        </dd>
+                        <dt>Score</dt>
+                        <dd>{settings?.shootoutCarry ? "Carries across packets" : "Starts again each packet"}</dd>
+                        {tournament?.format?.notes && (
+                            <>
+                                <dt>Notes for the players</dt>
+                                <dd className="so-notes">{tournament.format.notes}</dd>
+                            </>
+                        )}
+                    </dl>
+
+                    <label>Packets</label>
+                    {packets == null ? (
+                        <p className="hint">Loading the tournament&apos;s packets…</p>
+                    ) : packets.length === 0 ? (
+                        <p className="hint">
+                            No packets released yet. Release them in the director console, then refresh.
+                        </p>
+                    ) : (
+                        <ol className="so-packets">
+                            {packets.map((p, i) => (
+                                <li key={p.id} className="so-packet saved">
+                                    <span className="so-packet-num">{i + 1}.</span>
+                                    <span className="so-packet-name">{p.name}</span>
+                                    <span className="so-packet-info">
+                                        {`${p.tossups} tossups${p.bonuses ? ` · ${p.bonuses} bonuses` : ""}`}
+                                    </span>
+                                </li>
+                            ))}
+                        </ol>
+                    )}
+
+                    <label>Invite link — post it in Discord</label>
+                    <div className="so-link">
+                        <code>{link}</code>
+                        <button
+                            onClick={async () => {
+                                try {
+                                    await navigator.clipboard.writeText(link);
+                                } catch {
+                                    /* clipboard may be blocked */
+                                }
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 1200);
+                            }}
+                        >
+                            {copied ? "Copied!" : "Copy"}
+                        </button>
+                    </div>
+
+                    <div className="so-actions">
+                        <button
+                            className="primary"
+                            disabled={saving || !packets || packets.length === 0}
+                            onClick={() => void save()}
+                        >
+                            {saving ? "Opening…" : onCancel ? "Use these packets" : "Open the room →"}
+                        </button>
+                        <button onClick={() => void load()} disabled={saving}>
+                            Refresh packets
+                        </button>
+                        {onCancel && <button onClick={onCancel}>Cancel</button>}
+                    </div>
+                    {msg && <p className="msg">{msg}</p>}
                 </div>
             </div>
             <div className="mod-side">
@@ -3360,10 +3586,11 @@ function ShootoutReading(props: {
     // The format follows the packet on screen, so a 23-question round is read as
     // 23 questions.
     const currentTossups = packets[index]?.tossups ?? 0;
-    const format = React.useMemo(
-        () => shootoutGameFormat({ scheme, bonuses: withBonuses }, currentTossups),
-        [scheme, withBonuses, currentTossups]
-    );
+    const format = React.useMemo(() => shootoutGameFormat({ scheme, bonuses: withBonuses }, currentTossups), [
+        scheme,
+        withBonuses,
+        currentTossups,
+    ]);
 
     // Go to a packet: the one that was on screen is filed under its own packet
     // (so the leaderboard keeps its score and it can be reopened), and then
@@ -3398,7 +3625,7 @@ function ShootoutReading(props: {
                 // Does this packet mark superpowers? Asked on its own and never
                 // fatal: a packet that won't load here (a game being put back
                 // doesn't need one) means no warning, not a failure to read.
-                void KlaxonApi.getPacket<IPacket>(code, client.token, p.id)
+                void KlaxonApi.getPacket<IPacket>(code, client.token, p.source ?? p.id)
                     .then((pk) => setSuperPacket(hasSuperpowers(pk)))
                     .catch(() => setSuperPacket(false));
                 if (done?.game?.json) {
@@ -3410,7 +3637,7 @@ function ShootoutReading(props: {
                     setGameKey((k) => k + 1);
                     setStaging(false);
                 } else {
-                    const packet = await KlaxonApi.getPacket<IPacket>(code, client.token, p.id);
+                    const packet = await KlaxonApi.getPacket<IPacket>(code, client.token, p.source ?? p.id);
                     // Whoever is here now; anyone who arrives later is added as they do.
                     setHostGame({
                         packet,
@@ -3476,10 +3703,21 @@ function ShootoutReading(props: {
             // this one — not on the room's scoresheet either, which is what the
             // leaderboard and the banked score are read from.
             if (!id || (p && qbj.packets && qbj.packets !== p.name)) return;
-            syncGame(qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions, lastUpdate, {
-                round: id,
-                inProgress: inProgress === true,
-            });
+            syncGame(
+                qbj,
+                inProgress,
+                currentQuestion,
+                hasBonuses,
+                protests,
+                categories,
+                answers,
+                questions,
+                lastUpdate,
+                {
+                    round: id,
+                    inProgress: inProgress === true,
+                }
+            );
             lastGame.current = {
                 args: [qbj, inProgress, currentQuestion, hasBonuses, protests, categories, answers, questions],
                 inProgress: inProgress === true,
@@ -3629,7 +3867,11 @@ function ShootoutReading(props: {
                         onClick={() => void goNext()}
                         disabled={busy !== "" || gameLoaded === undefined}
                     >
-                        {next ? (carry ? `Next packet: ${next.name} →` : `Next game: ${next.name} →`) : "Add more packets"}
+                        {next
+                            ? carry
+                                ? `Next packet: ${next.name} →`
+                                : `Next game: ${next.name} →`
+                            : "Add more packets"}
                     </button>
                     <button
                         onClick={exportAll}
@@ -3638,22 +3880,24 @@ function ShootoutReading(props: {
                     >
                         Export all rounds for buzzpoints ⤓
                     </button>
-                    <select
-                        className="so-jump"
-                        aria-label="Scoring"
-                        title="The scoring in force. Changing it applies to the game on screen."
-                        value={scheme ?? "15/10/-5"}
-                        disabled={busy !== "" || session == undefined}
-                        onChange={(e) => void setScheme(e.target.value)}
-                    >
-                        {SCHEMES.map((sc) => (
-                            <option key={sc.value} value={sc.value}>
-                                {sc.label}
-                            </option>
-                        ))}
-                    </select>
+                    {!roomState?.tournamentCode && (
+                        <select
+                            className="so-jump"
+                            aria-label="Scoring"
+                            title="The scoring in force. Changing it applies to the game on screen."
+                            value={scheme ?? "15/10/-5"}
+                            disabled={busy !== "" || session == undefined}
+                            onChange={(e) => void setScheme(e.target.value)}
+                        >
+                            {SCHEMES.map((sc) => (
+                                <option key={sc.value} value={sc.value}>
+                                    {sc.label}
+                                </option>
+                            ))}
+                        </select>
+                    )}
                     <button onClick={onEditSession} disabled={busy !== ""}>
-                        Edit session
+                        {roomState?.tournamentCode ? "Packets" : "Edit session"}
                     </button>
                     {/* The end of the evening, next to the export because that
                         is the order it happens in: save the games, then send

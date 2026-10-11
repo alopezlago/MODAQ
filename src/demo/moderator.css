@@ -2522,3 +2522,10 @@ a.kx-crumb:hover {
         max-width: calc(100vw - clamp(250px, 30vw, 340px) - 32px) !important;
     }
 }
+
+/* A shootout tournament room's setup: the director's settings, read-only. */
+.so-fixed { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 4px 0 16px; }
+.so-fixed dt { font-weight: 600; }
+.so-fixed dd { margin: 0; }
+.so-fixed .so-notes { white-space: pre-line; }
+.so-packet-name { flex: 1; }
