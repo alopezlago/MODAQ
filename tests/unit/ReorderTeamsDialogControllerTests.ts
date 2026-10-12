@@ -67,4 +67,26 @@ describe("ReorderTeamsDialogControllerTests", () => {
         ReorderTeamsDialogController.submit(appState);
         expect(appState.game.teamNames).to.be.deep.equal([defaultTeamNames[1], defaultTeamNames[0]]);
     });
+    it("orders more than two teams as chosen, keeping each team's players in their order", () => {
+        const c: Player[] = [new Player("Cy", "Third", true), new Player("Cal", "Third", true)];
+        const { appState } = initializeApp([...defaultExistingPlayers, ...c]);
+
+        appState.uiState.dialogState.showReorderTeamsDialog(appState.game.teamNames);
+        ReorderTeamsDialogController.moveTeam(appState, 2, -1);
+        ReorderTeamsDialogController.moveTeam(appState, 1, -1);
+        ReorderTeamsDialogController.submitOrder(appState);
+
+        expect(appState.game.teamNames).to.be.deep.equal(["Third", defaultTeamNames[0], defaultTeamNames[1]]);
+        expect(appState.game.players.map((p) => p.name)).to.be.deep.equal(["Cy", "Cal", "Alex", "Anna", "Ashok", "Bob"]);
+        expect(appState.uiState.dialogState.reorderTeamsDialog).to.be.undefined;
+    });
+    it("a move past either end does nothing", () => {
+        const c: Player[] = [new Player("Cy", "Third", true)];
+        const { appState } = initializeApp([...defaultExistingPlayers, ...c]);
+
+        appState.uiState.dialogState.showReorderTeamsDialog(appState.game.teamNames);
+        ReorderTeamsDialogController.moveTeam(appState, 0, -1);
+        ReorderTeamsDialogController.moveTeam(appState, 2, 1);
+        expect(appState.uiState.dialogState.reorderTeamsDialog?.teamNames).to.be.deep.equal([defaultTeamNames[0], defaultTeamNames[1], "Third"]);
+    });
 });

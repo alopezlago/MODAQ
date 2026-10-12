@@ -16,6 +16,7 @@ export const enum ModalVisibilityStatus {
     RenamePlayer,
     RenameTeam,
     ReorderPlayers,
+    ReorderTeams,
     Scoresheet,
     ThrowOutQuestion,
     TossupProtest,

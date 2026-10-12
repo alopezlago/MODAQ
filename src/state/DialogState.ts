@@ -9,6 +9,7 @@ import { IMessageDialogState, MessageDialogType } from "./IMessageDialogState";
 import { RenamePlayerDialogState } from "./RenamePlayerDialogState";
 import { Player } from "./TeamState";
 import { ReorderPlayersDialogState } from "./ReorderPlayersDialogState";
+import { ReorderTeamsDialogState } from "./ReorderTeamsDialogState";
 import { FontDialogState } from "./FontDialogState";
 import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 import { RenameTeamDialogState } from "./RenameTeamDialogState";
@@ -56,6 +57,9 @@ export class DialogState {
     public reorderPlayersDialog: ReorderPlayersDialogState | undefined;
 
     @ignore
+    public reorderTeamsDialog: ReorderTeamsDialogState | undefined;
+
+    @ignore
     public visibleDialog: ModalVisibilityStatus;
 
     constructor() {
@@ -72,6 +76,7 @@ export class DialogState {
         this.renamePlayerDialog = undefined;
         this.renameTeamDialog = undefined;
         this.reorderPlayersDialog = undefined;
+        this.reorderTeamsDialog = undefined;
         this.visibleDialog = ModalVisibilityStatus.None;
     }
 
@@ -154,6 +159,13 @@ export class DialogState {
         }
     }
 
+    public hideReorderTeamsDialog(): void {
+        this.reorderTeamsDialog = undefined;
+        if (this.visibleDialog === ModalVisibilityStatus.ReorderTeams) {
+            this.hideModalDialog();
+        }
+    }
+
     public hideReorderPlayersDialog(): void {
         this.reorderPlayersDialog = undefined;
         if (this.visibleDialog === ModalVisibilityStatus.ReorderPlayers) {
@@ -221,6 +233,11 @@ export class DialogState {
     public showRenameTeamDialog(initialTeamName: string): void {
         this.renameTeamDialog = new RenameTeamDialogState(initialTeamName);
         this.visibleDialog = ModalVisibilityStatus.RenameTeam;
+    }
+
+    public showReorderTeamsDialog(teamNames: string[]): void {
+        this.reorderTeamsDialog = new ReorderTeamsDialogState(teamNames);
+        this.visibleDialog = ModalVisibilityStatus.ReorderTeams;
     }
 
     public showReorderPlayersDialog(players: Player[]): void {

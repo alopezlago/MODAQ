@@ -94,12 +94,17 @@ export const GameBar = observer(function GameBar(): JSX.Element {
     }, [uiState, game]);
 
     const reorderTeamsHandler = React.useCallback(() => {
+        // Swapping is the whole story with two teams; more need putting in order.
+        if (game.teamNames.length > 2) {
+            uiState.dialogState.showReorderTeamsDialog(game.teamNames);
+            return;
+        }
         uiState.dialogState.showOKCancelMessageDialog({
             title: "Reorder teams",
             message: "Swap the order of teams?",
             onOK: () => ReorderTeamsDialogController.submit(appState),
         });
-    }, [appState, uiState]);
+    }, [appState, uiState, game]);
 
     const renameTeamHandler = React.useCallback(() => {
         if (game.players.length === 0) {

@@ -14,6 +14,7 @@ import { AddQuestionsDialog } from "./dialogs/AddQuestionsDialog";
 import { MessageDialog } from "./dialogs/MessageDialog";
 import { RenamePlayerDialog } from "./dialogs/RenamePlayerDialog";
 import { ReorderPlayerDialog } from "./dialogs/ReorderPlayerDialog";
+import { ReorderTeamsDialog } from "./dialogs/ReorderTeamsDialog";
 import { ScoresheetDialog } from "./dialogs/ScoresheetDialog";
 import { useAppState } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";
@@ -46,6 +47,7 @@ export const ModalDialogContainer = observer(function ModalDialogContainer() {
             <RenamePlayerDialog />
             <RenameTeamDialog />
             <ReorderPlayerDialog />
+            <ReorderTeamsDialog />
             <ScoresheetDialog />
             <ThrowOutQuestionDialog />
         </>
