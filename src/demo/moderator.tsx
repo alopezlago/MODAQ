@@ -3092,19 +3092,10 @@ function ShootoutSetup(props: {
     const { code, client, roomState, onDone, onCancel } = props;
     // Taken once: the form is the host's until they save it.
     const [initial] = React.useState<IShootoutSession | null>(() => roomState?.shootout?.session ?? null);
-    const [name, setName] = React.useState(initial?.name ?? "");
     const [notes, setNotes] = React.useState(initial?.notes ?? "");
-    // A first setup starts from the rule the room was made with (a shootout
-    // tournament sets one for every room), read back off its settings.
-    const [withdraw, setWithdraw] = React.useState<WithdrawMode>(
-        () => initial?.withdraw ?? withdrawModeOf(roomState?.settings)
-    );
-    const [cooldown, setCooldown] = React.useState<string>(
-        String(
-            initial?.withdrawCooldown ??
-                (roomState?.settings.withdrawCooldown ? roomState.settings.withdrawCooldown : DEFAULT_WITHDRAW_COOLDOWN)
-        )
-    );
+    // The room's name, withdraw rule and listing were all chosen on Create room
+    // (and change on Room options): the session takes them from the room rather
+    // than asking again.
     const [scheme, setScheme] = React.useState(initial?.scoring.scheme ?? "15/10/-5");
     const [bonuses, setBonuses] = React.useState(initial?.scoring.bonuses ?? false);
     const [rows, setRows] = React.useState<ISetupRow[]>(() =>
@@ -3120,9 +3111,6 @@ function ShootoutSetup(props: {
     const [saving, setSaving] = React.useState(false);
     const [msg, setMsg] = React.useState("");
     const [copied, setCopied] = React.useState(false);
-    // Whether anyone may find this game from Klaxon's home page. It is a room
-    // option rather than part of the session, so it is saved alongside it.
-    const [listed, setListed] = React.useState(roomState?.listed === true);
 
     const update = (key: string, change: Partial<ISetupRow>): void =>
         setRows((list) => list.map((r) => (r.key === key ? { ...r, ...change } : r)));
@@ -3131,8 +3119,11 @@ function ShootoutSetup(props: {
     // twelve packets shouldn't arrive as twelve simultaneous uploads), and
     // store each on the server as soon as it's read.
     const queue = React.useRef<Promise<void>>(Promise.resolve());
-    const onFiles = (files: File[]): void => {
-        setMsg("");
+    // A room reads one packet: a new one replaces it.
+    const onFiles = (dropped: File[]): void => {
+        const files: File[] = dropped.slice(0, 1);
+        setMsg(dropped.length > 1 ? "A room reads one packet; the first one is used." : "");
+        setRows([]);
         const added: ISetupRow[] = files.map((file) => ({
             key: newPacketId(),
             name: fileStem(file),
@@ -3141,7 +3132,7 @@ function ShootoutSetup(props: {
             status: "reading",
             message: "Waiting…",
         }));
-        setRows((list) => [...list, ...added]);
+        setRows(added);
         files.forEach((file, i) => {
             const row = added[i];
             queue.current = queue.current.then(async () => {
@@ -3165,16 +3156,6 @@ function ShootoutSetup(props: {
         });
     };
 
-    const move = (key: string, by: number): void =>
-        setRows((list) => {
-            const i = list.findIndex((r) => r.key === key);
-            const j = i + by;
-            if (i < 0 || j < 0 || j >= list.length) return list;
-            const next = [...list];
-            [next[i], next[j]] = [next[j], next[i]];
-            return next;
-        });
-
     const saved = rows.filter((r) => r.status === "saved" && r.id);
     const reading = rows.some((r) => r.status === "reading");
     const canSave = !saving && !reading && saved.length > 0;
@@ -3184,13 +3165,14 @@ function ShootoutSetup(props: {
         setSaving(true);
         setMsg("");
         try {
+            const settings = roomState?.settings;
             const r = await client.massinger({
                 action: "shootout_session",
                 session: {
-                    name: name.trim(),
+                    name: initial?.name || roomState?.name || "",
                     notes,
-                    withdraw,
-                    withdrawCooldown: Math.max(1, Math.min(40, Number(cooldown) || DEFAULT_WITHDRAW_COOLDOWN)),
+                    withdraw: withdrawModeOf(settings),
+                    withdrawCooldown: settings?.withdrawCooldown || DEFAULT_WITHDRAW_COOLDOWN,
                     scoring: { scheme, bonuses },
                     packets: saved.map((p) => ({
                         id: p.id,
@@ -3201,7 +3183,6 @@ function ShootoutSetup(props: {
                 },
             });
             if (r.error) throw new Error(r.error);
-            await client.massinger({ action: "set_options", options: { listed } });
             onDone();
         } catch (e) {
             setMsg("Couldn't save: " + (e as Error).message);
@@ -3216,24 +3197,12 @@ function ShootoutSetup(props: {
         <div className="mod-shell">
             <div className="mod-main">
                 <div className="mod-center mod-setup so-setup">
-                    <h1>{initial ? "Edit the shootout" : "Set up a Discord shootout"}</h1>
+                    <h1>{initial ? "Edit the shootout" : "Set up the shootout"}</h1>
                     <p className="hint">
                         Everyone plays for themselves. Whoever opens the link is in the game as soon as they join — no
-                        roster to enter.{" "}
-                        {roomState?.settings.shootoutCarry
-                            ? "The scores add up across every packet you read."
-                            : "Each packet is its own game: moving to the next one downloads its stats and starts the scores again."}
+                        roster to enter. The buzzer and room settings are the ones you chose when you made the room;
+                        change them under Room options.
                     </p>
-
-                    <label htmlFor="so-name">What are you playing?</label>
-                    <input
-                        id="so-name"
-                        type="text"
-                        maxLength={80}
-                        placeholder="e.g. 2026 Fall Novice playtest"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                    />
 
                     <label htmlFor="so-notes">Notes for the players</label>
                     <textarea
@@ -3246,13 +3215,12 @@ function ShootoutSetup(props: {
                     />
                     <p className="hint">Shown on every player&apos;s screen for the whole session.</p>
 
-                    <label>Packets</label>
+                    <label>Packet</label>
                     <PacketDrop
-                        multiple
                         pageWide
                         onFiles={onFiles}
-                        title="Drop the packets here, in any order"
-                        hint="PDFs, Word documents (.docx), or packet JSON — reorder them below"
+                        title={rows.length ? "Drop a different packet to replace it" : "Drop the packet here"}
+                        hint="A PDF, Word document (.docx), or packet JSON"
                     />
                     {rows.length > 0 && (
                         <ol className="so-packets">
@@ -3273,22 +3241,6 @@ function ShootoutSetup(props: {
                                     </span>
                                     <span className="so-packet-actions">
                                         <button
-                                            onClick={() => move(r.key, -1)}
-                                            disabled={i === 0}
-                                            aria-label="Move up"
-                                            title="Move up"
-                                        >
-                                            ↑
-                                        </button>
-                                        <button
-                                            onClick={() => move(r.key, 1)}
-                                            disabled={i === rows.length - 1}
-                                            aria-label="Move down"
-                                            title="Move down"
-                                        >
-                                            ↓
-                                        </button>
-                                        <button
                                             onClick={() => setRows((list) => list.filter((x) => x.key !== r.key))}
                                             disabled={r.status === "reading"}
                                             aria-label="Remove"
@@ -3301,39 +3253,6 @@ function ShootoutSetup(props: {
                             ))}
                         </ol>
                     )}
-
-                    <fieldset className="so-withdraw">
-                        <legend>Withdrawing a buzz</legend>
-                        {WITHDRAW_CHOICES.map((c) => (
-                            <label key={c.value} className={withdraw === c.value ? "so-choice selected" : "so-choice"}>
-                                <input
-                                    type="radio"
-                                    name="so-withdraw"
-                                    value={c.value}
-                                    checked={withdraw === c.value}
-                                    onChange={() => setWithdraw(c.value)}
-                                />
-                                <span>
-                                    <strong>{c.label}</strong>
-                                    <span className="so-choice-detail">{c.detail}</span>
-                                    {c.value === "rationed" && withdraw === "rationed" && (
-                                        <span className="so-choice-extra">
-                                            <label htmlFor="so-cooldown">Questions to wait</label>
-                                            <input
-                                                id="so-cooldown"
-                                                type="number"
-                                                min={1}
-                                                max={40}
-                                                value={cooldown}
-                                                onChange={(e) => setCooldown(e.target.value)}
-                                                onClick={(e) => e.preventDefault()}
-                                            />
-                                        </span>
-                                    )}
-                                </span>
-                            </label>
-                        ))}
-                    </fieldset>
 
                     <div className="so-scoring">
                         <label htmlFor="so-scheme">Scoring</label>
@@ -3350,16 +3269,7 @@ function ShootoutSetup(props: {
                         </label>
                     </div>
 
-                    <label className="so-check so-listed">
-                        <input type="checkbox" checked={listed} onChange={(e) => setListed(e.target.checked)} /> List
-                        this game on the Klaxon home page
-                    </label>
-                    <p className="hint">
-                        Anyone can find it and join &mdash; for open readings and playtests. It is listed only while
-                        someone is in the room, and ending the game takes it off.
-                    </p>
-
-                    <label>Invite link — post it in Discord</label>
+                    <label>Invite link</label>
                     <div className="so-link">
                         <code>{link}</code>
                         <button
@@ -3386,9 +3296,9 @@ function ShootoutSetup(props: {
                     <p className="msg">
                         {msg ||
                             (reading
-                                ? "Reading the packets…"
+                                ? "Reading the packet…"
                                 : saved.length === 0
-                                ? "Add at least one packet to start."
+                                ? "Add the packet to start."
                                 : "")}
                     </p>
                 </div>
@@ -3544,7 +3454,7 @@ function TournamentShootoutSetup(props: {
                         </ol>
                     )}
 
-                    <label>Invite link — post it in Discord</label>
+                    <label>Invite link</label>
                     <div className="so-link">
                         <code>{link}</code>
                         <button
