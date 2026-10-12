@@ -184,7 +184,15 @@ const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuesti
                 word={props.word}
                 selected={props.index === uiState.selectedWordIndex}
                 placing={selected && uiState.buzzPointPlacement != undefined}
-                flash={buzzFeedback != undefined && buzzFeedback.position === props.index ? buzzFeedback.kind : undefined}
+                flash={
+                    buzzFeedback != undefined &&
+                    buzzFeedback.position === props.index &&
+                    // Only on the question the buzz was recorded on (see IBuzzFeedback.cycleIndex)
+                    (buzzFeedback.cycleIndex == undefined ||
+                        props.appState.game.cycles[buzzFeedback.cycleIndex] === props.cycle)
+                        ? buzzFeedback.kind
+                        : undefined
+                }
                 correct={props.index === props.correctBuzzIndex}
                 wrong={props.wrongBuzzIndexes.findIndex((position) => position === props.index) >= 0}
                 componentRef={selected ? props.selectedWordRef : undefined}

@@ -1280,4 +1280,10 @@ export interface IBuzzFeedback {
 
     /** The word the buzz is on */
     position: number;
+
+    /**
+     * The question (cycle index) the buzz is on. The flash runs on for a moment, and moving straight on to the next
+     * question would otherwise light up the word at the same position there.
+     */
+    cycleIndex?: number;
 }

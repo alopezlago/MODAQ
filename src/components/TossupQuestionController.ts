@@ -541,6 +541,7 @@ export function recordPlayerPadBuzz(appState: AppState, playerIndex: number, isC
         teamName: player.teamName,
         points: isRecorded ? after.buzzPoints : 0,
         position: isRecorded ? after.buzzPosition : before.buzzPosition,
+        cycleIndex: uiState.cycleIndex,
     });
     return true;
 }
