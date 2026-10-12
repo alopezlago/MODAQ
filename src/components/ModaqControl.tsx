@@ -51,6 +51,7 @@ import {
     deviceLocalUiSettings,
     keepDeviceSettings,
     loadDeviceSettings,
+    pickDeviceSettings,
     saveDeviceSettings,
 } from "../state/DeviceSettings";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
@@ -244,6 +245,8 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
     // host just asked us to apply (otherwise two synced moderators would bounce the same game back and forth).
     const persistedStateRef = React.useRef(props.onPersistedState);
     persistedStateRef.current = props.onPersistedState;
+    const onDeviceSettingsChangeRef = React.useRef(props.onDeviceSettingsChange);
+    onDeviceSettingsChangeRef.current = props.onDeviceSettingsChange;
     const lastAppliedRef = React.useRef<string | undefined>(undefined);
     // Ready once any saved game has been restored. Host-driven changes to the game wait for this, so a restore
     // finishing late can't overwrite them (or be mistaken for them).
@@ -383,12 +386,32 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
         }
         const uiState = (appState.uiState as unknown) as Record<string, unknown>;
         runInAction(() => applyDeviceSettings(uiState, loadDeviceSettings()));
+        let first = true;
         return reaction(
             () => deviceLocalUiSettings.map((key) => uiState[key]),
-            () => saveDeviceSettings(uiState),
+            () => {
+                saveDeviceSettings(uiState);
+                // The host hears about changes, not the values this screen opened with: those may be older than
+                // the ones the host is still fetching (see deviceSettings).
+                if (!first) {
+                    onDeviceSettingsChangeRef.current?.(pickDeviceSettings(uiState));
+                }
+                first = false;
+            },
             { equals: comparer.structural, fireImmediately: true }
         );
     }, [appState, ready]);
+
+    // Settings the host keeps for this moderator elsewhere (Klaxon: on their account), so another device reads the
+    // way the last one did. Applied whenever a new object arrives, over whatever this device had.
+    const hostDeviceSettings = props.deviceSettings;
+    React.useEffect(() => {
+        if (!ready || hostDeviceSettings == undefined) {
+            return;
+        }
+        const uiState = (appState.uiState as unknown) as Record<string, unknown>;
+        runInAction(() => applyDeviceSettings(uiState, hostDeviceSettings));
+    }, [appState, ready, hostDeviceSettings]);
 
     const remoteState = props.remoteState;
     React.useEffect(() => {
@@ -808,6 +831,18 @@ export interface IModaqControlProps {
      * the game's pending updates are marked complete while a game is loaded.
      */
     onExported?: () => void;
+
+    /**
+     * Device settings (font, colours, read-along, how the screen shows the game; see DeviceSettings) the host keeps
+     * for this moderator, applied over this device's whenever a new object is passed.
+     */
+    deviceSettings?: Record<string, unknown>;
+
+    /**
+     * Called with the device settings whenever the moderator changes one, so the host can keep them (for
+     * `deviceSettings` on another device). Not called for the values a screen opens with.
+     */
+    onDeviceSettingsChange?: (settings: Record<string, unknown>) => void;
 
     /**
      * Called with MODAQ's serialized state (the same JSON it persists to localStorage) each time it is persisted,

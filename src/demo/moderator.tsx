@@ -11,7 +11,7 @@ import { IPacket } from "../state/IPacket";
 import { IPlayer } from "../state/TeamState";
 import { IErratum } from "../state/IErratum";
 import { ITiebreakerItem } from "../contexts/TiebreakerContext";
-import { withDeviceSettings } from "../state/DeviceSettings";
+import { loadDeviceSettings, withDeviceSettings } from "../state/DeviceSettings";
 import { IGameFormat } from "../state/IGameFormat";
 import * as GameFormats from "../state/GameFormats";
 import { ICustomExport } from "../state/CustomExport";
@@ -689,7 +689,74 @@ function useKlaxonDark(): [boolean, (dark: boolean) => void] {
 // games page, the room's previous games, or an old room).
 function KlaxonModaq(props: React.ComponentProps<typeof ModaqControl>): JSX.Element {
     const [dark, setDark] = useKlaxonDark();
-    return <ModaqControl {...props} promptIfOld={false} darkMode={dark} onDarkModeChange={setDark} />;
+    const [deviceSettings, onDeviceSettingsChange] = useAccountModaqSettings();
+    return (
+        <ModaqControl
+            {...props}
+            promptIfOld={false}
+            darkMode={dark}
+            onDarkModeChange={setDark}
+            deviceSettings={deviceSettings}
+            onDeviceSettingsChange={onDeviceSettingsChange}
+        />
+    );
+}
+
+// A signed-in moderator's MODAQ settings (the Font dialog, read-along, how the
+// screen shows the game) follow their account, so another device opens the way
+// the last one was left. Fetched once per page; every change is saved back, a
+// moment after the last one. An account with none yet starts with this
+// device's. Signed out, MODAQ keeps them in this browser as before.
+let accountSettingsLoad: Promise<Record<string, unknown> | undefined> | undefined;
+let accountSettingsTimer: ReturnType<typeof setTimeout> | undefined;
+function loadAccountModaqSettings(): Promise<Record<string, unknown> | undefined> {
+    if (!sessionToken()) {
+        return Promise.resolve(undefined);
+    }
+    accountSettingsLoad ??= KlaxonApi
+        .me()
+        .then(({ account }) => {
+            const saved = account?.modaqSettings;
+            if (saved && Object.keys(saved).length > 0) {
+                return saved;
+            }
+            const local = loadDeviceSettings();
+            if (local && Object.keys(local).length > 0) {
+                KlaxonApi.saveModaqSettings(local).catch(() => undefined);
+            }
+            return undefined;
+        })
+        .catch(() => undefined);
+    return accountSettingsLoad;
+}
+function useAccountModaqSettings(): [
+    Record<string, unknown> | undefined,
+    ((settings: Record<string, unknown>) => void) | undefined
+] {
+    const [settings, setSettings] = React.useState<Record<string, unknown> | undefined>(undefined);
+    React.useEffect(() => {
+        let live = true;
+        loadAccountModaqSettings().then((s) => {
+            if (live && s) {
+                setSettings(s);
+            }
+        });
+        return () => {
+            live = false;
+        };
+    }, []);
+    const save = React.useCallback((next: Record<string, unknown>) => {
+        if (!sessionToken()) {
+            return;
+        }
+        // Later screens on this page open with what was just chosen.
+        accountSettingsLoad = Promise.resolve(next);
+        clearTimeout(accountSettingsTimer);
+        accountSettingsTimer = setTimeout(() => {
+            KlaxonApi.saveModaqSettings(next).catch(() => undefined);
+        }, 800);
+    }, []);
+    return [settings, save];
 }
 
 function ThemeToggle(): JSX.Element {

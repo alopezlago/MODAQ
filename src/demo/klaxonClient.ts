@@ -850,8 +850,12 @@ export const KlaxonApi = {
             "POST", "/api/accounts/login", { username, password }
         ).then((r) => { if (r.sessionToken) setSessionToken(r.sessionToken); return r; });
     },
-    me(): Promise<{ account: { id: string; username: string } }> {
+    me(): Promise<{ account: { id: string; username: string; modaqSettings?: Record<string, unknown> } }> {
         return rest("GET", `/api/accounts/me?sessionToken=${encodeURIComponent(sessionToken() || "")}`);
+    },
+    /** Keep this moderator's MODAQ settings (font, read-along, layout) on their account. */
+    saveModaqSettings(settings: Record<string, unknown>): Promise<unknown> {
+        return rest("PATCH", "/api/accounts/me", { sessionToken: sessionToken(), modaqSettings: settings });
     },
     getAccess(tcode: string): Promise<{ required: boolean; status: string | null; memberStatus?: string | null }> {
         return rest("GET", `/api/tournaments/${tcode}/access?sessionToken=${encodeURIComponent(sessionToken() || "")}`);

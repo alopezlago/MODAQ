@@ -52,16 +52,22 @@ export function loadDeviceSettings(storage: Pick<Storage, "getItem"> | undefined
     }
 }
 
-export function saveDeviceSettings(
-    uiState: Record<string, unknown>,
-    storage: Pick<Storage, "setItem"> | undefined = safeLocalStorage()
-): void {
+/** The device settings out of a UI state, the ones that have a value. */
+export function pickDeviceSettings(uiState: Record<string, unknown>): Record<string, unknown> {
     const settings: Record<string, unknown> = {};
     for (const key of deviceLocalUiSettings) {
         if (uiState[key] !== undefined) {
             settings[key] = uiState[key];
         }
     }
+    return settings;
+}
+
+export function saveDeviceSettings(
+    uiState: Record<string, unknown>,
+    storage: Pick<Storage, "setItem"> | undefined = safeLocalStorage()
+): void {
+    const settings: Record<string, unknown> = pickDeviceSettings(uiState);
     try {
         storage?.setItem(deviceSettingsKey, JSON.stringify(settings));
     } catch {
