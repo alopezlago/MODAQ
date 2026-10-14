@@ -57,6 +57,11 @@ function gameFormatFor(format: ITournamentFormat | undefined): IGameFormat | und
             ];
             negValue = -5;
             break;
+        case "10/-5":
+            // ACF: no powers.
+            powers = [];
+            negValue = -5;
+            break;
         case "15/10/-5":
         default:
             powers = [{ marker: "(*)", points: 15 }];
@@ -2990,6 +2995,7 @@ const SCHEMES: { value: string; label: string }[] = [
     { value: "15/10/-5", label: "15 / 10 / −5 (powers)" },
     { value: "20/15/10/-5", label: "20 / 15 / 10 / −5 (superpowers)" },
     { value: "20/10/0", label: "20 / 10 / 0 (no negs)" },
+    { value: "10/-5", label: "10 / −5 (ACF, no powers)" },
 ];
 
 function shootoutGameFormat(

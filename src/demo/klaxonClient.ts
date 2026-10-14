@@ -923,7 +923,7 @@ export interface ITournamentFormat {
     // A shootout tournament's notes for the players.
     notes?: string;
     hasBonuses: boolean;
-    tossupScheme: string; // "15/10/-5" | "20/15/10/-5" | "20/10/0"
+    tossupScheme: string; // "15/10/-5" | "20/15/10/-5" | "20/10/0" | "10/-5"
     // MASSINGER pick/ban before each game (subcategory protect/ban to 20).
     massinger?: boolean;
     massingerTimerSec?: number;
