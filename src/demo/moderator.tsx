@@ -2572,7 +2572,7 @@ function Reading(props: {
                     yappServiceUrl={YAPP_SERVICE_URL}
                     newGameOnLoad={{
                         packet: config.packet,
-                        packetName: `Round ${round}`,
+                        packetName: round,
                         rosters: config.rosters,
                         teams: config.teams,
                     }}
