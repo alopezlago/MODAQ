@@ -20,8 +20,41 @@ interface IVoskResultMessage {
 // which lowers latency; they cost a few more messages to the recognizer worker.
 const audioBufferSize = 2048;
 
-// A small (~40 MB) English model hosted by the vosk-browser project. The browser caches the download.
+// A small (~40 MB) English model hosted by the vosk-browser project. vosk-browser keeps the unpacked model in
+// IndexedDB under its URL, so each browser downloads it once.
 const defaultModelUrl = "https://ccoreilly.github.io/vosk-browser/models/vosk-model-small-en-us-0.15.tar.gz";
+
+// Where a host serves its own copy of the model, tried before the default (see setPreferredVoskModelUrl)
+let preferredModelUrl: string | undefined;
+
+// Run before the host's copy is checked, e.g. to get the credentials it's served with
+let authorizePreferredModel: (() => Promise<void>) | undefined;
+
+/**
+ * Lets a host serve the model itself (faster, and not dependent on a third party's site). Must be an absolute
+ * URL: the model is fetched from inside a worker, where a relative one doesn't resolve against the page. A copy
+ * that turns out not to be there (or not to be served to this page) falls back to the default. `authorize`, if
+ * given, runs first and only once the model is actually needed, so a host can grant access to it then.
+ */
+export function setPreferredVoskModelUrl(url: string | undefined, authorize?: () => Promise<void>): void {
+    preferredModelUrl = url;
+    authorizePreferredModel = authorize;
+}
+
+// The host's copy if it's actually there, else the default
+async function resolveModelUrl(): Promise<string> {
+    if (preferredModelUrl == undefined) {
+        return defaultModelUrl;
+    }
+
+    try {
+        await authorizePreferredModel?.();
+        const response: Response = await fetch(preferredModelUrl, { method: "HEAD" });
+        return response.ok ? preferredModelUrl : defaultModelUrl;
+    } catch (e) {
+        return defaultModelUrl;
+    }
+}
 
 // Loading the model is expensive (large download plus WASM initialization), so share one instance across
 // engine instances (a new engine is created for each tossup)
@@ -55,7 +88,8 @@ export class VoskSpeechEngine implements ISpeechEngine {
 
     private readonly callbacks: ISpeechEngineCallbacks;
 
-    private readonly modelUrl: string;
+    // An explicit model to use; otherwise the host's copy or the default (see resolveModelUrl)
+    private readonly modelUrl: string | undefined;
 
     private active: boolean;
 
@@ -77,7 +111,7 @@ export class VoskSpeechEngine implements ISpeechEngine {
 
     constructor(callbacks: ISpeechEngineCallbacks, modelUrl?: string) {
         this.callbacks = callbacks;
-        this.modelUrl = modelUrl ?? defaultModelUrl;
+        this.modelUrl = modelUrl;
         this.active = false;
         this.mediaStream = undefined;
         this.audioContext = undefined;
@@ -119,7 +153,7 @@ export class VoskSpeechEngine implements ISpeechEngine {
     private async initialize(): Promise<void> {
         try {
             this.callbacks.onStatusChanged("Loading speech model (~40 MB download on first use)...");
-            const model: Model = await getModel(this.modelUrl);
+            const model: Model = await getModel(this.modelUrl ?? (await resolveModelUrl()));
             if (!this.active) {
                 return;
             }

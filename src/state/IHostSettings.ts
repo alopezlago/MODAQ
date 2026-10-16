@@ -23,6 +23,9 @@ export interface IHostSettings {
      */
     hostManagesGames?: boolean;
 
+    /** With hostManagesGames, what that single item is called (default "Next game"). */
+    nextGameLabel?: string;
+
     /**
      * The name of the host product, used in dialogs that reference the host (e.g. the Export Backup confirmation
      * message). Falls back to a generic description if not provided.

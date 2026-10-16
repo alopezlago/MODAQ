@@ -35,6 +35,7 @@ import { HostNewGameContext, IHostNewGameContextValue } from "../contexts/HostNe
 import * as QBJ from "../qbj/QBJ";
 import { IMatch } from "../qbj/QBJ";
 import { AppState } from "../state/AppState";
+import { watchReadAlongState } from "../speech/ReadAlongDiagnostics";
 import { GameViewer } from "./GameViewer";
 import { ModalDialogContainer } from "./ModalDialogContainer";
 import { IGameFormat } from "../state/IGameFormat";
@@ -151,6 +152,9 @@ function isTextEntry(target: EventTarget | null): boolean {
 
 export const ModaqControl = observer(function ModaqControl(props: IModaqControlProps): JSX.Element {
     const [appState]: [AppState, React.Dispatch<React.SetStateAction<AppState>>] = React.useState(() => new AppState());
+
+    // A bug report about read-along describes this game's microphone settings
+    React.useEffect(() => watchReadAlongState(appState.uiState), [appState]);
 
     // Errata the host owns (e.g. loaded from its server): adopt them whenever
     // that reference changes. Starting a new game clears errata, since they

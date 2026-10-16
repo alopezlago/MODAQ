@@ -45,4 +45,10 @@ export interface ISpeechEngineCallbacks {
 
     /** Optional: called when the engine couldn't capture audio from the microphone; it will retry. */
     onAudioCaptureError?(): void;
+
+    /**
+     * Optional: called (instead of onPermanentError) when the engine's recognition service can't be used at all, so
+     * the caller can switch to another engine. The engine has already stopped.
+     */
+    onServiceUnavailable?(): void;
 }

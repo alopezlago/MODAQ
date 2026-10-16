@@ -18,6 +18,8 @@ import { ICustomExport } from "../state/CustomExport";
 import { IMatch } from "../qbj/QBJ";
 import * as QBJ from "../qbj/QBJ";
 import { IStatus } from "../IStatus";
+import { getReadAlongDiagnostics } from "../speech/ReadAlongDiagnostics";
+import { setPreferredVoskModelUrl } from "../speech/VoskSpeechEngine";
 import { BuzzPanel, SubmittedAnswers } from "./BuzzPanel";
 import {
     IDirectorMessage,
@@ -25,6 +27,7 @@ import {
     IRoomMember,
     MassingerControl,
     IPublicRoomState,
+    IEveningSummary,
     IRoomSettings,
     IServerErratum,
     ITournamentFormat,
@@ -774,6 +777,51 @@ function ThemeToggle(): JSX.Element {
     );
 }
 
+// Read-along diagnostics for the bug report form (/feedback), which opens in
+// another tab and so can't see this page's memory. It asks every open reader
+// tab over a BroadcastChannel; a copy saved whenever this page is hidden covers
+// a reader who closed the tab before reporting. Same keys as public/js/feedback.js.
+const DIAGNOSTICS_CHANNEL = "klaxon-diagnostics";
+
+// Klaxon serves the local speech model itself (fetched into the image at build
+// time, see klaxon/Dockerfile), for read-along in browsers whose own speech
+// recognition can't be used — Brave, Firefox. It's ~40 MB and only for the
+// room's moderators: the server hands this page a short-lived cookie for
+// /models once it shows a staff credential, and refuses the file without one.
+setPreferredVoskModelUrl(`${location.origin}/models/vosk-model-small-en-us-0.15.tar.gz`, async () => {
+    await fetch("/api/model-access", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code, token: readCredentials(code).token, sessionToken: sessionToken() }),
+    });
+});
+const DIAGNOSTICS_KEY = "klaxonReadAlongDiagnostics";
+
+function saveReadAlongDiagnostics(): void {
+    try {
+        localStorage.setItem(
+            DIAGNOSTICS_KEY,
+            JSON.stringify({ at: Date.now(), room: code, text: getReadAlongDiagnostics() })
+        );
+    } catch {
+        /* storage full or blocked; the live channel still works */
+    }
+}
+
+if (typeof BroadcastChannel !== "undefined") {
+    const channel = new BroadcastChannel(DIAGNOSTICS_CHANNEL);
+    channel.onmessage = (event: MessageEvent) => {
+        if (event.data?.type === "request-read-along") {
+            channel.postMessage({ type: "read-along", room: code, text: getReadAlongDiagnostics() });
+        }
+    };
+}
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+        saveReadAlongDiagnostics();
+    }
+});
+
 // The Klaxon bar every page carries, so the moderator knows where they are and
 // can get back to the room or start another game.
 function KlaxonHeader(props: { code: string }): JSX.Element {
@@ -819,6 +867,18 @@ function KlaxonHeader(props: { code: string }): JSX.Element {
                     title="Buzzing, answers, chat, listing and invite links for this room"
                 >
                     Room options ↗
+                </a>
+                {/* The form offers to attach the read-along diagnostics, so a
+                    report about the microphone carries what it heard. */}
+                <a
+                    className="kx-action"
+                    href={`/feedback?from=${encodeURIComponent(location.href)}`}
+                    target="_blank"
+                    rel="noopener"
+                    onClick={saveReadAlongDiagnostics}
+                    title="Report a bug, including what read-along heard"
+                >
+                    Report a problem ↗
                 </a>
                 <span className="kx-pill">{creds.role === "co-reader" ? "co-reader" : "reader"}</span>
                 <ThemeToggle />
@@ -2730,44 +2790,48 @@ function LiteReading(props: {
     }, [code]);
     const shared = useSharedGame(client, "lite", clearLocalGame);
 
-    // A room holds one game at a time. The next one starts clean: this game's
-    // stats go to the reader and into Previous games, and everyone is taken out
-    // of the room (they can rejoin from the same link, for the new game's teams).
+    // The next packet starts clean: this game's stats go to the reader and into
+    // Previous games. Who stays is the reader's call (see NextPacketPanel):
+    // the same players by default, or a cleared room for a new group.
     const [moving, setMoving] = React.useState(false);
-    const nextGame = React.useCallback(async () => {
+    const [askingNext, setAskingNext] = React.useState(false);
+    const nextGame = React.useCallback(() => {
         if (roomState?.correction || moving) {
             return;
         }
-        const qbj = lastQbjRef.current;
-        const played = hasPlayed(qbj);
-        if (
-            !window.confirm(
-                (played
-                    ? "Start the next game?\n\nThis game's stats are downloaded and kept in Previous games. "
-                    : "Start the next game?\n\n") +
-                    "Everyone is removed from the room; players can rejoin with the same link."
-            )
-        ) {
-            return;
-        }
-        setMoving(true);
-        try {
-            if (played && qbj) {
-                downloadGameStats(code, qbj, roomState?.gameNumber ?? 1);
+        setShowPrev(false);
+        setAskingNext(true);
+    }, [roomState?.correction, moving]);
+    const goNextPacket = React.useCallback(
+        async (keepPlayers: boolean, evening: boolean) => {
+            const qbj = lastQbjRef.current;
+            const played = hasPlayed(qbj);
+            setMoving(true);
+            try {
+                if (evening !== (roomState?.settings.eveningTotals === true)) {
+                    await client.massinger({ action: "set_options", options: { eveningTotals: evening } });
+                }
+                if (played && qbj) {
+                    downloadGameStats(code, qbj, roomState?.gameNumber ?? 1);
+                }
+                setStaging(true);
+                await wait(MODAQ_PERSIST_SETTLE_MS);
+                if (played) {
+                    await archiveCurrentGame(client);
+                }
+                client.massinger({ action: "modaq_game", qbj: null });
+                await client.pushSharedGame("lite", null);
+                await client.massinger({ action: "next_game", keepPlayers });
+                await clearLocalGame();
+                setAskingNext(false);
+            } finally {
+                setMoving(false);
             }
-            setStaging(true);
-            await wait(MODAQ_PERSIST_SETTLE_MS);
-            if (played) {
-                await archiveCurrentGame(client);
-            }
-            client.massinger({ action: "modaq_game", qbj: null });
-            await client.pushSharedGame("lite", null);
-            await client.massinger({ action: "next_game" });
-            await clearLocalGame();
-        } finally {
-            setMoving(false);
-        }
-    }, [client, code, roomState?.correction, roomState?.gameNumber, moving, clearLocalGame]);
+        },
+        [client, code, roomState?.gameNumber, roomState?.settings.eveningTotals, clearLocalGame]
+    );
+    const [showEvening, setShowEvening] = React.useState(false);
+    const evening = roomState?.evening ?? null;
 
     const onFiles = async (files: File[]): Promise<void> => {
         setError("");
@@ -2794,23 +2858,44 @@ function LiteReading(props: {
                         you&apos;re done.
                     </div>
                 )}
-                <RoomToolbar code={code} label={`Room ${code} · Game ${roomState?.gameNumber ?? 1}`}>
+                <RoomToolbar code={code} label={`Room ${code} · Packet ${roomState?.gameNumber ?? 1}`}>
                     {!roomState?.correction && prevCount > 0 && (
                         <button onClick={() => setShowPrev((v) => !v)}>
                             {showPrev ? "Hide previous games" : "Previous games"}
+                        </button>
+                    )}
+                    {evening && (
+                        <button onClick={() => setShowEvening((v) => !v)}>
+                            {showEvening ? "Hide tonight" : "Tonight's totals"}
                         </button>
                     )}
                     {gameLoaded && !roomState?.correction && (
                         <button
                             className="mod-endgame"
                             onClick={nextGame}
-                            disabled={moving}
-                            title="Hand over this game's stats, clear the room, and start a new game"
+                            disabled={moving || askingNext}
+                            title="Hand over this game's stats and start the next packet"
                         >
-                            Next game →
+                            Next packet →
                         </button>
                     )}
                 </RoomToolbar>
+                {askingNext && (
+                    <NextPacketPanel
+                        played={hasPlayed(lastQbjRef.current)}
+                        offerEvening={true}
+                        eveningOn={roomState?.settings.eveningTotals === true}
+                        busy={moving}
+                        onCancel={() => setAskingNext(false)}
+                        onGo={(keep, eve) => void goNextPacket(keep, eve)}
+                    />
+                )}
+                {showEvening && evening && (
+                    <EveningTotals
+                        evening={evening}
+                        onReset={() => void client.massinger({ action: "reset_evening" })}
+                    />
+                )}
                 <DirectorMessages client={client} />
                 {showPrev && (
                     <PreviousGames
@@ -2837,7 +2922,7 @@ function LiteReading(props: {
                 {showStart && (
                     <div className="pk-start">
                         <div className="pk-start-head">
-                            <h2>Start game {roomState?.gameNumber ?? 1}</h2>
+                            <h2>Start packet {roomState?.gameNumber ?? 1}</h2>
                         </div>
                         <PacketDrop
                             pageWide
@@ -2890,9 +2975,125 @@ function LiteReading(props: {
     );
 }
 
+// Moving a room on to its next packet. A practice evening is the same people
+// reading packet after packet, so keeping them is the default: they stay on
+// the team they ended on (each can switch from their own page) and the next
+// packet's teams fill themselves in. Clearing the room is for a new group.
+function NextPacketPanel(props: {
+    played: boolean;
+    // Offer the evening's running totals (team rooms; a shootout has its own carry).
+    offerEvening: boolean;
+    eveningOn: boolean;
+    busy: boolean;
+    onCancel: () => void;
+    onGo: (keepPlayers: boolean, evening: boolean) => void;
+}): JSX.Element {
+    const [keep, setKeep] = React.useState(true);
+    const [evening, setEvening] = React.useState(props.eveningOn);
+    return (
+        <div className="mod-prev mod-nextpacket" role="dialog" aria-label="Next packet">
+            <h3>Next packet</h3>
+            {props.played && <p className="hint">This game&apos;s stats are downloaded and kept in Previous games.</p>}
+            <label className="mod-np-choice">
+                <input type="radio" name="np-keep" checked={keep} onChange={() => setKeep(true)} />
+                <span>
+                    <strong>Keep everyone in the room</strong> — same players, on the teams they finished on. Players
+                    can switch teams from their own page.
+                </span>
+            </label>
+            <label className="mod-np-choice">
+                <input type="radio" name="np-keep" checked={!keep} onChange={() => setKeep(false)} />
+                <span>
+                    <strong>Clear the room</strong> — for a new group. Everyone is removed and rejoins with the same
+                    link.
+                </span>
+            </label>
+            {props.offerEvening && (
+                <label className="mod-np-choice mod-np-evening">
+                    <input type="checkbox" checked={evening} onChange={(e) => setEvening(e.target.checked)} />
+                    <span>
+                        <strong>Keep a running total for the evening</strong> — each player&apos;s points across
+                        packets, whichever team they play for.
+                    </span>
+                </label>
+            )}
+            <div className="mod-np-actions">
+                <button className="mod-endgame" disabled={props.busy} onClick={() => props.onGo(keep, evening)}>
+                    Next packet →
+                </button>
+                <button onClick={props.onCancel} disabled={props.busy}>
+                    Cancel
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// Tonight's totals for the reader: every player across the room's packets.
+function EveningTotals(props: { evening: IEveningSummary; onReset: () => void }): JSX.Element {
+    const { evening } = props;
+    return (
+        <div className="mod-prev mod-evening">
+            <h3>Tonight</h3>
+            {evening.games.length > 0 && (
+                <p className="hint">
+                    {evening.games
+                        .map(
+                            (g) =>
+                                `Packet ${g.n}${g.live ? " (now)" : ""}: ` +
+                                g.teams.map((t) => `${t.name} ${t.score}`).join(" – ")
+                        )
+                        .join(" · ")}
+                </p>
+            )}
+            {evening.players.length === 0 ? (
+                <p className="hint">Nothing scored yet tonight.</p>
+            ) : (
+                <table className="mod-evening-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Team</th>
+                            <th title="Packets played">GP</th>
+                            <th title="Powers">P</th>
+                            <th title="Tens">10</th>
+                            <th title="Negs">N</th>
+                            <th>Pts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {evening.players.map((p) => (
+                            <tr key={p.name}>
+                                <td>{p.name}</td>
+                                <td>{p.teams.join(", ")}</td>
+                                <td>{p.games}</td>
+                                <td>{p.powers}</td>
+                                <td>{p.tens}</td>
+                                <td>{p.negs}</td>
+                                <td>
+                                    <strong>{p.points}</strong>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
+            <button
+                onClick={() => {
+                    if (window.confirm("Start tonight's totals again from zero? Games already read stay in Previous games.")) {
+                        props.onReset();
+                    }
+                }}
+            >
+                Start the totals over
+            </button>
+        </div>
+    );
+}
+
 // Games in a room start from Klaxon's Next game, never MODAQ's own New game or
 // imports (a loaded game comes in through Previous games, filed and named).
-const LITE_HOST_SETTINGS: IHostSettings = { hostManagesGames: true, productName: "Klaxon" };
+const LITE_HOST_SETTINGS: IHostSettings = { hostManagesGames: true, nextGameLabel: "Next packet", productName: "Klaxon" };
 
 // The teams a room already knows about, for a game started from a dropped
 // packet: the room's roster if it has one (a previous game's teams, or a
@@ -3713,6 +3914,8 @@ function ShootoutReading(props: {
         [syncGame, code, client]
     );
 
+    // Set while the reader is choosing who stays for the next game (a room shootout).
+    const [askKeep, setAskKeep] = React.useState<((answer: boolean | null) => void) | null>(null);
     const goNext = async (): Promise<void> => {
         if (!next) {
             onEditSession();
@@ -3736,12 +3939,24 @@ function ShootoutReading(props: {
         // start again, and (in a room) everyone is taken out to rejoin.
         const qbj = lastGame.current?.args[0];
         const playedNow = hasPlayed(qbj);
-        if (
+        // In a room the reader also says who stays (see NextPacketPanel).
+        let keepPlayers = false;
+        if (clearRoom) {
+            const keep = await new Promise<boolean | null>((resolve) =>
+                setAskKeep(() => (answer: boolean | null) => {
+                    setAskKeep(null);
+                    resolve(answer);
+                })
+            );
+            if (keep === null) {
+                return;
+            }
+            keepPlayers = keep;
+        } else if (
             !window.confirm(
                 `Start the next game on ${next.name}?\n\n` +
                     (playedNow ? "This game's stats are downloaded and kept. " : "") +
-                    "The scores start again from zero." +
-                    (clearRoom ? " Everyone is removed from the room; players can rejoin with the same link." : "")
+                    "The scores start again from zero."
             )
         ) {
             return;
@@ -3763,7 +3978,7 @@ function ShootoutReading(props: {
             gamePacket.current = null;
             lastGame.current = undefined;
             if (clearRoom) {
-                await client.massinger({ action: "next_game" });
+                await client.massinger({ action: "next_game", keepPlayers });
                 await startPacket(index + 1, true);
             } else {
                 await startPacket(index + 1, true);
@@ -3850,7 +4065,7 @@ function ShootoutReading(props: {
                     <button
                         className="primary"
                         onClick={() => void goNext()}
-                        disabled={busy !== "" || gameLoaded === undefined}
+                        disabled={busy !== "" || gameLoaded === undefined || askKeep !== null}
                     >
                         {next
                             ? carry
@@ -3905,6 +4120,16 @@ function ShootoutReading(props: {
                         </button>
                     )}
                 </RoomToolbar>
+                {askKeep && (
+                    <NextPacketPanel
+                        played={hasPlayed(lastGame.current?.args[0])}
+                        offerEvening={false}
+                        eveningOn={false}
+                        busy={busy !== ""}
+                        onCancel={() => askKeep(null)}
+                        onGo={(keep) => askKeep(keep)}
+                    />
+                )}
                 {superMismatch && (
                     <div className="mod-warn" role="alert">
                         <strong>This packet marks superpowers.</strong> It has {SUPERPOWER_MARKER} in it, and the

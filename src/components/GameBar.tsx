@@ -120,7 +120,7 @@ export const GameBar = observer(function GameBar(): JSX.Element {
         ? [
               {
                   key: "newGame",
-                  text: "Next game",
+                  text: uiState.hostSettings.nextGameLabel ?? "Next game",
                   iconProps: { iconName: "Add" },
                   onClick: newGameHandler,
               },

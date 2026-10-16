@@ -2529,3 +2529,54 @@ a.kx-crumb:hover {
 .so-fixed dd { margin: 0; }
 .so-fixed .so-notes { white-space: pre-line; }
 .so-packet-name { flex: 1; }
+
+/* Next packet: who stays, and the evening's totals (LiteReading, room shootouts). */
+.mod-nextpacket {
+    max-width: 640px;
+}
+.mod-np-choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 8px 0;
+    cursor: pointer;
+    line-height: 1.4;
+}
+.mod-np-choice input {
+    margin-top: 3px;
+}
+.mod-np-evening {
+    padding-top: 8px;
+    border-top: 1px solid var(--m-line-soft, #edebe9);
+}
+.mod-np-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+.mod-np-actions button {
+    padding: 5px 12px;
+    border: 1px solid var(--m-control-line, #8a8886);
+    border-radius: 4px;
+    background: var(--m-surface, #fff);
+    cursor: pointer;
+}
+
+/* Tonight's totals for the reader. */
+.mod-evening-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6px 0 10px;
+    font-size: 0.9rem;
+}
+.mod-evening-table th,
+.mod-evening-table td {
+    padding: 3px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--m-line-soft, #edebe9);
+}
+.mod-evening-table th:nth-child(n + 3),
+.mod-evening-table td:nth-child(n + 3) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}

@@ -40,6 +40,8 @@ export interface IRoomMember {
     // buzzer is off until a New Game brings it in (Klaxon decides).
     waiting?: boolean;
     nextTeam?: string | null;
+    // A team the player asked to move to from their page, from the next packet.
+    pendingTeam?: string | null;
     isCaptain?: boolean;
 }
 
@@ -61,6 +63,22 @@ export interface IRoomSettings {
     lockedAnswers?: boolean;
     // Questions a free withdrawal costs before the next is free (0 = always free).
     withdrawCooldown?: number;
+    // A practice evening: players see running totals across the room's packets.
+    eveningTotals?: boolean;
+}
+
+// Tonight's totals across the room's packets, per player (server eveningSummary).
+export interface IEveningSummary {
+    games: { n: number; live: boolean; teams: { name: string; score: number }[] }[];
+    players: {
+        name: string;
+        teams: string[];
+        games: number;
+        points: number;
+        powers: number;
+        tens: number;
+        negs: number;
+    }[];
 }
 
 // One subcategory on a MASSINGER pick/ban board. `indexes` are 0-based tossup
@@ -107,6 +125,7 @@ export interface IPublicRoomState {
     // MASSINGER pick/ban board (null outside the pick/ban phase).
     massinger?: IMassingerState | null;
     scoresheet?: unknown;
+    evening?: IEveningSummary | null;
     // The room's buzzer roster: the teams playing here and their players (set
     // from the MODAQ game's teams), which is what buzzers are linked to.
     roster?: { name?: string; teamNames: string[]; teams: { name: string; players: string[] }[] } | null;
