@@ -822,6 +822,41 @@ document.addEventListener("visibilitychange", () => {
     }
 });
 
+// Keep the screen on while reading from a tablet or phone: a long tossup with
+// no taps would otherwise dim and lock it mid-question (and stop read-along's
+// microphone with it). The browser drops the lock whenever the page is hidden,
+// so it's asked for again on the way back, and on a tap for browsers that only
+// grant it then. Unsupported or refused: the screen sleeps as before.
+interface IWakeLockSentinel {
+    release(): Promise<void>;
+    addEventListener(type: "release", listener: () => void): void;
+}
+let screenLock: IWakeLockSentinel | undefined;
+let screenLockPending = false;
+async function keepScreenOn(): Promise<void> {
+    const wakeLock = (navigator as unknown as { wakeLock?: { request(type: "screen"): Promise<IWakeLockSentinel> } })
+        .wakeLock;
+    if (wakeLock == undefined || screenLock != undefined || screenLockPending || document.visibilityState !== "visible") {
+        return;
+    }
+    screenLockPending = true;
+    try {
+        const lock: IWakeLockSentinel = await wakeLock.request("screen");
+        lock.addEventListener("release", () => {
+            if (screenLock === lock) {
+                screenLock = undefined;
+            }
+        });
+        screenLock = lock;
+    } catch {
+        /* not allowed right now; asked again on the next visit or tap */
+    }
+    screenLockPending = false;
+}
+document.addEventListener("visibilitychange", () => void keepScreenOn());
+document.addEventListener("pointerdown", () => void keepScreenOn(), { passive: true });
+void keepScreenOn();
+
 // The Klaxon bar every page carries, so the moderator knows where they are and
 // can get back to the room or start another game.
 function KlaxonHeader(props: { code: string }): JSX.Element {
