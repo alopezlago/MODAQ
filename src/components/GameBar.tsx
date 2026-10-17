@@ -12,7 +12,7 @@ import * as BonusQuestionController from "./BonusQuestionController";
 import * as ReorderTeamsDialogController from "./dialogs/ReorderTeamsDialogController";
 import * as TossupQuestionController from "./TossupQuestionController";
 import { GameState } from "../state/GameState";
-import { UIState } from "../state/UIState";
+import { buzzPointWordOffsets, UIState } from "../state/UIState";
 import { Cycle } from "../state/Cycle";
 import { Bonus, Tossup } from "../state/PacketState";
 import { Player } from "../state/TeamState";
@@ -441,7 +441,7 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             title: "When you press Space, offset the buzz point this many words from where the reader is detected",
             disabled: !appState.uiState.trackReaderWithMicrophone,
             subMenuProps: {
-                items: [-4, -3, -2, -1, 0, 1, 2, 3, 4].map((offset) => ({
+                items: buzzPointWordOffsets.map((offset) => ({
                     key: `buzzPointOffset_${offset}`,
                     text: offset === 0 ? "No offset" : `${offset > 0 ? "+" : ""}${offset} words`,
                     canCheck: true,

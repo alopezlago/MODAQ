@@ -252,6 +252,8 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
         configure({ enforceActions: "observed", computedRequiresReaction: true });
         const trunk = new AsyncTrunk(appState, { storage: localStorage, storageKey: props.storeName, delay: 200 });
         trunk.init(appState).then(() => {
+            appState.uiState.validateBuzzPointWordOffset();
+
             // Need to check if game is old and prompt the user if they want to restart the game.
             // Date subtraction gives you the number of milliseconds
             const lastUpdate: number | undefined = appState.game.lastUpdate?.getTime();

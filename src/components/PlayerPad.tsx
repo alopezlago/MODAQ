@@ -3,6 +3,7 @@ import { observer } from "mobx-react-lite";
 import { Layer, memoizeFunction, mergeStyleSets, Theme, ThemeContext } from "@fluentui/react";
 
 import * as TossupQuestionController from "./TossupQuestionController";
+import { Answer } from "./Answer";
 import { choosePadPosition, IPadPosition, IPadRect } from "./PlayerPadPlacement";
 import { AppState } from "../state/AppState";
 import { ITossupWord, Tossup } from "../state/PacketState";
@@ -13,7 +14,7 @@ import { Player } from "../state/TeamState";
  * buzz point on a word, and floats over the page so the question and bonus text don't move: next to the word when
  * it was clicked (a short mouse move to the buttons), otherwise at the bottom of the window. Each player has a correct (✓) and wrong (✗) button and a protest button; the first eight
  * players also have shortcuts (1-8 for correct, Shift+1-8 for wrong). The arrow keys move the buzz point and
- * Escape closes the pad.
+ * Escape closes the pad. The tossup's answer is repeated at the bottom, so the moderator can judge from the pad.
  */
 export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JSX.Element | null {
     const appState: AppState = props.appState;
@@ -110,6 +111,9 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                        <div className={classes.answer}>
+                            <Answer text={props.tossup.answer} />
                         </div>
                     </div>
                 );
@@ -334,6 +338,7 @@ interface IPlayerPadClassNames {
     protestButton: string;
     protestChecked: string;
     shortcut: string;
+    answer: string;
 }
 
 const getClassNames = memoizeFunction(
@@ -488,6 +493,19 @@ const getClassNames = memoizeFunction(
             },
             protestChecked: {
                 background: quietColor + "30",
+            },
+            // Wraps to the width the seats give the pad (width 0 with a 100% minimum), so a long answer can't
+            // stretch it across the window
+            answer: {
+                width: 0,
+                minWidth: "100%",
+                boxSizing: "border-box",
+                marginTop: "10px",
+                paddingTop: "8px",
+                borderTop: "1px solid " + (theme ? theme.palette.neutralLight : "lightgray"),
+                fontSize: "14px",
+                maxHeight: "6em",
+                overflowY: "auto",
             },
             shortcut: {
                 display: "inline-flex",

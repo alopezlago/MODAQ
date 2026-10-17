@@ -30,6 +30,10 @@ import { IHostSettings } from "./IHostSettings";
 // Alternatively, keep certain component-local states in the component state, and only store values that could be used
 // outside of that component here.
 
+// How many words the buzz point can be offset from the reader's detected position
+export const buzzPointWordOffsets = [-4, -3, -2, -1, 0, 1, 2, 3, 4] as const;
+export type BuzzPointWordOffset = typeof buzzPointWordOffsets[number];
+
 const DefaultFontFamily = "Times New Roman, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, serif";
 
 export class UIState {
@@ -128,8 +132,6 @@ export class UIState {
 
     public buzzMenuState: BuzzMenuState;
 
-
-
     // When true, microphone tracking highlights where the reader is while they read. By default the reader's
     // position is tracked in the background and only shown when the user presses Space (the buzz shortcut).
     public showReaderPositionWhileReading: boolean;
@@ -141,7 +143,7 @@ export class UIState {
 
     // Words to offset the buzz point from the reader's detected position when pressing Space (-4 to +4). Lets
     // the user compensate for recognition lag/lead so the buzz lands on the right word. 0 means no offset.
-    public buzzPointWordOffset: number;
+    public buzzPointWordOffset: BuzzPointWordOffset;
 
     // When true, show diagnostics for the microphone tracking (engine, status, last heard words, and the reader's
     // position).
@@ -164,7 +166,6 @@ export class UIState {
     // The last event that made the buzz point update immediately (buzz sound, "correct"/"incorrect"/etc.)
     @ignore
     public readerFollowerLastCue: string | undefined;
-
 
     // Set while the moderator is placing the buzz point with the keyboard: Space picks a starting word, the arrow
     // keys move it, and Space again opens the buzz menu there
@@ -731,9 +732,15 @@ export class UIState {
         this.instantReaderHighlight = !this.instantReaderHighlight;
     }
 
-    public setBuzzPointWordOffset(offset: number): void {
-        // Clamp to the supported range so a bad stored value can't push the buzz point wildly off
-        this.buzzPointWordOffset = Math.max(-4, Math.min(4, Math.round(offset)));
+    public setBuzzPointWordOffset(offset: BuzzPointWordOffset): void {
+        this.buzzPointWordOffset = offset;
+    }
+
+    // The offset is restored from storage without going through the setter, so reset a value that isn't supported
+    public validateBuzzPointWordOffset(): void {
+        if (!(buzzPointWordOffsets as readonly number[]).includes(this.buzzPointWordOffset)) {
+            this.buzzPointWordOffset = 0;
+        }
     }
 
     public setTrackReaderWithMicrophone(value: boolean): void {
@@ -755,7 +762,6 @@ export class UIState {
     public setReaderFollowerLastCue(cue: string): void {
         this.readerFollowerLastCue = cue;
     }
-
 
     public setReaderFollowerStatus(engine: string, status: string): void {
         this.readerFollowerEngine = engine;
@@ -919,7 +925,6 @@ export class UIState {
     public restartReaderFollower(): void {
         this.readerFollowerRestartCount++;
     }
-
 
     // We have to do this call here because this is where the information is available
     public showFontDialog(): void {
