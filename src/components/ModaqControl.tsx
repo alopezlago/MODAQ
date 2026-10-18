@@ -275,8 +275,8 @@ function initializeControl(appState: AppState, props: IModaqControlProps): () =>
     const keydownListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) => shortcutHandler(event, appState);
     document.addEventListener("keyup", keydownListener);
 
-    // While the buzz point is being placed (after the first Space), arrow keys move it. They're handled on keydown
-    // so holding one repeats, and in the capture phase so focused controls don't scroll or move focus instead.
+    // While the buzz point is being placed (after the first Space), Escape closes the pad and the arrow keys make sure
+    // the question has focus to move it with. Handled in the capture phase, before focused controls see the keys.
     const buzzPointPlacementKeyListener: (event: KeyboardEvent) => void = (event: KeyboardEvent) =>
         buzzPointPlacementShortcutHandler(event, appState);
     document.addEventListener("keydown", buzzPointPlacementKeyListener, /* useCapture */ true);
@@ -361,8 +361,9 @@ function playerShortcutHandler(event: KeyboardEvent, appState: AppState): void {
     TossupQuestionController.recordPlayerPadBuzz(appState, Number(match[1]) - 1, /* isCorrect */ !event.shiftKey);
 }
 
-// While the player pad is open, the arrow keys move the buzz point: Left/Right by a word, Up/Down to the word above
-// or below it on the page. Escape closes the pad.
+// While the player pad is open, Escape closes it. The arrow keys move the buzz point through the question's
+// FocusZone, which has focus on the buzz point's word (see TossupQuestion); if focus has wandered off the question
+// (say, to the pad), an arrow key puts it back on that word first.
 function buzzPointPlacementShortcutHandler(event: KeyboardEvent, appState: AppState): void {
     if (
         appState.uiState.buzzPointPlacement == undefined ||
@@ -375,17 +376,20 @@ function buzzPointPlacementShortcutHandler(event: KeyboardEvent, appState: AppSt
 
     switch (event.key) {
         case "ArrowLeft":
-            TossupQuestionController.moveBuzzPoint(appState, -1);
-            break;
         case "ArrowRight":
-            TossupQuestionController.moveBuzzPoint(appState, 1);
-            break;
         case "ArrowUp":
-            TossupQuestionController.moveBuzzPointVertically(appState, -1);
+        case "ArrowDown": {
+            const focusedElement: Element | null = document.activeElement;
+            if (focusedElement != null && focusedElement.matches(".tossup span[data-index]")) {
+                // The FocusZone moves it
+                return;
+            }
+
+            document
+                .querySelector<HTMLElement>(`.tossup span[data-index="${appState.uiState.selectedWordIndex}"]`)
+                ?.focus();
             break;
-        case "ArrowDown":
-            TossupQuestionController.moveBuzzPointVertically(appState, 1);
-            break;
+        }
         case "Escape":
             TossupQuestionController.cancelBuzzPointPlacement(appState);
             break;

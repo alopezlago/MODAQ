@@ -1003,12 +1003,6 @@ export interface IBuzzPointPlacement {
      * then confirms it instead of opening the buzz menu.
      */
     startedByBuzzSound: boolean;
-
-    /**
-     * Whether the moderator picked the word directly (a click or Enter on it), so the player pad opens next to it.
-     * Otherwise (Space) it floats at the bottom of the window, out of the way of the reading.
-     */
-    anchoredToWord: boolean;
 }
 
 /**

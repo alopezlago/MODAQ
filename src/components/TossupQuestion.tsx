@@ -93,6 +93,58 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
         ))
     );
 
+    // While the buzz point is being placed, keyboard focus sits on its word, so the arrow keys move it through the
+    // question's FocusZone (which knows how the words are laid out, up and down lines included) and the buzz point
+    // follows. When placing ends the word lets go of focus, or its focus box would look like a second buzz point.
+    const uiState: UIState = props.appState.uiState;
+    const placingWordIndex: number = uiState.buzzPointPlacement != undefined ? uiState.selectedWordIndex : -1;
+    const wasPlacingRef: React.MutableRefObject<boolean> = React.useRef(false);
+    React.useEffect(() => {
+        const text: HTMLDivElement | null = tossupTextRef.current;
+        if (text == null) {
+            return;
+        }
+
+        if (placingWordIndex < 0) {
+            const focusedElement: Element | null = document.activeElement;
+            if (wasPlacingRef.current && focusedElement instanceof HTMLElement && text.contains(focusedElement)) {
+                focusedElement.blur();
+            }
+
+            wasPlacingRef.current = false;
+            return;
+        }
+
+        wasPlacingRef.current = true;
+        const word: HTMLElement | null = text.querySelector<HTMLElement>(`span[data-index="${placingWordIndex}"]`);
+        if (word != null && document.activeElement !== word) {
+            word.focus({ preventScroll: true });
+            word.scrollIntoView({ block: "nearest" });
+        }
+    }, [placingWordIndex]);
+
+    // A mouse press also moves focus, but a click on a word is handled as a click (selectWordFromClick), so only
+    // focus moved some other way (the arrow keys) moves the buzz point. The focus from a press happens right after
+    // its mousedown event, so the flag is cleared just after that.
+    const isPointerFocusRef: React.MutableRefObject<boolean> = React.useRef(false);
+    const pointerDownHandler = React.useCallback(() => {
+        isPointerFocusRef.current = true;
+        setTimeout(() => (isPointerFocusRef.current = false), 0);
+    }, []);
+    const activeWordChangedHandler = React.useCallback(
+        (element?: HTMLElement) => {
+            if (isPointerFocusRef.current || element == undefined) {
+                return;
+            }
+
+            const index: number | undefined = TossupQuestionController.wordIndexFromClickTarget(element);
+            if (index != undefined) {
+                TossupQuestionController.moveBuzzPointTo(props.appState, index);
+            }
+        },
+        [props.appState]
+    );
+
     const throwOutClickHandler: () => void = () => {
         TossupQuestionController.throwOutTossup(props.appState, props.cycle, props.tossupNumber);
     };
@@ -106,12 +158,15 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
     return (
         <div className={`${classes.tossupContainer} tossup`}>
             <TossupProtestDialog appState={props.appState} cycle={props.cycle} />
-            <div ref={tossupTextRef}>
+            <div ref={tossupTextRef} onMouseDownCapture={pointerDownHandler}>
+                {/* Space is the buzz shortcut, so it doesn't click the focused word; Enter still does */}
                 <FocusZone
                     as="div"
                     className={classes.tossupQuestionText}
                     shouldRaiseClicks={true}
+                    shouldRaiseClicksOnSpace={false}
                     direction={FocusZoneDirection.bidirectional}
+                    onActiveElementChanged={activeWordChangedHandler}
                     onClick={selectWordFromClickHandler}
                     onDoubleClick={selectWordFromClickHandler}
                 >

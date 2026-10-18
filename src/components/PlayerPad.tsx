@@ -25,8 +25,7 @@ import { Player } from "../state/TeamState";
 
 /**
  * The floating pad for recording a tossup buzz. Players are laid out left to right, the way they sit. It opens on a buzz -- Space, a click on a word, or E -- with the
- * buzz point on a word, and floats over the page so the question and bonus text don't move: next to the word when
- * it was clicked (a short mouse move to the buttons), otherwise at the bottom of the window. Each player has a correct (✓) and wrong (✗) button and a protest button; the first eight
+ * buzz point on a word, and floats over the page next to that word, so the question and bonus text don't move. Each player has a correct (✓) and wrong (✗) button and a protest button; the first eight
  * players also have shortcuts (1-8 for correct, Shift+1-8 for wrong). The arrow keys move the buzz point and
  * Escape closes the pad. The tossup's answer is repeated at the bottom, so the moderator can judge from the pad.
  */
@@ -63,8 +62,6 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
         return null;
     }
 
-    const anchoredToWord: boolean = uiState.buzzPointPlacement.anchoredToWord;
-
     const words: ITossupWord[] = props.tossup.getWords(appState.activeGame.gameFormat).filter((word) => word.canBuzzOn);
     const word: string = words[wordIndex]?.word.map((segment) => segment.text).join("") ?? "";
     const teamNames: string[] = appState.activeGame.teamNames;
@@ -84,7 +81,7 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
                 const classes: IPlayerPadClassNames = getClassNames(theme);
                 const pad: JSX.Element = (
                     <div
-                        className={anchoredToWord ? classes.pad : `${classes.pad} ${classes.floatingPad}`}
+                        className={classes.pad}
                         role="dialog"
                         aria-label="Record buzz"
                     >
@@ -141,14 +138,12 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
                 );
 
                 // Next to the word, following it as the arrow keys move the buzz point (see PlayerPadPlacement). It
-                // shows the answer itself, so it may cover the one on the page. The pad closes itself (a recorded buzz, Escape, the close button, a click
-                // outside it, another question).
-                return anchoredToWord ? (
+                // shows the answer itself, so it may cover the one on the page. The pad closes itself (a recorded
+                // buzz, Escape, the close button, a click outside it, another question).
+                return (
                     <AnchoredPad wordIndex={wordIndex} className={classes.anchoredPad}>
                         {pad}
                     </AnchoredPad>
-                ) : (
-                    <Layer>{pad}</Layer>
                 );
             }}
         </ThemeContext.Consumer>
@@ -346,7 +341,6 @@ interface IPlayerPadSeatProps {
 
 interface IPlayerPadClassNames {
     pad: string;
-    floatingPad: string;
     anchoredPad: string;
     header: string;
     quiet: string;
@@ -426,23 +420,7 @@ const getClassNames = memoizeFunction(
                 maxWidth: "calc(100vw - 32px)",
                 padding: "10px 14px 12px",
             },
-            // Floats at the bottom of the window, over the page, so the question and bonus don't reflow
-            // (left: 50% alone would size the pad to the right half of the window, wrapping it, so it sizes itself to
-            // its content instead)
-            floatingPad: {
-                position: "fixed",
-                left: "50%",
-                bottom: "16px",
-                transform: "translateX(-50%)",
-                width: "max-content",
-                maxWidth: "calc(100vw - 32px)",
-                borderRadius: "8px",
-                background: theme ? theme.palette.white : "white",
-                border: "1px solid " + ruleColor,
-                boxShadow: theme ? theme.effects.elevation16 : "0 6px 16px rgba(0, 0, 0, 0.2)",
-                zIndex: 1000,
-            },
-            // Opened on a word: placed in window coordinates by AnchoredPad, looking like the callout it replaced
+            // Placed next to the buzz word in window coordinates by AnchoredPad, looking like the callout it replaced
             anchoredPad: {
                 position: "fixed",
                 width: "max-content",

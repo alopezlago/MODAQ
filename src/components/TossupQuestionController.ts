@@ -81,14 +81,11 @@ export function selectWordFromClick(appState: AppState, event: React.MouseEvent<
     if (uiState.buzzPointPlacement != undefined && uiState.selectedWordIndex === index) {
         cancelBuzzPointPlacement(appState);
     } else {
-        placeBuzzPointAt(appState, index, /* anchorToWord */ true);
+        placeBuzzPointAt(appState, index);
     }
 
-    // The click also focused the word, and a focused word gets a focus box once the keyboard is used -- which
-    // looks like a second buzz point, and stays at that position when the next question shows. The buzz point and
-    // the shortcuts don't need focus on the word, so let it go.
-    (event.target as Element).closest<HTMLElement>('[data-is-focusable="true"]')?.blur();
-
+    // The click also focused the word. That's kept while the pad is open (the arrow keys move the focus, and the
+    // buzz point with it); TossupQuestion lets go of it when the pad closes.
     event.preventDefault();
     event.stopPropagation();
 }
@@ -106,7 +103,7 @@ export function selectWordFromKeyboardEvent(appState: AppState, event: React.Key
             if (appState.uiState.useBuzzMenu) {
                 appState.uiState.showBuzzMenu(/* clearSelectedWordOnClose */ false);
             } else {
-                placeBuzzPointAt(appState, appState.uiState.selectedWordIndex, /* anchorToWord */ true);
+                placeBuzzPointAt(appState, appState.uiState.selectedWordIndex);
             }
 
             break;
@@ -294,16 +291,14 @@ function startBuzzPointPlacement(appState: AppState, currentTime: number, starte
         wordOffset: uiState.buzzPointWordOffset,
         movedManually: false,
         startedByBuzzSound,
-        anchoredToWord: false,
     });
 }
 
 /**
  * Places the buzz point on the given word and opens the player pad, as a click on the word does. The reader's
- * position won't move it, since the moderator chose it. `anchorToWord` opens the pad next to the word (for a
- * click) instead of at the bottom of the window.
+ * position won't move it, since the moderator chose it.
  */
-export function placeBuzzPointAt(appState: AppState, wordIndex: number, anchorToWord: boolean, now?: number): void {
+export function placeBuzzPointAt(appState: AppState, wordIndex: number, now?: number): void {
     const uiState: UIState = appState.uiState;
     const lastBuzzableIndex: number = getLastBuzzableIndex(appState);
     if (lastBuzzableIndex < 0 || wordIndex < 0) {
@@ -319,7 +314,6 @@ export function placeBuzzPointAt(appState: AppState, wordIndex: number, anchorTo
         wordOffset: uiState.buzzPointWordOffset,
         movedManually: true,
         startedByBuzzSound: false,
-        anchoredToWord: anchorToWord,
     });
 }
 
@@ -338,7 +332,7 @@ export function placeBuzzPointAtEnd(appState: AppState): void {
         return;
     }
 
-    placeBuzzPointAt(appState, lastBuzzableIndex, /* anchorToWord */ false);
+    placeBuzzPointAt(appState, lastBuzzableIndex);
 }
 
 /**
@@ -350,109 +344,21 @@ export function cancelBuzzPointPlacement(appState: AppState): void {
 }
 
 /**
- * Moves the buzz point to the word on the line above (direction -1) or below (direction 1), as the question is
- * laid out on the page: the word on that line closest horizontally to the current word.
+ * Moves the buzz point to the given word while it's being placed. The arrow keys do this: they move keyboard focus
+ * through the question's words (its FocusZone), and the buzz point follows the focus.
  */
-export function moveBuzzPointVertically(appState: AppState, direction: -1 | 1): void {
+export function moveBuzzPointTo(appState: AppState, wordIndex: number): void {
     const uiState: UIState = appState.uiState;
-    if (typeof document === "undefined" || uiState.selectedWordIndex < 0) {
+    if (
+        uiState.buzzPointPlacement == undefined ||
+        wordIndex < 0 ||
+        wordIndex > getLastBuzzableIndex(appState) ||
+        wordIndex === uiState.selectedWordIndex
+    ) {
         return;
     }
 
-    const elements: NodeListOf<HTMLElement> = document.querySelectorAll<HTMLElement>(".tossup span[data-index]");
-    const boxes: IWordBox[] = [];
-    elements.forEach((element) => {
-        const index: number = parseInt(element.getAttribute("data-index") ?? "", 10);
-        if (!isNaN(index)) {
-            const rect: DOMRect = element.getBoundingClientRect();
-            boxes.push({ index, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom });
-        }
-    });
-
-    const target: number | undefined = findWordOnAdjacentLine(boxes, uiState.selectedWordIndex, direction);
-    if (target != undefined) {
-        uiState.setSelectedWordIndex(target);
-        uiState.markBuzzPointPlacementMoved();
-        document
-            .querySelector<HTMLElement>(`.tossup span[data-index="${target}"]`)
-            ?.scrollIntoView({ block: "nearest" });
-    }
-}
-
-/** Where a word is drawn on the page */
-export interface IWordBox {
-    index: number;
-    left: number;
-    right: number;
-    top: number;
-    bottom: number;
-}
-
-/**
- * Finds the word on the line above (direction -1) or below (direction 1) the word with the given index that's
- * horizontally closest to it, or undefined if there's no such line.
- */
-export function findWordOnAdjacentLine(boxes: IWordBox[], currentIndex: number, direction: -1 | 1): number | undefined {
-    const current: IWordBox | undefined = boxes.find((box) => box.index === currentIndex);
-    if (current == undefined) {
-        return undefined;
-    }
-
-    const middle = (box: IWordBox): number => (box.top + box.bottom) / 2;
-    const center = (box: IWordBox): number => (box.left + box.right) / 2;
-    const halfHeight: number = (current.bottom - current.top) / 2;
-
-    // Words on other lines in the requested direction
-    const candidates: IWordBox[] = boxes.filter((box) =>
-        direction < 0 ? middle(box) < middle(current) - halfHeight : middle(box) > middle(current) + halfHeight
-    );
-    if (candidates.length === 0) {
-        return undefined;
-    }
-
-    // The nearest of those lines, then the word on it closest to the current word horizontally
-    const lineMiddle: number =
-        direction < 0
-            ? Math.max(...candidates.map((box) => middle(box)))
-            : Math.min(...candidates.map((box) => middle(box)));
-    let best: IWordBox | undefined = undefined;
-    for (const box of candidates) {
-        if (Math.abs(middle(box) - lineMiddle) > halfHeight) {
-            continue;
-        }
-
-        if (best == undefined || Math.abs(center(box) - center(current)) < Math.abs(center(best) - center(current))) {
-            best = box;
-        }
-    }
-
-    return best?.index;
-}
-
-/**
- * Moves the buzz point by `delta` buzzable words, clamped to the tossup (the Left/Right arrow keys while the
- * player pad is open).
- */
-export function moveBuzzPoint(appState: AppState, delta: number): void {
-    const uiState: UIState = appState.uiState;
-    const tossup: Tossup | undefined = appState.activeGame.getTossup(uiState.cycleIndex);
-    if (tossup == undefined) {
-        return;
-    }
-
-    const lastBuzzableIndex: number =
-        tossup.getWords(appState.activeGame.gameFormat).filter((word) => word.canBuzzOn).length - 1;
-    if (lastBuzzableIndex < 0) {
-        return;
-    }
-
-    // If nothing is selected yet, start from the end of the tossup (the buzz menu's own fallback)
-    const current: number = uiState.selectedWordIndex >= 0 ? uiState.selectedWordIndex : lastBuzzableIndex;
-    const next: number = Math.min(lastBuzzableIndex, Math.max(0, current + delta));
-    if (next !== uiState.selectedWordIndex) {
-        uiState.setSelectedWordIndex(next);
-    }
-
+    uiState.setSelectedWordIndex(wordIndex);
     uiState.markBuzzPointPlacementMoved();
 }
 

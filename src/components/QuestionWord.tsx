@@ -24,7 +24,8 @@ export const QuestionWord = observer(function QuestionWord(props: IQuestionWordP
                         data-index={props.index}
                         // A pronunciation guide: a click on it means the word it is for (see wordIndexFromClickTarget)
                         data-pronunciation={props.word[0]?.pronunciation === true ? "true" : undefined}
-                        data-is-focusable="true"
+                        // Only words that can be buzzed on take focus, so the arrow keys skip the rest
+                        data-is-focusable={props.index != undefined ? "true" : undefined}
                         className={props.index != undefined ? `${classes.word} word-${props.index}` : classes.word}
                     >
                         <FormattedText segments={props.word} />
