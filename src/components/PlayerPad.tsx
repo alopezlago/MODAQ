@@ -1,6 +1,20 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { Layer, memoizeFunction, mergeStyleSets, Theme, ThemeContext } from "@fluentui/react";
+import {
+    DefaultButton,
+    IButtonStyles,
+    IconButton,
+    IIconProps,
+    IStackTokens,
+    Layer,
+    memoizeFunction,
+    mergeStyleSets,
+    Stack,
+    StackItem,
+    Text,
+    Theme,
+    ThemeContext,
+} from "@fluentui/react";
 
 import * as TossupQuestionController from "./TossupQuestionController";
 import { Answer } from "./Answer";
@@ -35,10 +49,7 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
 
         const onPointerDown = (event: MouseEvent): void => {
             const target: Element | null = event.target instanceof Element ? event.target : null;
-            if (
-                target == null ||
-                target.closest(".ms-Layer, [role='dialog'], .tossup span[data-index]") != null
-            ) {
+            if (target == null || target.closest(".ms-Layer, [role='dialog'], .tossup span[data-index]") != null) {
                 return;
             }
 
@@ -77,26 +88,36 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
                         role="dialog"
                         aria-label="Record buzz"
                     >
-                        <div className={classes.header}>
-                            <span className={classes.title}>
-                                Buzz on <strong>{word}</strong>
-                            </span>
-                            <span className={classes.hint}>← → ↑ ↓ move · Esc closes</span>
-                            <button
-                                className={classes.closeButton}
+                        <Stack
+                            horizontal={true}
+                            verticalAlign="center"
+                            tokens={headerTokens}
+                            className={classes.header}
+                        >
+                            <StackItem grow={true}>
+                                <Text>
+                                    Buzz on <strong>{word}</strong>
+                                </Text>
+                            </StackItem>
+                            <Text variant="small" className={classes.quiet}>
+                                ← → ↑ ↓ move · Esc closes
+                            </Text>
+                            <IconButton
+                                iconProps={closeIconProps}
+                                styles={getCloseButtonStyles(theme)}
                                 title="Close (Esc)"
-                                aria-label="Close"
+                                ariaLabel="Close"
                                 onMouseDown={preventFocus}
                                 onClick={() => TossupQuestionController.cancelBuzzPointPlacement(appState)}
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        <div className={classes.teams}>
+                            />
+                        </Stack>
+                        {/* Team 1 on the left, Team 2 on the right, always on one line (eight players fit in about
+                            700px); on a narrower window the seats shrink rather than wrap */}
+                        <Stack horizontal={true}>
                             {teamNames.map((teamName) => (
-                                <div key={teamName} className={classes.team}>
-                                    <div className={classes.teamName}>{teamName}</div>
-                                    <div className={classes.seats}>
+                                <Stack key={teamName} tokens={seatGapTokens} className={classes.team}>
+                                    <Text className={classes.teamName}>{teamName}</Text>
+                                    <Stack horizontal={true} tokens={seatGapTokens} className={classes.seats}>
                                         {rows
                                             .filter((row) => row.player.teamName === teamName)
                                             .map((row) => (
@@ -104,22 +125,23 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
                                                     key={`${teamName}_${row.index}`}
                                                     appState={appState}
                                                     classes={classes}
+                                                    theme={theme}
                                                     row={row}
                                                     isTeamOut={teamsWithWrongBuzz.has(teamName)}
                                                 />
                                             ))}
-                                    </div>
-                                </div>
+                                    </Stack>
+                                </Stack>
                             ))}
-                        </div>
+                        </Stack>
                         <div className={classes.answer}>
                             <Answer text={props.tossup.answer} />
                         </div>
                     </div>
                 );
 
-                // Next to the word, following it as the arrow keys move the buzz point, but never over the answer
-                // (see PlayerPadPlacement). The pad closes itself (a recorded buzz, Escape, the close button, a click
+                // Next to the word, following it as the arrow keys move the buzz point (see PlayerPadPlacement). It
+                // shows the answer itself, so it may cover the one on the page. The pad closes itself (a recorded buzz, Escape, the close button, a click
                 // outside it, another question).
                 return anchoredToWord ? (
                     <AnchoredPad wordIndex={wordIndex} className={classes.anchoredPad}>
@@ -135,7 +157,7 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
 
 // The pad opened on a word, placed by choosePadPosition and re-placed whenever the word, the page's scroll, the
 // window or the pad's own size changes. It stays hidden until it has been measured once, so it never flashes over
-// the answer on its way to its spot.
+// the page on its way to its spot.
 function AnchoredPad(props: { wordIndex: number; className: string; children: React.ReactNode }): JSX.Element {
     // The element as state, not a ref: Fluent's Layer mounts its contents a moment after the first render, so a ref
     // was still empty when the first placement ran, nothing rendered again, and the pad stayed hidden for good.
@@ -150,10 +172,8 @@ function AnchoredPad(props: { wordIndex: number; className: string; children: Re
             return;
         }
 
-        const answer: Element | null = document.querySelector(".tossup [data-tossup-answer]");
         const next: IPadPosition = choosePadPosition({
             word: toRect(word.getBoundingClientRect()),
-            answer: answer != null ? toRect(answer.getBoundingClientRect()) : undefined,
             pad: { width: element.offsetWidth, height: element.offsetHeight },
             viewport: { width: window.innerWidth, height: window.innerHeight },
         });
@@ -211,9 +231,14 @@ function toRect(rect: DOMRect): IPadRect {
 
 // Don't let the pad's buttons take focus on click: a focused button would also be pressed by Space, the buzz
 // shortcut, and focus would leave the question
-function preventFocus(event: React.MouseEvent<HTMLButtonElement>): void {
+function preventFocus(event: React.MouseEvent<unknown>): void {
     event.preventDefault();
 }
+
+const closeIconProps: IIconProps = { iconName: "Cancel" };
+const headerTokens: IStackTokens = { childrenGap: 12 };
+const seatGapTokens: IStackTokens = { childrenGap: 6 };
+const seatTokens: IStackTokens = { childrenGap: 5 };
 
 // The Shift key symbol, drawn rather than typed: the ⇧ character sits off-center from the digit in most fonts
 function ShiftIcon(): JSX.Element {
@@ -233,49 +258,56 @@ function ShiftIcon(): JSX.Element {
 // One player's column: their name over their correct, wrong, and protest buttons. Players are laid out left to right
 // in the order they were entered in the New Game dialog, which is meant to mirror how they sit.
 function PlayerPadSeat(props: IPlayerPadSeatProps): JSX.Element {
-    const { appState, classes, row } = props;
+    const { appState, classes, row, theme } = props;
     const shortcut: string | undefined =
         row.index < TossupQuestionController.maximumPlayerPadShortcuts ? String(row.index + 1) : undefined;
     const hasBuzz: boolean = row.buzzPosition >= 0;
 
     return (
-        <div className={props.isTeamOut && !hasBuzz ? `${classes.seat} ${classes.seatOut}` : classes.seat}>
-            <span className={classes.playerName} title={row.player.name}>
+        <Stack
+            tokens={seatTokens}
+            className={props.isTeamOut && !hasBuzz ? `${classes.seat} ${classes.seatOut}` : classes.seat}
+        >
+            <Text block={true} nowrap={true} className={classes.playerName} title={row.player.name}>
                 {row.player.name}
-            </span>
-            <button
-                className={`${classes.button} ${classes.correctButton} ${row.isCorrect ? classes.correctChecked : ""}`}
+            </Text>
+            <DefaultButton
+                text="✓"
+                toggle={true}
+                checked={row.isCorrect}
+                styles={getSeatButtonStyles(theme, "correct")}
                 title={`${row.isCorrect ? "Remove correct buzz" : "Correct"}${
                     shortcut != undefined ? ` (${shortcut})` : ""
                 }`}
-                aria-pressed={row.isCorrect}
                 onMouseDown={preventFocus}
                 onClick={() => TossupQuestionController.recordPlayerPadBuzz(appState, row.index, /* isCorrect */ true)}
             >
-                <span>✓</span>
                 {shortcut != undefined ? <span className={classes.shortcut}>{shortcut}</span> : undefined}
-            </button>
-            <button
-                className={`${classes.button} ${classes.wrongButton} ${row.isWrong ? classes.wrongChecked : ""}`}
+            </DefaultButton>
+            <DefaultButton
+                text="✗"
+                toggle={true}
+                checked={row.isWrong}
+                styles={getSeatButtonStyles(theme, "wrong")}
                 title={`${row.isWrong ? "Remove wrong buzz" : "Wrong"}${
                     shortcut != undefined ? ` (Shift+${shortcut})` : ""
                 }`}
-                aria-pressed={row.isWrong}
                 onMouseDown={preventFocus}
                 onClick={() => TossupQuestionController.recordPlayerPadBuzz(appState, row.index, /* isCorrect */ false)}
             >
-                <span>✗</span>
                 {shortcut != undefined ? (
                     <span className={classes.shortcut}>
                         <ShiftIcon />
                         {shortcut}
                     </span>
                 ) : undefined}
-            </button>
-            <button
-                className={`${classes.button} ${classes.protestButton} ${
-                    hasBuzz && row.hasProtest ? classes.protestChecked : ""
-                }`}
+            </DefaultButton>
+            <DefaultButton
+                text="Protest"
+                toggle={true}
+                checked={hasBuzz && row.hasProtest}
+                disabled={!hasBuzz}
+                styles={getSeatButtonStyles(theme, "protest")}
                 title={
                     hasBuzz
                         ? row.hasProtest
@@ -283,14 +315,10 @@ function PlayerPadSeat(props: IPlayerPadSeatProps): JSX.Element {
                             : "Protest this buzz"
                         : "Only a player who buzzed can protest"
                 }
-                aria-pressed={hasBuzz && row.hasProtest}
-                disabled={!hasBuzz}
                 onMouseDown={preventFocus}
                 onClick={() => TossupQuestionController.togglePlayerPadProtest(appState, row.index)}
-            >
-                Protest
-            </button>
-        </div>
+            />
+        </Stack>
     );
 }
 
@@ -309,6 +337,7 @@ interface IPlayerPadRow extends TossupQuestionController.IPlayerBuzzState {
 interface IPlayerPadSeatProps {
     appState: AppState;
     classes: IPlayerPadClassNames;
+    theme: Theme | undefined;
     row: IPlayerPadRow;
 
     /** The player's team already buzzed wrong on this tossup */
@@ -320,32 +349,77 @@ interface IPlayerPadClassNames {
     floatingPad: string;
     anchoredPad: string;
     header: string;
-    title: string;
-    hint: string;
-    closeButton: string;
-    teams: string;
+    quiet: string;
     team: string;
     teamName: string;
     seats: string;
     seat: string;
     seatOut: string;
     playerName: string;
-    button: string;
-    correctButton: string;
-    correctChecked: string;
-    wrongButton: string;
-    wrongChecked: string;
-    protestButton: string;
-    protestChecked: string;
     shortcut: string;
     answer: string;
 }
 
+type SeatButtonKind = "correct" | "wrong" | "protest";
+
+// The seat buttons are outlined in their color (green for correct, red for wrong, gray for protest) and tinted with
+// it when hovered or checked
+const getSeatButtonStyles = memoizeFunction(
+    (theme: Theme | undefined, kind: SeatButtonKind): IButtonStyles => {
+        const color: string =
+            kind === "correct"
+                ? theme
+                    ? theme.palette.green
+                    : "rgb(16, 124, 16)"
+                : kind === "wrong"
+                ? theme
+                    ? theme.palette.red
+                    : "rgb(232, 17, 35)"
+                : theme
+                ? theme.palette.neutralSecondary
+                : "gray";
+        const textColor: string = kind === "protest" ? (theme ? theme.palette.neutralPrimary : "black") : color;
+        const isProtest: boolean = kind === "protest";
+        const tinted = (alpha: string) => ({ background: color + alpha, color: textColor, borderColor: color });
+
+        return {
+            root: {
+                minWidth: 0,
+                width: "100%",
+                height: isProtest ? 22 : 26,
+                minHeight: 0,
+                padding: "0 6px",
+                borderRadius: 6,
+                borderColor: color,
+                color: textColor,
+                background: "transparent",
+                fontSize: isProtest ? 11 : 13,
+            },
+            rootHovered: tinted("20"),
+            rootPressed: tinted("30"),
+            rootChecked: tinted("30"),
+            rootCheckedHovered: tinted("40"),
+            rootCheckedPressed: tinted("40"),
+            rootDisabled: { background: "transparent", borderColor: color, color: textColor, opacity: 0.4 },
+            // The symbol at the left edge, the shortcut at the right
+            flexContainer: { width: "100%", justifyContent: isProtest ? "center" : "space-between", gap: 4 },
+            textContainer: { flexGrow: 0 },
+            label: { margin: 0, fontWeight: 400 },
+        };
+    }
+);
+
+const getCloseButtonStyles = memoizeFunction(
+    (theme: Theme | undefined): IButtonStyles => ({
+        root: { width: 24, height: 24, color: theme ? theme.palette.neutralSecondary : "gray" },
+        icon: { fontSize: 12 },
+    })
+);
+
 const getClassNames = memoizeFunction(
     (theme: Theme | undefined): IPlayerPadClassNames => {
-        const correctColor: string = theme ? theme.palette.green : "rgb(16, 124, 16)";
-        const wrongColor: string = theme ? theme.palette.red : "rgb(232, 17, 35)";
         const quietColor: string = theme ? theme.palette.neutralSecondary : "gray";
+        const ruleColor: string = theme ? theme.palette.neutralLight : "lightgray";
         return mergeStyleSets({
             pad: {
                 boxSizing: "border-box",
@@ -364,7 +438,7 @@ const getClassNames = memoizeFunction(
                 maxWidth: "calc(100vw - 32px)",
                 borderRadius: "8px",
                 background: theme ? theme.palette.white : "white",
-                border: "1px solid " + (theme ? theme.palette.neutralLight : "lightgray"),
+                border: "1px solid " + ruleColor,
                 boxShadow: theme ? theme.effects.elevation16 : "0 6px 16px rgba(0, 0, 0, 0.2)",
                 zIndex: 1000,
             },
@@ -379,43 +453,19 @@ const getClassNames = memoizeFunction(
                 zIndex: 1000,
             },
             header: {
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
                 marginBottom: "8px",
             },
-            title: {
-                flexGrow: 1,
-            },
-            hint: {
-                fontSize: "12px",
+            quiet: {
                 color: quietColor,
             },
-            closeButton: {
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
-                color: quietColor,
-                fontSize: "14px",
-            },
-            // Team 1 on the left, Team 2 on the right, with a rule between them, always on one line (eight players
-            // fit in about 700px); on a narrower window the seats shrink rather than wrap
-            teams: {
-                display: "flex",
-                flexWrap: "nowrap",
-            },
+            // A rule between the teams
             team: {
-                display: "flex",
-                flexDirection: "column",
                 flex: "0 1 auto",
                 minWidth: 0,
-                gap: "6px",
                 padding: "0 12px",
                 selectors: {
                     ":first-child": { paddingLeft: 0 },
-                    ":not(:first-child)": {
-                        borderLeft: "1px solid " + (theme ? theme.palette.neutralLight : "lightgray"),
-                    },
+                    ":not(:first-child)": { borderLeft: "1px solid " + ruleColor },
                 },
             },
             teamName: {
@@ -423,22 +473,15 @@ const getClassNames = memoizeFunction(
                 color: theme ? theme.palette.themePrimary : "rgb(0, 120, 212)",
             },
             seats: {
-                display: "flex",
-                flexWrap: "nowrap",
-                gap: "6px",
                 minWidth: 0,
             },
             seat: {
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "stretch",
-                gap: "5px",
                 flex: "0 1 76px",
                 minWidth: "56px",
                 boxSizing: "border-box",
                 padding: "6px",
                 borderRadius: "8px",
-                border: "1px solid " + (theme ? theme.palette.neutralLight : "lightgray"),
+                border: "1px solid " + ruleColor,
             },
             seatOut: {
                 opacity: 0.45,
@@ -447,52 +490,6 @@ const getClassNames = memoizeFunction(
                 fontSize: "13px",
                 fontWeight: 600,
                 textAlign: "center",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-            },
-            button: {
-                width: "100%",
-                height: "26px",
-                padding: "0 6px",
-                borderRadius: "6px",
-                borderWidth: "1px",
-                borderStyle: "solid",
-                background: "transparent",
-                cursor: "pointer",
-                fontSize: "13px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "4px",
-                selectors: { ":disabled": { cursor: "default", opacity: 0.4 } },
-            },
-            correctButton: {
-                borderColor: correctColor,
-                color: correctColor,
-                selectors: { ":hover:enabled": { background: correctColor + "20" } },
-            },
-            correctChecked: {
-                background: correctColor + "30",
-            },
-            wrongButton: {
-                borderColor: wrongColor,
-                color: wrongColor,
-                selectors: { ":hover:enabled": { background: wrongColor + "20" } },
-            },
-            wrongChecked: {
-                background: wrongColor + "30",
-            },
-            protestButton: {
-                justifyContent: "center",
-                height: "22px",
-                fontSize: "11px",
-                borderColor: quietColor,
-                color: theme ? theme.palette.neutralPrimary : "black",
-                selectors: { ":hover:enabled": { background: quietColor + "20" } },
-            },
-            protestChecked: {
-                background: quietColor + "30",
             },
             // Wraps to the width the seats give the pad (width 0 with a 100% minimum), so a long answer can't
             // stretch it across the window
@@ -502,7 +499,7 @@ const getClassNames = memoizeFunction(
                 boxSizing: "border-box",
                 marginTop: "10px",
                 paddingTop: "8px",
-                borderTop: "1px solid " + (theme ? theme.palette.neutralLight : "lightgray"),
+                borderTop: "1px solid " + ruleColor,
                 fontSize: "14px",
                 maxHeight: "6em",
                 overflowY: "auto",
