@@ -423,6 +423,163 @@ body {
     font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
+/* The pick clock: readable from across the room. */
+.ms-bigclock {
+    text-align: center;
+    margin: 4px 0 12px;
+}
+.ms-bigclock-num {
+    font-size: clamp(3.5rem, 12vw, 6.5rem);
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.ms-bigclock-bar {
+    height: 14px;
+    border: 1px solid var(--m-line, #e1dfdd);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+.ms-bigclock-bar span {
+    display: block;
+    height: 100%;
+    background: var(--m-ok-fill, #0b6a0b);
+    transition: width 0.25s linear;
+}
+.ms-bigclock.warn .ms-bigclock-num {
+    color: #c75b00;
+}
+.ms-bigclock.warn .ms-bigclock-bar span {
+    background: #c75b00;
+}
+.ms-bigclock.urgent .ms-bigclock-num,
+.ms-bigclock.expired .ms-bigclock-num {
+    color: var(--m-bad, #a4262c);
+}
+.ms-bigclock.urgent .ms-bigclock-num {
+    animation: ms-pulse 0.5s ease-in-out infinite alternate;
+}
+.ms-bigclock.urgent .ms-bigclock-bar span {
+    background: var(--m-bad-line, #d13438);
+}
+.ms-bigclock.expired .ms-bigclock-num {
+    font-size: clamp(2.4rem, 8vw, 4rem);
+    animation: ms-blink 1s steps(2) infinite;
+}
+@keyframes ms-pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.12); }
+}
+.ms-coinflip {
+    font-weight: 700;
+}
+.ms-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    margin-bottom: 10px;
+    font-size: 0.88rem;
+}
+.ms-count {
+    border: 1px solid var(--m-line, #e1dfdd);
+    border-radius: 6px;
+    padding: 2px 8px;
+    color: var(--m-muted, #666);
+}
+.ms-count.on {
+    border-color: var(--m-ok-line, #0b6a0b);
+    color: inherit;
+}
+.ms-next {
+    color: var(--m-muted, #666);
+    align-self: center;
+}
+
+/* A pick lands: a card over everything, and the row it hit. */
+.ms-flash {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    padding: 16px;
+}
+.ms-flash-card {
+    text-align: center;
+    padding: 22px 34px;
+    border-radius: 14px;
+    border: 3px solid currentColor;
+    background: var(--m-surface, #fff);
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+    max-width: min(560px, 100%);
+    animation: ms-flash-in 2.4s cubic-bezier(0.2, 1.4, 0.4, 1) forwards;
+}
+.ms-flash-card.ban {
+    color: var(--m-bad, #a4262c);
+}
+.ms-flash-card.protect {
+    color: var(--m-ok, #0b6a0b);
+}
+.ms-flash-icon {
+    font-size: 3.4rem;
+    line-height: 1;
+}
+.ms-flash-card.ban .ms-flash-icon {
+    animation: ms-shake 0.45s 0.15s ease-in-out 2;
+}
+.ms-flash-verb {
+    font-size: clamp(1.8rem, 6vw, 3rem);
+    font-weight: 900;
+    letter-spacing: 0.08em;
+}
+.ms-flash-label {
+    font-size: clamp(1.2rem, 4vw, 1.8rem);
+    font-weight: 700;
+    color: var(--m-text, #222);
+    overflow-wrap: anywhere;
+}
+.ms-flash-by {
+    font-size: 0.95rem;
+    color: var(--m-muted, #666);
+    margin-top: 4px;
+}
+@keyframes ms-flash-in {
+    0% { opacity: 0; transform: scale(0.4) rotate(-4deg); }
+    14% { opacity: 1; transform: scale(1.08) rotate(1deg); }
+    22% { transform: scale(1) rotate(0); }
+    80% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.96); }
+}
+@keyframes ms-shake {
+    25% { transform: translateX(-8px) rotate(-6deg); }
+    75% { transform: translateX(8px) rotate(6deg); }
+}
+.ms-list li.just-banned {
+    animation: ms-row-ban 1.6s ease-out;
+}
+.ms-list li.just-protected {
+    animation: ms-row-protect 1.6s ease-out;
+}
+@keyframes ms-row-ban {
+    0%, 30% { background: var(--m-bad-line, #d13438); color: #fff; }
+    10%, 20% { transform: translateX(-4px); }
+    15%, 25% { transform: translateX(4px); }
+}
+@keyframes ms-row-protect {
+    0%, 30% { background: var(--m-ok-fill, #0b6a0b); color: #fff; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ms-flash-card,
+    .ms-flash-icon,
+    .ms-list li.just-banned,
+    .ms-list li.just-protected,
+    .ms-bigclock-num {
+        animation: none !important;
+    }
+}
+
 .ms-turnrow {
     display: flex;
     align-items: center;

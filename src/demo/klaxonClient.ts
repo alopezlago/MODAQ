@@ -103,6 +103,12 @@ export interface IMassingerState {
     // Who may make a pick: the moderator alone, each team's captain, or anyone
     // the room knows to be on the team.
     control: MassingerControl;
+    // Most bans / protects each team may make (absent on older boards: no limit).
+    limits?: { ban?: number; protect?: number };
+    // The fixed pick order (team index, kind); the pick due is schedule[actions.length].
+    schedule?: { team: number; type: "ban" | "protect" }[];
+    // The server flipped a coin for who picks first (teams[0] won it).
+    coinFlip?: boolean;
     turnStartedAt?: number;
     deadline: number | null; // server ms; null = no timer / done
     subcats: IMassingerSubcat[];

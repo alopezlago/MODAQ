@@ -398,27 +398,29 @@ function getRoundScorecardMenuItems(appState: AppState): ICommandBarItemProps[] 
 function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
 
-    // Changing the game format isn't applicable in TMS-managed mode, where the format is set in TMS. Font moves
-    // to the View menu in that case, so Options would otherwise be left with a single, oddly-scoped item.
-    if (appState.uiState.hostSettings.disableChangeFormat) {
-        return items;
+    // Changing the game format isn't applicable when the host sets the format (TMS, a Klaxon tournament). Font
+    // and the round scorecard move to the View menu then; the microphone settings stay here.
+    const formatLocked = appState.uiState.hostSettings.disableChangeFormat === true;
+    if (!formatLocked) {
+        items.push(
+            {
+                key: "changeFormat",
+                text: "Change Format...",
+                onClick: () => {
+                    appState.uiState.dialogState.showCustomizeGameFormatDialog(appState.game.gameFormat);
+                },
+            },
+            {
+                key: "font",
+                text: "Font...",
+                onClick: () => {
+                    appState.uiState.showFontDialog();
+                },
+            }
+        );
     }
 
     items.push(
-        {
-            key: "changeFormat",
-            text: "Change Format...",
-            onClick: () => {
-                appState.uiState.dialogState.showCustomizeGameFormatDialog(appState.game.gameFormat);
-            },
-        },
-        {
-            key: "font",
-            text: "Font...",
-            onClick: () => {
-                appState.uiState.showFontDialog();
-            },
-        },
         {
             key: "trackReader",
             text: "Follow reading with microphone",
@@ -509,7 +511,9 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
         }
     );
 
-    items.push(...getRoundScorecardMenuItems(appState));
+    if (!formatLocked) {
+        items.push(...getRoundScorecardMenuItems(appState));
+    }
 
     return items;
 }

@@ -185,6 +185,77 @@ function applyMassinger(packet: IPacket, board: IMassingerState): IPacket {
 const massingerRemaining = (board: IMassingerState): number =>
     board.subcats.reduce((sum, subcat) => sum + (subcat.indexes.length - subcat.banned), 0);
 
+// Picks of one kind a team has left (Infinity on a board saved before the
+// server capped them; the server is what enforces it).
+function massingerLeft(board: IMassingerState, team: number, type: "ban" | "protect"): number {
+    const limit = board.limits?.[type];
+    if (limit == undefined || !Number.isFinite(limit)) {
+        return Infinity;
+    }
+    return Math.max(0, limit - board.actions.filter((a) => a.team === team && a.type === type).length);
+}
+
+// Pick/ban sounds, synthesized (same voices as the players' room page): a ban
+// is a falling slam, a protect a rising chime, the last seconds a short tick.
+let msAudio: AudioContext | undefined;
+function msAudioContext(): AudioContext | undefined {
+    try {
+        msAudio = msAudio ?? new AudioContext();
+        if (msAudio.state === "suspended") {
+            void msAudio.resume();
+        }
+        return msAudio.state === "running" ? msAudio : undefined;
+    } catch {
+        return undefined;
+    }
+}
+function msNote(ctx: AudioContext, t: number, type: OscillatorType, freq: number, dur: number, peak: number): void {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(ctx.destination);
+    o.start(t);
+    o.stop(t + dur + 0.02);
+}
+function playPickSound(type: "ban" | "protect"): void {
+    const ctx = msAudioContext();
+    if (ctx == undefined) {
+        return;
+    }
+    const t = ctx.currentTime;
+    if (type === "ban") {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sawtooth";
+        o.frequency.setValueAtTime(320, t);
+        o.frequency.exponentialRampToValueAtTime(70, t + 0.5);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.7, t + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+        o.connect(g).connect(ctx.destination);
+        o.start(t);
+        o.stop(t + 0.62);
+        msNote(ctx, t, "square", 110, 0.25, 0.45);
+    } else {
+        [523, 659, 784, 1047].forEach((f, i) => {
+            msNote(ctx, t + i * 0.08, "sine", f, 0.5, 0.6);
+            msNote(ctx, t + i * 0.08, "triangle", f * 2, 0.3, 0.2);
+        });
+    }
+}
+function playClockTick(secondsLeft: number): void {
+    const ctx = msAudioContext();
+    if (ctx != undefined) {
+        msNote(ctx, ctx.currentTime, "square", secondsLeft <= 2 ? 1320 : 990, 0.07, 0.4);
+    }
+}
+
+const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? "" : "s"}`;
+
 // The teams (and their players, in order) out of a match QBJ — this is how the
 // teams the moderator entered in MODAQ's New Game dialog reach Klaxon, both to
 // seed the pick/ban and to link every buzzer to a real player.
@@ -2089,8 +2160,9 @@ function PickBan(props: {
     const [control, setControl] = React.useState<MassingerControl>(controlDefault);
     // Which of the two teams picks first, chosen from a list of the actual team
     // names — never typed, so a pick/ban can't run against a misspelled team
-    // that matches nobody's buzzer.
-    const [firstIndex, setFirstIndex] = React.useState(0);
+    // that matches nobody's buzzer. -1 (the default) is a coin flip, made by
+    // the server.
+    const [firstIndex, setFirstIndex] = React.useState(-1);
     const captainOf = (team: string): IRoomMember | undefined =>
         (roomState?.members ?? []).find(
             (m) =>
@@ -2130,6 +2202,46 @@ function PickBan(props: {
         return () => clearInterval(timer);
     }, [board?.status, board?.deadline]);
 
+    // A new pick lands: a big card over the screen and a sound. Picks already
+    // on the board when it first appears (a reload) stay quiet.
+    const [flash, setFlash] = React.useState<(IMassingerState["actions"][number] & { shownAt: number }) | undefined>();
+    const seen = React.useRef<{ round: string; n: number }>();
+    React.useEffect(() => {
+        if (board == undefined) {
+            seen.current = undefined;
+            return;
+        }
+        const n = board.actions.length;
+        if (seen.current == undefined || seen.current.round !== board.round) {
+            seen.current = { round: board.round, n };
+            return;
+        }
+        if (n > seen.current.n) {
+            const action = board.actions[n - 1];
+            setFlash({ ...action, shownAt: Date.now() });
+            playPickSound(action.type);
+        }
+        seen.current.n = n;
+    }, [board]);
+    React.useEffect(() => {
+        if (flash == undefined) {
+            return;
+        }
+        const timer = setTimeout(() => setFlash(undefined), 2400);
+        return () => clearTimeout(timer);
+    }, [flash]);
+
+    // The last five seconds tick.
+    const secondsLeftNow =
+        board?.status === "active" && board.deadline != null
+            ? Math.max(0, Math.ceil((board.deadline - Date.now()) / 1000))
+            : null;
+    React.useEffect(() => {
+        if (secondsLeftNow != null && secondsLeftNow > 0 && secondsLeftNow <= 5) {
+            playClockTick(secondsLeftNow);
+        }
+    }, [secondsLeftNow, board?.deadline]);
+
     const send = async (payload: Record<string, unknown>): Promise<void> => {
         setMsg("");
         const resp = await client.massinger(payload);
@@ -2147,7 +2259,8 @@ function PickBan(props: {
                 fresh,
                 round,
                 subcats: deriveSubcats(packet),
-                teams: [teamOptions[firstIndex], teamOptions[1 - firstIndex]],
+                teams: firstIndex < 0 ? [teamOptions[0], teamOptions[1]] : [teamOptions[firstIndex], teamOptions[1 - firstIndex]],
+                randomFirst: firstIndex < 0,
                 timerSec,
                 control,
                 target: MASSINGER_TARGET,
@@ -2169,8 +2282,10 @@ function PickBan(props: {
                         <h1>MASSINGER pick/ban — Round {round}</h1>
                         <p className="hint">
                             {packet.tossups.length} tossups in the packet. {teamOptions[0] ?? "The two teams"} and{" "}
-                            {teamOptions[1] ?? "their opponent"} alternate protecting and banning subcategories until{" "}
-                            {MASSINGER_TARGET} remain. Each team picks from their own room page; you can pick for them
+                            {teamOptions[1] ?? "their opponent"} each make 3 bans and 3 protects, in a fixed order:
+                            the first team bans; then the second team bans and protects, then the first team, and so
+                            on; the first team's last protect ends it ({MASSINGER_TARGET} questions remain from a
+                            26-question packet). Each team picks from their own room page; you can pick for them
                             (and undo or edit anything) here.
                         </p>
                         <label htmlFor="ms-first">Which team picks first?</label>
@@ -2179,6 +2294,7 @@ function PickBan(props: {
                             value={firstIndex}
                             onChange={(e) => setFirstIndex(Number(e.target.value))}
                         >
+                            <option value={-1}>Random (coin flip)</option>
                             {teamOptions.map((name, index) => (
                                 <option key={name} value={index}>
                                     {name}
@@ -2186,8 +2302,10 @@ function PickBan(props: {
                             ))}
                         </select>
                         <p className="hint">
-                            The other team ({teamOptions[1 - firstIndex] ?? "—"}) picks second, and they alternate from
-                            there. You can change whose turn it is at any point once the board is running.
+                            {firstIndex < 0
+                                ? "Klaxon flips a coin when you begin, and everyone sees who won it. The teams alternate from there."
+                                : `The other team (${teamOptions[1 - firstIndex] ?? "—"}) picks second, and they alternate from there.`}{" "}
+                            You can change whose turn it is at any point once the board is running.
                         </p>
                         <label htmlFor="ms-control">Who makes the picks?</label>
                         <select
@@ -2267,6 +2385,34 @@ function PickBan(props: {
     const secondsLeft = board.deadline != null ? Math.max(0, Math.ceil((board.deadline - Date.now()) / 1000)) : null;
     const expired = active && secondsLeft === 0;
     const lastAction = board.actions[board.actions.length - 1];
+    const clockFraction =
+        board.deadline != null && board.timerSec > 0
+            ? Math.min(1, Math.max(0, (board.deadline - Date.now()) / (board.timerSec * 1000)))
+            : 0;
+    const clockClass =
+        "ms-bigclock" +
+        (expired
+            ? " expired"
+            : secondsLeft != null && secondsLeft <= 5
+            ? " urgent"
+            : secondsLeft != null && secondsLeft <= 10
+            ? " warn"
+            : "");
+    const limited = board.limits != undefined;
+    // A fixed order says which kind is due; older boards allow either.
+    const due = board.schedule ? board.schedule[board.actions.length] : undefined;
+    const canBan = due ? due.type === "ban" : massingerLeft(board, board.turn, "ban") > 0;
+    const canProtect = due ? due.type === "protect" : massingerLeft(board, board.turn, "protect") > 0;
+    const upNext = board.schedule
+        ? board.schedule
+              .slice(board.actions.length + 1, board.actions.length + 3)
+              .map((step) => `${board.teams[step.team]} ${step.type}`)
+              .join(", then ")
+        : undefined;
+    const coinFlipLine =
+        board.coinFlip === true && board.actions.length === 0 && active
+            ? `${board.teams[0]} won the coin flip and picks first.`
+            : undefined;
 
     return (
         <div className="mod-shell">
@@ -2278,13 +2424,34 @@ function PickBan(props: {
                         <>
                             <div className={"ms-clockline" + (expired ? " expired" : "")}>
                                 <span>
-                                    <strong>{board.teams[board.turn]}</strong> is picking — protect or ban a
+                                    <strong>{board.teams[board.turn]}</strong> is picking —{" "}
+                                    {canBan && canProtect ? "protect or ban" : canBan ? "ban" : "protect"} a
                                     subcategory.
+                                    {coinFlipLine && <span className="ms-coinflip"> {coinFlipLine}</span>}
                                 </span>
-                                {secondsLeft != null && (
-                                    <span className="ms-clock">{expired ? "TIME’S UP" : `${secondsLeft}s`}</span>
-                                )}
                             </div>
+                            {secondsLeft != null && (
+                                <div className={clockClass} aria-label="Time left for this pick">
+                                    <div className="ms-bigclock-num">{expired ? "TIME’S UP" : secondsLeft}</div>
+                                    <div className="ms-bigclock-bar">
+                                        <span style={{ width: `${(clockFraction * 100).toFixed(1)}%` }} />
+                                    </div>
+                                </div>
+                            )}
+                            {limited && (
+                                <div className="ms-counts">
+                                    {[0, 1].map((team) => (
+                                        <span key={team} className={"ms-count" + (team === board.turn ? " on" : "")}>
+                                            <strong>{board.teams[team]}</strong>{" "}
+                                            {plural(massingerLeft(board, team, "ban"), "ban")} ·{" "}
+                                            {plural(massingerLeft(board, team, "protect"), "protect")} left
+                                        </span>
+                                    ))}
+                                    {upNext != undefined && (
+                                        <span className="ms-next">{upNext ? `Up next: ${upNext}` : "Last pick"}</span>
+                                    )}
+                                </div>
+                            )}
                             <div className="ms-turnrow">
                                 <span className="hint">Picks made by:</span>
                                 <select
@@ -2310,7 +2477,7 @@ function PickBan(props: {
                                         <span className="ms-warn-inline">no captain for {board.teams[board.turn]}</span>
                                     ))}
                             </div>
-                            <div className="ms-turnrow">
+                            {!board.schedule && <div className="ms-turnrow">
                                 <span className="hint">Team on the clock:</span>
                                 {[0, 1].map((team) => (
                                     <button
@@ -2321,7 +2488,7 @@ function PickBan(props: {
                                         {board.teams[team]}
                                     </button>
                                 ))}
-                            </div>
+                            </div>}
                             <p className="hint">
                                 {remaining} questions remain — {bansLeft} more ban{bansLeft === 1 ? "" : "s"} to reach{" "}
                                 {board.target}. The team picks on their own page; use the buttons below to pick for
@@ -2330,7 +2497,10 @@ function PickBan(props: {
                             </p>
                         </>
                     ) : (
-                        <p className="ms-doneline">Pick/ban complete — {remaining} questions remain.</p>
+                        <p className="ms-doneline">
+                            Pick/ban complete — {remaining} questions remain
+                            {remaining > board.target ? " (all the bans are used)" : ""}.
+                        </p>
                     )}
 
                     {lastAction && (
@@ -2360,8 +2530,17 @@ function PickBan(props: {
                                 ? `×${subcat.indexes.length}`
                                 : "";
                             const touched = isProtected || subcat.banned > 0;
+                            const justHit =
+                                flash?.label === subcat.label
+                                    ? flash.type === "ban"
+                                        ? " just-banned"
+                                        : " just-protected"
+                                    : "";
                             return (
-                                <li key={subcat.label} className={gone ? "banned" : isProtected ? "protected" : ""}>
+                                <li
+                                    key={subcat.label}
+                                    className={(gone ? "banned" : isProtected ? "protected" : "") + justHit}
+                                >
                                     <span className="ms-label">{subcat.label}</span>
                                     <span className="ms-mark">{status}</span>
                                     {editing && touched ? (
@@ -2379,28 +2558,32 @@ function PickBan(props: {
                                         !gone &&
                                         !isProtected && (
                                             <span className="ms-actions">
-                                                <button
-                                                    onClick={() =>
-                                                        send({
-                                                            action: "massinger_pick",
-                                                            type: "protect",
-                                                            label: subcat.label,
-                                                        })
-                                                    }
-                                                >
-                                                    Protect
-                                                </button>
-                                                <button
-                                                    onClick={() =>
-                                                        send({
-                                                            action: "massinger_pick",
-                                                            type: "ban",
-                                                            label: subcat.label,
-                                                        })
-                                                    }
-                                                >
-                                                    Ban
-                                                </button>
+                                                {canProtect && (
+                                                    <button
+                                                        onClick={() =>
+                                                            send({
+                                                                action: "massinger_pick",
+                                                                type: "protect",
+                                                                label: subcat.label,
+                                                            })
+                                                        }
+                                                    >
+                                                        Protect
+                                                    </button>
+                                                )}
+                                                {canBan && (
+                                                    <button
+                                                        onClick={() =>
+                                                            send({
+                                                                action: "massinger_pick",
+                                                                type: "ban",
+                                                                label: subcat.label,
+                                                            })
+                                                        }
+                                                    >
+                                                        Ban
+                                                    </button>
+                                                )}
                                             </span>
                                         )
                                     )}
@@ -2419,7 +2602,8 @@ function PickBan(props: {
                                 className={expired ? "primary" : ""}
                                 onClick={() => send({ action: "massinger_random_ban" })}
                             >
-                                Random ban{expired ? " (time expired)" : ""}
+                                Random {canBan ? "ban" : "protect"}
+                                {expired ? " (time expired)" : ""}
                             </button>
                         )}
                         <button
@@ -2449,6 +2633,23 @@ function PickBan(props: {
                         </p>
                     )}
                     <p className="msg">{msg}</p>
+                    {flash && (
+                        <div className="ms-flash" aria-live="assertive" key={flash.shownAt}>
+                            <div className={"ms-flash-card " + flash.type}>
+                                <div className="ms-flash-icon">{flash.type === "ban" ? "✕" : "🛡"}</div>
+                                <div className="ms-flash-verb">{flash.type === "ban" ? "BANNED" : "PROTECTED"}</div>
+                                <div className="ms-flash-label">{flash.label}</div>
+                                <div className="ms-flash-by">
+                                    {board.teams[flash.team]}
+                                    {flash.by === "timeout"
+                                        ? " · time ran out — random pick"
+                                        : flash.by === "random"
+                                        ? " · random pick"
+                                        : ""}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
             <div className="mod-side">
