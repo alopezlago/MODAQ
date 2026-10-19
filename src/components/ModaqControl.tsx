@@ -36,6 +36,8 @@ import * as QBJ from "../qbj/QBJ";
 import { IMatch } from "../qbj/QBJ";
 import { AppState } from "../state/AppState";
 import { watchReadAlongState } from "../speech/ReadAlongDiagnostics";
+import * as RoundTiming from "../scorecard/RoundTiming";
+import { watchRoundTiming } from "../scorecard/watchRoundTiming";
 import { GameViewer } from "./GameViewer";
 import { ModalDialogContainer } from "./ModalDialogContainer";
 import { IGameFormat } from "../state/IGameFormat";
@@ -155,6 +157,39 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
 
     // A bug report about read-along describes this game's microphone settings
     React.useEffect(() => watchReadAlongState(appState.uiState), [appState]);
+
+    // Experimental: the moderator scorecard's timings (see scorecard/RoundTiming.ts)
+    const roundTimingKey: string | undefined = props.roundTimingKey;
+    const onRoundScorecardChange = props.onRoundScorecardChange;
+    React.useEffect(() => {
+        return reaction(
+            () => appState.uiState.hostSettings.offerRoundScorecard === true && appState.uiState.roundScorecard,
+            (on) => {
+                RoundTiming.configureRoundTiming(on, roundTimingKey);
+                // The question already on screen when it's turned on counts from now
+                if (on && appState.game.isLoaded) {
+                    const cycleIndex: number = appState.uiState.cycleIndex;
+                    RoundTiming.recordQuestionShown(cycleIndex, appState.game.getTossupIndex(cycleIndex) + 1);
+                }
+                onRoundScorecardChange?.(on);
+            },
+            { fireImmediately: true }
+        );
+    }, [appState, roundTimingKey, onRoundScorecardChange]);
+    React.useEffect(() => {
+        if (roundTimingKey == undefined) {
+            return;
+        }
+
+        return watchRoundTiming(appState);
+    }, [appState, roundTimingKey]);
+    // ...or by the host's buzzer
+    const buzzedInName: string | undefined = props.buzzedInPlayer?.name;
+    React.useEffect(() => {
+        if (buzzedInName != undefined) {
+            RoundTiming.recordBuzzRecognized();
+        }
+    }, [buzzedInName]);
 
     // Errata the host owns (e.g. loaded from its server): adopt them whenever
     // that reference changes. Starting a new game clears errata, since they
@@ -829,6 +864,16 @@ export interface IModaqControlProps {
      * buzz menu offers it beside Correct/Wrong; a withdrawn buzz is not a wrong answer and leaves no mark on the game.
      */
     onWithdrawBuzz?: () => void;
+
+    /**
+     * Experimental: where this game's scorecard timings are filed (see scorecard/RoundTiming.ts). Nothing is
+     * recorded without one, or until the moderator turns on the scorecard (offered with
+     * hostSettings.offerRoundScorecard).
+     */
+    roundTimingKey?: string;
+
+    /** Called with whether the moderator has the scorecard on, when the page opens and whenever it changes. */
+    onRoundScorecardChange?: (enabled: boolean) => void;
 
     /**
      * Called when the game is exported (MODAQ's own JSON/Sheets export or a custom export succeeding) — i.e. whenever
@@ -1557,7 +1602,8 @@ function update(appState: AppState, props: IModaqControlProps): void {
         (nextHostSettings?.restrictRosterChanges ?? false) !== currentHostSettings.restrictRosterChanges ||
         (nextHostSettings?.disableChangeFormat ?? false) !== currentHostSettings.disableChangeFormat ||
         (nextHostSettings?.hostManagesGames ?? false) !== currentHostSettings.hostManagesGames ||
-        nextHostSettings?.productName !== currentHostSettings.productName
+        nextHostSettings?.productName !== currentHostSettings.productName ||
+        (nextHostSettings?.offerRoundScorecard ?? false) !== currentHostSettings.offerRoundScorecard
     ) {
         appState.uiState.setHostSettings(nextHostSettings);
     }

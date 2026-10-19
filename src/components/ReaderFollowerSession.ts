@@ -1,7 +1,9 @@
 import * as TossupQuestionController from "./TossupQuestionController";
 import { AppState } from "../state/AppState";
 import { IGameFormat } from "../state/IGameFormat";
-import { Tossup } from "../state/PacketState";
+import { Bonus, Tossup } from "../state/PacketState";
+import * as FormattedTextParser from "../parser/FormattedTextParser";
+import * as RoundTiming from "../scorecard/RoundTiming";
 import { BuzzSoundDetector } from "../speech/BuzzSoundDetector";
 import { ReaderFollower } from "../speech/ReaderFollower";
 
@@ -35,15 +37,24 @@ export class ReaderFollowerSession {
     // The words being followed, joined, so the same tossup handed over again isn't restarted (see setTossup)
     private targetKey: string | undefined;
 
+    // Following a bonus only to time it for the scorecard (see setBonus): positions are recorded, never shown
+    private followingBonus: boolean;
+
     constructor(appState: AppState) {
         this.appState = appState;
         this.latestWordIndex = -1;
         this.pauseTimerId = undefined;
+        this.followingBonus = false;
 
         this.follower = new ReaderFollower({
             onPositionChanged: (wordIndex) => this.onPositionChanged(wordIndex),
             onPermanentError: (message) => TossupQuestionController.onReaderFollowerError(appState, message),
-            onBuzzResolutionWord: (word) => this.flushBuzzPoint(`heard "${word}"`),
+            onBuzzResolutionWord: (word) => {
+                RoundTiming.recordRulingHeard();
+                if (!this.followingBonus) {
+                    this.flushBuzzPoint(`heard "${word}"`);
+                }
+            },
             onStatusChanged: (engine, status) =>
                 TossupQuestionController.updateReaderFollowerStatus(appState, engine, status),
             onTranscript: (transcript) => TossupQuestionController.updateReaderFollowerTranscript(appState, transcript),
@@ -76,10 +87,48 @@ export class ReaderFollowerSession {
         }
 
         this.targetKey = key;
+        this.followingBonus = false;
         this.clearPauseTimer();
         this.latestWordIndex = -1;
         TossupQuestionController.updateReaderFollowerLivePosition(this.appState, -1);
         this.follower.setTargetWords(words);
+        if (words != undefined) {
+            RoundTiming.recordTossupWords(words);
+        }
+    }
+
+    /**
+     * Experimental (moderator scorecard): follows the bonus being read, only to time it -- when each part was
+     * finished and how long the team was given before the reader went on. Nothing on screen moves.
+     */
+    public setBonus(bonus: Bonus, gameFormat: IGameFormat): void {
+        const wordsOf = (text: string): string[] =>
+            FormattedTextParser.splitFormattedTextIntoWords(text, {
+                pronunciationGuideMarkers: gameFormat.pronunciationGuideMarkers,
+            })
+                .filter((word) => word.length > 0 && word[0].pronunciation !== true)
+                .map((word) => word.map((segment) => segment.text).join("").trim())
+                // "[10]" is read as "for ten points", if at all
+                .filter((word) => word.length > 0 && !/^\[\d+[a-z]?\]$/i.test(word));
+
+        const leadin: string[] = wordsOf(bonus.leadin);
+        const parts: string[][] = bonus.parts.map((part) => wordsOf(part.question));
+        const words: string[] = leadin.concat(...parts);
+        const key: string = "bonus\n" + words.join("\n");
+        if (key === this.targetKey) {
+            return;
+        }
+
+        this.targetKey = key;
+        this.followingBonus = true;
+        this.clearPauseTimer();
+        this.latestWordIndex = -1;
+        TossupQuestionController.updateReaderFollowerLivePosition(this.appState, -1);
+        this.follower.setTargetWords(words);
+        RoundTiming.recordBonusWords(
+            leadin.length,
+            parts.map((part) => part.length)
+        );
     }
 
     public dispose(): void {
@@ -107,6 +156,12 @@ export class ReaderFollowerSession {
     // because someone buzzed, or paused at the end of a clue). A buzzer sound or a buzz resolution word ("correct",
     // "neg") means a buzz definitely happened, so those move it immediately.
     private onPositionChanged(wordIndex: number): void {
+        if (this.followingBonus) {
+            RoundTiming.recordReaderPosition("bonus", wordIndex);
+            return;
+        }
+
+        RoundTiming.recordReaderPosition("tossup", wordIndex);
         this.latestWordIndex = wordIndex;
         TossupQuestionController.updateReaderFollowerLivePosition(this.appState, wordIndex);
 

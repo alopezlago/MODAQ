@@ -952,6 +952,66 @@ a.kx-crumb:hover {
     cursor: pointer;
 }
 
+/* The moderator's own scorecard (experimental; Scorecard.tsx). */
+.mod-scorecard .sc-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.mod-scorecard .sc-actions {
+    display: flex;
+    gap: 6px;
+}
+.mod-scorecard .sc-tag {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border: 1px solid var(--m-line, #e1dfdd);
+    border-radius: 10px;
+    color: var(--m-muted, #605e5c);
+    font-size: 0.72rem;
+    font-weight: 500;
+    vertical-align: middle;
+}
+.mod-scorecard h4 {
+    margin: 12px 0 4px;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--m-muted, #605e5c);
+}
+.mod-scorecard dl {
+    display: grid;
+    grid-template-columns: minmax(9rem, max-content) 1fr;
+    gap: 4px 14px;
+    margin: 0;
+}
+.mod-scorecard dt {
+    color: var(--m-muted, #605e5c);
+}
+.mod-scorecard dd {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.mod-scorecard .sc-note {
+    display: block;
+    color: var(--m-muted, #605e5c);
+    font-size: 0.82rem;
+}
+.mod-scorecard .sc-foot {
+    margin: 12px 0 0;
+}
+@media (max-width: 560px) {
+    .mod-scorecard dl {
+        grid-template-columns: 1fr;
+    }
+    .mod-scorecard dd {
+        margin-bottom: 6px;
+    }
+}
+
 /* Buzz-sound mute toggle in the panel title. */
 .klaxon-buzz-title {
     display: flex;

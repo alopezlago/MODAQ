@@ -4,7 +4,8 @@ import { FocusZone, FocusZoneDirection, mergeStyleSets } from "@fluentui/react";
 
 import * as TossupQuestionController from "./TossupQuestionController";
 import { IBuzzFeedback, UIState } from "../state/UIState";
-import { ITossupWord, Tossup } from "../state/PacketState";
+import { Bonus, ITossupWord, Tossup } from "../state/PacketState";
+import * as RoundTiming from "../scorecard/RoundTiming";
 import { QuestionWord } from "./QuestionWord";
 import { BuzzMenu } from "./BuzzMenu";
 import { Cycle } from "../state/Cycle";
@@ -69,9 +70,19 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
     // Wrong buzzes keep the tossup live, so keep following.
     const isTossupOver: boolean = props.cycle.correctBuzz != undefined;
     const gameFormat: IGameFormat = props.appState.activeGame.gameFormat;
+    // Experimental: with the moderator scorecard on, the bonus that follows is followed too, only to time it
+    const timedBonus: Bonus | undefined =
+        isTossupOver && props.appState.uiState.roundScorecard && RoundTiming.isRoundTimingActive()
+            ? props.appState.activeGame.packet.bonuses[props.bonusIndex]
+            : undefined;
     React.useEffect(() => {
-        readerFollowerSessionRef.current?.setTossup(isTossupOver ? undefined : props.tossup, gameFormat);
-    }, [props.tossup, gameFormat, isReaderFollowingEnabled, isTossupOver, readerFollowerRestartCount]);
+        const session: ReaderFollowerSession | undefined = readerFollowerSessionRef.current;
+        if (timedBonus != undefined) {
+            session?.setBonus(timedBonus, gameFormat);
+        } else {
+            session?.setTossup(isTossupOver ? undefined : props.tossup, gameFormat);
+        }
+    }, [props.tossup, gameFormat, isReaderFollowingEnabled, isTossupOver, readerFollowerRestartCount, timedBonus]);
 
     const correctBuzzIndex: number = props.cycle.correctBuzz?.marker.position ?? -1;
     const wrongBuzzIndexes: number[] = (props.cycle.wrongBuzzes ?? [])

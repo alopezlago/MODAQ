@@ -177,6 +177,10 @@ export class UIState {
     @ignore
     public showReaderFollowerDebug: boolean;
 
+    // Experimental: record this screen's question, ruling and reading times for a post-round scorecard (only
+    // offered when the host asks; see IHostSettings.offerRoundScorecard and scorecard/RoundTiming.ts)
+    public roundScorecard: boolean;
+
     @ignore
     public readerFollowerEngine: string | undefined;
 
@@ -283,6 +287,7 @@ export class UIState {
         this.instantReaderHighlight = false;
         this.buzzPointWordOffset = 0;
         this.showReaderFollowerDebug = false;
+        this.roundScorecard = false;
         this.hidePronunciationAnchors = false;
         this.oneQuestionAtATime = false;
         this.showingBonus = false;
@@ -787,6 +792,7 @@ export class UIState {
             disableChangeFormat: value?.disableChangeFormat ?? false,
             hostManagesGames: value?.hostManagesGames ?? false,
             productName: value?.productName,
+            offerRoundScorecard: value?.offerRoundScorecard ?? false,
         };
     }
 
@@ -966,6 +972,10 @@ export class UIState {
 
     public toggleReaderFollowerDebug(): void {
         this.showReaderFollowerDebug = !this.showReaderFollowerDebug;
+    }
+
+    public toggleRoundScorecard(): void {
+        this.roundScorecard = !this.roundScorecard;
     }
 
     public setYappServiceUrl(url: string | undefined): void {

@@ -14,6 +14,8 @@ export const deviceLocalUiSettings: readonly string[] = [
     "showReaderPositionWhileReading",
     "instantReaderHighlight",
     "buzzPointWordOffset",
+    // The moderator's own scorecard (experimental)
+    "roundScorecard",
     // How this screen shows the game
     "useBuzzMenu",
     "oneQuestionAtATime",

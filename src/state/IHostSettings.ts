@@ -31,4 +31,11 @@ export interface IHostSettings {
      * message). Falls back to a generic description if not provided.
      */
     productName?: string;
+
+    /**
+     * Experimental: offer "Moderator scorecard" under Options. Turned on, MODAQ records when questions start, how
+     * long answers are given, and (with read-along) reading pace, for the host to show the moderator after a round
+     * (see scorecard/RoundTiming.ts). Off for every moderator until they turn it on.
+     */
+    offerRoundScorecard?: boolean;
 }

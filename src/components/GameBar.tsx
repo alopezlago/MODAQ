@@ -375,6 +375,26 @@ function getExportSubMenuItems(appState: AppState): ICommandBarItemProps[] {
     return items;
 }
 
+// Experimental, and only where the host offers it. Under Options, or under View when the host manages the format
+// and Options is hidden.
+function getRoundScorecardMenuItems(appState: AppState): ICommandBarItemProps[] {
+    if (!appState.uiState.hostSettings.offerRoundScorecard) {
+        return [];
+    }
+
+    return [
+        {
+            key: "roundScorecard",
+            text: "Moderator scorecard (experimental)",
+            title:
+                "Time this round on this screen -- gaps between questions, time given to answer, and with the microphone, reading pace -- and show it to you afterwards. Only you see it.",
+            canCheck: true,
+            checked: appState.uiState.roundScorecard,
+            onClick: () => appState.uiState.toggleRoundScorecard(),
+        },
+    ];
+}
+
 function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
 
@@ -488,6 +508,8 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             onClick: () => appState.uiState.toggleReaderFollowerDebug(),
         }
     );
+
+    items.push(...getRoundScorecardMenuItems(appState));
 
     return items;
 }
@@ -605,6 +627,7 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
                     appState.uiState.showFontDialog();
                 },
             },
+            ...getRoundScorecardMenuItems(appState),
         ]);
     }
 

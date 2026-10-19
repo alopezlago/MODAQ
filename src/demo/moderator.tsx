@@ -21,6 +21,7 @@ import { IStatus } from "../IStatus";
 import { getReadAlongDiagnostics } from "../speech/ReadAlongDiagnostics";
 import { setPreferredVoskModelUrl } from "../speech/VoskSpeechEngine";
 import { BuzzPanel, SubmittedAnswers } from "./BuzzPanel";
+import { pruneOldRoundTimings, useScorecard } from "./Scorecard";
 import {
     IDirectorMessage,
     IMassingerState,
@@ -2579,6 +2580,7 @@ function Reading(props: {
             restrictRosterChanges: config.rosters.length > 0,
             disableChangeFormat: config.gameFormat != undefined,
             productName: "Klaxon",
+            offerRoundScorecard: true,
         }),
         [config.rosters, config.gameFormat]
     );
@@ -2656,14 +2658,18 @@ function Reading(props: {
         [code, token, round]
     );
 
+    const scorecard = useScorecard(code, token, `r${round}`, round);
+
     return (
         <div className="mod-shell">
             <div className="mod-main">
                 <RoomToolbar code={code} label={`Room ${code} · Round ${round}`}>
+                    {scorecard.button}
                     <button onClick={nextGame} title="Pick the round and teams for the next game">
                         Next game
                     </button>
                 </RoomToolbar>
+                {scorecard.panel}
                 <DirectorMessages client={client} />
                 <KlaxonModaq
                     belowTossup={<SubmittedAnswers state={roomState} client={client} />}
@@ -2696,6 +2702,8 @@ function Reading(props: {
                     customExport={customExport}
                     hostSettings={hostSettings}
                     onNewGameRequested={nextGame}
+                    roundTimingKey={scorecard.key}
+                    onRoundScorecardChange={scorecard.onChange}
                 />
             </div>
             <div className="mod-side">
@@ -2881,6 +2889,7 @@ function LiteReading(props: {
     };
 
     const showStart = gameLoaded === false;
+    const scorecard = useScorecard(code, client.token, `g${roomState?.gameNumber ?? 1}`, null);
     return (
         <div className="mod-shell">
             <div className="mod-main">
@@ -2894,6 +2903,7 @@ function LiteReading(props: {
                     </div>
                 )}
                 <RoomToolbar code={code} label={`Room ${code} · Packet ${roomState?.gameNumber ?? 1}`}>
+                    {scorecard.button}
                     {!roomState?.correction && prevCount > 0 && (
                         <button onClick={() => setShowPrev((v) => !v)}>
                             {showPrev ? "Hide previous games" : "Previous games"}
@@ -2925,6 +2935,7 @@ function LiteReading(props: {
                         onGo={(keep, eve) => void goNextPacket(keep, eve)}
                     />
                 )}
+                {scorecard.panel}
                 {showEvening && evening && (
                     <EveningTotals
                         evening={evening}
@@ -2999,6 +3010,8 @@ function LiteReading(props: {
                             hostSettings={LITE_HOST_SETTINGS}
                             onNewGameRequested={nextGame}
                             onGameLoadedChange={setGameLoaded}
+                            roundTimingKey={scorecard.key}
+                            onRoundScorecardChange={scorecard.onChange}
                         />
                     )}
                 </div>
@@ -3128,7 +3141,13 @@ function EveningTotals(props: { evening: IEveningSummary; onReset: () => void })
 
 // Games in a room start from Klaxon's Next game, never MODAQ's own New game or
 // imports (a loaded game comes in through Previous games, filed and named).
-const LITE_HOST_SETTINGS: IHostSettings = { hostManagesGames: true, nextGameLabel: "Next packet", productName: "Klaxon" };
+const LITE_HOST_SETTINGS: IHostSettings = {
+    hostManagesGames: true,
+    nextGameLabel: "Next packet",
+    productName: "Klaxon",
+    // Experimental, and off until the moderator turns it on (see Scorecard.tsx)
+    offerRoundScorecard: true,
+};
 
 // The teams a room already knows about, for a game started from a dropped
 // packet: the room's roster if it has one (a previous game's teams, or a
@@ -4064,11 +4083,13 @@ function ShootoutReading(props: {
         ? `${session.name}${current ? ` · Packet ${index + 1} of ${packets.length}: ${current.name}` : ""}`
         : `Room ${code}`;
     const here = competitors.filter((c) => c.present).length;
+    const scorecard = useScorecard(code, client.token, `s${roomState?.gameNumber ?? 1}-p${index}`, null);
 
     return (
         <div className="mod-shell">
             <div className="mod-main">
                 <RoomToolbar code={code} label={label}>
+                    {scorecard.button}
                     {carry && previous && (
                         <button
                             onClick={() => startPacket(index - 1)}
@@ -4155,6 +4176,7 @@ function ShootoutReading(props: {
                         </button>
                     )}
                 </RoomToolbar>
+                {scorecard.panel}
                 {askKeep && (
                     <NextPacketPanel
                         played={hasPlayed(lastGame.current?.args[0])}
@@ -4209,6 +4231,8 @@ function ShootoutReading(props: {
                         onGameLoadedChange={setGameLoaded}
                         // Off, the game keeps the competitors it started the packet with.
                         liveTeams={autoAdd ? competitors : undefined}
+                        roundTimingKey={scorecard.key}
+                        onRoundScorecardChange={scorecard.onChange}
                     />
                 )}
             </div>
@@ -4394,6 +4418,7 @@ function AccountGate(props: { tcode: string; onApproved: () => void; strict?: bo
 }
 
 function renderApp(): void {
+    pruneOldRoundTimings();
     const element = document.getElementById("root");
     if (element) {
         ReactDOM.render(<Moderator />, element);
