@@ -422,6 +422,18 @@ export class KlaxonClient {
             });
 
             // The director released (or hid, or reordered) a round or a tiebreaker.
+            // A reader assigned to rounds, in a room that has moved on to a
+            // round that isn't theirs (or whose access the director changed):
+            // no longer staff here. Their list of rounds says where and when.
+            socket.on("staff_revoked", (...args: unknown[]) => {
+                const info = (args[0] ?? {}) as { tournamentCode?: string | null };
+                try {
+                    localStorage.removeItem("bz_staffRole:" + this.code);
+                } catch {
+                    /* ignore */
+                }
+                window.location.replace(info.tournamentCode ? `/t/${info.tournamentCode}/join` : `/r/${this.code}`);
+            });
             socket.on("packets_changed", () => {
                 for (const l of this.packetsChangedListeners) l();
             });

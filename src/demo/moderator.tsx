@@ -100,7 +100,8 @@ interface IReadingConfig {
     // Registration" tab); teams and player order are chosen there natively.
     rosters: IPlayer[];
     // In MASSINGER the teams were already chosen (before the pick/ban), so the
-    // final dialog is prefilled with them and shows the pick/ban result.
+    // game starts with them at once (see Reading's pickBanStart); only a team
+    // with nobody on it opens the New Game dialog, prefilled.
     teams?: IGameTeam[];
     board?: IMassingerState;
     onEditPickBan?: () => void;
@@ -1570,6 +1571,7 @@ function ModeratorBody(): JSX.Element {
                 roomState={roomState}
                 captainsWanted={(tournamentFormat?.massingerControl ?? "captain") === "captain"}
                 initialTeams={pickban.teams}
+                rosterPlayers={pickban.rosters}
                 onCancel={() => {
                     setPickban(undefined);
                     setPhase("setup");
@@ -1818,17 +1820,44 @@ function TeamLobby(props: {
     roomState: IPublicRoomState | undefined;
     captainsWanted: boolean;
     initialTeams?: IGameTeam[];
+    // The roster the game will be set up from: the tournament's, or a file the
+    // moderator chose on the setup screen.
+    rosterPlayers?: IPlayer[];
     onCancel: () => void;
     onReady: (teams: IGameTeam[]) => void;
 }): JSX.Element {
-    const { code, client, round, roomState, captainsWanted, initialTeams, onCancel, onReady } = props;
+    const { code, client, round, roomState, captainsWanted, initialTeams, rosterPlayers, onCancel, onReady } = props;
 
-    // Team names come from the roster when the room has one, so they match what
+    // Team names come from the roster when there is one, so they match what
     // the director registered (and what players picked when they joined).
-    const rosterTeams = roomState?.roster?.teamNames ?? [];
-    const [teamA, setTeamA] = React.useState(initialTeams?.[0]?.name ?? rosterTeams[0] ?? "");
-    const [teamB, setTeamB] = React.useState(initialTeams?.[1]?.name ?? rosterTeams[1] ?? "");
+    const rosterTeams = React.useMemo(() => {
+        const names: string[] = [];
+        for (const name of [
+            ...(roomState?.roster?.teamNames ?? []),
+            ...(rosterPlayers ?? []).map((p) => p.teamName),
+        ]) {
+            const trimmed = (name ?? "").trim();
+            if (trimmed && !names.includes(trimmed)) names.push(trimmed);
+        }
+        return names;
+    }, [roomState?.roster?.teamNames, rosterPlayers]);
+    // Only a two-team roster can be filled in for the moderator.
+    const [teamA, setTeamA] = React.useState(
+        initialTeams?.[0]?.name ?? (rosterTeams.length === 2 ? rosterTeams[0] : "")
+    );
+    const [teamB, setTeamB] = React.useState(
+        initialTeams?.[1]?.name ?? (rosterTeams.length === 2 ? rosterTeams[1] : "")
+    );
     const [copied, setCopied] = React.useState(false);
+
+    // Tell the room this step is happening, so players see that a pick/ban is
+    // coming (and which team they're on) instead of a plain buzzer.
+    React.useEffect(() => {
+        client.massinger({ action: "massinger_lobby", open: true, round }).catch(() => undefined);
+        return () => {
+            client.massinger({ action: "massinger_lobby", open: false, round }).catch(() => undefined);
+        };
+    }, [client, round]);
 
     const players = (roomState?.members ?? []).filter((m) => m.role === "player");
     const connected = players.filter((m) => m.connected);
@@ -1884,7 +1913,7 @@ function TeamLobby(props: {
                     <h1>Set up the game — room {code}</h1>
                     <p className="hint">
                         Round {round}. Pick the two teams and put every connected player on one of them; the pick/ban
-                        runs next, and MODAQ opens after it with these teams already filled in.
+                        runs next, and the game starts after it with these teams and players.
                     </p>
 
                     <div className="lobby-link">
@@ -1983,8 +2012,10 @@ function TeamLobby(props: {
                             }}
                         >
                             Continue to pick/ban →
-                        </button>{" "}
-                        <button onClick={onCancel}>Back to setup</button>
+                        </button>
+                        <button className="secondary" onClick={onCancel}>
+                            Back to setup
+                        </button>
                     </div>
                 </div>
             </div>
@@ -2206,8 +2237,12 @@ function PickBan(props: {
                                     ? "Begin pick/ban"
                                     : "Checking for a saved board…"}
                             </button>{" "}
-                            <button onClick={onBackToTeams}>Back to teams &amp; players</button>{" "}
-                            <button onClick={onCancel}>Back to setup</button>
+                            <button className="secondary" onClick={onBackToTeams}>
+                                Back to teams &amp; players
+                            </button>
+                            <button className="secondary" onClick={onCancel}>
+                                Back to setup
+                            </button>
                         </div>
                         <p className="msg">{msg}</p>
                     </div>
@@ -2660,6 +2695,28 @@ function Reading(props: {
 
     const scorecard = useScorecard(code, token, `r${round}`, round);
 
+    // Straight out of a pick/ban: the lobby already settled the teams and who
+    // is on them, so the game starts as it does in every other tournament room
+    // (no New Game dialog). Only when a team has nobody listed does the dialog
+    // open, prefilled, to name them. Never on a resumed game (config.teams is
+    // only set by the pick/ban), since a new object here starts a new game.
+    const pickBanStart = React.useMemo((): IHostNewGame | undefined => {
+        const teams = config.teams ?? [];
+        if (!config.board || teams.length < 2) return undefined;
+        return {
+            packet: config.packet,
+            packetName: round,
+            teams,
+            gameFormat: config.gameFormat,
+            confirm: teams.some((t) => t.players.filter((p) => p.trim() !== "").length === 0),
+        };
+    }, [config, round]);
+    const editPickBan = React.useCallback(() => {
+        if (window.confirm("Go back to the pick/ban? The game restarts from question 1 when you come back.")) {
+            config.onEditPickBan?.();
+        }
+    }, [config]);
+
     return (
         <div className="mod-shell">
             <div className="mod-main">
@@ -2671,17 +2728,30 @@ function Reading(props: {
                 </RoomToolbar>
                 {scorecard.panel}
                 <DirectorMessages client={client} />
+                {pickBanStart && !pickBanStart.confirm && config.board && (
+                    <details className="ms-reading-summary">
+                        <summary>
+                            MASSINGER pick/ban — {massingerRemaining(config.board)} questions in this game
+                        </summary>
+                        <PickBanSummary board={config.board} onEdit={editPickBan} />
+                    </details>
+                )}
                 <KlaxonModaq
                     belowTossup={<SubmittedAnswers state={roomState} client={client} />}
                     applyStylingToRoot={false}
                     buildVersion={__BUILD_VERSION__}
                     yappServiceUrl={YAPP_SERVICE_URL}
-                    newGameOnLoad={{
-                        packet: config.packet,
-                        packetName: round,
-                        rosters: config.rosters,
-                        teams: config.teams,
-                    }}
+                    hostNewGame={pickBanStart}
+                    newGameOnLoad={
+                        pickBanStart
+                            ? undefined
+                            : {
+                                  packet: config.packet,
+                                  packetName: round,
+                                  rosters: config.rosters,
+                                  teams: config.teams,
+                              }
+                    }
                     newGameNotice={
                         config.board ? <PickBanSummary board={config.board} onEdit={config.onEditPickBan} /> : undefined
                     }
