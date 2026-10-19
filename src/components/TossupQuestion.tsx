@@ -123,17 +123,12 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
         }
     }, [placingWordIndex]);
 
-    // A mouse press also moves focus, but a click on a word is handled as a click (selectWordFromClick), so only
-    // focus moved some other way (the arrow keys) moves the buzz point. The focus from a press happens right after
-    // its mousedown event, so the flag is cleared just after that.
-    const isPointerFocusRef: React.MutableRefObject<boolean> = React.useRef(false);
-    const pointerDownHandler = React.useCallback(() => {
-        isPointerFocusRef.current = true;
-        setTimeout(() => (isPointerFocusRef.current = false), 0);
-    }, []);
+    // Only keyboard focus (the arrow keys) moves the buzz point. Clicking a word focuses it too, but the click itself
+    // is handled by selectWordFromClick; moving the buzz point on its focus first would make that click land on the
+    // buzz point's own word, which closes the pad.
     const activeWordChangedHandler = React.useCallback(
         (element?: HTMLElement) => {
-            if (isPointerFocusRef.current || element == undefined) {
+            if (element == undefined || !isKeyboardFocus(element)) {
                 return;
             }
 
@@ -158,7 +153,7 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
     return (
         <div className={`${classes.tossupContainer} tossup`}>
             <TossupProtestDialog appState={props.appState} cycle={props.cycle} />
-            <div ref={tossupTextRef} onMouseDownCapture={pointerDownHandler}>
+            <div ref={tossupTextRef}>
                 {/* Space is the buzz shortcut, so it doesn't click the focused word; Enter still does */}
                 <FocusZone
                     as="div"
@@ -189,6 +184,16 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
         </div>
     );
 });
+
+// The browser's own call (:focus-visible): true for focus moved by the keyboard, false for a mouse click
+function isKeyboardFocus(element: HTMLElement): boolean {
+    try {
+        return element.matches(":focus-visible");
+    } catch {
+        // A browser too old to know :focus-visible; the arrow keys still move focus, just not the buzz point
+        return false;
+    }
+}
 
 // We need to use a wrapper component so we can give it a key. Otherwise, React will complain
 const QuestionWordWrapper = observer(function QuestionWordWrapper(props: IQuestionWordWrapperProps) {

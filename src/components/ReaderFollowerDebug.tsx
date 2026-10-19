@@ -1,6 +1,16 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { memoizeFunction, mergeStyleSets, Theme, ThemeContext } from "@fluentui/react";
+import {
+    DefaultButton,
+    IButtonStyles,
+    memoizeFunction,
+    mergeStyleSets,
+    Stack,
+    StackItem,
+    Text,
+    Theme,
+    ThemeContext,
+} from "@fluentui/react";
 
 import { AppState } from "../state/AppState";
 import { UIState } from "../state/UIState";
@@ -38,39 +48,65 @@ export const ReaderFollowerDebug = observer(function ReaderFollowerDebug(props: 
             {(theme) => {
                 const classes: IReaderFollowerDebugClassNames = getClassNames(theme);
                 return (
-                    <div className={classes.debugPanel}>
-                        <div>
+                    <Stack className={classes.debugPanel}>
+                        <Text className={classes.line}>
                             <strong>Mic tracking</strong> — Engine: {engine}
-                        </div>
-                        <div>Status: {status}</div>
-                        <div>Heard: {transcript}</div>
-                        <div>Live reader position: {livePosition}</div>
-                        <div>Buzz point (set after a pause or cue): {buzzPoint}</div>
-                        <div>Last immediate cue: {lastCue}</div>
-                        <div>
-                            <button type="button" onClick={copyLog}>
-                                Copy read-along log
-                            </button>
-                        </div>
-                    </div>
+                        </Text>
+                        <Text className={classes.line}>Status: {status}</Text>
+                        <Text className={classes.line}>Heard: {transcript}</Text>
+                        <Text className={classes.line}>Live reader position: {livePosition}</Text>
+                        <Text className={classes.line}>Buzz point (set after a pause or cue): {buzzPoint}</Text>
+                        <Text className={classes.line}>Last immediate cue: {lastCue}</Text>
+                        <StackItem>
+                            <CopyLogButton />
+                        </StackItem>
+                    </Stack>
                 );
             }}
         </ThemeContext.Consumer>
     );
 });
 
-// What read-along heard and decided recently, for a moderator to send along when it goes wrong
-function copyLog(event: React.MouseEvent<HTMLButtonElement>): void {
-    const button: HTMLButtonElement = event.currentTarget;
-    const done = (label: string) => {
-        button.textContent = label;
-        window.setTimeout(() => (button.textContent = "Copy read-along log"), 2000);
+const copyLogLabel = "Copy read-along log";
+
+// Copies what read-along heard and decided recently, for a moderator to send along when it goes wrong. The label
+// says whether it worked for a couple of seconds, then goes back.
+function CopyLogButton(): JSX.Element {
+    const [label, setLabel] = React.useState(copyLogLabel);
+    React.useEffect(() => {
+        if (label === copyLogLabel) {
+            return;
+        }
+
+        const timer: number = window.setTimeout(() => setLabel(copyLogLabel), 2000);
+        return () => window.clearTimeout(timer);
+    }, [label]);
+
+    // Not set after the panel closes
+    const isMountedRef: React.MutableRefObject<boolean> = React.useRef(true);
+    React.useEffect(() => () => void (isMountedRef.current = false), []);
+    const showResult = (result: string): void => {
+        if (isMountedRef.current) {
+            setLabel(result);
+        }
     };
-    navigator.clipboard
-        ?.writeText(getReadAlongLog() || "(nothing logged yet)")
-        .then(() => done("Copied"))
-        .catch(() => done("Couldn't copy"));
+
+    const copyLog = (): void => {
+        if (navigator.clipboard == undefined) {
+            showResult("Couldn't copy");
+            return;
+        }
+
+        navigator.clipboard
+            .writeText(getReadAlongLog() || "(nothing logged yet)")
+            .then(() => showResult("Copied"))
+            .catch(() => showResult("Couldn't copy"));
+    };
+
+    return <DefaultButton text={label} onClick={copyLog} styles={copyButtonStyles} />;
 }
+
+const copyButtonStyles: IButtonStyles = { root: { height: 24, padding: "0 8px", marginTop: 4 } };
 
 function getQuestionWords(appState: AppState): string[] {
     const tossup: Tossup | undefined = appState.activeGame.getTossup(appState.uiState.cycleIndex);
@@ -116,6 +152,7 @@ export interface IReaderFollowerDebugProps {
 
 interface IReaderFollowerDebugClassNames {
     debugPanel: string;
+    line: string;
 }
 
 const getClassNames = memoizeFunction(
@@ -131,6 +168,11 @@ const getClassNames = memoizeFunction(
                 padding: "6px 8px",
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
+            },
+            // Text brings its own font; keep the panel's monospace
+            line: {
+                fontFamily: "inherit",
+                fontSize: "inherit",
             },
         })
 );

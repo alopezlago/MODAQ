@@ -1,14 +1,17 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
 import {
+    Callout,
     DefaultButton,
+    DirectionalHint,
     IButtonStyles,
+    ICalloutContentStyles,
     IconButton,
     IIconProps,
     IStackTokens,
-    Layer,
     memoizeFunction,
     mergeStyleSets,
+    Separator,
     Stack,
     StackItem,
     Text,
@@ -18,15 +21,15 @@ import {
 
 import * as TossupQuestionController from "./TossupQuestionController";
 import { Answer } from "./Answer";
-import { choosePadPosition, IPadPosition, IPadRect } from "./PlayerPadPlacement";
 import { AppState } from "../state/AppState";
 import { ITossupWord, Tossup } from "../state/PacketState";
 import { Player } from "../state/TeamState";
 
 /**
- * The floating pad for recording a tossup buzz. Players are laid out left to right, the way they sit. It opens on a buzz -- Space, a click on a word, or E -- with the
- * buzz point on a word, and floats over the page next to that word, so the question and bonus text don't move. Each player has a correct (✓) and wrong (✗) button and a protest button; the first eight
- * players also have shortcuts (1-8 for correct, Shift+1-8 for wrong). The arrow keys move the buzz point and
+ * The pad for recording a tossup buzz. It opens on a buzz -- Space, a click on a word, or E -- as a callout next to
+ * the buzz point's word, so the question and bonus text don't move. Players are laid out left to right, the way they
+ * sit. Each player has a correct (✓) and wrong (✗) button and a protest button; the first eight players also have
+ * shortcuts (1-8 for correct, Shift+1-8 for wrong). The arrow keys move the buzz point, and the pad with it, and
  * Escape closes the pad. The tossup's answer is repeated at the bottom, so the moderator can judge from the pad.
  */
 export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JSX.Element | null {
@@ -38,25 +41,22 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
     const wordIndex: number = uiState.selectedWordIndex;
     const isOpen: boolean = uiState.buzzPointPlacement != undefined && wordIndex >= 0 && !uiState.useBuzzMenu;
 
-    // A click anywhere else closes the pad, as Escape does. Listening starts only once it is open, so the click that
-    // opened it has already gone by. Left alone: the pad itself, a word of the question (that click moves the buzz
-    // point, and the pad with it), and any other layer or dialog, which the pad may have opened.
+    // The callout places itself whenever it renders, but closes on a scroll or resize instead of following its word.
+    // Closing would drop the buzz on a nudge of the mouse wheel, so it stays open and is rendered again to follow.
+    const [, setLayoutChangeCount] = React.useState(0);
     React.useEffect(() => {
         if (!isOpen) {
             return;
         }
 
-        const onPointerDown = (event: MouseEvent): void => {
-            const target: Element | null = event.target instanceof Element ? event.target : null;
-            if (target == null || target.closest(".ms-Layer, [role='dialog'], .tossup span[data-index]") != null) {
-                return;
-            }
-
-            TossupQuestionController.cancelBuzzPointPlacement(appState);
+        const followWord = (): void => setLayoutChangeCount((count) => count + 1);
+        window.addEventListener("scroll", followWord, true);
+        window.addEventListener("resize", followWord);
+        return () => {
+            window.removeEventListener("scroll", followWord, true);
+            window.removeEventListener("resize", followWord);
         };
-        document.addEventListener("mousedown", onPointerDown, true);
-        return () => document.removeEventListener("mousedown", onPointerDown, true);
-    }, [isOpen, appState]);
+    }, [isOpen]);
 
     if (!isOpen || uiState.buzzPointPlacement == undefined) {
         return null;
@@ -79,149 +79,87 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
         <ThemeContext.Consumer>
             {(theme) => {
                 const classes: IPlayerPadClassNames = getClassNames(theme);
-                const pad: JSX.Element = (
-                    <div
-                        className={classes.pad}
-                        role="dialog"
-                        aria-label="Record buzz"
-                    >
-                        <Stack
-                            horizontal={true}
-                            verticalAlign="center"
-                            tokens={headerTokens}
-                            className={classes.header}
-                        >
-                            <StackItem grow={true}>
-                                <Text>
-                                    Buzz on <strong>{word}</strong>
-                                </Text>
-                            </StackItem>
-                            <Text variant="small" className={classes.quiet}>
-                                ← → ↑ ↓ move · Esc closes
-                            </Text>
-                            <IconButton
-                                iconProps={closeIconProps}
-                                styles={getCloseButtonStyles(theme)}
-                                title="Close (Esc)"
-                                ariaLabel="Close"
-                                onMouseDown={preventFocus}
-                                onClick={() => TossupQuestionController.cancelBuzzPointPlacement(appState)}
-                            />
-                        </Stack>
-                        {/* Team 1 on the left, Team 2 on the right, always on one line (eight players fit in about
-                            700px); on a narrower window the seats shrink rather than wrap */}
-                        <Stack horizontal={true}>
-                            {teamNames.map((teamName) => (
-                                <Stack key={teamName} tokens={seatGapTokens} className={classes.team}>
-                                    <Text className={classes.teamName}>{teamName}</Text>
-                                    <Stack horizontal={true} tokens={seatGapTokens} className={classes.seats}>
-                                        {rows
-                                            .filter((row) => row.player.teamName === teamName)
-                                            .map((row) => (
-                                                <PlayerPadSeat
-                                                    key={`${teamName}_${row.index}`}
-                                                    appState={appState}
-                                                    classes={classes}
-                                                    theme={theme}
-                                                    row={row}
-                                                    isTeamOut={teamsWithWrongBuzz.has(teamName)}
-                                                />
-                                            ))}
-                                    </Stack>
-                                </Stack>
-                            ))}
-                        </Stack>
-                        <div className={classes.answer}>
-                            <Answer text={props.tossup.answer} />
-                        </div>
-                    </div>
-                );
 
-                // Next to the word, following it as the arrow keys move the buzz point (see PlayerPadPlacement). It
-                // shows the answer itself, so it may cover the one on the page. The pad closes itself (a recorded
-                // buzz, Escape, the close button, a click outside it, another question).
+                // Below the word, or above it when there's no room. The pad shows the answer itself, so it may cover
+                // the one on the page. It closes itself: a recorded buzz, Escape, the close button, a click outside
+                // it, another question.
                 return (
-                    <AnchoredPad wordIndex={wordIndex} className={classes.anchoredPad}>
-                        {pad}
-                    </AnchoredPad>
+                    <Callout
+                        target={`.tossup span[data-index="${wordIndex}"]`}
+                        directionalHint={DirectionalHint.bottomLeftEdge}
+                        gapSpace={6}
+                        isBeakVisible={false}
+                        preventDismissOnScroll={true}
+                        preventDismissOnResize={true}
+                        preventDismissOnEvent={shouldStayOpen}
+                        onDismiss={() => TossupQuestionController.cancelBuzzPointPlacement(appState)}
+                        role="dialog"
+                        ariaLabel="Record buzz"
+                        styles={calloutStyles}
+                    >
+                        <Stack tokens={padTokens} className={classes.pad}>
+                            <Stack horizontal={true} verticalAlign="center" tokens={headerTokens}>
+                                <StackItem grow={true}>
+                                    <Text>
+                                        Buzz on <strong>{word}</strong>
+                                    </Text>
+                                </StackItem>
+                                <Text variant="small" className={classes.quiet}>
+                                    ← → ↑ ↓ move · Esc closes
+                                </Text>
+                                <IconButton
+                                    iconProps={closeIconProps}
+                                    styles={getCloseButtonStyles(theme)}
+                                    title="Close (Esc)"
+                                    ariaLabel="Close"
+                                    onMouseDown={preventFocus}
+                                    onClick={() => TossupQuestionController.cancelBuzzPointPlacement(appState)}
+                                />
+                            </Stack>
+                            {/* Team 1 on the left, Team 2 on the right, always on one line (eight players fit in about
+                            700px); on a narrower window the seats shrink rather than wrap */}
+                            <Stack horizontal={true} tokens={teamGapTokens}>
+                                {teamNames.map((teamName, teamIndex) => (
+                                    <React.Fragment key={teamName}>
+                                        {teamIndex > 0 ? (
+                                            <Separator vertical={true} styles={separatorStyles} />
+                                        ) : undefined}
+                                        <Stack tokens={seatGapTokens} className={classes.team}>
+                                            <Text className={classes.teamName}>{teamName}</Text>
+                                            <Stack horizontal={true} tokens={seatGapTokens} className={classes.seats}>
+                                                {rows
+                                                    .filter((row) => row.player.teamName === teamName)
+                                                    .map((row) => (
+                                                        <PlayerPadSeat
+                                                            key={`${teamName}_${row.index}`}
+                                                            appState={appState}
+                                                            classes={classes}
+                                                            theme={theme}
+                                                            row={row}
+                                                            isTeamOut={teamsWithWrongBuzz.has(teamName)}
+                                                        />
+                                                    ))}
+                                            </Stack>
+                                        </Stack>
+                                    </React.Fragment>
+                                ))}
+                            </Stack>
+                            <div className={classes.answer}>
+                                <Answer text={props.tossup.answer} />
+                            </div>
+                        </Stack>
+                    </Callout>
                 );
             }}
         </ThemeContext.Consumer>
     );
 });
 
-// The pad opened on a word, placed by choosePadPosition and re-placed whenever the word, the page's scroll, the
-// window or the pad's own size changes. It stays hidden until it has been measured once, so it never flashes over
-// the page on its way to its spot.
-function AnchoredPad(props: { wordIndex: number; className: string; children: React.ReactNode }): JSX.Element {
-    // The element as state, not a ref: Fluent's Layer mounts its contents a moment after the first render, so a ref
-    // was still empty when the first placement ran, nothing rendered again, and the pad stayed hidden for good.
-    // Arriving in the page is what triggers the first placement (and the observers).
-    const [element, setElement] = React.useState<HTMLDivElement | null>(null);
-    const [position, setPosition] = React.useState<IPadPosition | undefined>(undefined);
-    const { wordIndex } = props;
-
-    const place = React.useCallback((): void => {
-        const word: Element | null = document.querySelector(`.tossup span[data-index="${wordIndex}"]`);
-        if (element == null || word == null) {
-            return;
-        }
-
-        const next: IPadPosition = choosePadPosition({
-            word: toRect(word.getBoundingClientRect()),
-            pad: { width: element.offsetWidth, height: element.offsetHeight },
-            viewport: { width: window.innerWidth, height: window.innerHeight },
-        });
-        setPosition((previous) =>
-            previous != undefined &&
-            previous.left === next.left &&
-            previous.top === next.top &&
-            previous.placement === next.placement
-                ? previous
-                : next
-        );
-    }, [wordIndex, element]);
-
-    // After every render: the word may have moved, and the pad's contents (who has the buzzer) its size
-    React.useLayoutEffect(place);
-
-    React.useEffect(() => {
-        // Capture, so a scrolling container around the question counts as well as the page
-        window.addEventListener("scroll", place, true);
-        window.addEventListener("resize", place);
-        const observer: ResizeObserver | undefined =
-            typeof ResizeObserver !== "undefined" && element != null ? new ResizeObserver(() => place()) : undefined;
-        if (observer != undefined && element != null) {
-            observer.observe(element);
-        }
-
-        return () => {
-            window.removeEventListener("scroll", place, true);
-            window.removeEventListener("resize", place);
-            observer?.disconnect();
-        };
-    }, [place, element]);
-
-    return (
-        <Layer>
-            <div
-                ref={setElement}
-                className={props.className}
-                data-placement={position?.placement}
-                style={{
-                    left: position?.left ?? 0,
-                    top: position?.top ?? 0,
-                    visibility: position == undefined ? "hidden" : "visible",
-                }}
-            >
-                {props.children}
-            </div>
-        </Layer>
-    );
-}
-
-function toRect(rect: DOMRect): IPadRect {
-    return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+// Clicks and focus that shouldn't close the pad: on a word of the question (that moves the buzz point, and the pad
+// with it, whether by a click or the arrow keys), and in another layer or dialog, which the pad may have opened
+function shouldStayOpen(event: Event | React.SyntheticEvent): boolean {
+    const target: EventTarget | null = event.target;
+    return target instanceof Element && target.closest(".ms-Layer, [role='dialog'], .tossup span[data-index]") != null;
 }
 
 // Don't let the pad's buttons take focus on click: a focused button would also be pressed by Space, the buzz
@@ -231,7 +169,11 @@ function preventFocus(event: React.MouseEvent<unknown>): void {
 }
 
 const closeIconProps: IIconProps = { iconName: "Cancel" };
+const calloutStyles: Partial<ICalloutContentStyles> = { calloutMain: { borderRadius: 4 } };
+const separatorStyles = { root: { padding: 0 } };
+const padTokens: IStackTokens = { childrenGap: 8 };
 const headerTokens: IStackTokens = { childrenGap: 12 };
+const teamGapTokens: IStackTokens = { childrenGap: 12 };
 const seatGapTokens: IStackTokens = { childrenGap: 6 };
 const seatTokens: IStackTokens = { childrenGap: 5 };
 
@@ -341,8 +283,6 @@ interface IPlayerPadSeatProps {
 
 interface IPlayerPadClassNames {
     pad: string;
-    anchoredPad: string;
-    header: string;
     quiet: string;
     team: string;
     teamName: string;
@@ -417,34 +357,16 @@ const getClassNames = memoizeFunction(
         return mergeStyleSets({
             pad: {
                 boxSizing: "border-box",
-                maxWidth: "calc(100vw - 32px)",
-                padding: "10px 14px 12px",
-            },
-            // Placed next to the buzz word in window coordinates by AnchoredPad, looking like the callout it replaced
-            anchoredPad: {
-                position: "fixed",
                 width: "max-content",
                 maxWidth: "calc(100vw - 16px)",
-                borderRadius: "4px",
-                background: theme ? theme.palette.white : "white",
-                boxShadow: theme ? theme.effects.elevation16 : "0 6px 16px rgba(0, 0, 0, 0.2)",
-                zIndex: 1000,
-            },
-            header: {
-                marginBottom: "8px",
+                padding: "10px 14px 12px",
             },
             quiet: {
                 color: quietColor,
             },
-            // A rule between the teams
             team: {
                 flex: "0 1 auto",
                 minWidth: 0,
-                padding: "0 12px",
-                selectors: {
-                    ":first-child": { paddingLeft: 0 },
-                    ":not(:first-child)": { borderLeft: "1px solid " + ruleColor },
-                },
             },
             teamName: {
                 fontWeight: 600,
@@ -475,7 +397,7 @@ const getClassNames = memoizeFunction(
                 width: 0,
                 minWidth: "100%",
                 boxSizing: "border-box",
-                marginTop: "10px",
+                marginTop: "2px",
                 paddingTop: "8px",
                 borderTop: "1px solid " + ruleColor,
                 fontSize: "14px",
