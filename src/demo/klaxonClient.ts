@@ -939,8 +939,13 @@ export const KlaxonApi = {
     getTournament(tcode: string): Promise<ITournamentInfo> {
         return rest("GET", `/api/tournaments/${tcode}`);
     },
-    // The persisted pick/ban board for a round (massinger: null when none).
-    getMassinger(code: string, token: string | null, round: string): Promise<{ massinger: IMassingerState | null }> {
+    // The persisted pick/ban board for a round (massinger: null when none), and
+    // `record`, the finished pick/ban the way Klaxon's exports carry it.
+    getMassinger(
+        code: string,
+        token: string | null,
+        round: string
+    ): Promise<{ massinger: IMassingerState | null; record?: unknown }> {
         return rest("GET", `/api/rooms/${code}/massinger/${encodeURIComponent(round)}?${q(token)}`);
     },
 };

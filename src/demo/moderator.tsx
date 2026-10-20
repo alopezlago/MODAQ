@@ -689,7 +689,8 @@ function downloadFullBuzz(client: KlaxonClient): void {
 
 // A local copy of a game saved to Klaxon, in case the server's is ever lost:
 // the game (QBJ, as filed) and every buzz in the room, including the ones that
-// lost the race (the full buzzpoints), in one file.
+// lost the race (the full buzzpoints), in one file. A MASSINGER game also
+// carries its pick/ban (`massinger` on the game, as Klaxon's exports have it).
 async function downloadGameBackup(client: KlaxonClient, round: string, qbj: IMatch): Promise<void> {
     let buzzpoints: unknown = null;
     try {
@@ -698,13 +699,20 @@ async function downloadGameBackup(client: KlaxonClient, round: string, qbj: IMat
     } catch {
         /* the game alone is still worth keeping */
     }
+    let game: IMatch & { massinger?: unknown } = qbj;
+    try {
+        const { record } = await KlaxonApi.getMassinger(client.code, client.token, round);
+        if (record) game = { ...qbj, massinger: record };
+    } catch {
+        /* no pick/ban, or unreachable: the game as it is */
+    }
     try {
         const backup = {
             format: "klaxon-game-backup-1",
             room: client.code,
             round,
             savedAt: new Date().toISOString(),
-            game: qbj,
+            game,
             buzzpoints,
         };
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
