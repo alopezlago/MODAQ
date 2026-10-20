@@ -110,6 +110,8 @@ export interface IMassingerState {
     // The server flipped a coin for who picks first (teams[0] won it).
     coinFlip?: boolean;
     turnStartedAt?: number;
+    // Players can't pick before this (server ms): the same team picks again.
+    pauseUntil?: number | null;
     deadline: number | null; // server ms; null = no timer / done
     subcats: IMassingerSubcat[];
     // `by` records who made the pick: a player's name, "moderator", or

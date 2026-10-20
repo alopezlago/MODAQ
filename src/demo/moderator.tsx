@@ -162,9 +162,13 @@ function massingerApplies(format: ITournamentFormat | undefined, packet: IPacket
 }
 
 // Apply a finished (or partial) board to the packet: each subcategory loses
-// its LAST `banned` questions. Bonuses are filtered in lockstep only when they
-// pair 1:1 with tossups; a custom readingOrder can't survive index changes, so
-// it is dropped (per the YAPP2 spec, discard the whole field).
+// its LAST `banned` questions from regulation. The banned tossups aren't
+// thrown away: they go after the kept ones, in their original packet order,
+// so they're the game's tiebreakers (MODAQ reads past the format's 20 only
+// when the game is tied). Bonuses are filtered in lockstep only when they
+// pair 1:1 with tossups, and the banned ones aren't added back: tiebreakers
+// are tossups only. A custom readingOrder can't survive index changes, so it
+// is dropped (per the YAPP2 spec, discard the whole field).
 function applyMassinger(packet: IPacket, board: IMassingerState): IPacket {
     const removed = new Set<number>();
     for (const subcat of board.subcats) {
@@ -174,7 +178,10 @@ function applyMassinger(packet: IPacket, board: IMassingerState): IPacket {
     }
     const filtered: IPacket = {
         ...packet,
-        tossups: packet.tossups.filter((_, index) => !removed.has(index)),
+        tossups: [
+            ...packet.tossups.filter((_, index) => !removed.has(index)),
+            ...packet.tossups.filter((_, index) => removed.has(index)),
+        ],
     };
     if (packet.bonuses && packet.bonuses.length === packet.tossups.length) {
         filtered.bonuses = packet.bonuses.filter((_, index) => !removed.has(index));
@@ -2518,7 +2525,13 @@ function PickBan(props: {
     const remaining = massingerRemaining(board);
     const bansLeft = remaining - board.target;
     const active = board.status === "active";
-    const secondsLeft = board.deadline != null ? Math.max(0, Math.ceil((board.deadline - Date.now()) / 1000)) : null;
+    // After a team's ban the server holds its protect back a moment and starts
+    // the clock after that, so the deadline can be a little past the turn's
+    // time; the clock holds at full until then.
+    const secondsLeft =
+        board.deadline != null
+            ? Math.min(board.timerSec || Infinity, Math.max(0, Math.ceil((board.deadline - Date.now()) / 1000)))
+            : null;
     const expired = active && secondsLeft === 0;
     const lastAction = board.actions[board.actions.length - 1];
     const clockFraction =
