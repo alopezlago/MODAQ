@@ -27,6 +27,12 @@ export interface IHostSettings {
     nextGameLabel?: string;
 
     /**
+     * The host saves games itself: no Export menu, and the last question's "Export..." button becomes `label`,
+     * calling `onSave` (the host's own save, e.g. save and move on to the next game).
+     */
+    hostSavesGames?: { label: string; onSave: () => void };
+
+    /**
      * The name of the host product, used in dialogs that reference the host (e.g. the Export Backup confirmation
      * message). Falls back to a generic description if not provided.
      */

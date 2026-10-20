@@ -154,7 +154,11 @@ export const PlayerPad = observer(function PlayerPad(props: IPlayerPadProps): JS
                             <div className={classes.teams}>
                                 {teamNames.map((teamName) => (
                                     <div key={teamName} className={classes.team}>
-                                        {!isIndividualGame && <div className={classes.teamName}>{teamName}</div>}
+                                        {!isIndividualGame && (
+                                            <div className={classes.teamName} title={teamName}>
+                                                {teamName}
+                                            </div>
+                                        )}
                                         <div className={classes.seats}>
                                             {rows
                                                 .filter((row) => row.player.teamName === teamName)
@@ -587,9 +591,18 @@ const getClassNames = memoizeFunction(
                     },
                 },
             },
+            // A long team name wraps to a second line and is cut there (the full
+            // name is in the tooltip), so it can't stretch the panel.
             teamName: {
                 fontWeight: 600,
                 color: theme ? theme.palette.themePrimary : "rgb(0, 120, 212)",
+                maxWidth: "15em",
+                lineHeight: "1.25",
+                overflowWrap: "anywhere",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
             },
             seats: {
                 display: "flex",

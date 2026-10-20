@@ -14,10 +14,8 @@ import { ITiebreakerItem } from "../contexts/TiebreakerContext";
 import { loadDeviceSettings, withDeviceSettings } from "../state/DeviceSettings";
 import { IGameFormat } from "../state/IGameFormat";
 import * as GameFormats from "../state/GameFormats";
-import { ICustomExport } from "../state/CustomExport";
 import { IMatch } from "../qbj/QBJ";
 import * as QBJ from "../qbj/QBJ";
-import { IStatus } from "../IStatus";
 import { getReadAlongDiagnostics } from "../speech/ReadAlongDiagnostics";
 import { setPreferredVoskModelUrl } from "../speech/VoskSpeechEngine";
 import { BuzzPanel, SubmittedAnswers } from "./BuzzPanel";
@@ -139,7 +137,9 @@ function subcatOf(metadata: string | undefined): string {
     return text || "Uncategorized";
 }
 
-// Group the packet's tossups by subcategory, in packet order.
+// Group the packet's tossups by subcategory. The board lists them
+// alphabetically (everyone's copy follows this order); each subcategory's
+// questions stay in packet order.
 function deriveSubcats(packet: IPacket): { label: string; indexes: number[] }[] {
     const byLabel = new Map<string, number[]>();
     packet.tossups.forEach((tossup, index) => {
@@ -151,7 +151,9 @@ function deriveSubcats(packet: IPacket): { label: string; indexes: number[] }[] 
             byLabel.set(label, [index]);
         }
     });
-    return Array.from(byLabel.entries()).map(([label, indexes]) => ({ label, indexes }));
+    return Array.from(byLabel.entries())
+        .map(([label, indexes]) => ({ label, indexes }))
+        .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base", numeric: true }));
 }
 
 // True when this game should run the pick/ban phase: the tournament format
@@ -685,6 +687,40 @@ function downloadFullBuzz(client: KlaxonClient): void {
     }
 }
 
+// A local copy of a game saved to Klaxon, in case the server's is ever lost:
+// the game (QBJ, as filed) and every buzz in the room, including the ones that
+// lost the race (the full buzzpoints), in one file.
+async function downloadGameBackup(client: KlaxonClient, round: string, qbj: IMatch): Promise<void> {
+    let buzzpoints: unknown = null;
+    try {
+        const res = await fetch(KlaxonApi.fullBuzzUrl(client.code, client.token));
+        if (res.ok) buzzpoints = await res.json();
+    } catch {
+        /* the game alone is still worth keeping */
+    }
+    try {
+        const backup = {
+            format: "klaxon-game-backup-1",
+            room: client.code,
+            round,
+            savedAt: new Date().toISOString(),
+            game: qbj,
+            buzzpoints,
+        };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `klaxon_${client.code}_round-${round.replace(/[^A-Za-z0-9_-]+/g, "_")}_backup.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch {
+        /* best-effort */
+    }
+}
+
 // A game counts as played once a question has been read in it: an untouched
 // game has no stats worth handing over.
 function hasPlayed(qbj: IMatch | undefined): qbj is IMatch {
@@ -1067,7 +1103,17 @@ function ModeratorBody(): JSX.Element {
     // pick/ban-filtered) packet, and the teams chosen there. `pickBan` when the
     // round runs a MASSINGER pick/ban between the lobby and the game.
     const [pickban, setPickban] = React.useState<
-        { round: string; packet: IPacket; rosters: IPlayer[]; teams?: IGameTeam[]; pickBan: boolean } | undefined
+        | {
+              round: string;
+              packet: IPacket;
+              rosters: IPlayer[];
+              teams?: IGameTeam[];
+              pickBan: boolean;
+              // The pick/ban options chosen on the setup screen: the board starts
+              // with them as soon as the pick/ban screen opens.
+              options?: IPickBanOptions;
+          }
+        | undefined
     >(undefined);
 
     // Connect + bootstrap once.
@@ -1389,17 +1435,28 @@ function ModeratorBody(): JSX.Element {
             const packet = await loadPacketForStart(client, roundLabel);
             const freshRoster = await refreshCentralRoster(client);
             const rosters = freshRoster ?? rosterPlayers;
+            // The director may have changed the format (the pick/ban timer, who
+            // picks) since this page opened: read it again for each game.
+            let format = tournamentFormat;
+            if (roomState?.tournamentCode) {
+                try {
+                    format = (await KlaxonApi.getTournament(roomState.tournamentCode)).format ?? format;
+                    setTournamentFormat(format);
+                } catch {
+                    /* keep the one loaded with the page */
+                }
+            }
             // Every tournament game is set up in Klaxon's lobby: the two teams,
             // who is playing, and which buzzer is whose. A MASSINGER round runs
             // its pick/ban after that. Rooms outside a tournament keep MODAQ's
             // own New Game dialog.
-            const pickBan = massingerApplies(tournamentFormat, packet);
+            const pickBan = massingerApplies(format, packet);
             if (pickBan || roomState?.tournamentCode) {
                 setPickban({ round: roundLabel, packet, rosters, pickBan });
                 setPhase("lobby");
                 return;
             }
-            await enterReading(client, roundLabel, packet, rosters, tournamentFormat);
+            await enterReading(client, roundLabel, packet, rosters, format);
         } catch (error) {
             setSetupMsg((error as Error).message);
         } finally {
@@ -1666,14 +1723,17 @@ function ModeratorBody(): JSX.Element {
                 round={pickban.round}
                 roomState={roomState}
                 pickBan={pickban.pickBan}
-                captainsWanted={pickban.pickBan && (tournamentFormat?.massingerControl ?? "captain") === "captain"}
+                tossupCount={pickban.packet.tossups.length}
+                timerSecDefault={pickban.options?.timerSec ?? tournamentFormat?.massingerTimerSec ?? 30}
+                controlDefault={pickban.options?.control ?? tournamentFormat?.massingerControl ?? "anyone"}
+                firstDefault={pickban.options?.firstIndex ?? -1}
                 initialTeams={pickban.teams}
                 rosterPlayers={pickban.rosters}
                 onCancel={() => {
                     setPickban(undefined);
                     setPhase("setup");
                 }}
-                onReady={async (teams) => {
+                onReady={async (teams, options) => {
                     // The teams the room now agrees on: push them so buzzes are
                     // attributed (bench too: a sub's buzzer is theirs). A game
                     // set up before anyone joins has nobody to attribute yet.
@@ -1683,7 +1743,7 @@ function ModeratorBody(): JSX.Element {
                             teams: teams.map((t) => ({ name: t.name, players: [...t.players, ...(t.bench ?? [])] })),
                         });
                     }
-                    setPickban({ ...pickban, teams });
+                    setPickban({ ...pickban, teams, options });
                     if (pickban.pickBan) {
                         setPhase("pickban");
                         return;
@@ -1708,7 +1768,8 @@ function ModeratorBody(): JSX.Element {
                 packet={pickban.packet}
                 gameTeams={pickban.teams ?? []}
                 timerSecDefault={tournamentFormat?.massingerTimerSec ?? 30}
-                controlDefault={tournamentFormat?.massingerControl ?? "captain"}
+                controlDefault={tournamentFormat?.massingerControl ?? "anyone"}
+                autoStart={pickban.options}
                 roomState={roomState}
                 onCancel={() => {
                     clientRef.current?.massinger({ action: "massinger_cancel", round: pickban.round });
@@ -1822,10 +1883,9 @@ function ConnectedPlayers(props: {
     const setCaptain = (playerId: string, captain: boolean): void => {
         client?.massinger({ action: "set_captain", playerId, captain });
     };
-    const remove = (playerId: string, who: string): void => {
-        if (window.confirm(`Remove ${who} from the room? They can rejoin from the player link.`)) {
-            client?.massinger({ action: "remove_player", playerId });
-        }
+    // At once, no dialog: they can rejoin from the player link.
+    const remove = (playerId: string): void => {
+        client?.massinger({ action: "remove_player", playerId });
     };
 
     const same = (a: string | null | undefined, b: string | null | undefined): boolean => {
@@ -1895,7 +1955,7 @@ function ConnectedPlayers(props: {
                                             <button
                                                 className="ms-remove"
                                                 title="Remove from the room"
-                                                onClick={() => remove(member.id, member.rosterPlayer || member.name)}
+                                                onClick={() => remove(member.id)}
                                             >
                                                 Remove
                                             </button>
@@ -1926,15 +1986,19 @@ function TeamLobby(props: {
     client: KlaxonClient;
     round: string;
     roomState: IPublicRoomState | undefined;
-    // A MASSINGER pick/ban follows (and the players make its picks).
+    // A MASSINGER pick/ban follows (and the players make its picks). Its
+    // options are set here too, so the pick/ban starts straight from this page.
     pickBan: boolean;
-    captainsWanted: boolean;
+    tossupCount: number;
+    timerSecDefault: number;
+    controlDefault: MassingerControl;
+    firstDefault: number;
     initialTeams?: IGameTeam[];
     // The roster the game will be set up from: the tournament's, or a file the
     // moderator chose on the setup screen.
     rosterPlayers?: IPlayer[];
     onCancel: () => void;
-    onReady: (teams: IGameTeam[]) => void;
+    onReady: (teams: IGameTeam[], options?: IPickBanOptions) => void;
 }): JSX.Element {
     const {
         code,
@@ -1942,7 +2006,10 @@ function TeamLobby(props: {
         round,
         roomState,
         pickBan,
-        captainsWanted,
+        tossupCount,
+        timerSecDefault,
+        controlDefault,
+        firstDefault,
         initialTeams,
         rosterPlayers,
         onCancel,
@@ -1969,6 +2036,11 @@ function TeamLobby(props: {
         initialTeams?.[1]?.name ?? (rosterTeams.length === 2 ? rosterTeams[1] : "")
     );
     const [copied, setCopied] = React.useState(false);
+    // Pick/ban options. -1 for who picks first is a coin flip, made by the server.
+    const [timerSec, setTimerSec] = React.useState(timerSecDefault);
+    const [control, setControl] = React.useState<MassingerControl>(controlDefault);
+    const [firstIndex, setFirstIndex] = React.useState(firstDefault);
+    const captainsWanted = pickBan && control === "captain";
     // The moderator's ticks and unticks in the lineup, over the defaults.
     const [playing, setPlaying] = React.useState<Record<string, boolean>>(() => {
         const saved: Record<string, boolean> = {};
@@ -2003,6 +2075,14 @@ function TeamLobby(props: {
             client.massinger({ action: "massinger_lobby", open: false, round }).catch(() => undefined);
         };
     }, [client, round, pickBan]);
+    // And which two teams are picked, as they're picked: players joining now
+    // see them as the teams playing (not the last game's).
+    React.useEffect(() => {
+        const teams = [teamA.trim(), teamB.trim()].filter((n) => n !== "");
+        client
+            .massinger({ action: "massinger_lobby", open: true, round, pickban: pickBan, teams })
+            .catch(() => undefined);
+    }, [client, round, pickBan, teamA, teamB]);
 
     const players = (roomState?.members ?? []).filter((m) => m.role === "player");
     const connected = players.filter((m) => m.connected);
@@ -2101,7 +2181,8 @@ function TeamLobby(props: {
                 name: l.name,
                 players: l.rows.filter((r) => r.playing).map((r) => r.name),
                 bench: l.rows.filter((r) => !r.playing).map((r) => r.name),
-            }))
+            })),
+            pickBan ? { firstIndex, control, timerSec } : undefined
         );
     };
 
@@ -2226,9 +2307,52 @@ function TeamLobby(props: {
                         </p>
                     )}
 
+                    {pickBan && (
+                        <div className="lobby-pickban">
+                            <h2>Pick/ban</h2>
+                            <p className="hint">{tossupCount} tossups. Each team gets 3 bans and 2 protects.</p>
+                            <label htmlFor="ms-first">Which team picks first?</label>
+                            <select
+                                id="ms-first"
+                                value={firstIndex}
+                                onChange={(e) => setFirstIndex(Number(e.target.value))}
+                            >
+                                <option value={-1}>Random (coin flip)</option>
+                                {namesReady &&
+                                    teamNames.map((name, index) => (
+                                        <option key={name} value={index}>
+                                            {name}
+                                        </option>
+                                    ))}
+                            </select>
+                            <label htmlFor="ms-control">Who makes the picks?</label>
+                            <select
+                                id="ms-control"
+                                value={control}
+                                onChange={(e) => setControl(e.target.value as MassingerControl)}
+                            >
+                                {CONTROL_LABELS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <label htmlFor="ms-timer">Seconds per pick (0 = no timer)</label>
+                            <input
+                                id="ms-timer"
+                                type="number"
+                                min={0}
+                                max={300}
+                                value={timerSec}
+                                onChange={(e) => setTimerSec(Number(e.target.value))}
+                            />
+                            <p className="hint">Out of time: a random pick is made.</p>
+                        </div>
+                    )}
+
                     <div>
                         <button className="primary" disabled={!canStart} onClick={start}>
-                            {pickBan ? "Continue to pick/ban →" : "Start the game →"}
+                            {pickBan ? "Begin pick/ban →" : "Start the game →"}
                         </button>
                         <button className="secondary" onClick={onCancel}>
                             Back to setup
@@ -2244,7 +2368,7 @@ function TeamLobby(props: {
                     showCaptains={captainsWanted && namesReady}
                     allowRemove={true}
                 />
-                <BuzzPanel client={client} state={roomState} />
+                <BuzzPanel client={client} state={roomState} hidePlayers />
             </div>
         </div>
     );
@@ -2288,6 +2412,14 @@ const CONTROL_LABELS: { value: MassingerControl; label: string; hint: string }[]
 // each spoken protect/ban, and enforcing the pick timer. The board itself is
 // server-authoritative (broadcast to players through room state), persisted
 // per room+round so a reload resumes it.
+// The pick/ban options set on the game's setup screen. firstIndex: which of
+// the two teams picks first (-1: a coin flip, made by the server).
+interface IPickBanOptions {
+    firstIndex: number;
+    control: MassingerControl;
+    timerSec: number;
+}
+
 function PickBan(props: {
     code: string;
     client: KlaxonClient;
@@ -2296,6 +2428,9 @@ function PickBan(props: {
     gameTeams: IGameTeam[];
     timerSecDefault: number;
     controlDefault: MassingerControl;
+    // Options already chosen on the setup screen: start the board with them
+    // right away (unless a saved board for the round resumes instead).
+    autoStart?: IPickBanOptions;
     roomState: IPublicRoomState | undefined;
     onCancel: () => void;
     onBackToTeams: () => void;
@@ -2309,6 +2444,7 @@ function PickBan(props: {
         gameTeams,
         timerSecDefault,
         controlDefault,
+        autoStart,
         roomState,
         onCancel,
         onBackToTeams,
@@ -2317,13 +2453,13 @@ function PickBan(props: {
     const board: IMassingerState | undefined =
         roomState?.massinger && roomState.massinger.round === round ? roomState.massinger : undefined;
 
-    const [timerSec, setTimerSec] = React.useState(timerSecDefault);
-    const [control, setControl] = React.useState<MassingerControl>(controlDefault);
+    const [timerSec, setTimerSec] = React.useState(autoStart?.timerSec ?? timerSecDefault);
+    const [control, setControl] = React.useState<MassingerControl>(autoStart?.control ?? controlDefault);
     // Which of the two teams picks first, chosen from a list of the actual team
     // names — never typed, so a pick/ban can't run against a misspelled team
     // that matches nobody's buzzer. -1 (the default) is a coin flip, made by
     // the server.
-    const [firstIndex, setFirstIndex] = React.useState(-1);
+    const [firstIndex, setFirstIndex] = React.useState(autoStart?.firstIndex ?? -1);
     const captainOf = (team: string): IRoomMember | undefined =>
         (roomState?.members ?? []).find(
             (m) =>
@@ -2434,7 +2570,25 @@ function PickBan(props: {
         }
     };
 
+    // Options chosen on the setup screen: start as soon as we know there's no
+    // saved board to resume. Once only; if the server refuses, the form below
+    // shows why and lets the moderator try again.
+    const autoStarted = React.useRef(false);
+    React.useEffect(() => {
+        if (autoStart && probed && !board && !autoStarted.current && teamOptions.length >= 2) {
+            autoStarted.current = true;
+            void begin(false);
+        }
+    });
+
     // --- start form (no board yet) ---
+    if (!board && autoStart && !msg && (!probed || !autoStarted.current || starting)) {
+        return (
+            <div className="mod-center">
+                <p>Starting the pick/ban…</p>
+            </div>
+        );
+    }
     if (!board) {
         return (
             <div className="mod-shell">
@@ -2939,28 +3093,6 @@ function Reading(props: {
         };
     }, [code, token, client, config.tiebreakers]);
 
-    const customExport: ICustomExport = React.useMemo(
-        () => ({
-            label: "Finish & save to Klaxon",
-            type: "QBJ",
-            onExport: async (qbj: IMatch): Promise<IStatus> => {
-                try {
-                    // An explicit export is always final, even if the game ended early.
-                    const result = await KlaxonApi.saveExport(code, token, round, qbj, false);
-                    downloadFullBuzz(client);
-                    try {
-                        localStorage.removeItem("bz_modaqLive:" + code);
-                    } catch {
-                        /* ignore */
-                    }
-                    return { isError: false, status: `Saved to Klaxon (${result.filename})` };
-                } catch (error) {
-                    return { isError: true, status: "Save to Klaxon failed: " + (error as Error).message };
-                }
-            },
-        }),
-        [code, token, round]
-    );
 
     // Live sync: push the QBJ to the server on every game change so the TD sees
     // current stats without the moderator exporting. Overwrites one file/match.
@@ -2979,18 +3111,53 @@ function Reading(props: {
     // The next game is always Klaxon's: back to setup for the round and teams,
     // with this one filed. MODAQ's own New game would start a blank game under
     // this round's name and overwrite its stats.
-    const nextGame = React.useCallback(() => {
+    // The one way out of a game: Next game (top right or in MODAQ's bar) and the
+    // last question's button all land here. It files the game with Klaxon as
+    // final, downloads a backup copy (the game and every buzz), and moves on.
+    const lastQbjRef = React.useRef<IMatch | undefined>(undefined);
+    const savingRef = React.useRef(false);
+    const [saving, setSaving] = React.useState(false);
+    const nextGame = React.useCallback(async () => {
+        if (savingRef.current) return;
+        const qbj = lastQbjRef.current;
+        const played = hasPlayed(qbj);
         if (
-            window.confirm(
-                "Start the next game? This game stays saved to Klaxon, and you pick the round and teams again."
+            !window.confirm(
+                played
+                    ? "Save this game to Klaxon and set up the next one? A backup copy (the game and every buzz) downloads to this computer."
+                    : "Set up the next game? Nothing has been read in this one."
             )
         ) {
-            onChange();
+            return;
         }
-    }, [onChange]);
+        savingRef.current = true;
+        setSaving(true);
+        try {
+            if (played && qbj) {
+                await KlaxonApi.saveExport(code, token, round, qbj, false);
+                await downloadGameBackup(client, round, qbj);
+            }
+            try {
+                localStorage.removeItem("bz_modaqLive:" + code);
+            } catch {
+                /* ignore */
+            }
+            onChange();
+        } catch (error) {
+            window.alert(
+                `Couldn't save the game to Klaxon (${(error as Error).message}). It's still here: try again in a moment.`
+            );
+        } finally {
+            savingRef.current = false;
+            setSaving(false);
+        }
+    }, [code, token, round, client, onChange]);
+    const nextGameRef = React.useRef(nextGame);
+    nextGameRef.current = nextGame;
     const hostSettings: IHostSettings = React.useMemo(
         () => ({
             hostManagesGames: true,
+            hostSavesGames: { label: "Save & next game", onSave: () => void nextGameRef.current() },
             // The tournament's roster and format are the director's.
             restrictRosterChanges: config.rosters.length > 0,
             disableChangeFormat: config.gameFormat != undefined,
@@ -3012,6 +3179,7 @@ function Reading(props: {
             questions?: string[],
             lastUpdate?: number
         ) => {
+            lastQbjRef.current = qbj;   // what Save & next game files
             try {
                 localStorage.setItem("bz_modaqLive:" + code, round);
             } catch {
@@ -3102,8 +3270,12 @@ function Reading(props: {
             <div className="mod-main">
                 <RoomToolbar code={code} label={`Room ${code} · Round ${round}`}>
                     {scorecard.button}
-                    <button onClick={nextGame} title="Pick the round and teams for the next game">
-                        Next game
+                    <button
+                        onClick={() => void nextGame()}
+                        disabled={saving}
+                        title="Save this game to Klaxon (and a backup copy here), then set up the next one"
+                    >
+                        {saving ? "Saving…" : "Save & next game"}
                     </button>
                 </RoomToolbar>
                 {scorecard.panel}
@@ -3150,9 +3322,8 @@ function Reading(props: {
                     remoteState={shared.remoteState}
                     tiebreakers={tiebreakers}
                     onTiebreakerUsed={onTiebreakerUsed}
-                    customExport={customExport}
                     hostSettings={hostSettings}
-                    onNewGameRequested={nextGame}
+                    onNewGameRequested={() => void nextGame()}
                     roundTimingKey={scorecard.key}
                     onRoundScorecardChange={scorecard.onChange}
                 />

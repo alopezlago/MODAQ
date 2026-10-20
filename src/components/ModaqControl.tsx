@@ -1606,7 +1606,10 @@ function update(appState: AppState, props: IModaqControlProps): void {
         (nextHostSettings?.disableChangeFormat ?? false) !== currentHostSettings.disableChangeFormat ||
         (nextHostSettings?.hostManagesGames ?? false) !== currentHostSettings.hostManagesGames ||
         nextHostSettings?.productName !== currentHostSettings.productName ||
-        (nextHostSettings?.offerRoundScorecard ?? false) !== currentHostSettings.offerRoundScorecard
+        (nextHostSettings?.offerRoundScorecard ?? false) !== currentHostSettings.offerRoundScorecard ||
+        nextHostSettings?.nextGameLabel !== currentHostSettings.nextGameLabel ||
+        nextHostSettings?.hostSavesGames?.label !== currentHostSettings.hostSavesGames?.label ||
+        nextHostSettings?.hostSavesGames?.onSave !== currentHostSettings.hostSavesGames?.onSave
     ) {
         appState.uiState.setHostSettings(nextHostSettings);
     }

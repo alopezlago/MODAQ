@@ -997,8 +997,15 @@ function notifyStuck(code: string, who: string): void {
     }
 }
 
-export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState | undefined }): JSX.Element {
-    const { client, state } = props;
+// `hidePlayers`: the game-setup screen has its own list of who's connected
+// (with their teams), and linking buzzers to MODAQ players means nothing until
+// the game exists, so it leaves this list out.
+export function BuzzPanel(props: {
+    client: KlaxonClient;
+    state: IPublicRoomState | undefined;
+    hidePlayers?: boolean;
+}): JSX.Element {
+    const { client, state, hidePlayers } = props;
     const [stuck, setStuck] = React.useState<IStuckAlert | undefined>(undefined);
     // Why "Show their answer" did nothing, when it did nothing.
     const [showAnswerMsg, setShowAnswerMsg] = React.useState("");
@@ -1646,7 +1653,7 @@ export function BuzzPanel(props: { client: KlaxonClient; state: IPublicRoomState
             {typedOption}
             {listedOption}
 
-            <div className="klaxon-players">
+            <div className="klaxon-players" hidden={hidePlayers}>
                 <h3>
                     Players ({players.length}){offline > 0 && <span className="klaxon-offline"> · {offline} offline</span>}
                 </h3>

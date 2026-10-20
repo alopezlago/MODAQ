@@ -793,6 +793,8 @@ export class UIState {
             hostManagesGames: value?.hostManagesGames ?? false,
             productName: value?.productName,
             offerRoundScorecard: value?.offerRoundScorecard ?? false,
+            nextGameLabel: value?.nextGameLabel,
+            hostSavesGames: value?.hostSavesGames,
         };
     }
 

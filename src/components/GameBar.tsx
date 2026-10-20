@@ -197,7 +197,9 @@ export const GameBar = observer(function GameBar(): JSX.Element {
 
     // In TMS-managed mode, only show a button for exporting a backup, gated behind a confirmation dialog.
     // Otherwise show the custom export button (if given) or the standard export submenu.
-    if (uiState.hostSettings.promptBeforeExport) {
+    if (uiState.hostSettings.hostSavesGames != undefined) {
+        // The host's own save (its Next game) is the only way out of a game.
+    } else if (uiState.hostSettings.promptBeforeExport) {
         items.push({
             key: "exportBackup",
             text: "Export Backup",

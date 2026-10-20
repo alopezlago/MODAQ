@@ -73,17 +73,18 @@ export const CycleChooser = observer(function CycleChooser() {
     let nextButton: JSX.Element;
     let nextButtonTooltip;
     const doesNextButtonExport: boolean = shouldNextButtonExport(appState);
+    const hostSave = uiState.hostSettings.hostSavesGames;
     if (doesNextButtonExport) {
-        nextButtonTooltip = "Export";
+        nextButtonTooltip = hostSave ? hostSave.label : "Export";
         nextButton = (
             <PrimaryButton
                 className="next-question"
                 aria-describedby={nextButtonTooltip}
                 key="nextButton"
-                onClick={onNextClickHandler}
+                onClick={hostSave ? hostSave.onSave : onNextClickHandler}
                 styles={nextButtonStyle}
             >
-                Export...
+                {hostSave ? hostSave.label : "Export..."}
             </PrimaryButton>
         );
     } else {

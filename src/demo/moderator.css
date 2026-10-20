@@ -759,6 +759,14 @@ body {
     color: var(--m-muted, #666);
     white-space: nowrap;
 }
+/* A protect names the team, which can be long: let it wrap. */
+.ms-list li.protected .ms-mark {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    min-width: 0;
+    max-width: 50%;
+    text-align: right;
+}
 .ms-actions {
     display: flex;
     gap: 6px;
