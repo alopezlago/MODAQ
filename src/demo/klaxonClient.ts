@@ -84,7 +84,8 @@ export interface IEveningSummary {
 // One subcategory on a MASSINGER pick/ban board. `indexes` are 0-based tossup
 // indexes into the round's packet; a ban removes the LAST remaining index (so
 // a two-question subcategory keeps its earlier question until banned again).
-export type MassingerControl = "moderator" | "captain" | "anyone";
+// "random": nobody picks; the server draws random bans, with no protects.
+export type MassingerControl = "moderator" | "captain" | "anyone" | "random";
 
 export interface IMassingerSubcat {
     label: string;

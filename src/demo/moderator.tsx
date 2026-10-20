@@ -844,8 +844,7 @@ function loadAccountModaqSettings(): Promise<Record<string, unknown> | undefined
     if (!sessionToken()) {
         return Promise.resolve(undefined);
     }
-    accountSettingsLoad ??= KlaxonApi
-        .me()
+    accountSettingsLoad ??= KlaxonApi.me()
         .then(({ account }) => {
             const saved = account?.modaqSettings;
             if (saved && Object.keys(saved).length > 0) {
@@ -957,9 +956,14 @@ interface IWakeLockSentinel {
 let screenLock: IWakeLockSentinel | undefined;
 let screenLockPending = false;
 async function keepScreenOn(): Promise<void> {
-    const wakeLock = (navigator as unknown as { wakeLock?: { request(type: "screen"): Promise<IWakeLockSentinel> } })
+    const wakeLock = ((navigator as unknown) as { wakeLock?: { request(type: "screen"): Promise<IWakeLockSentinel> } })
         .wakeLock;
-    if (wakeLock == undefined || screenLock != undefined || screenLockPending || document.visibilityState !== "visible") {
+    if (
+        wakeLock == undefined ||
+        screenLock != undefined ||
+        screenLockPending ||
+        document.visibilityState !== "visible"
+    ) {
         return;
     }
     screenLockPending = true;
@@ -1664,8 +1668,8 @@ function ModeratorBody(): JSX.Element {
 
                 {centralRoster ? (
                     <p className="hint">
-                        Using the tournament roster ({teams.length} teams) — you pick the two teams and who plays on
-                        the next screen.
+                        Using the tournament roster ({teams.length} teams) — you pick the two teams and who plays on the
+                        next screen.
                     </p>
                 ) : (
                     <>
@@ -2272,10 +2276,7 @@ function TeamLobby(props: {
                                                     setDraft({ ...draft, [normName(l.name)]: e.target.value })
                                                 }
                                             />
-                                            <button
-                                                type="submit"
-                                                disabled={!(draft[normName(l.name)] ?? "").trim()}
-                                            >
+                                            <button type="submit" disabled={!(draft[normName(l.name)] ?? "").trim()}>
                                                 Add
                                             </button>
                                         </form>
@@ -2284,9 +2285,7 @@ function TeamLobby(props: {
                             })}
                         </div>
                     )}
-                    {namesReady && (
-                        <p className="hint">Unticked players start on the bench.</p>
-                    )}
+                    {namesReady && <p className="hint">Unticked players start on the bench.</p>}
 
                     {nobodyPlaying.length > 0 && (
                         <div className="ms-warn">Tick at least one player for {nobodyPlaying.join(" and ")}.</div>
@@ -2294,14 +2293,18 @@ function TeamLobby(props: {
                     {namesReady && unassigned.length > 0 && (
                         <div className="ms-warn">
                             {unassigned.length} connected player{unassigned.length === 1 ? "" : "s"} still need
-                            {unassigned.length === 1 ? "s" : ""} a team — set them on the right, or remove them from
-                            the room.
+                            {unassigned.length === 1 ? "s" : ""} a team — set them on the right, or remove them from the
+                            room.
                             {pickBan ? "" : " Until then their buzzer stays off."}
                         </div>
                     )}
-                    {pickBan && namesReady && connected.length > 0 && unassigned.length === 0 && emptyTeams.length > 0 && (
-                        <div className="ms-warn">Nobody is on {emptyTeams.join(" or ")} yet.</div>
-                    )}
+                    {pickBan &&
+                        namesReady &&
+                        connected.length > 0 &&
+                        unassigned.length === 0 &&
+                        emptyTeams.length > 0 && (
+                            <div className="ms-warn">Nobody is on {emptyTeams.join(" or ")} yet.</div>
+                        )}
                     {canStart && missingCaptains.length > 0 && (
                         <div className="ms-warn">
                             No captain for {missingCaptains.join(" or ")} — the picks are captain-controlled, so mark
@@ -2311,28 +2314,34 @@ function TeamLobby(props: {
                     {connected.length === 0 && (
                         <p className="hint">
                             Nobody has joined yet. Send them the link above
-                            {pickBan ? " — a game can be set up without them, but then every pick has to come from you." : "."}
+                            {pickBan
+                                ? " — a game can be set up without them, but then every pick has to come from you."
+                                : "."}
                         </p>
                     )}
 
                     {pickBan && (
                         <div className="lobby-pickban">
                             <h2>Pick/ban</h2>
-                            <p className="hint">{tossupCount} tossups. Each team gets 3 bans and 2 protects.</p>
-                            <label htmlFor="ms-first">Which team picks first?</label>
-                            <select
-                                id="ms-first"
-                                value={firstIndex}
-                                onChange={(e) => setFirstIndex(Number(e.target.value))}
-                            >
-                                <option value={-1}>Random (coin flip)</option>
-                                {namesReady &&
-                                    teamNames.map((name, index) => (
-                                        <option key={name} value={index}>
-                                            {name}
-                                        </option>
-                                    ))}
-                            </select>
+                            <p className="hint">{pickBanSummary(tossupCount, control)}</p>
+                            {control !== "random" && (
+                                <>
+                                    <label htmlFor="ms-first">Which team picks first?</label>
+                                    <select
+                                        id="ms-first"
+                                        value={firstIndex}
+                                        onChange={(e) => setFirstIndex(Number(e.target.value))}
+                                    >
+                                        <option value={-1}>Random (coin flip)</option>
+                                        {namesReady &&
+                                            teamNames.map((name, index) => (
+                                                <option key={name} value={index}>
+                                                    {name}
+                                                </option>
+                                            ))}
+                                    </select>
+                                </>
+                            )}
                             <label htmlFor="ms-control">Who makes the picks?</label>
                             <select
                                 id="ms-control"
@@ -2345,22 +2354,30 @@ function TeamLobby(props: {
                                     </option>
                                 ))}
                             </select>
-                            <label htmlFor="ms-timer">Seconds per pick (0 = no timer)</label>
-                            <input
-                                id="ms-timer"
-                                type="number"
-                                min={0}
-                                max={300}
-                                value={timerSec}
-                                onChange={(e) => setTimerSec(Number(e.target.value))}
-                            />
-                            <p className="hint">Out of time: a random pick is made.</p>
+                            {control !== "random" && (
+                                <>
+                                    <label htmlFor="ms-timer">Seconds per pick (0 = no timer)</label>
+                                    <input
+                                        id="ms-timer"
+                                        type="number"
+                                        min={0}
+                                        max={300}
+                                        value={timerSec}
+                                        onChange={(e) => setTimerSec(Number(e.target.value))}
+                                    />
+                                    <p className="hint">Out of time: a random pick is made.</p>
+                                </>
+                            )}
                         </div>
                     )}
 
                     <div>
                         <button className="primary" disabled={!canStart} onClick={start}>
-                            {pickBan ? "Begin pick/ban →" : "Start the game →"}
+                            {!pickBan
+                                ? "Start the game →"
+                                : control === "random"
+                                ? "Draw the bans →"
+                                : "Begin pick/ban →"}
                         </button>
                         <button className="secondary" onClick={onCancel}>
                             Back to setup
@@ -2413,7 +2430,18 @@ const CONTROL_LABELS: { value: MassingerControl; label: string; hint: string }[]
         label: "Moderator only",
         hint: "Players just watch the board; you make every pick from here.",
     },
+    {
+        value: "random",
+        label: "Nobody: random bans",
+        hint: "Klaxon bans 6 tossups at random; nothing is protected.",
+    },
 ];
+
+// What the teams do, for the pick/ban option screens.
+const pickBanSummary = (tossups: number, control: MassingerControl): string =>
+    control === "random"
+        ? `${tossups} tossups. Random bans: 6 tossups are banned at random, nothing is protected, and the teams don't pick.`
+        : `${tossups} tossups. Each team gets 3 bans and 2 protects.`;
 
 // --- MASSINGER pick/ban screen ---------------------------------------------
 // The moderator drives the whole phase: which team is on the clock, applying
@@ -2564,7 +2592,10 @@ function PickBan(props: {
                 fresh,
                 round,
                 subcats: deriveSubcats(packet),
-                teams: firstIndex < 0 ? [teamOptions[0], teamOptions[1]] : [teamOptions[firstIndex], teamOptions[1 - firstIndex]],
+                teams:
+                    firstIndex < 0
+                        ? [teamOptions[0], teamOptions[1]]
+                        : [teamOptions[firstIndex], teamOptions[1 - firstIndex]],
                 randomFirst: firstIndex < 0,
                 timerSec,
                 control,
@@ -2603,22 +2634,24 @@ function PickBan(props: {
                 <div className="mod-main">
                     <div className="mod-center mod-setup">
                         <h1>MASSINGER pick/ban — Round {round}</h1>
-                        <p className="hint">
-                            {packet.tossups.length} tossups. Each team gets 3 bans and 2 protects.
-                        </p>
-                        <label htmlFor="ms-first">Which team picks first?</label>
-                        <select
-                            id="ms-first"
-                            value={firstIndex}
-                            onChange={(e) => setFirstIndex(Number(e.target.value))}
-                        >
-                            <option value={-1}>Random (coin flip)</option>
-                            {teamOptions.map((name, index) => (
-                                <option key={name} value={index}>
-                                    {name}
-                                </option>
-                            ))}
-                        </select>
+                        <p className="hint">{pickBanSummary(packet.tossups.length, control)}</p>
+                        {control !== "random" && (
+                            <>
+                                <label htmlFor="ms-first">Which team picks first?</label>
+                                <select
+                                    id="ms-first"
+                                    value={firstIndex}
+                                    onChange={(e) => setFirstIndex(Number(e.target.value))}
+                                >
+                                    <option value={-1}>Random (coin flip)</option>
+                                    {teamOptions.map((name, index) => (
+                                        <option key={name} value={index}>
+                                            {name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </>
+                        )}
                         <label htmlFor="ms-control">Who makes the picks?</label>
                         <select
                             id="ms-control"
@@ -2638,16 +2671,20 @@ function PickBan(props: {
                             </p>
                         )}
 
-                        <label htmlFor="ms-timer">Seconds per pick (0 = no timer)</label>
-                        <input
-                            id="ms-timer"
-                            type="number"
-                            min={0}
-                            max={300}
-                            value={timerSec}
-                            onChange={(e) => setTimerSec(Number(e.target.value))}
-                        />
-                        <p className="hint">Out of time: a random pick is made.</p>
+                        {control !== "random" && (
+                            <>
+                                <label htmlFor="ms-timer">Seconds per pick (0 = no timer)</label>
+                                <input
+                                    id="ms-timer"
+                                    type="number"
+                                    min={0}
+                                    max={300}
+                                    value={timerSec}
+                                    onChange={(e) => setTimerSec(Number(e.target.value))}
+                                />
+                                <p className="hint">Out of time: a random pick is made.</p>
+                            </>
+                        )}
                         <div>
                             <button
                                 className="primary"
@@ -2656,9 +2693,11 @@ function PickBan(props: {
                             >
                                 {teamOptions.length < 2
                                     ? "Set the teams first"
-                                    : probed
-                                    ? "Begin pick/ban"
-                                    : "Checking for a saved board…"}
+                                    : !probed
+                                    ? "Checking for a saved board…"
+                                    : control === "random"
+                                    ? "Draw the bans"
+                                    : "Begin pick/ban"}
                             </button>{" "}
                             <button className="secondary" onClick={onBackToTeams}>
                                 Back to teams &amp; players
@@ -2710,6 +2749,7 @@ function PickBan(props: {
             ? " warn"
             : "");
     const limited = board.limits != undefined;
+    const randomBans = board.control === "random";
     // A fixed order says which kind is due; older boards allow either.
     const due = board.schedule ? board.schedule[board.actions.length] : undefined;
     const canBan = due ? due.type === "ban" : massingerLeft(board, board.turn, "ban") > 0;
@@ -2784,7 +2824,9 @@ function PickBan(props: {
                                                     {members.map((m) => (
                                                         <li key={m.id}>
                                                             {m.rosterPlayer || m.name}
-                                                            {m.isCaptain && <span className="lobby-cap"> ★ captain</span>}
+                                                            {m.isCaptain && (
+                                                                <span className="lobby-cap"> ★ captain</span>
+                                                            )}
                                                         </li>
                                                     ))}
                                                 </ul>
@@ -2804,7 +2846,7 @@ function PickBan(props: {
                                     value={board.control}
                                     onChange={(e) => send({ action: "massinger_set_control", control: e.target.value })}
                                 >
-                                    {CONTROL_LABELS.map((option) => (
+                                    {CONTROL_LABELS.filter((option) => option.value !== "random").map((option) => (
                                         <option key={option.value} value={option.value}>
                                             {option.label}
                                         </option>
@@ -2821,18 +2863,20 @@ function PickBan(props: {
                                         <span className="ms-warn-inline">no captain for {board.teams[board.turn]}</span>
                                     ))}
                             </div>
-                            {!board.schedule && <div className="ms-turnrow">
-                                <span className="hint">Team on the clock:</span>
-                                {[0, 1].map((team) => (
-                                    <button
-                                        key={team}
-                                        className={board.turn === team ? "ms-turn active" : "ms-turn"}
-                                        onClick={() => send({ action: "massinger_set_turn", team })}
-                                    >
-                                        {board.teams[team]}
-                                    </button>
-                                ))}
-                            </div>}
+                            {!board.schedule && (
+                                <div className="ms-turnrow">
+                                    <span className="hint">Team on the clock:</span>
+                                    {[0, 1].map((team) => (
+                                        <button
+                                            key={team}
+                                            className={board.turn === team ? "ms-turn active" : "ms-turn"}
+                                            onClick={() => send({ action: "massinger_set_turn", team })}
+                                        >
+                                            {board.teams[team]}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                             <p className="hint">
                                 {remaining} questions remain — {bansLeft} more ban{bansLeft === 1 ? "" : "s"} to reach{" "}
                                 {board.target}.
@@ -2840,7 +2884,7 @@ function PickBan(props: {
                         </>
                     ) : (
                         <p className="ms-doneline">
-                            Pick/ban complete — {remaining} questions remain
+                            {randomBans ? "Random bans drawn" : "Pick/ban complete"} — {remaining} questions remain
                             {remaining > board.target ? " (all the bans are used)" : ""}.
                         </p>
                     )}
@@ -2861,8 +2905,10 @@ function PickBan(props: {
                             </span>
                             <strong className="ms-lastpick-label">{lastAction.label}</strong>
                             <span className="ms-lastpick-by">
-                                {board.teams[lastAction.team]}
-                                {lastAction.by === "timeout"
+                                {randomBans ? "random bans" : board.teams[lastAction.team]}
+                                {randomBans
+                                    ? ""
+                                    : lastAction.by === "timeout"
                                     ? " · time ran out, random pick"
                                     : lastAction.by === "random"
                                     ? " · random pick"
@@ -2964,23 +3010,36 @@ function PickBan(props: {
                                 {expired ? " (time expired)" : ""}
                             </button>
                         )}
-                        <button
-                            disabled={board.actions.length === 0}
-                            onClick={() => send({ action: "massinger_undo" })}
-                        >
-                            Undo last
-                        </button>
-                        <button className={editing ? "ms-turn active" : ""} onClick={() => setEditing(!editing)}>
-                            {editing ? "Done editing" : "Edit picks"}
-                        </button>
+                        {!randomBans && (
+                            <>
+                                <button
+                                    disabled={board.actions.length === 0}
+                                    onClick={() => send({ action: "massinger_undo" })}
+                                >
+                                    Undo last
+                                </button>
+                                <button
+                                    className={editing ? "ms-turn active" : ""}
+                                    onClick={() => setEditing(!editing)}
+                                >
+                                    {editing ? "Done editing" : "Edit picks"}
+                                </button>
+                            </>
+                        )}
                         <button
                             onClick={() => {
-                                if (window.confirm("Restart the pick/ban from scratch? All picks so far are lost.")) {
+                                if (
+                                    window.confirm(
+                                        randomBans
+                                            ? "Draw the random bans again? These bans are lost."
+                                            : "Restart the pick/ban from scratch? All picks so far are lost."
+                                    )
+                                ) {
                                     begin(true);
                                 }
                             }}
                         >
-                            Restart
+                            {randomBans ? "Redraw" : "Restart"}
                         </button>
                         <button onClick={onCancel}>Back to setup</button>
                     </div>
@@ -3101,7 +3160,6 @@ function Reading(props: {
         };
     }, [code, token, client, config.tiebreakers]);
 
-
     // Live sync: push the QBJ to the server on every game change so the TD sees
     // current stats without the moderator exporting. Overwrites one file/match.
     // inProgress keeps a half-played game out of the W/L standings. The resume
@@ -3153,7 +3211,9 @@ function Reading(props: {
             onChange();
         } catch (error) {
             window.alert(
-                `Couldn't save the game to Klaxon (${(error as Error).message}). It's still here: try again in a moment.`
+                `Couldn't save the game to Klaxon (${
+                    (error as Error).message
+                }). It's still here: try again in a moment.`
             );
         } finally {
             savingRef.current = false;
@@ -3187,7 +3247,7 @@ function Reading(props: {
             questions?: string[],
             lastUpdate?: number
         ) => {
-            lastQbjRef.current = qbj;   // what Save & next game files
+            lastQbjRef.current = qbj; // what Save & next game files
             try {
                 localStorage.setItem("bz_modaqLive:" + code, round);
             } catch {
@@ -3758,7 +3818,11 @@ function EveningTotals(props: { evening: IEveningSummary; onReset: () => void })
             )}
             <button
                 onClick={() => {
-                    if (window.confirm("Start tonight's totals again from zero? Games already read stay in Previous games.")) {
+                    if (
+                        window.confirm(
+                            "Start tonight's totals again from zero? Games already read stay in Previous games."
+                        )
+                    ) {
                         props.onReset();
                     }
                 }}
@@ -4186,11 +4250,7 @@ function ShootoutSetup(props: {
                     </div>
                     <p className="msg">
                         {msg ||
-                            (reading
-                                ? "Reading the packet…"
-                                : saved.length === 0
-                                ? "Add the packet to start."
-                                : "")}
+                            (reading ? "Reading the packet…" : saved.length === 0 ? "Add the packet to start." : "")}
                     </p>
                 </div>
             </div>
@@ -4329,7 +4389,8 @@ function TournamentShootoutSetup(props: {
                         <p className="hint">Loading the tournament&apos;s packets…</p>
                     ) : packets.length === 0 ? (
                         <p className="hint">
-                            No packets ready yet. Upload them in the director console&apos;s Packets tab (with several rooms, release them there too), then refresh.
+                            No packets ready yet. Upload them in the director console&apos;s Packets tab (with several
+                            rooms, release them there too), then refresh.
                         </p>
                     ) : (
                         <ol className="so-packets">
