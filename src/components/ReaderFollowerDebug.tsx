@@ -15,7 +15,7 @@ import {
 import { AppState } from "../state/AppState";
 import { UIState } from "../state/UIState";
 import { Tossup } from "../state/PacketState";
-import { getReadAlongLog } from "../speech/ReadAlongLog";
+import { getReadAlongDiagnostics } from "../speech/ReadAlongDiagnostics";
 
 // How many words of question text to show on each side of a position in the debug snippets
 const snippetContextWordCount = 4;
@@ -69,7 +69,8 @@ export const ReaderFollowerDebug = observer(function ReaderFollowerDebug(props: 
 
 const copyLogLabel = "Copy read-along log";
 
-// Copies what read-along heard and decided recently, for a moderator to send along when it goes wrong. The label
+// Copies the microphone setup and what read-along heard and decided recently, for a moderator to send along when it
+// goes wrong. The label
 // says whether it worked for a couple of seconds, then goes back.
 function CopyLogButton(): JSX.Element {
     const [label, setLabel] = React.useState(copyLogLabel);
@@ -98,7 +99,7 @@ function CopyLogButton(): JSX.Element {
         }
 
         navigator.clipboard
-            .writeText(getReadAlongLog() || "(nothing logged yet)")
+            .writeText(getReadAlongDiagnostics())
             .then(() => showResult("Copied"))
             .catch(() => showResult("Couldn't copy"));
     };

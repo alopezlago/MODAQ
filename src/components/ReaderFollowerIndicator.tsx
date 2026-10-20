@@ -20,6 +20,8 @@ export const ReaderFollowerIndicator = observer(function ReaderFollowerIndicator
     const status: string = uiState.readerFollowerStatus ?? "Starting...";
     const engine: string | undefined = uiState.readerFollowerEngine;
     const isTroubled: boolean = /error|restarting|ended/i.test(status);
+    // The local model's first download takes a while; say so rather than leave the reader guessing
+    const isLoading: boolean = /^Loading speech model/.test(status);
     const tooltip = `Following the reader with the microphone${engine != undefined ? ` (${engine})` : ""}: ${status}`;
 
     return (
@@ -29,6 +31,7 @@ export const ReaderFollowerIndicator = observer(function ReaderFollowerIndicator
                 return (
                     <span className={classes.indicator} title={tooltip} role="img" aria-label={tooltip}>
                         <Icon iconName="Microphone" />
+                        {isLoading && <span className={classes.loading}>Loading speech model…</span>}
                     </span>
                 );
             }}
@@ -42,6 +45,7 @@ export interface IReaderFollowerIndicatorProps {
 
 interface IReaderFollowerIndicatorClassNames {
     indicator: string;
+    loading: string;
 }
 
 const getClassNames = memoizeFunction(
@@ -51,7 +55,7 @@ const getClassNames = memoizeFunction(
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: "32px",
+                minWidth: "32px",
                 height: "32px",
                 fontSize: "14px",
                 cursor: "default",
@@ -62,6 +66,11 @@ const getClassNames = memoizeFunction(
                     : theme
                     ? theme.palette.neutralTertiary
                     : "gray",
+            },
+            loading: {
+                marginLeft: "6px",
+                fontSize: "12px",
+                whiteSpace: "nowrap",
             },
         })
 );

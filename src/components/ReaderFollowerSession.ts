@@ -32,6 +32,9 @@ export class ReaderFollowerSession {
 
     private pauseTimerId: number | undefined;
 
+    // The words being followed, joined, so the same tossup handed over again isn't restarted (see setTossup)
+    private targetKey: string | undefined;
+
     constructor(appState: AppState) {
         this.appState = appState;
         this.latestWordIndex = -1;
@@ -61,12 +64,22 @@ export class ReaderFollowerSession {
      * answered correctly and the reader moves on to the bonus).
      */
     public setTossup(tossup: Tossup | undefined, gameFormat: IGameFormat): void {
+        const words: string[] | undefined =
+            tossup == undefined ? undefined : TossupQuestionController.getWordsForReaderFollower(tossup, gameFormat);
+
+        // The same question again isn't a new one. Reloading the game (e.g. a game file applied from another
+        // screen) rebuilds the packet, so the tossup arrives as a new object mid-reading; starting over from its
+        // first word would leave Space on word 1 until the reader began a new sentence.
+        const key: string | undefined = words?.join("\n");
+        if (key != undefined && key === this.targetKey) {
+            return;
+        }
+
+        this.targetKey = key;
         this.clearPauseTimer();
         this.latestWordIndex = -1;
         TossupQuestionController.updateReaderFollowerLivePosition(this.appState, -1);
-        this.follower.setTargetWords(
-            tossup == undefined ? undefined : TossupQuestionController.getWordsForReaderFollower(tossup, gameFormat)
-        );
+        this.follower.setTargetWords(words);
     }
 
     public dispose(): void {

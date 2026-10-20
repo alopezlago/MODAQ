@@ -8,7 +8,7 @@ import {
 } from "./TranscriptAligner";
 import { logReadAlong } from "./ReadAlongLog";
 import { VoskSpeechEngine } from "./VoskSpeechEngine";
-import { WebSpeechEngine } from "./WebSpeechEngine";
+import { isBraveBrowser, WebSpeechEngine } from "./WebSpeechEngine";
 
 // Words the moderator says right after a buzz is resolved ("correct", "neg 5", "power, 15 points"). Hearing one
 // means a buzz just happened, so the buzz point should update right away instead of waiting for a pause.
@@ -53,6 +53,10 @@ export interface IReaderFollowerCallbacks {
     onTranscript?(transcript: string): void;
 }
 
+// Use the local recognizer rather than the browser's: from the start in Brave (its SpeechRecognition has no service
+// behind it), and from the moment the browser's service is found unreachable anywhere else.
+let useLocalEngine: boolean = isBraveBrowser();
+
 /**
  * Passively listens to the microphone and reports how far into a known piece of text (a tossup) the speaker has
  * read. Positions are word indexes into the target words passed to `setTargetWords`, and once the last of them
@@ -62,8 +66,9 @@ export interface IReaderFollowerCallbacks {
  * Listening is started once and kept running while the target changes from tossup to tossup, so no words are
  * lost to recognizer start-up at the beginning of each question.
  *
- * Uses the native Web Speech API when the browser has one (Chrome/Edge/Safari), and falls back to a local
- * WebAssembly recognizer (Vosk) in browsers without it, like Firefox.
+ * Uses the native Web Speech API when the browser has one (Chrome/Edge/Safari), and a local WebAssembly
+ * recognizer (Vosk) otherwise: in browsers without it, like Firefox; in Brave, whose API has no speech service
+ * behind it; and wherever the browser's speech service turns out to be unreachable.
  */
 export class ReaderFollower {
     private readonly callbacks: IReaderFollowerCallbacks;
@@ -82,8 +87,12 @@ export class ReaderFollower {
     // How many target words there are, so reading the last one reports the end of the question
     private targetWordCount: number;
 
+    // The words last handed to the engine, so an engine switched in mid-tossup gets them too
+    private vocabulary: string[] | undefined;
+
     constructor(callbacks: IReaderFollowerCallbacks) {
         this.targetWordCount = 0;
+        this.vocabulary = undefined;
         this.callbacks = callbacks;
         this.engine = undefined;
         this.processor = undefined;
@@ -133,12 +142,36 @@ export class ReaderFollower {
                 this.callbacks.onPermanentError(message);
             },
             onAudioCaptureError: () => this.callbacks.onAudioCaptureError?.(),
+            onServiceUnavailable: () => {
+                if (!VoskSpeechEngine.isSupported()) {
+                    engineCallbacks.onPermanentError(
+                        "The browser's speech recognition service can't be reached, and this browser can't run " +
+                            "local recognition either. Try Chrome or Edge."
+                    );
+                    return;
+                }
+
+                // For the rest of the page's life: the service isn't coming back between tossups
+                useLocalEngine = true;
+                logReadAlong("engine", "browser speech service unreachable; switching to local recognition (Vosk)");
+                this.startEngine(new VoskSpeechEngine(engineCallbacks));
+            },
         };
 
-        this.engine = WebSpeechEngine.isSupported()
-            ? new WebSpeechEngine(engineCallbacks)
-            : new VoskSpeechEngine(engineCallbacks);
-        this.engine.start();
+        this.startEngine(
+            useLocalEngine || !WebSpeechEngine.isSupported()
+                ? new VoskSpeechEngine(engineCallbacks)
+                : new WebSpeechEngine(engineCallbacks)
+        );
+    }
+
+    private startEngine(engine: ISpeechEngine): void {
+        this.engine = engine;
+        logReadAlong("engine", engine.name);
+        engine.start();
+        if (this.vocabulary != undefined) {
+            engine.setVocabulary(this.vocabulary);
+        }
     }
 
     public stop(): void {
@@ -186,7 +219,8 @@ export class ReaderFollower {
                 }
             }
 
-            this.engine.setVocabulary([...vocabulary]);
+            this.vocabulary = [...vocabulary];
+            this.engine.setVocabulary(this.vocabulary);
         }
     }
 

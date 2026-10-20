@@ -24,6 +24,7 @@ import * as PacketLoaderController from "./PacketLoaderController";
 import * as TossupQuestionController from "./TossupQuestionController";
 import { StateProvider } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";
+import { watchReadAlongState } from "../speech/ReadAlongDiagnostics";
 import { GameViewer } from "./GameViewer";
 import { ModalDialogContainer } from "./ModalDialogContainer";
 import { IGameFormat } from "../state/IGameFormat";
@@ -100,6 +101,9 @@ const darkModePalette: Partial<IPalette> = {
 
 export const ModaqControl = observer(function ModaqControl(props: IModaqControlProps): JSX.Element {
     const [appState]: [AppState, React.Dispatch<React.SetStateAction<AppState>>] = React.useState(() => new AppState());
+
+    // The read-along diagnostics (copied from its debug panel) describe this game's microphone settings
+    React.useEffect(() => watchReadAlongState(appState.uiState), [appState]);
 
     // We only want to run this effect once, which requires passing in an empty array of dependencies
     // eslint-disable-next-line react-hooks/exhaustive-deps

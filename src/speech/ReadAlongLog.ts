@@ -16,6 +16,11 @@ export function logReadAlong(kind: string, detail: string): void {
     }
 }
 
+// When the first entry was logged, so the relative times can be read as clock times
+export function getReadAlongLogStart(): number | undefined {
+    return startTime;
+}
+
 export function getReadAlongLog(): string {
     return entries.join("\n");
 }

@@ -73,6 +73,15 @@ const healthySessionDurationInMs = 2000;
 const initialRestartBackoffInMs = 250;
 const maximumRestartBackoffInMs = 4000;
 
+// The silent-session watchdog (see checkIdle): how often it looks, and how long a session may go without a result
+// before it's replaced (doubling per restart in a row, up to the maximum)
+const watchdogIntervalInMs = 1000;
+const initialIdleRestartInMs = 8000;
+const maximumIdleRestartInMs = 30000;
+
+// Between ending one session and starting the next, so the browser has released the microphone
+const restartSettleInMs = 150;
+
 // Which tossup words to bias recognition toward, and how much. Long words are the names and terms a recognizer
 // is most likely to get wrong without a hint.
 const maximumBiasPhrases = 100;
@@ -91,6 +100,16 @@ function getSpeechRecognitionConstructor(): ISpeechRecognitionConstructor | unde
 function getSpeechRecognitionPhraseConstructor(): ISpeechRecognitionPhraseConstructor | undefined {
     return typeof window === "undefined" ? undefined : (window as IWindowWithSpeechRecognition).SpeechRecognitionPhrase;
 }
+
+// Brave has Chromium's SpeechRecognition API but not the Google speech service behind it, so every online session
+// fails with a "network" error. It announces itself with navigator.brave.
+export function isBraveBrowser(): boolean {
+    return typeof navigator !== "undefined" && (navigator as { brave?: unknown }).brave != undefined;
+}
+
+// Sessions failing with "network" before recognition has ever produced a word means the speech service can't be
+// reached at all (blocked, or not there), not a blip. Stop retrying after this many.
+const unreachableServiceFailureCount = 3;
 
 function getLanguage(): string {
     return document.documentElement.lang || "en-US";
@@ -131,6 +150,28 @@ export class WebSpeechEngine implements ISpeechEngine {
     // When this session started or last delivered a result (see restartIfIdle)
     private lastHeardTime: number;
 
+    // Whether any session has delivered a result since listening started, and how many "network" failures came
+    // before that; together they tell a service that never worked from one that dropped out for a moment
+    private heardAnything: boolean;
+
+    private networkFailures: number;
+
+    // A session can say it's listening and then never deliver a result (seen with on-device recognition, right
+    // after a restart for a new tossup's hint words). This checks every second, all the time, not just when a
+    // tossup changes: one that dies at the start of a tossup would otherwise stay dead for the whole question.
+    private watchdogId: number | undefined;
+
+    // Restarts in a row with nothing heard; each waits longer, so a quiet room isn't restarted every few seconds
+    private idleRestarts: number;
+
+    // Whether this session was given hint phrases, and whether it has delivered anything
+    private sessionUsedPhrases: boolean;
+
+    private sessionHeard: boolean;
+
+    // A session with hint phrases went silent: the next ones run without them until the vocabulary changes
+    private phrasesSkipped: boolean;
+
     constructor(callbacks: ISpeechEngineCallbacks) {
         this.callbacks = callbacks;
         this.recognition = undefined;
@@ -143,6 +184,13 @@ export class WebSpeechEngine implements ISpeechEngine {
         this.phrasesUnsupported = false;
         this.vocabulary = [];
         this.lastHeardTime = 0;
+        this.heardAnything = false;
+        this.networkFailures = 0;
+        this.watchdogId = undefined;
+        this.idleRestarts = 0;
+        this.sessionUsedPhrases = false;
+        this.sessionHeard = false;
+        this.phrasesSkipped = false;
     }
 
     public static isSupported(): boolean {
@@ -177,6 +225,8 @@ export class WebSpeechEngine implements ISpeechEngine {
 
     public start(): void {
         this.stop();
+        this.heardAnything = false;
+        this.networkFailures = 0;
 
         const speechRecognitionConstructor:
             | ISpeechRecognitionConstructor
@@ -187,11 +237,18 @@ export class WebSpeechEngine implements ISpeechEngine {
         }
 
         this.active = true;
+        this.idleRestarts = 0;
+        this.watchdogId = window.setInterval(() => this.checkIdle(), watchdogIntervalInMs);
         void this.startListening(speechRecognitionConstructor);
     }
 
     public stop(): void {
         this.active = false;
+
+        if (this.watchdogId != undefined) {
+            window.clearInterval(this.watchdogId);
+            this.watchdogId = undefined;
+        }
 
         if (this.restartTimerId != undefined) {
             window.clearTimeout(this.restartTimerId);
@@ -215,6 +272,8 @@ export class WebSpeechEngine implements ISpeechEngine {
 
     public setVocabulary(words: string[]): void {
         this.vocabulary = words;
+        // A new tossup: give its hint phrases a chance, even if the last ones went quiet
+        this.phrasesSkipped = false;
 
         // Bias phrases only take effect when a session starts. Restarting costs a moment of audio, so only do it
         // when the phrases will actually be used. Stopping ends the session, and handleEnd starts the next one.
@@ -233,6 +292,38 @@ export class WebSpeechEngine implements ISpeechEngine {
         }
 
         if (Date.now() - this.lastHeardTime < idleMs) {
+            return false;
+        }
+
+        return this.restartStaleSession("Nothing heard for a while; restarting recognition...");
+    }
+
+    // Every second: a session that has delivered nothing for long enough is replaced. The wait doubles with each
+    // restart in a row (8s, 16s, then every 30s) and resets as soon as anything is heard.
+    private checkIdle(): void {
+        if (!this.active || this.recognition == undefined || this.restartTimerId != undefined) {
+            return;
+        }
+
+        const wait: number = Math.min(maximumIdleRestartInMs, initialIdleRestartInMs * Math.pow(2, this.idleRestarts));
+        if (Date.now() - this.lastHeardTime < wait) {
+            return;
+        }
+
+        // Hint phrases are the one thing a new tossup's session adds, so if that session never said a word, the
+        // next one goes without them
+        let reason = `Nothing heard for ${Math.round(wait / 1000)}s; restarting recognition...`;
+        if (this.sessionUsedPhrases && !this.sessionHeard) {
+            this.phrasesSkipped = true;
+            reason = `Nothing heard for ${Math.round(wait / 1000)}s; restarting recognition without hint words...`;
+        }
+
+        this.idleRestarts++;
+        this.restartStaleSession(reason);
+    }
+
+    private restartStaleSession(reason: string): boolean {
+        if (this.recognition == undefined) {
             return false;
         }
 
@@ -256,8 +347,15 @@ export class WebSpeechEngine implements ISpeechEngine {
             // Already over
         }
 
-        this.callbacks.onStatusChanged("Nothing heard for a while; restarting recognition...");
-        this.startRecognitionSession(speechRecognitionConstructor);
+        this.recognition = undefined;
+        this.callbacks.onStatusChanged(reason);
+        // A moment for the browser to let go of the old session's microphone before the new one asks for it
+        this.restartTimerId = window.setTimeout(() => {
+            this.restartTimerId = undefined;
+            if (this.active) {
+                this.startRecognitionSession(speechRecognitionConstructor);
+            }
+        }, restartSettleInMs);
         return true;
     }
 
@@ -281,13 +379,20 @@ export class WebSpeechEngine implements ISpeechEngine {
     }
 
     private canUsePhrases(): boolean {
-        return this.processLocally && !this.phrasesUnsupported && getSpeechRecognitionPhraseConstructor() != undefined;
+        return (
+            this.processLocally &&
+            !this.phrasesUnsupported &&
+            !this.phrasesSkipped &&
+            getSpeechRecognitionPhraseConstructor() != undefined
+        );
     }
 
     private startRecognitionSession(speechRecognitionConstructor: ISpeechRecognitionConstructor): void {
         this.sessionId++;
         this.sessionStartTime = Date.now();
         this.lastHeardTime = this.sessionStartTime;
+        this.sessionHeard = false;
+        this.sessionUsedPhrases = false;
 
         const recognition: ISpeechRecognition = new speechRecognitionConstructor();
         recognition.continuous = true;
@@ -307,6 +412,7 @@ export class WebSpeechEngine implements ISpeechEngine {
                     .filter((word) => word.length >= biasPhraseMinimumLength)
                     .slice(0, maximumBiasPhrases)
                     .map((word) => new phraseConstructor(word, biasPhraseBoost));
+                this.sessionUsedPhrases = recognition.phrases.length > 0;
             } catch (e) {
                 this.phrasesUnsupported = true;
             }
@@ -332,6 +438,10 @@ export class WebSpeechEngine implements ISpeechEngine {
 
     private handleResult(event: ISpeechRecognitionEvent): void {
         this.lastHeardTime = Date.now();
+        this.heardAnything = true;
+        this.sessionHeard = true;
+        this.idleRestarts = 0;
+        this.networkFailures = 0;
         for (let i = event.resultIndex; i < event.results.length; i++) {
             const result: ISpeechRecognitionResult = event.results[i];
             const utteranceKey = `${this.sessionId}-${i}`;
@@ -375,6 +485,31 @@ export class WebSpeechEngine implements ISpeechEngine {
             this.phrasesUnsupported = true;
         }
 
+        // An online service that has never answered: retrying forever just leaves the buzz point stuck at the
+        // start with nothing on screen saying why. Brave never has one, so it doesn't need three tries to tell.
+        if (event.error === "network" && !this.heardAnything && !this.processLocally) {
+            this.networkFailures++;
+            const brave: boolean = isBraveBrowser();
+            if (brave || this.networkFailures >= unreachableServiceFailureCount) {
+                this.stop();
+                if (this.callbacks.onServiceUnavailable != undefined) {
+                    this.callbacks.onServiceUnavailable();
+                    return;
+                }
+
+                this.callbacks.onPermanentError(
+                    brave
+                        ? "Brave doesn't include the speech recognition service that microphone tracking uses, so " +
+                              "it can't follow the reading here. Use Chrome or Edge for microphone tracking; " +
+                              "everything else works in Brave."
+                        : "The browser's speech recognition service can't be reached, so microphone tracking can't " +
+                              "follow the reading. Check your internet connection (or anything blocking Google's " +
+                              "speech service), or try Chrome or Edge."
+                );
+                return;
+            }
+        }
+
         // Transient errors (no-speech, network, audio-capture, aborted) end the session, and handleEnd
         // restarts it. Surface them so the debug window shows what's happening.
         this.callbacks.onStatusChanged(`Recognition error: ${event.error}`);
@@ -389,7 +524,7 @@ export class WebSpeechEngine implements ISpeechEngine {
 
         // A session that ran normally ended on its own (silence, time limit, or a vocabulary change); restart
         // right away. One that ended almost immediately is failing, so wait longer each time.
-        let delayInMs = 0;
+        let delayInMs = restartSettleInMs;
         if (Date.now() - this.sessionStartTime >= healthySessionDurationInMs) {
             this.restartBackoffInMs = initialRestartBackoffInMs;
         } else {
