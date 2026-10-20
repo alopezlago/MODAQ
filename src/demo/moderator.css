@@ -496,6 +496,147 @@ body {
     align-self: center;
 }
 
+/* Whose turn, and what they're doing: as loud as the clock. */
+.ms-turnbig {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: baseline;
+    gap: 4px 16px;
+    margin: 0 0 6px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 2px solid var(--m-ok-line, #0b6a0b);
+    text-align: center;
+}
+.ms-turnbig-team {
+    font-size: clamp(1.5rem, 4vw, 2.2rem);
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+.ms-turnbig-kind {
+    font-size: clamp(1.3rem, 3.4vw, 1.8rem);
+    font-weight: 900;
+    letter-spacing: 0.1em;
+}
+.ms-turnbig.ban {
+    border-color: var(--m-bad-line, #d13438);
+}
+.ms-turnbig.ban .ms-turnbig-kind {
+    color: var(--m-bad, #a4262c);
+}
+.ms-turnbig.protect .ms-turnbig-kind {
+    color: var(--m-ok, #0b6a0b);
+}
+.ms-turnbig.expired {
+    animation: ms-blink 1s steps(2) infinite;
+}
+
+/* The two teams: who's on each, picks left; the one picking stands out. */
+.ms-teamcards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 0 0 6px;
+}
+.ms-teamcard {
+    border: 1px solid var(--m-line, #e1dfdd);
+    border-radius: 8px;
+    padding: 6px 10px;
+    opacity: 0.7;
+    min-width: 0;
+}
+.ms-teamcard.on {
+    border: 2.5px solid var(--m-ok-line, #0b6a0b);
+    opacity: 1;
+}
+.ms-teamcard-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.ms-teamcard-head strong {
+    font-size: 1.05rem;
+    overflow-wrap: anywhere;
+}
+.ms-teamcard-badge {
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--m-on-strong, #fff);
+    background: var(--m-ok-fill, #0b6a0b);
+    border-radius: 4px;
+    padding: 1px 6px;
+}
+.ms-teamcard-left {
+    font-size: 0.8rem;
+    color: var(--m-muted, #666);
+    margin: 2px 0 4px;
+}
+.ms-teamcard ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0.88rem;
+}
+.ms-teamcard-empty {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--m-muted, #666);
+}
+
+/* The last pick, in the page (never over the list); flashes as it lands. */
+.ms-lastpick {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+    margin: 0 0 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 2px solid currentColor;
+}
+.ms-lastpick.ban {
+    color: var(--m-bad, #a4262c);
+}
+.ms-lastpick.protect {
+    color: var(--m-ok, #0b6a0b);
+}
+.ms-lastpick-icon {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+.ms-lastpick-verb {
+    font-weight: 900;
+    letter-spacing: 0.08em;
+}
+.ms-lastpick-label {
+    color: var(--m-text, #222);
+    font-size: 1.1rem;
+    overflow-wrap: anywhere;
+}
+.ms-lastpick-by {
+    color: var(--m-muted, #666);
+    font-size: 0.85rem;
+}
+.ms-lastpick.fresh {
+    animation: ms-lastpick-in 2.4s ease-out;
+}
+/* A pop and a tint that fades; the text stays dark on it throughout. */
+@keyframes ms-lastpick-in {
+    0% { transform: scale(0.92); background: color-mix(in srgb, currentColor 22%, transparent); }
+    8% { transform: scale(1.04); }
+    15% { transform: scale(1); background: color-mix(in srgb, currentColor 22%, transparent); }
+    100% { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ms-lastpick.fresh,
+    .ms-lastpick.fresh * {
+        animation: none !important;
+    }
+}
+
 /* A pick lands: a card over everything, and the row it hit. */
 .ms-flash {
     position: fixed;
@@ -967,6 +1108,55 @@ body {
     margin: 0;
     padding-left: 18px;
     font-size: 0.85rem;
+}
+.lobby-add {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+.lobby-add input {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+}
+/* The lineup: who plays (ticked) and who sits. */
+.lobby-team ul.lobby-lineup {
+    list-style: none;
+    padding-left: 0;
+}
+.lobby-lineup li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+}
+.lobby-lineup label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    font-weight: 400;
+    cursor: pointer;
+}
+.lobby-lineup li.benched label {
+    color: var(--m-muted-2, #888);
+}
+.lobby-here,
+.lobby-away {
+    margin-left: auto;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+.lobby-here {
+    color: var(--m-ok, #0b6a0b);
+}
+.lobby-away {
+    color: var(--m-muted-2, #888);
+}
+@media (max-width: 640px) {
+    .lobby-teams {
+        grid-template-columns: 1fr;
+    }
 }
 .lobby-cap {
     color: var(--m-warn-text, #6b4e00);

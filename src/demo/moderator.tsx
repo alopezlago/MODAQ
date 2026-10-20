@@ -91,17 +91,20 @@ const code: string = (new URLSearchParams(location.search).get("room") || "").to
 
 export interface IGameTeam {
     name: string;
+    // Who starts.
     players: string[];
+    // On the team, not starting (can sub in).
+    bench?: string[];
 }
 
 interface IReadingConfig {
     packet: IPacket;
-    // Roster player pool passed to MODAQ's New Game dialog (its "From QBJ
-    // Registration" tab); teams and player order are chosen there natively.
+    // The roster player pool: MODAQ's New Game dialog uses it outside a
+    // tournament, and Add Player offers it during a game.
     rosters: IPlayer[];
-    // In MASSINGER the teams were already chosen (before the pick/ban), so the
-    // game starts with them at once (see Reading's pickBanStart); only a team
-    // with nobody on it opens the New Game dialog, prefilled.
+    // Teams chosen in Klaxon's lobby (every tournament game): the game starts
+    // with them at once (see Reading's hostStart); only a team with nobody on
+    // it opens the New Game dialog, prefilled. Unset on a resumed game.
     teams?: IGameTeam[];
     board?: IMassingerState;
     onEditPickBan?: () => void;
@@ -195,8 +198,9 @@ function massingerLeft(board: IMassingerState, team: number, type: "ban" | "prot
     return Math.max(0, limit - board.actions.filter((a) => a.team === team && a.type === type).length);
 }
 
-// Pick/ban sounds, synthesized (same voices as the players' room page): a ban
-// is a falling slam, a protect a rising chime, the last seconds a short tick.
+// Pick/ban sounds, synthesized (same voices as the players' room page): soft
+// mallet-like notes. A ban falls (two notes down), a protect rises (three up),
+// the last seconds tick gently.
 let msAudio: AudioContext | undefined;
 function msAudioContext(): AudioContext | undefined {
     try {
@@ -214,12 +218,18 @@ function msNote(ctx: AudioContext, t: number, type: OscillatorType, freq: number
     const g = ctx.createGain();
     o.type = type;
     o.frequency.setValueAtTime(freq, t);
+    // A soft attack (no click) and a long, natural fade
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(peak, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g).connect(ctx.destination);
     o.start(t);
-    o.stop(t + dur + 0.02);
+    o.stop(t + dur + 0.05);
+}
+// One mallet note: a sine with a quiet octave above it for warmth.
+function msMallet(ctx: AudioContext, t: number, freq: number, dur: number, peak: number): void {
+    msNote(ctx, t, "sine", freq, dur, peak);
+    msNote(ctx, t, "sine", freq * 2, dur * 0.6, peak * 0.15);
 }
 function playPickSound(type: "ban" | "protect"): void {
     const ctx = msAudioContext();
@@ -228,29 +238,18 @@ function playPickSound(type: "ban" | "protect"): void {
     }
     const t = ctx.currentTime;
     if (type === "ban") {
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.type = "sawtooth";
-        o.frequency.setValueAtTime(320, t);
-        o.frequency.exponentialRampToValueAtTime(70, t + 0.5);
-        g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(0.7, t + 0.015);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
-        o.connect(g).connect(ctx.destination);
-        o.start(t);
-        o.stop(t + 0.62);
-        msNote(ctx, t, "square", 110, 0.25, 0.45);
+        // E5 down to A4
+        msMallet(ctx, t, 659.3, 0.45, 0.32);
+        msMallet(ctx, t + 0.14, 440, 0.7, 0.32);
     } else {
-        [523, 659, 784, 1047].forEach((f, i) => {
-            msNote(ctx, t + i * 0.08, "sine", f, 0.5, 0.6);
-            msNote(ctx, t + i * 0.08, "triangle", f * 2, 0.3, 0.2);
-        });
+        // C5, E5, G5: a bright little rise
+        [523.3, 659.3, 784].forEach((f, i) => msMallet(ctx, t + i * 0.09, f, 0.6, 0.26));
     }
 }
 function playClockTick(secondsLeft: number): void {
     const ctx = msAudioContext();
     if (ctx != undefined) {
-        msNote(ctx, ctx.currentTime, "square", secondsLeft <= 2 ? 1320 : 990, 0.07, 0.4);
+        msNote(ctx, ctx.currentTime, "sine", secondsLeft <= 2 ? 1046.5 : 880, 0.12, 0.14);
     }
 }
 
@@ -1057,10 +1056,11 @@ function ModeratorBody(): JSX.Element {
 
     const [config, setConfig] = React.useState<IReadingConfig | undefined>(undefined);
 
-    // MASSINGER: the loaded-but-not-yet-filtered packet, and the teams chosen in
-    // MODAQ's New Game dialog before the pick/ban starts.
+    // A tournament game being set up in Klaxon's lobby: the loaded (not yet
+    // pick/ban-filtered) packet, and the teams chosen there. `pickBan` when the
+    // round runs a MASSINGER pick/ban between the lobby and the game.
     const [pickban, setPickban] = React.useState<
-        { round: string; packet: IPacket; rosters: IPlayer[]; teams?: IGameTeam[] } | undefined
+        { round: string; packet: IPacket; rosters: IPlayer[]; teams?: IGameTeam[]; pickBan: boolean } | undefined
     >(undefined);
 
     // Connect + bootstrap once.
@@ -1231,15 +1231,26 @@ function ModeratorBody(): JSX.Element {
             }
             // A MASSINGER game reads the pick/ban-filtered packet, so re-apply
             // the round's persisted board when there is one.
+            let board: IMassingerState | undefined;
             try {
                 const { massinger } = await KlaxonApi.getMassinger(code, client.token, liveRound);
                 if (massinger && massinger.status === "done") {
                     packet = applyMassinger(packet, massinger);
+                    board = massinger;
                 }
             } catch {
                 /* no board (or fetch hiccup): read the full packet */
             }
-            await enterReading(client, liveRound, packet, boot.rosterList, boot.format);
+            // The board comes along only to show what was banned; with no teams
+            // given, MODAQ's saved game is what resumes.
+            await enterReading(
+                client,
+                liveRound,
+                packet,
+                boot.rosterList,
+                boot.format,
+                board ? { teams: [], board } : undefined
+            );
             return true;
         } catch {
             // Packet unavailable (or any other hiccup): fall back to setup.
@@ -1308,7 +1319,7 @@ function ModeratorBody(): JSX.Element {
         packet: IPacket,
         rosters: IPlayer[],
         format: ITournamentFormat | undefined,
-        massinger?: { teams: IGameTeam[]; board: IMassingerState; onEdit: () => void }
+        massinger?: { teams: IGameTeam[]; board?: IMassingerState; onEdit?: () => void }
     ): Promise<void> {
         let errata: IErratum[] = [];
         try {
@@ -1326,8 +1337,8 @@ function ModeratorBody(): JSX.Element {
             /* none is fine */
         }
 
-        // Teams/players (and their order) are set in MODAQ's New Game dialog;
-        // pass the roster as its player pool.
+        // Teams come from Klaxon's lobby in a tournament; otherwise MODAQ's New
+        // Game dialog sets them, with the roster as its player pool.
         setRound(roundLabel);
         setConfig({
             packet,
@@ -1371,11 +1382,13 @@ function ModeratorBody(): JSX.Element {
             const packet = await loadPacketForStart(client, roundLabel);
             const freshRoster = await refreshCentralRoster(client);
             const rosters = freshRoster ?? rosterPlayers;
-            if (massingerApplies(tournamentFormat, packet)) {
-                // Players first: they make their own picks, so they have to be
-                // in the room (and linked to their MODAQ player) before the
-                // pick/ban can run. Lobby -> teams -> pick/ban.
-                setPickban({ round: roundLabel, packet, rosters });
+            // Every tournament game is set up in Klaxon's lobby: the two teams,
+            // who is playing, and which buzzer is whose. A MASSINGER round runs
+            // its pick/ban after that. Rooms outside a tournament keep MODAQ's
+            // own New Game dialog.
+            const pickBan = massingerApplies(tournamentFormat, packet);
+            if (pickBan || roomState?.tournamentCode) {
+                setPickban({ round: roundLabel, packet, rosters, pickBan });
                 setPhase("lobby");
                 return;
             }
@@ -1494,8 +1507,9 @@ function ModeratorBody(): JSX.Element {
                 <h1>MODAQ moderator — room {code}</h1>
                 {clientRef.current ? <DirectorMessages client={clientRef.current} /> : undefined}
                 <p className="hint">
-                    Choose the round and its packet, then start — teams are set in MODAQ&apos;s New Game dialog, and you
-                    read with the Klaxon buzzer on the right.
+                    {roomState?.tournamentCode
+                        ? "Choose the round and its packet, then start — you set the teams and who plays next, and read with the Klaxon buzzer on the right."
+                        : "Choose the round and its packet, then start — teams are set in MODAQ's New Game dialog, and you read with the Klaxon buzzer on the right."}
                 </p>
 
                 {scheduledRounds.length > 0 && (
@@ -1578,8 +1592,8 @@ function ModeratorBody(): JSX.Element {
 
                 {centralRoster ? (
                     <p className="hint">
-                        Using the tournament roster ({teams.length} teams) — pick the two teams and reorder players in
-                        MODAQ&apos;s New Game dialog.
+                        Using the tournament roster ({teams.length} teams) — you pick the two teams and who plays on
+                        the next screen.
                     </p>
                 ) : (
                     <>
@@ -1591,7 +1605,11 @@ function ModeratorBody(): JSX.Element {
                             onChange={(e) => onRosterFile(e.target.files?.[0])}
                         />
                         <p className="hint">
-                            {teams.length > 0
+                            {roomState?.tournamentCode
+                                ? teams.length > 0
+                                    ? `Roster loaded (${teams.length} teams) — you pick the teams on the next screen.`
+                                    : "Upload a roster to choose teams from, or type the team names on the next screen."
+                                : teams.length > 0
                                 ? `Roster loaded (${teams.length} teams) — pick the teams in MODAQ's New Game dialog.`
                                 : "Upload a roster to prefill MODAQ's New Game, or set teams by hand in that dialog."}
                         </p>
@@ -1640,22 +1658,35 @@ function ModeratorBody(): JSX.Element {
                 client={clientRef.current!}
                 round={pickban.round}
                 roomState={roomState}
-                captainsWanted={(tournamentFormat?.massingerControl ?? "captain") === "captain"}
+                pickBan={pickban.pickBan}
+                captainsWanted={pickban.pickBan && (tournamentFormat?.massingerControl ?? "captain") === "captain"}
                 initialTeams={pickban.teams}
                 rosterPlayers={pickban.rosters}
                 onCancel={() => {
                     setPickban(undefined);
                     setPhase("setup");
                 }}
-                onReady={(teams) => {
+                onReady={async (teams) => {
                     // The teams the room now agrees on: push them so buzzes are
-                    // attributed, then run the pick/ban. (A game set up before
-                    // anyone joins has nobody to attribute yet.)
+                    // attributed (bench too: a sub's buzzer is theirs). A game
+                    // set up before anyone joins has nobody to attribute yet.
                     if (teams.every((team) => team.players.length > 0)) {
-                        clientRef.current?.massinger({ action: "set_modaq_teams", teams });
+                        clientRef.current?.massinger({
+                            action: "set_modaq_teams",
+                            teams: teams.map((t) => ({ name: t.name, players: [...t.players, ...(t.bench ?? [])] })),
+                        });
                     }
                     setPickban({ ...pickban, teams });
-                    setPhase("pickban");
+                    if (pickban.pickBan) {
+                        setPhase("pickban");
+                        return;
+                    }
+                    const client = clientRef.current;
+                    if (client) {
+                        await enterReading(client, pickban.round, pickban.packet, pickban.rosters, tournamentFormat, {
+                            teams,
+                        });
+                    }
                 }}
             />
         );
@@ -1879,16 +1910,17 @@ function ConnectedPlayers(props: {
     );
 }
 
-// The waiting room, which is also where the game is set up. Everything the
-// pick/ban needs is decided here: the two teams, and which connected buzzer is
-// on each of them. That is what ties the web players to the teams MODAQ will
-// score — MODAQ's own New Game comes later, prefilled from these choices, for
-// the moderator to confirm.
+// Where every tournament game is set up: the two teams, who plays for each,
+// and which connected buzzer is on which team. That is what ties the web
+// players to the teams MODAQ will score. A MASSINGER round runs its pick/ban
+// next; any other game starts straight from here, with no New Game dialog.
 function TeamLobby(props: {
     code: string;
     client: KlaxonClient;
     round: string;
     roomState: IPublicRoomState | undefined;
+    // A MASSINGER pick/ban follows (and the players make its picks).
+    pickBan: boolean;
     captainsWanted: boolean;
     initialTeams?: IGameTeam[];
     // The roster the game will be set up from: the tournament's, or a file the
@@ -1897,21 +1929,31 @@ function TeamLobby(props: {
     onCancel: () => void;
     onReady: (teams: IGameTeam[]) => void;
 }): JSX.Element {
-    const { code, client, round, roomState, captainsWanted, initialTeams, rosterPlayers, onCancel, onReady } = props;
+    const {
+        code,
+        client,
+        round,
+        roomState,
+        pickBan,
+        captainsWanted,
+        initialTeams,
+        rosterPlayers,
+        onCancel,
+        onReady,
+    } = props;
 
-    // Team names come from the roster when there is one, so they match what
-    // the director registered (and what players picked when they joined).
+    // Team names come from the roster when there is one (the tournament's, or
+    // a file the moderator chose), so they match what the director registered
+    // and what players picked when they joined. Not from the room's own list:
+    // that's just the last game's teams, and would rule out any new one.
     const rosterTeams = React.useMemo(() => {
         const names: string[] = [];
-        for (const name of [
-            ...(roomState?.roster?.teamNames ?? []),
-            ...(rosterPlayers ?? []).map((p) => p.teamName),
-        ]) {
+        for (const name of (rosterPlayers ?? []).map((p) => p.teamName)) {
             const trimmed = (name ?? "").trim();
             if (trimmed && !names.includes(trimmed)) names.push(trimmed);
         }
         return names;
-    }, [roomState?.roster?.teamNames, rosterPlayers]);
+    }, [rosterPlayers]);
     // Only a two-team roster can be filled in for the moderator.
     const [teamA, setTeamA] = React.useState(
         initialTeams?.[0]?.name ?? (rosterTeams.length === 2 ? rosterTeams[0] : "")
@@ -1920,33 +1962,92 @@ function TeamLobby(props: {
         initialTeams?.[1]?.name ?? (rosterTeams.length === 2 ? rosterTeams[1] : "")
     );
     const [copied, setCopied] = React.useState(false);
+    // The moderator's ticks and unticks in the lineup, over the defaults.
+    const [playing, setPlaying] = React.useState<Record<string, boolean>>(() => {
+        const saved: Record<string, boolean> = {};
+        for (const team of initialTeams ?? []) {
+            for (const name of team.players) saved[lineupKey(team.name, name)] = true;
+            for (const name of team.bench ?? []) saved[lineupKey(team.name, name)] = false;
+        }
+        return saved;
+    });
+    // Players the moderator typed in (no roster, or someone missing from it).
+    const [added, setAdded] = React.useState<Record<string, string[]>>(() => {
+        const out: Record<string, string[]> = {};
+        for (const team of initialTeams ?? []) out[normName(team.name)] = [...team.players, ...(team.bench ?? [])];
+        return out;
+    });
+    const [draft, setDraft] = React.useState<Record<string, string>>({});
+    const addPlayer = (team: string): void => {
+        const name = (draft[normName(team)] ?? "").trim();
+        if (!name) return;
+        const key = normName(team);
+        setAdded({ ...added, [key]: [...(added[key] ?? []), name] });
+        setPlaying({ ...playing, [lineupKey(team, name)]: true });
+        setDraft({ ...draft, [key]: "" });
+    };
 
-    // Tell the room this step is happening, so players see that a pick/ban is
-    // coming (and which team they're on) instead of a plain buzzer.
+    // Tell the room this step is happening, so players see that a game (and,
+    // in MASSINGER, a pick/ban) is coming and which team they're on, instead
+    // of a plain buzzer.
     React.useEffect(() => {
-        client.massinger({ action: "massinger_lobby", open: true, round }).catch(() => undefined);
+        client.massinger({ action: "massinger_lobby", open: true, round, pickban: pickBan }).catch(() => undefined);
         return () => {
             client.massinger({ action: "massinger_lobby", open: false, round }).catch(() => undefined);
         };
-    }, [client, round]);
+    }, [client, round, pickBan]);
 
     const players = (roomState?.members ?? []).filter((m) => m.role === "player");
     const connected = players.filter((m) => m.connected);
 
-    const norm = (v: string | null | undefined): string =>
-        (v ?? "")
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, " ")
-            .trim();
     const teamNames = [teamA.trim(), teamB.trim()].filter((n) => n !== "");
-    const namesReady = teamNames.length === 2 && norm(teamA) !== norm(teamB);
+    const namesReady = teamNames.length === 2 && normName(teamA) !== normName(teamB);
 
-    const onTeam = (name: string): IRoomMember[] => connected.filter((m) => norm(m.effectiveTeam) === norm(name));
-    const unassigned = connected.filter((m) => !teamNames.some((name) => norm(name) === norm(m.effectiveTeam)));
+    const onTeam = (name: string): IRoomMember[] =>
+        connected.filter((m) => normName(m.effectiveTeam) === normName(name));
+    const unassigned = connected.filter((m) => !teamNames.some((name) => normName(name) === normName(m.effectiveTeam)));
+
+    // Each team's lineup: its roster players, then anyone on the team here who
+    // isn't on the roster. Ticked by default: whoever is connected, or (with
+    // nobody here yet) the roster's starters.
+    const lineup = (team: string): ILineupRow[] => {
+        const here = onTeam(team);
+        const hereName = (m: IRoomMember): string => m.rosterPlayer || m.name;
+        const rows: ILineupRow[] = [];
+        const seen = new Set<string>();
+        const add = (name: string, rosterStarter: boolean): void => {
+            const key = normName(name);
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            const member = here.find((m) => normName(hereName(m)) === key);
+            const byDefault = here.length > 0 ? member != undefined : rosterStarter;
+            rows.push({
+                name: name.trim(),
+                online: member != undefined,
+                captain: member?.isCaptain === true,
+                playing: playing[lineupKey(team, name)] ?? byDefault,
+            });
+        };
+        for (const p of rosterPlayers ?? []) {
+            if (normName(p.teamName) === normName(team)) add(p.name, p.isStarter !== false);
+        }
+        for (const m of here) add(hereName(m), true);
+        for (const name of added[normName(team)] ?? []) add(name, true);
+        return rows;
+    };
+    const lineups = namesReady ? teamNames.map((name) => ({ name, rows: lineup(name) })) : [];
 
     const missingCaptains = captainsWanted ? teamNames.filter((name) => !onTeam(name).some((m) => m.isCaptain)) : [];
     const emptyTeams = namesReady ? teamNames.filter((name) => onTeam(name).length === 0) : [];
-    const canStart = namesReady && unassigned.length === 0 && (connected.length === 0 || emptyTeams.length === 0);
+    // A team with a lineup needs someone playing; a team nobody is listed for
+    // gets named in MODAQ's dialog when the game opens.
+    const nobodyPlaying = lineups.filter((l) => l.rows.length > 0 && !l.rows.some((r) => r.playing)).map((l) => l.name);
+    // The pick/ban is made by the players, so everyone here has to be on a
+    // team first; a regular game can start with someone still unplaced.
+    const canStart =
+        namesReady &&
+        nobodyPlaying.length === 0 &&
+        (!pickBan || (unassigned.length === 0 && (connected.length === 0 || emptyTeams.length === 0)));
 
     const link = `${location.origin}/${code}`;
     const copyLink = async (): Promise<void> => {
@@ -1977,15 +2078,32 @@ function TeamLobby(props: {
         </>
     );
 
+    const start = (): void => {
+        // Commit what the lobby shows: a player who merely typed the right
+        // team name is only vouched for once the moderator's assignment says
+        // so (that's what lets them pick, and links their buzzer).
+        for (const name of teamNames) {
+            for (const member of onTeam(name)) {
+                if (member.assignedTeam !== name) {
+                    client.massinger({ action: "set_member_team", playerId: member.id, team: name });
+                }
+            }
+        }
+        onReady(
+            lineups.map((l) => ({
+                name: l.name,
+                players: l.rows.filter((r) => r.playing).map((r) => r.name),
+                bench: l.rows.filter((r) => !r.playing).map((r) => r.name),
+            }))
+        );
+    };
+
     return (
         <div className="mod-shell">
             <div className="mod-main">
                 <div className="mod-center mod-setup">
                     <h1>Set up the game — room {code}</h1>
-                    <p className="hint">
-                        Round {round}. Pick the two teams and put every connected player on one of them; the pick/ban
-                        runs next, and the game starts after it with these teams and players.
-                    </p>
+                    <p className="hint">Round {round}</p>
 
                     <div className="lobby-link">
                         <code>{link}</code>
@@ -2007,38 +2125,85 @@ function TeamLobby(props: {
 
                     {namesReady && (
                         <div className="lobby-teams">
-                            {teamNames.map((name) => {
-                                const roster = onTeam(name);
+                            {lineups.map((l) => {
+                                const count = l.rows.filter((r) => r.playing).length;
                                 return (
-                                    <div key={name} className="lobby-team">
+                                    <div key={l.name} className="lobby-team">
                                         <h3>
-                                            {name} <span className="muted-count">({roster.length})</span>
+                                            {l.name} <span className="muted-count">({count} playing)</span>
                                         </h3>
-                                        {roster.length === 0 ? (
-                                            <p className="hint">Nobody on this team yet.</p>
+                                        {l.rows.length === 0 ? (
+                                            <p className="hint">Nobody on this team yet — add its players below.</p>
                                         ) : (
-                                            <ul>
-                                                {roster.map((m) => (
-                                                    <li key={m.id}>
-                                                        {m.rosterPlayer || m.name}
-                                                        {m.isCaptain && <span className="lobby-cap"> ★ captain</span>}
+                                            <ul className="lobby-lineup">
+                                                {l.rows.map((r) => (
+                                                    <li key={r.name} className={r.playing ? "" : "benched"}>
+                                                        <label>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={r.playing}
+                                                                aria-label={`${r.name} plays`}
+                                                                onChange={(e) =>
+                                                                    setPlaying({
+                                                                        ...playing,
+                                                                        [lineupKey(l.name, r.name)]: e.target.checked,
+                                                                    })
+                                                                }
+                                                            />{" "}
+                                                            {r.name}
+                                                        </label>
+                                                        {r.captain && <span className="lobby-cap"> ★ captain</span>}
+                                                        <span className={r.online ? "lobby-here" : "lobby-away"}>
+                                                            {r.online ? "here" : "not connected"}
+                                                        </span>
                                                     </li>
                                                 ))}
                                             </ul>
                                         )}
+                                        <form
+                                            className="lobby-add"
+                                            onSubmit={(e) => {
+                                                e.preventDefault();
+                                                addPlayer(l.name);
+                                            }}
+                                        >
+                                            <input
+                                                type="text"
+                                                placeholder="Add a player"
+                                                aria-label={`Add a player to ${l.name}`}
+                                                value={draft[normName(l.name)] ?? ""}
+                                                onChange={(e) =>
+                                                    setDraft({ ...draft, [normName(l.name)]: e.target.value })
+                                                }
+                                            />
+                                            <button
+                                                type="submit"
+                                                disabled={!(draft[normName(l.name)] ?? "").trim()}
+                                            >
+                                                Add
+                                            </button>
+                                        </form>
                                     </div>
                                 );
                             })}
                         </div>
                     )}
+                    {namesReady && (
+                        <p className="hint">Unticked players start on the bench.</p>
+                    )}
 
+                    {nobodyPlaying.length > 0 && (
+                        <div className="ms-warn">Tick at least one player for {nobodyPlaying.join(" and ")}.</div>
+                    )}
                     {namesReady && unassigned.length > 0 && (
                         <div className="ms-warn">
-                            {unassigned.length} player{unassigned.length === 1 ? "" : "s"} still need a team — set them
-                            on the right, or remove them from the room.
+                            {unassigned.length} connected player{unassigned.length === 1 ? "" : "s"} still need
+                            {unassigned.length === 1 ? "s" : ""} a team — set them on the right, or remove them from
+                            the room.
+                            {pickBan ? "" : " Until then their buzzer stays off."}
                         </div>
                     )}
-                    {namesReady && connected.length > 0 && unassigned.length === 0 && emptyTeams.length > 0 && (
+                    {pickBan && namesReady && connected.length > 0 && unassigned.length === 0 && emptyTeams.length > 0 && (
                         <div className="ms-warn">Nobody is on {emptyTeams.join(" or ")} yet.</div>
                     )}
                     {canStart && missingCaptains.length > 0 && (
@@ -2049,40 +2214,14 @@ function TeamLobby(props: {
                     )}
                     {connected.length === 0 && (
                         <p className="hint">
-                            Nobody has joined yet. Send them the link above — a game can be set up without them, but
-                            then every pick has to come from you.
+                            Nobody has joined yet. Send them the link above
+                            {pickBan ? " — a game can be set up without them, but then every pick has to come from you." : "."}
                         </p>
                     )}
 
                     <div>
-                        <button
-                            className="primary"
-                            disabled={!canStart}
-                            onClick={() => {
-                                // Commit what the lobby shows: a player who
-                                // merely typed the right team name is only
-                                // vouched for once the moderator's assignment
-                                // says so, and that's what lets them pick.
-                                for (const name of teamNames) {
-                                    for (const member of onTeam(name)) {
-                                        if (member.assignedTeam !== name) {
-                                            client.massinger({
-                                                action: "set_member_team",
-                                                playerId: member.id,
-                                                team: name,
-                                            });
-                                        }
-                                    }
-                                }
-                                onReady(
-                                    teamNames.map((name) => ({
-                                        name,
-                                        players: onTeam(name).map((m) => m.rosterPlayer || m.name),
-                                    }))
-                                );
-                            }}
-                        >
-                            Continue to pick/ban →
+                        <button className="primary" disabled={!canStart} onClick={start}>
+                            {pickBan ? "Continue to pick/ban →" : "Start the game →"}
                         </button>
                         <button className="secondary" onClick={onCancel}>
                             Back to setup
@@ -2103,6 +2242,21 @@ function TeamLobby(props: {
         </div>
     );
 }
+
+interface ILineupRow {
+    name: string;
+    online: boolean;
+    captain: boolean;
+    playing: boolean;
+}
+
+// Team and player names compared the way the room compares them.
+const normName = (v: string | null | undefined): string =>
+    (v ?? "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+const lineupKey = (team: string, player: string): string => `${normName(team)}|${normName(player)}`;
 
 const CONTROL_LABELS: { value: MassingerControl; label: string; hint: string }[] = [
     {
@@ -2281,12 +2435,7 @@ function PickBan(props: {
                     <div className="mod-center mod-setup">
                         <h1>MASSINGER pick/ban — Round {round}</h1>
                         <p className="hint">
-                            {packet.tossups.length} tossups in the packet. {teamOptions[0] ?? "The two teams"} and{" "}
-                            {teamOptions[1] ?? "their opponent"} each make 3 bans and 3 protects, in a fixed order:
-                            the first team bans; then the second team bans and protects, then the first team, and so
-                            on; the first team's last protect ends it ({MASSINGER_TARGET} questions remain from a
-                            26-question packet). Each team picks from their own room page; you can pick for them
-                            (and undo or edit anything) here.
+                            {packet.tossups.length} tossups. Each team gets 3 bans and 2 protects.
                         </p>
                         <label htmlFor="ms-first">Which team picks first?</label>
                         <select
@@ -2301,12 +2450,6 @@ function PickBan(props: {
                                 </option>
                             ))}
                         </select>
-                        <p className="hint">
-                            {firstIndex < 0
-                                ? "Klaxon flips a coin when you begin, and everyone sees who won it. The teams alternate from there."
-                                : `The other team (${teamOptions[1 - firstIndex] ?? "—"}) picks second, and they alternate from there.`}{" "}
-                            You can change whose turn it is at any point once the board is running.
-                        </p>
                         <label htmlFor="ms-control">Who makes the picks?</label>
                         <select
                             id="ms-control"
@@ -2319,11 +2462,6 @@ function PickBan(props: {
                                 </option>
                             ))}
                         </select>
-                        <p className="hint">
-                            {CONTROL_LABELS.find((o) => o.value === control)?.hint}
-                            {control !== "moderator" &&
-                                " You can always pick on a team's behalf, and change this once the board is running."}
-                        </p>
                         {control === "captain" && missingCaptains.length > 0 && (
                             <p className="ms-warn">
                                 No captain yet for {missingCaptains.join(" or ")} — mark one in the players list on the
@@ -2340,9 +2478,7 @@ function PickBan(props: {
                             value={timerSec}
                             onChange={(e) => setTimerSec(Number(e.target.value))}
                         />
-                        <p className="hint">
-                            When the timer runs out the server bans a random subcategory for the team on the clock.
-                        </p>
+                        <p className="hint">Out of time: a random pick is made.</p>
                         <div>
                             <button
                                 className="primary"
@@ -2422,14 +2558,20 @@ function PickBan(props: {
 
                     {active ? (
                         <>
-                            <div className={"ms-clockline" + (expired ? " expired" : "")}>
-                                <span>
-                                    <strong>{board.teams[board.turn]}</strong> is picking —{" "}
-                                    {canBan && canProtect ? "protect or ban" : canBan ? "ban" : "protect"} a
-                                    subcategory.
-                                    {coinFlipLine && <span className="ms-coinflip"> {coinFlipLine}</span>}
+                            {/* Whose turn, and what they're doing: the loudest thing on the screen. */}
+                            <div
+                                className={
+                                    "ms-turnbig " +
+                                    (canBan && !canProtect ? "ban" : canProtect && !canBan ? "protect" : "pick") +
+                                    (expired ? " expired" : "")
+                                }
+                            >
+                                <span className="ms-turnbig-team">{board.teams[board.turn]}</span>
+                                <span className="ms-turnbig-kind">
+                                    {canBan && canProtect ? "PICK" : canBan ? "BAN" : "PROTECT"}
                                 </span>
                             </div>
+                            {coinFlipLine && <p className="ms-coinflip">{coinFlipLine}</p>}
                             {secondsLeft != null && (
                                 <div className={clockClass} aria-label="Time left for this pick">
                                     <div className="ms-bigclock-num">{expired ? "TIME’S UP" : secondsLeft}</div>
@@ -2438,19 +2580,46 @@ function PickBan(props: {
                                     </div>
                                 </div>
                             )}
-                            {limited && (
-                                <div className="ms-counts">
-                                    {[0, 1].map((team) => (
-                                        <span key={team} className={"ms-count" + (team === board.turn ? " on" : "")}>
-                                            <strong>{board.teams[team]}</strong>{" "}
-                                            {plural(massingerLeft(board, team, "ban"), "ban")} ·{" "}
-                                            {plural(massingerLeft(board, team, "protect"), "protect")} left
-                                        </span>
-                                    ))}
-                                    {upNext != undefined && (
-                                        <span className="ms-next">{upNext ? `Up next: ${upNext}` : "Last pick"}</span>
-                                    )}
-                                </div>
+                            <div className="ms-teamcards">
+                                {[0, 1].map((team) => {
+                                    const name = board.teams[team];
+                                    const on = team === board.turn;
+                                    const members = (roomState?.members ?? []).filter(
+                                        (m) =>
+                                            m.role === "player" &&
+                                            m.connected &&
+                                            normName(m.effectiveTeam) === normName(name)
+                                    );
+                                    return (
+                                        <div key={team} className={"ms-teamcard" + (on ? " on" : "")}>
+                                            <div className="ms-teamcard-head">
+                                                <strong>{name}</strong>
+                                                {on && <span className="ms-teamcard-badge">PICKING</span>}
+                                            </div>
+                                            {limited && (
+                                                <div className="ms-teamcard-left">
+                                                    {plural(massingerLeft(board, team, "ban"), "ban")} ·{" "}
+                                                    {plural(massingerLeft(board, team, "protect"), "protect")} left
+                                                </div>
+                                            )}
+                                            {members.length === 0 ? (
+                                                <p className="ms-teamcard-empty">No players connected</p>
+                                            ) : (
+                                                <ul>
+                                                    {members.map((m) => (
+                                                        <li key={m.id}>
+                                                            {m.rosterPlayer || m.name}
+                                                            {m.isCaptain && <span className="lobby-cap"> ★ captain</span>}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {upNext != undefined && (
+                                <p className="ms-next">{upNext ? `Up next: ${upNext}` : "Last pick"}</p>
                             )}
                             <div className="ms-turnrow">
                                 <span className="hint">Picks made by:</span>
@@ -2491,9 +2660,7 @@ function PickBan(props: {
                             </div>}
                             <p className="hint">
                                 {remaining} questions remain — {bansLeft} more ban{bansLeft === 1 ? "" : "s"} to reach{" "}
-                                {board.target}. The team picks on their own page; use the buttons below to pick for
-                                them. Protecting makes every question in a subcategory unbannable; banning removes one
-                                question (a doubled subcategory keeps its other question).
+                                {board.target}.
                             </p>
                         </>
                     ) : (
@@ -2503,16 +2670,32 @@ function PickBan(props: {
                         </p>
                     )}
 
+                    {/* The last pick, in the page (it never covers the list). A new pick remounts it (key), which
+                        replays its entrance; on a reload it just sits there. */}
                     {lastAction && (
-                        <p className="ms-last">
-                            Last: {board.teams[lastAction.team]}{" "}
-                            {lastAction.type === "protect" ? "protected" : "banned"} <strong>{lastAction.label}</strong>
-                            {lastAction.by === "timeout"
-                                ? " (random — time expired)"
-                                : lastAction.by && lastAction.by !== "moderator" && lastAction.by !== "random"
-                                ? ` (by ${lastAction.by})`
-                                : " (by you)"}
-                        </p>
+                        <div
+                            key={board.actions.length}
+                            className={"ms-lastpick " + lastAction.type + (flash ? " fresh" : "")}
+                            aria-live="polite"
+                        >
+                            <span className="ms-lastpick-icon" aria-hidden="true">
+                                {lastAction.type === "ban" ? "✕" : "🛡"}
+                            </span>
+                            <span className="ms-lastpick-verb">
+                                {lastAction.type === "ban" ? "BANNED" : "PROTECTED"}
+                            </span>
+                            <strong className="ms-lastpick-label">{lastAction.label}</strong>
+                            <span className="ms-lastpick-by">
+                                {board.teams[lastAction.team]}
+                                {lastAction.by === "timeout"
+                                    ? " · time ran out, random pick"
+                                    : lastAction.by === "random"
+                                    ? " · random pick"
+                                    : lastAction.by && lastAction.by !== "moderator"
+                                    ? ` · ${lastAction.by}`
+                                    : " · by you"}
+                            </span>
+                        </div>
                     )}
 
                     <ul className="ms-list">
@@ -2633,23 +2816,6 @@ function PickBan(props: {
                         </p>
                     )}
                     <p className="msg">{msg}</p>
-                    {flash && (
-                        <div className="ms-flash" aria-live="assertive" key={flash.shownAt}>
-                            <div className={"ms-flash-card " + flash.type}>
-                                <div className="ms-flash-icon">{flash.type === "ban" ? "✕" : "🛡"}</div>
-                                <div className="ms-flash-verb">{flash.type === "ban" ? "BANNED" : "PROTECTED"}</div>
-                                <div className="ms-flash-label">{flash.label}</div>
-                                <div className="ms-flash-by">
-                                    {board.teams[flash.team]}
-                                    {flash.by === "timeout"
-                                        ? " · time ran out — random pick"
-                                        : flash.by === "random"
-                                        ? " · random pick"
-                                        : ""}
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
             <div className="mod-side">
@@ -2896,14 +3062,14 @@ function Reading(props: {
 
     const scorecard = useScorecard(code, token, `r${round}`, round);
 
-    // Straight out of a pick/ban: the lobby already settled the teams and who
-    // is on them, so the game starts as it does in every other tournament room
-    // (no New Game dialog). Only when a team has nobody listed does the dialog
-    // open, prefilled, to name them. Never on a resumed game (config.teams is
-    // only set by the pick/ban), since a new object here starts a new game.
-    const pickBanStart = React.useMemo((): IHostNewGame | undefined => {
+    // Straight out of Klaxon's lobby (and the pick/ban, in MASSINGER): the
+    // teams and who plays are settled, so the game starts with them (no New
+    // Game dialog). Only when a team has nobody listed does the dialog open,
+    // prefilled, to name them. Never on a resumed game (config.teams is only
+    // set by the lobby), since a new object here starts a new game.
+    const hostStart = React.useMemo((): IHostNewGame | undefined => {
         const teams = config.teams ?? [];
-        if (!config.board || teams.length < 2) return undefined;
+        if (teams.length < 2) return undefined;
         return {
             packet: config.packet,
             packetName: round,
@@ -2929,12 +3095,13 @@ function Reading(props: {
                 </RoomToolbar>
                 {scorecard.panel}
                 <DirectorMessages client={client} />
-                {pickBanStart && !pickBanStart.confirm && config.board && (
+                {config.board && !hostStart?.confirm && (
                     <details className="ms-reading-summary">
                         <summary>
                             MASSINGER pick/ban — {massingerRemaining(config.board)} questions in this game
                         </summary>
-                        <PickBanSummary board={config.board} onEdit={editPickBan} />
+                        {/* After a reload there's no going back: the pick/ban screen isn't loaded. */}
+                        <PickBanSummary board={config.board} onEdit={config.onEditPickBan ? editPickBan : undefined} />
                     </details>
                 )}
                 <KlaxonModaq
@@ -2942,9 +3109,9 @@ function Reading(props: {
                     applyStylingToRoot={false}
                     buildVersion={__BUILD_VERSION__}
                     yappServiceUrl={YAPP_SERVICE_URL}
-                    hostNewGame={pickBanStart}
+                    hostNewGame={hostStart}
                     newGameOnLoad={
-                        pickBanStart
+                        hostStart
                             ? undefined
                             : {
                                   packet: config.packet,

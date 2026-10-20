@@ -63,6 +63,7 @@ import {
     IHostNewGame,
     IHostTeam,
     ILiveTeam,
+    hostBenchPlayers,
     startHostNewGame,
     syncLiveTeams,
 } from "./HostGameController";
@@ -1100,10 +1101,12 @@ function openHostNewGameDialog(
         // The team name lives on its players, so a team with nobody in it still
         // needs one (blank) row — which is also where the host expects the
         // moderator to fill the players in.
-        const rows = (team: { name: string; players: string[] }): Player[] =>
-            team.players.length > 0
+        const rows = (team: IHostTeam): Player[] => [
+            ...(team.players.length > 0
                 ? team.players.map((name) => new Player(name, team.name, /* isStarter */ true))
-                : [new Player("", team.name, /* isStarter */ true)];
+                : [new Player("", team.name, /* isStarter */ true)]),
+            ...hostBenchPlayers(team),
+        ];
         // Every team the host knows about, not just the first two: a shootout
         // hands over one per competitor.
         appState.uiState.setPendingNewGameManualTeams(...teams.map(rows));

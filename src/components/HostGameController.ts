@@ -15,7 +15,19 @@ import { IPlayer, Player } from "../state/TeamState";
 
 export interface IHostTeam {
     name: string;
+    /** Who starts (is in the game from the first question). */
     players: string[];
+    /** On the team but not starting: available to sub in. */
+    bench?: string[];
+}
+
+// The team's bench as player rows (not starters), skipping anyone also listed as playing.
+export function hostBenchPlayers(team: IHostTeam): Player[] {
+    const playing = new Set(team.players.map((name) => name.trim()));
+    return (team.bench ?? [])
+        .map((name) => name.trim())
+        .filter((name) => name !== "" && !playing.has(name))
+        .map((name) => new Player(name, team.name, /* isStarter */ false));
 }
 
 export interface ILiveTeam extends IHostTeam {
@@ -72,7 +84,7 @@ export function startHostNewGame(appState: AppState, spec: IHostNewGame): void {
         // Errata belong to the packet that was just played.
         appState.errata.clear();
         for (const team of teams) {
-            game.addNewPlayers(hostTeamPlayers(team));
+            game.addNewPlayers([...hostTeamPlayers(team), ...hostBenchPlayers(team)]);
         }
         game.loadPacket(packetState);
         if (spec.gameFormat != undefined) {

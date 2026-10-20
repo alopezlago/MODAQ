@@ -398,29 +398,26 @@ function getRoundScorecardMenuItems(appState: AppState): ICommandBarItemProps[] 
 function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
     const items: ICommandBarItemProps[] = [];
 
-    // Changing the game format isn't applicable when the host sets the format (TMS, a Klaxon tournament). Font
-    // and the round scorecard move to the View menu then; the microphone settings stay here.
-    const formatLocked = appState.uiState.hostSettings.disableChangeFormat === true;
-    if (!formatLocked) {
-        items.push(
-            {
-                key: "changeFormat",
-                text: "Change Format...",
-                onClick: () => {
-                    appState.uiState.dialogState.showCustomizeGameFormatDialog(appState.game.gameFormat);
-                },
+    // Changing the game format isn't applicable when the host sets the format (TMS, a Klaxon tournament); every
+    // other option stays where it always is, so the menu reads the same in every game.
+    if (appState.uiState.hostSettings.disableChangeFormat !== true) {
+        items.push({
+            key: "changeFormat",
+            text: "Change Format...",
+            onClick: () => {
+                appState.uiState.dialogState.showCustomizeGameFormatDialog(appState.game.gameFormat);
             },
-            {
-                key: "font",
-                text: "Font...",
-                onClick: () => {
-                    appState.uiState.showFontDialog();
-                },
-            }
-        );
+        });
     }
 
     items.push(
+        {
+            key: "font",
+            text: "Font...",
+            onClick: () => {
+                appState.uiState.showFontDialog();
+            },
+        },
         {
             key: "trackReader",
             text: "Follow reading with microphone",
@@ -511,9 +508,7 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
         }
     );
 
-    if (!formatLocked) {
-        items.push(...getRoundScorecardMenuItems(appState));
-    }
+    items.push(...getRoundScorecardMenuItems(appState));
 
     return items;
 }
@@ -617,23 +612,6 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             onClick: () => appState.uiState.toggleBonusHighlight(),
         },
     ]);
-
-    if (appState.uiState.hostSettings.disableChangeFormat) {
-        items = items.concat([
-            {
-                key: "viewDividerFont",
-                itemType: ContextualMenuItemType.Divider,
-            },
-            {
-                key: "font",
-                text: "Font...",
-                onClick: () => {
-                    appState.uiState.showFontDialog();
-                },
-            },
-            ...getRoundScorecardMenuItems(appState),
-        ]);
-    }
 
     items = items.concat([
         {
