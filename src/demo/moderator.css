@@ -3171,3 +3171,27 @@ a.kx-crumb:hover {
 .ms-sound-toggle[aria-pressed="false"] {
     color: var(--m-muted, #666);
 }
+
+/* MASSINGER packet check on the game setup screen. */
+.ms-packet-check {
+    border: 1px solid var(--m-line, #e1dfdd);
+    border-left-width: 4px;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 6px 0 10px;
+    font-size: 0.9rem;
+    background: var(--m-warn-bg, #fff4ce);
+}
+.ms-packet-check.warn {
+    border-left-color: #c19c00;
+}
+.ms-packet-check.bad {
+    border-left-color: var(--m-bad, #a4262c);
+}
+.ms-packet-check ul {
+    margin: 4px 0 6px;
+    padding-left: 1.2em;
+}
+.ms-packet-check li {
+    margin: 2px 0;
+}

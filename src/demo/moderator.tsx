@@ -19,6 +19,7 @@ import * as QBJ from "../qbj/QBJ";
 import { getReadAlongDiagnostics } from "../speech/ReadAlongDiagnostics";
 import { setPreferredVoskModelUrl } from "../speech/VoskSpeechEngine";
 import { BuzzPanel, SubmittedAnswers } from "./BuzzPanel";
+import { checkMassingerPacket, IMassingerCheck, MASSINGER_TARGET, subcatOf } from "./massingerCheck";
 import { pruneOldRoundTimings, useScorecard } from "./Scorecard";
 import {
     IDirectorMessage,
@@ -125,17 +126,8 @@ function teamsFromRoster(players: IPlayer[]): string[] {
 
 // --- MASSINGER pick/ban helpers -------------------------------------------
 
-const MASSINGER_TARGET = 20;
-
-// The subcategory of a tossup comes from its packet metadata, e.g.
-// "<Amogh Kulkarni, History - European>" or "Science - Biology": strip the
-// angle brackets and take the last comma-separated segment.
-function subcatOf(metadata: string | undefined): string {
-    let text = (metadata || "").trim().replace(/^</, "").replace(/>$/, "").trim();
-    const parts = text.split(",");
-    text = parts[parts.length - 1].trim();
-    return text || "Uncategorized";
-}
+// subcatOf (how a tossup's subcategory is read) lives in massingerCheck.ts,
+// next to the packet check that has to read it the same way.
 
 // Group the packet's tossups by subcategory. The board lists them
 // alphabetically (everyone's copy follows this order); each subcategory's
@@ -1167,6 +1159,9 @@ function ModeratorBody(): JSX.Element {
               rosters: IPlayer[];
               teams?: IGameTeam[];
               pickBan: boolean;
+              // A MASSINGER tournament's check of this packet: why there's no
+              // pick/ban, or what's off about its subcategories.
+              packetCheck?: IMassingerCheck;
               // The pick/ban options chosen on the setup screen: the board starts
               // with them as soon as the pick/ban screen opens.
               options?: IPickBanOptions;
@@ -1510,7 +1505,8 @@ function ModeratorBody(): JSX.Element {
             // own New Game dialog.
             const pickBan = massingerApplies(format, packet);
             if (pickBan || roomState?.tournamentCode) {
-                setPickban({ round: roundLabel, packet, rosters, pickBan });
+                const packetCheck = format?.massinger === true ? checkMassingerPacket(packet) : undefined;
+                setPickban({ round: roundLabel, packet, rosters, pickBan, packetCheck });
                 setPhase("lobby");
                 return;
             }
@@ -1782,6 +1778,7 @@ function ModeratorBody(): JSX.Element {
                 round={pickban.round}
                 roomState={roomState}
                 pickBan={pickban.pickBan}
+                packetCheck={pickban.packetCheck}
                 tossupCount={pickban.packet.tossups.length}
                 timerSecDefault={pickban.options?.timerSec ?? tournamentFormat?.massingerTimerSec ?? 30}
                 controlDefault={pickban.options?.control ?? tournamentFormat?.massingerControl ?? "anyone"}
@@ -2048,6 +2045,7 @@ function TeamLobby(props: {
     // A MASSINGER pick/ban follows (and the players make its picks). Its
     // options are set here too, so the pick/ban starts straight from this page.
     pickBan: boolean;
+    packetCheck?: IMassingerCheck;
     tossupCount: number;
     timerSecDefault: number;
     controlDefault: MassingerControl;
@@ -2065,6 +2063,7 @@ function TeamLobby(props: {
         round,
         roomState,
         pickBan,
+        packetCheck,
         tossupCount,
         timerSecDefault,
         controlDefault,
@@ -2367,10 +2366,37 @@ function TeamLobby(props: {
                         </p>
                     )}
 
+                    {!pickBan && packetCheck != undefined && (
+                        <div className="lobby-pickban">
+                            <h2>Pick/ban</h2>
+                            <div className="ms-packet-check bad" role="alert">
+                                <strong>No pick/ban for this round.</strong> This game reads the whole packet.
+                                <ul>
+                                    {packetCheck.issues.map((issue) => (
+                                        <li key={issue.kind}>{issue.text}</li>
+                                    ))}
+                                </ul>
+                                If that&apos;s not expected, tell the director: they can fix the packet and use
+                                Replace on the Packets tab, then you start the round again.
+                            </div>
+                        </div>
+                    )}
                     {pickBan && (
                         <div className="lobby-pickban">
                             <h2>Pick/ban</h2>
                             <p className="hint">{pickBanSummary(tossupCount, control)}</p>
+                            {packetCheck != undefined && packetCheck.issues.length > 0 && (
+                                <div className="ms-packet-check warn" role="note">
+                                    <strong>Check this packet&apos;s subcategories before you begin.</strong>
+                                    <ul>
+                                        {packetCheck.issues.map((issue) => (
+                                            <li key={issue.kind + issue.text}>{issue.text}</li>
+                                        ))}
+                                    </ul>
+                                    The pick/ban still works, but the board may look off to the teams. The director
+                                    can fix the packet and use Replace on the Packets tab.
+                                </div>
+                            )}
                             {control !== "random" && (
                                 <>
                                     <label htmlFor="ms-first">Which team picks first?</label>
