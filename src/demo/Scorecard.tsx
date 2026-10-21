@@ -46,7 +46,7 @@ export function useScorecard(code: string, token: string | null, game: string, r
     const button: JSX.Element | null = enabled ? (
         <button
             onClick={() => setOpen((v) => !v)}
-            title="How this round went: timing, rulings, and reading if read-along was on. Experimental; only you see it."
+            title="Timing, rulings and reading for this round. Only you see it."
         >
             {open ? "Hide your round" : "Your round"}
         </button>
@@ -106,12 +106,11 @@ function ScorecardPanel(props: {
                 </span>
             </div>
             <p className="hint">
-                Only you see this. Times are from this screen; reading numbers come from read-along and are things to
-                look at, not errors.
+                Only you see this. Reading numbers are pointers, not errors.
             </p>
 
             {card == undefined || card.questionsShown === 0 ? (
-                <p>Nothing timed yet. Timing starts once the scorecard is on and a question is on screen.</p>
+                <p>Nothing timed yet.</p>
             ) : (
                 <>
                     <section>
@@ -122,7 +121,7 @@ function ScorecardPanel(props: {
                             <Summary
                                 label="Between questions"
                                 summary={card.betweenQuestions}
-                                note="From the end of one question (last bonus part, or the tossup going dead) to the first word of the next"
+                                note="From the end of one question to the first word of the next"
                                 showTotal={true}
                             />
                         </dl>
@@ -141,10 +140,10 @@ function ScorecardPanel(props: {
                                 summary={card.bonusPartWait}
                                 note={
                                     card.bonusPartWait.count === 0
-                                        ? "Needs read-along on, with the bonus on screen under the tossup"
+                                        ? "Needs read-along and the bonus on screen"
                                         : `From the end of each part to reading on. ${
                                               card.bonusPartWait.overReference
-                                          } over ${seconds(bonusPartReferenceMs)} (a common allowance; check your rules)`
+                                          } over ${seconds(bonusPartReferenceMs)}`
                                 }
                             />
                             {card.rulingHeardToEntered.count > 0 && (
@@ -208,7 +207,7 @@ function ScorecardPanel(props: {
                                     <Row
                                         label="Buzz points"
                                         value={nudge(card.reading.buzzNudgeMedian)}
-                                        note={`From ${card.reading.buzzNudges} buzzes: the saved word against where read-along had you`}
+                                        note={`Saved word vs. read-along, over ${card.reading.buzzNudges} buzzes`}
                                     />
                                 )}
                             </dl>
@@ -376,7 +375,7 @@ function nudge(median: number): string {
 
     return `Saved ${Math.abs(words)} word${Math.abs(words) === 1 ? "" : "s"} ${
         words > 0 ? "after" : "before"
-    } read-along's: try a buzz point offset of ${words > 0 ? "+" : ""}${words} (Options)`;
+    } read-along. Try a buzz point offset of ${words > 0 ? "+" : ""}${words} in Options.`;
 }
 
 // Timings from games over a fortnight old are dropped, so they don't pile up in this browser

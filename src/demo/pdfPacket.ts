@@ -124,7 +124,7 @@ export async function pdfToPacketHtml(pdfjs: IPdfJsLib, data: Uint8Array): Promi
         }
         if (lines.every((l) => l.text.trim() === "")) {
             throw new Error(
-                "That PDF has no text in it — it's probably a scan. Try the Word version of the packet instead."
+                "That PDF has no text in it. It's probably a scan. Try the Word version."
             );
         }
         const kept = dropRepeatedMargins(lines, pageHeights);

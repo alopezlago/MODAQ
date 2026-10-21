@@ -28,6 +28,15 @@ const ordinal = (n: number): string => {
     return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
 };
 
+// Short words for the server's error codes; an unknown code shows as itself.
+const ERROR_WORDS: Record<string, string> = {
+    not_connected: "Not connected. Reload the page.",
+    no_room: "Not connected. Reload the page.",
+    forbidden: "Not allowed.",
+};
+const errorText = (code: string, words: Record<string, string> = {}): string =>
+    words[code] ?? ERROR_WORDS[code] ?? code;
+
 /**
  * A shootout's players, its leaderboard and its buzz queue as one list.
  *
@@ -79,7 +88,7 @@ function Standings(props: {
     });
     const showSplit = (props.packets ?? 0) > 0;
     const splitTitle = (e: (typeof entries)[number]): string | undefined =>
-        showSplit && e.row != undefined ? `${e.row.banked} from earlier packets + ${e.row.current} this packet` : undefined;
+        showSplit && e.row != undefined ? `${e.row.banked} earlier + ${e.row.current} this packet` : undefined;
 
     const queued = new Set(queue.map((q) => q.playerId));
     const byId = new Map(entries.map((e) => [e.id, e]));
@@ -100,7 +109,7 @@ function Standings(props: {
                 {wdLeft(e.id) > 0 && (
                     <span
                         className="ks-wd"
-                        title={`Used their free withdraw: withdrawing now costs them. Free again in ${wdLeft(e.id)} question${
+                        title={`Free withdraw used. Free again in ${wdLeft(e.id)} question${
                             wdLeft(e.id) === 1 ? "" : "s"
                         }.`}
                     >
@@ -146,7 +155,7 @@ function Standings(props: {
                             order: 0,
                         };
                         const badge = (
-                            <span className="ks-badge" title={i > 0 ? `Buzzed this far behind ${queue[0].name}` : undefined}>
+                            <span className="ks-badge" title={i > 0 ? `Behind ${queue[0].name}` : undefined}>
                                 {ordinal(i + 1)}
                                 {i > 0 && ` +${marginText(q.marginMs)}`}
                             </span>
@@ -444,7 +453,7 @@ function RoomChat(props: {
         if (res.error != undefined) {
             // Put it back rather than losing what they typed.
             setDraft(text);
-            setNote(res.error === "too_fast" ? "One at a time." : res.error);
+            setNote(errorText(res.error, { too_fast: "One at a time.", disabled: "Chat is off.", empty: "" }));
         } else {
             setNote("");
         }
@@ -462,7 +471,7 @@ function RoomChat(props: {
                     className="kc-export"
                     href={props.exportUrl}
                     download
-                    title="Download the room's chat as a text file"
+                    title="Download the chat as text"
                 >
                     Export
                 </a>
@@ -523,7 +532,7 @@ function RoomChat(props: {
                                     (mentionsMe(m) ? " kc-at-me" : "") +
                                     (expanded.has(m.id) ? " kc-open" : "")
                                 }
-                                title={`${chatFullTime(m.at)} — click to show all of a long message`}
+                                title={`${chatFullTime(m.at)}. Click to expand.`}
                                 onClick={() =>
                                     setExpanded((prev) => {
                                         const next = new Set(prev);
@@ -573,7 +582,7 @@ function RoomChat(props: {
                     ref={inputRef}
                     value={draft}
                     maxLength={400}
-                    placeholder="Say something — @ to mention"
+                    placeholder="Message (@ to mention)"
                     onBlur={() => setPick(null)}
                     onChange={(ev) => {
                         setDraft(ev.target.value);
@@ -645,8 +654,8 @@ export function useUndoClear(client: KlaxonClient): [(id: string) => void, strin
             if (res?.error != undefined) {
                 setMsg(
                     res.error === "nobody_to_restore"
-                        ? "Everyone it cleared has left or is already back in the queue."
-                        : "That clear can't be undone any more — the room has moved on."
+                        ? "Nobody to put back."
+                        : "Too late to undo that clear."
                 );
                 setTimeout(() => setMsg(""), 3000);
             }
@@ -674,7 +683,7 @@ function RecentBuzzes(props: { events: IRecentEvent[]; onUndo: (id: string) => v
                     {undoable?.undoId != undefined && (
                         <button
                             className="kr-summary-undo"
-                            title="Put the cleared buzzes back in the queue"
+                            title="Put the cleared buzzes back"
                             onClick={(event) => {
                                 // A button in a summary would also open or shut the list.
                                 event.preventDefault();
@@ -699,7 +708,7 @@ function RecentBuzzes(props: { events: IRecentEvent[]; onUndo: (id: string) => v
                                 {e.note != undefined && <span className="kr-note"> · {e.note}</span>}
                             </span>
                             {e.undoId != undefined && (
-                                <button onClick={() => onUndo(e.undoId as string)} title="Put the cleared buzzes back in the queue">
+                                <button onClick={() => onUndo(e.undoId as string)} title="Put the cleared buzzes back">
                                     Undo
                                 </button>
                             )}
@@ -731,7 +740,17 @@ function ProtestList(props: { client: KlaxonClient; protests: IProtest[] }): JSX
             setBusy(id);
             const res = await client.protest(action, id, extra ?? {});
             setBusy(null);
-            setNote(res.error ? `Could not do that: ${res.error}` : "");
+            setNote(
+                res.error
+                    ? errorText(res.error, {
+                          no_protest: "That protest is gone.",
+                          dismissed: "That protest was dropped.",
+                          not_open: "Take the protest first.",
+                          not_filed: "File it in MODAQ first.",
+                          empty: "No text to show.",
+                      })
+                    : ""
+            );
         },
         [client]
     );
@@ -741,7 +760,7 @@ function ProtestList(props: { client: KlaxonClient; protests: IProtest[] }): JSX
     const showQuestion = React.useCallback(
         (p: IProtest) => {
             const text = window.prompt(
-                `Show the room the text of question ${p.cycle}? Paste or edit what they should see.`,
+                `Paste the text of question ${p.cycle} to show the room.`,
                 ""
             );
             if (text == undefined || text.trim() === "") {
@@ -792,7 +811,7 @@ function ProtestList(props: { client: KlaxonClient; protests: IProtest[] }): JSX
                             <div className="kp-actions">
                                 {p.status === "lodged" && (
                                     <button disabled={busy === p.id} onClick={() => void act("protest_open", p.id)}>
-                                        Take it — let both teams write
+                                        Open to both teams
                                     </button>
                                 )}
                                 {p.status === "open" && (
@@ -802,7 +821,7 @@ function ProtestList(props: { client: KlaxonClient; protests: IProtest[] }): JSX
                                 )}
                                 {p.status === "filed" && !p.questionShown && (
                                     <button disabled={busy === p.id} onClick={() => showQuestion(p)}>
-                                        Show the room the question
+                                        Show the question
                                     </button>
                                 )}
                                 {p.questionShown && <span className="kp-shown">question shown</span>}
@@ -985,7 +1004,7 @@ function notifyStuck(code: string, who: string): void {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
     try {
         const n = new Notification(`Room ${code}: buzzer isn't clear`, {
-            body: `${who} is waiting to be recognized.`,
+            body: `${who} is waiting.`,
             tag: "klaxon-stuck-" + code,
         });
         n.onclick = (): void => {
@@ -1267,7 +1286,7 @@ export function BuzzPanel(props: {
             <select
                 className="klaxon-link-select"
                 value={current}
-                title="Which MODAQ player this buzzer is scored as — change it any time"
+                title="MODAQ player this buzzer scores as"
                 onChange={(e) => {
                     const value = e.target.value;
                     setPendingLinks((p) => ({ ...p, [playerId]: value }));
@@ -1299,7 +1318,7 @@ export function BuzzPanel(props: {
     const soundButton = (
         <button
             className="klaxon-sound-toggle"
-            title={soundOn ? "Buzz sound on — click to mute" : "Buzz sound muted — click to unmute"}
+            title={soundOn ? "Mute buzz sound" : "Unmute buzz sound"}
             aria-pressed={!soundOn}
             onClick={() => {
                 const next = !soundOn;
@@ -1377,12 +1396,18 @@ export function BuzzPanel(props: {
             onClick={async () => {
                 const res = await client.massinger({ action: "reveal_answer" });
                 if (res?.error != undefined) {
-                    setShowAnswerMsg(res.error === "nothing_typed" ? "They haven't typed anything yet." : res.error);
+                    setShowAnswerMsg(
+                        errorText(res.error, {
+                            nothing_typed: "Nothing typed yet.",
+                            not_open: "No one has the buzz.",
+                            no_player: "No one has the buzz.",
+                        })
+                    );
                     setTimeout(() => setShowAnswerMsg(""), 2500);
                 }
             }}
             disabled={!buzzed}
-            title="Put the buzzed-in player's typed answer on the record now"
+            title="Show the room their typed answer now"
         >
             Show their answer
         </button>
@@ -1402,7 +1427,7 @@ export function BuzzPanel(props: {
     );
 
     const typedOption = (
-        <label className="klaxon-opt" title="Players type their answer instead of saying it out loud">
+        <label className="klaxon-opt">
             <input
                 type="checkbox"
                 checked={pendingTyped ?? typedAnswers}
@@ -1426,7 +1451,7 @@ export function BuzzPanel(props: {
     // the home page. Off unless they ask — a room's code is the only thing
     // keeping strangers out of it.
     const listedOption = (
-        <label className="klaxon-opt" title="Anyone can find this game on klaxonbuzz.com and join it">
+        <label className="klaxon-opt" title="Anyone can join it from there">
             <input
                 type="checkbox"
                 checked={state?.listed === true}
@@ -1463,13 +1488,12 @@ export function BuzzPanel(props: {
                     onClick={() => {
                         if (
                             window.confirm(
-                                "End the game for everyone? The players are sent home and the room stops taking new ones. The scoresheet, the chat and the log stay, and you can reopen it."
+                                "End the game for everyone? Players are sent home. You can reopen it."
                             )
                         ) {
                             client.massinger({ action: "end_game", end: true });
                         }
                     }}
-                    title="Send the players home and close the room"
                 >
                     End the game for everyone
                 </button>
@@ -1485,8 +1509,7 @@ export function BuzzPanel(props: {
     const hints = (
         <>
             <p className="klaxon-hint">
-                Buzzes are resolved with Klaxon&apos;s latency-fair timing. Judge the buzz in the MODAQ reader on the
-                left; press <kbd>r</kbd> (or the button) to reset for the next tossup.
+                Press <kbd>r</kbd> to reset for the next tossup.
             </p>
             {/* Afterwards, when somebody asks what happened to their buzz: every
                 buzz, clear, withdrawal and chat line, stamped and in order. */}
@@ -1495,11 +1518,10 @@ export function BuzzPanel(props: {
                     className="kc-export"
                     href={KlaxonApi.activityLogUrl(client.code, client.token)}
                     download
-                    title="Buzz times, who cleared what, withdrawals, joins and chat — as a text file"
+                    title="Buzzes, clears, withdrawals, joins and chat"
                 >
                     Download the activity log
-                </a>{" "}
-                if you need to work out what happened to a buzz.
+                </a>
             </p>
         </>
     );
@@ -1522,7 +1544,7 @@ export function BuzzPanel(props: {
                         className={"ks-icon" + (drawer === "recent" ? " on" : "") + (historyUndo ? " ks-dot" : "")}
                         aria-expanded={drawer === "recent"}
                         aria-label="Recent buzzes"
-                        title={historyUndo ? "Recent buzzes — a clear can still be undone" : "Recent buzzes"}
+                        title={historyUndo ? "Recent buzzes (undo available)" : "Recent buzzes"}
                         onClick={() => toggle("recent")}
                     >
                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1535,7 +1557,7 @@ export function BuzzPanel(props: {
                         className={"ks-icon" + (drawer === "settings" ? " on" : "")}
                         aria-expanded={drawer === "settings"}
                         aria-label="Room settings"
-                        title="Room settings — typed answers, listing, removing players, ending the game"
+                        title="Room settings"
                         onClick={() => toggle("settings")}
                     >
                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1587,11 +1609,11 @@ export function BuzzPanel(props: {
                     <button
                         onClick={() => client.resetBuzzer()}
                         disabled={!buzzed}
-                        title="Accidental buzz (r) — clears without scoring, which records the buzz as accidental"
+                        title="Accidental buzz (r). Clears without scoring."
                     >
                         Accidental <kbd>r</kbd>
                     </button>
-                    <button onClick={startTimer} title="5-second timer (t) — a countdown only you see">
+                    <button onClick={startTimer} title="5-second timer (t). Only you see it.">
                         5s timer <kbd>t</kbd>
                     </button>
                     {queueMode && (
@@ -1660,7 +1682,7 @@ export function BuzzPanel(props: {
                                 {modaqLabel(m, entry.name)}
                             </span>
                             {index > 0 && (
-                                <span className="qmargin" title={`Buzzed this far behind ${queue[0].name}`}>
+                                <span className="qmargin" title={`Behind ${queue[0].name}`}>
                                     +{marginText(entry.marginMs)}
                                 </span>
                             )}
@@ -1677,11 +1699,11 @@ export function BuzzPanel(props: {
                 <button
                     onClick={() => client.resetBuzzer()}
                     disabled={!buzzed}
-                    title="Shortcut: r — clears without scoring, which records the buzz as accidental"
+                    title="Clears without scoring."
                 >
                     Accidental buzz (r)
                 </button>
-                <button onClick={startTimer} title="Shortcut: t — a 5-second countdown only you see">
+                <button onClick={startTimer} title="Only you see it.">
                     5s timer (t)
                 </button>
                 {queueMode && (
@@ -1727,7 +1749,7 @@ export function BuzzPanel(props: {
                                     {player.connected && player.waiting && (
                                         <span
                                             className="klaxon-waiting"
-                                            title={`On ${player.nextTeam ?? "another team"}, which isn't in this game: their buzzer is off until a New Game brings the team in.`}
+                                            title={`On ${player.nextTeam ?? "another team"}. Buzzer off until their team plays.`}
                                         >
                                             NEXT GAME
                                         </span>

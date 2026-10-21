@@ -81,15 +81,15 @@ export function checkMassingerPacket(packet: { tossups?: { metadata?: string }[]
     if (tossups.length <= MASSINGER_TARGET) {
         issues.push({
             kind: "too_few",
-            text: `Only ${plural(tossups.length, "tossup")}: it needs more than ${MASSINGER_TARGET} for a pick/ban, so this round is read in full.`,
+            text: `Only ${plural(tossups.length, "tossup")}. Pick/ban needs more than ${MASSINGER_TARGET}. Read in full.`,
         });
     } else if (subcats.length < 2) {
         issues.push({
             kind: "no_subcats",
             text:
                 subcats[0]?.label === "Uncategorized"
-                    ? "No subcategories found in the metadata, so this round is read in full, with no pick/ban."
-                    : `Every tossup has the same subcategory ("${subcats[0]?.label}"), so this round is read in full, with no pick/ban.`,
+                    ? "No subcategories in the metadata. Read in full."
+                    : `Every tossup has the subcategory "${subcats[0]?.label}". Read in full.`,
         });
     }
     if (applies) {
@@ -97,7 +97,7 @@ export function checkMassingerPacket(packet: { tossups?: { metadata?: string }[]
         if (unc) {
             issues.push({
                 kind: "uncategorized",
-                text: `${plural(unc, "tossup")} ${unc === 1 ? "has" : "have"} no subcategory. ${unc === 1 ? "It" : "They"} become one "Uncategorized" row on the board.`,
+                text: `${plural(unc, "tossup")} ${unc === 1 ? "has" : "have"} no subcategory. ${unc === 1 ? "It shows" : "They show"} as "Uncategorized".`,
             });
         }
         const groups = new Map<string, string[]>();
@@ -112,7 +112,7 @@ export function checkMassingerPacket(packet: { tossups?: { metadata?: string }[]
             if (labels.length > 1) {
                 issues.push({
                     kind: "spelling",
-                    text: `Spelled more than one way: ${labels.map((l) => `"${l}"`).join(", ")}. Each spelling is its own row.`,
+                    text: `Spelled more than one way: ${labels.map((l) => `"${l}"`).join(", ")}. Each is its own row.`,
                 });
             }
         });
@@ -120,7 +120,7 @@ export function checkMassingerPacket(packet: { tossups?: { metadata?: string }[]
         if (people.length) {
             issues.push({
                 kind: "author",
-                text: `${people.length === 1 ? "This looks" : "These look"} like a name, not a subcategory: ${people.slice(0, 3).map((l) => `"${l}"`).join(", ")}${people.length > 3 ? ` and ${people.length - 3} more` : ""}. Put the subcategory after the author, as "Category - Subcategory".`,
+                text: `${people.length === 1 ? "This looks" : "These look"} like a name, not a subcategory: ${people.slice(0, 3).map((l) => `"${l}"`).join(", ")}${people.length > 3 ? ` and ${people.length - 3} more` : ""}. Put the subcategory last, as "Category - Subcategory".`,
             });
         }
     }

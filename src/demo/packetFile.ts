@@ -75,8 +75,8 @@ export async function readPacketFile(file: File, status: PacketStatus = () => un
     if (startsWith(bytes, "PK")) {
         if (bytes.length > MAX_PARSE_BYTES) {
             throw new Error(
-                `That document is ${megabytes(bytes.length)}. The parser takes up to ${megabytes(MAX_PARSE_BYTES)} — ` +
-                    "images in the document are usually why; a PDF of the same packet will work."
+                `That document is ${megabytes(bytes.length)}. The limit is ${megabytes(MAX_PARSE_BYTES)}. ` +
+                    "Try a PDF of the packet."
             );
         }
         status("Parsing the questions…");
@@ -87,7 +87,7 @@ export async function readPacketFile(file: File, status: PacketStatus = () => un
     // can't read at all.
     if (bytes[0] === 0xd0 && bytes[1] === 0xcf && bytes[2] === 0x11 && bytes[3] === 0xe0) {
         throw new Error(
-            "That's an old-style Word document (.doc). Open it in Word and save it as .docx or PDF, then load that."
+            "That's an old Word file (.doc). Save it as .docx or PDF and load that."
         );
     }
 
@@ -96,14 +96,14 @@ export async function readPacketFile(file: File, status: PacketStatus = () => un
     try {
         packet = JSON.parse(new TextDecoder().decode(bytes)) as IPacket;
     } catch {
-        throw new Error("That isn't a packet file. Load a Word document (.docx), a PDF, or a packet JSON file.");
+        throw new Error("That isn't a packet file. Load a .docx, PDF or packet JSON.");
     }
     return { packet: checked(packet, "That JSON file"), name };
 }
 
 function checked(packet: IPacket, what: string): IPacket {
     if (packet == undefined || !Array.isArray(packet.tossups)) {
-        throw new Error(`${what} isn't a packet — it has no tossups in it.`);
+        throw new Error(`${what} has no tossups.`);
     }
     if (packet.tossups.length === 0) {
         throw new Error(`No tossups were found in ${what === "That JSON file" ? "that file" : what}.`);
@@ -120,7 +120,7 @@ async function parse(body: Uint8Array, what: string): Promise<IPacket> {
             body,
         });
     } catch {
-        throw new Error("Couldn't reach the packet parser. Check the connection and try again.");
+        throw new Error("Couldn't reach the packet parser. Check your connection.");
     }
     const text = await response.text();
     if (!response.ok) {
@@ -179,14 +179,14 @@ async function pdfToHtml(bytes: Uint8Array): Promise<string> {
     try {
         pdfjs = await loadPdfJs();
     } catch {
-        throw new Error("Couldn't load the PDF reader. Check the connection and try again.");
+        throw new Error("Couldn't load the PDF reader. Check your connection.");
     }
     try {
         return await pdfToPacketHtml(pdfjs, bytes);
     } catch (error) {
         const message = (error as Error)?.message ?? "";
         if (/password/i.test(message) || (error as { name?: string })?.name === "PasswordException") {
-            throw new Error("That PDF is password-protected. Use an unlocked copy of the packet.");
+            throw new Error("That PDF is password-protected. Use an unlocked copy.");
         }
         if (/no text in it/.test(message)) {
             throw error;

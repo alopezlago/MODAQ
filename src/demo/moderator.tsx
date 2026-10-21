@@ -249,7 +249,7 @@ function PickSoundToggle(): JSX.Element {
             type="button"
             className="ms-sound-toggle"
             aria-pressed={on}
-            title="Turn the pick/ban sounds on or off (buzz sounds aren't affected)"
+            title="Pick/ban sounds only. Buzz sounds aren't affected."
             onClick={() => {
                 const next = !on;
                 try {
@@ -665,7 +665,7 @@ function PreviousGames(props: {
                 <h3>Previous games in this room</h3>
                 <p className="hint">
                     {loaded
-                        ? "No games finished in this room yet. A game is filed here when you export it, change round, or end it."
+                        ? "No finished games yet."
                         : "Loading…"}
                 </p>
             </div>
@@ -702,7 +702,7 @@ function PreviousGames(props: {
                 ))}
             </ul>
             <p className="hint">
-                Load a game to correct a score or export it again; it becomes the room&apos;s current game.
+                Load a game to fix or re-export it.
             </p>
             {msg && <p className="msg">{msg}</p>}
         </div>
@@ -805,7 +805,7 @@ const YAPP_SERVICE_URL = "/api/yapp/parse?modaq=true";
 // director instead, and the link would just be noise. Module-level so its
 // identity is stable across renders (ModaqControl diffs the prop by reference).
 const PACKET_PARSER_LINK = {
-    text: "Only have a Word packet? Convert it with Klaxon's packet parser",
+    text: "Word packet? Convert it with the packet parser",
     url: "/yapp",
 };
 
@@ -1053,7 +1053,7 @@ function KlaxonHeader(props: { code: string }): JSX.Element {
                 </span>
             </nav>
             <div className="kx-right">
-                <button className="kx-action" onClick={copyLink} title="Copy this room's player join link">
+                <button className="kx-action" onClick={copyLink}>
                     {copied ? "Copied!" : "Copy player link"}
                 </button>
                 {/* The room's settings on a page of their own (not the plain
@@ -1064,7 +1064,7 @@ function KlaxonHeader(props: { code: string }): JSX.Element {
                     href={`/r/${props.code}/options`}
                     target="_blank"
                     rel="opener"
-                    title="Buzzing, answers, chat, listing and invite links for this room"
+                    title="Buzzer, answers, chat and invite links"
                 >
                     Room options ↗
                 </a>
@@ -1076,7 +1076,7 @@ function KlaxonHeader(props: { code: string }): JSX.Element {
                     target="_blank"
                     rel="noopener"
                     onClick={saveReadAlongDiagnostics}
-                    title="Report a bug, including what read-along heard"
+                    title="Sends what read-along heard too"
                 >
                     Report a problem ↗
                 </a>
@@ -1172,7 +1172,7 @@ function ModeratorBody(): JSX.Element {
     // Connect + bootstrap once.
     React.useEffect(() => {
         if (!code) {
-            setFatal("No room specified. Open this page from your reader link.");
+            setFatal("No room given. Open your reader link.");
             setPhase("error");
             return;
         }
@@ -1234,7 +1234,7 @@ function ModeratorBody(): JSX.Element {
                 }
                 if (error.denyReason === "not_logged_in") {
                     setFatal(
-                        "Sign in with your reader account to moderate this room (the director must have added or approved you)."
+                        "Sign in with your reader account to moderate this room."
                     );
                     setSignInUrl(`/account?return=${encodeURIComponent(`/modaq?room=${code}`)}`);
                 } else if (error.denyReason === "not_approved" && error.state?.tournamentCode) {
@@ -1246,7 +1246,7 @@ function ModeratorBody(): JSX.Element {
                     return;
                 } else if (error.denyReason === "not_approved") {
                     setFatal(
-                        "Your account isn't approved for this tournament yet — ask the director to add you (they can use your email)."
+                        "Your account isn't approved for this tournament. Ask the director to add you."
                     );
                 } else {
                     setFatal(error.message);
@@ -1414,7 +1414,7 @@ function ModeratorBody(): JSX.Element {
             }
             return stored;
         }
-        throw new Error("Choose a packet file, or pick a round that already has one.");
+        throw new Error("Choose a packet file or a round that has one.");
     }
 
     // Fetch the round's errata + tiebreakers and enter the reading view. Shared
@@ -1622,13 +1622,8 @@ function ModeratorBody(): JSX.Element {
 
         return (
             <div className="mod-center mod-setup">
-                <h1>MODAQ moderator — room {code}</h1>
+                <h1>MODAQ moderator · room {code}</h1>
                 {clientRef.current ? <DirectorMessages client={clientRef.current} /> : undefined}
-                <p className="hint">
-                    {roomState?.tournamentCode
-                        ? "Choose the round and its packet, then start — you set the teams and who plays next, and read with the Klaxon buzzer on the right."
-                        : "Choose the round and its packet, then start — teams are set in MODAQ's New Game dialog, and you read with the Klaxon buzzer on the right."}
-                </p>
 
                 {scheduledRounds.length > 0 && (
                     <>
@@ -1648,7 +1643,7 @@ function ModeratorBody(): JSX.Element {
                     </>
                 )}
 
-                <label>{serverPackets.length > 1 ? "Packet — click one to choose it" : "Packet"}</label>
+                <label>Packet</label>
                 {serverPackets.length > 0 ? (
                     <div className="packet-choices" role="radiogroup" aria-label="Released tournament packets">
                         {serverPackets.map((r) => {
@@ -1673,7 +1668,7 @@ function ModeratorBody(): JSX.Element {
                     </div>
                 ) : (
                     <p className="hint">
-                        The director hasn&apos;t released a packet to this room yet — choose your own file below.
+                        No packet released to this room yet. Choose your own file below.
                     </p>
                 )}
 
@@ -1694,25 +1689,20 @@ function ModeratorBody(): JSX.Element {
 
                 <label htmlFor="round">Round label</label>
                 <input id="round" type="text" value={round} onChange={(e) => setRound(e.target.value)} />
-                <p className="hint">
-                    What this game is filed under in the tournament&apos;s stats. Picking a released round above sets it
-                    for you.
-                </p>
 
                 <p className={packetReady ? "packet-status ready hint" : "packet-status"}>
                     {packetFile
-                        ? `Reading “${packetFile.name}” — it will be saved as the packet for round “${trimmed}”.`
+                        ? `Reading “${packetFile.name}” as round “${trimmed}”.`
                         : releasedForRound
                         ? `Reading the tournament packet for round “${trimmed}”.`
                         : serverPackets.length > 0
-                        ? `No packet for round “${trimmed}” — pick a released round above, or choose your own file.`
+                        ? `No packet for round “${trimmed}”. Pick a round above or choose a file.`
                         : "Choose a packet file to start."}
                 </p>
 
                 {centralRoster ? (
                     <p className="hint">
-                        Using the tournament roster ({teams.length} teams) — you pick the two teams and who plays on the
-                        next screen.
+                        Using the tournament roster ({teams.length} teams).
                     </p>
                 ) : (
                     <>
@@ -1724,13 +1714,11 @@ function ModeratorBody(): JSX.Element {
                             onChange={(e) => onRosterFile(e.target.files?.[0])}
                         />
                         <p className="hint">
-                            {roomState?.tournamentCode
-                                ? teams.length > 0
-                                    ? `Roster loaded (${teams.length} teams) — you pick the teams on the next screen.`
-                                    : "Upload a roster to choose teams from, or type the team names on the next screen."
-                                : teams.length > 0
-                                ? `Roster loaded (${teams.length} teams) — pick the teams in MODAQ's New Game dialog.`
-                                : "Upload a roster to prefill MODAQ's New Game, or set teams by hand in that dialog."}
+                            {teams.length > 0
+                                ? `Roster loaded (${teams.length} teams).`
+                                : roomState?.tournamentCode
+                                ? "Or type team names on the next screen."
+                                : "Or set teams in MODAQ's New Game dialog."}
                         </p>
                     </>
                 )}
@@ -1960,7 +1948,7 @@ function ConnectedPlayers(props: {
                 {unplaced > 0 && <span className="ms-unlinked"> · {unplaced} without a team</span>}
             </h3>
             {members.length === 0 ? (
-                <p className="hint">Nobody has joined the room yet. They open the player link to buzz and pick.</p>
+                <p className="hint">Nobody has joined yet.</p>
             ) : (
                 <ul>
                     {members.map((member) => {
@@ -2025,8 +2013,7 @@ function ConnectedPlayers(props: {
             )}
             {unplaced > 0 && (
                 <p className="hint">
-                    A buzzer with no team still buzzes, but can&apos;t make its team&apos;s picks — put it on a team
-                    above.
+                    Players with no team can buzz but can&apos;t pick. Put them on a team above.
                 </p>
             )}
         </div>
@@ -2248,7 +2235,7 @@ function TeamLobby(props: {
         <div className="mod-shell">
             <div className="mod-main">
                 <div className="mod-center mod-setup">
-                    <h1>Set up the game — room {code}</h1>
+                    <h1>Set up the game · room {code}</h1>
                     <p className="hint">Round {round}</p>
 
                     <div className="lobby-link">
@@ -2279,7 +2266,7 @@ function TeamLobby(props: {
                                             {l.name} <span className="muted-count">({count} playing)</span>
                                         </h3>
                                         {l.rows.length === 0 ? (
-                                            <p className="hint">Nobody on this team yet — add its players below.</p>
+                                            <p className="hint">Nobody on this team yet.</p>
                                         ) : (
                                             <ul className="lobby-lineup">
                                                 {l.rows.map((r) => (
@@ -2339,9 +2326,8 @@ function TeamLobby(props: {
                     {namesReady && unassigned.length > 0 && (
                         <div className="ms-warn">
                             {unassigned.length} connected player{unassigned.length === 1 ? "" : "s"} still need
-                            {unassigned.length === 1 ? "s" : ""} a team — set them on the right, or remove them from the
-                            room.
-                            {pickBan ? "" : " Until then their buzzer stays off."}
+                            {unassigned.length === 1 ? "s" : ""} a team. Set teams on the right or remove them.
+                            {pickBan ? "" : " Their buzzer is off until then."}
                         </div>
                     )}
                     {pickBan &&
@@ -2353,16 +2339,14 @@ function TeamLobby(props: {
                         )}
                     {canStart && missingCaptains.length > 0 && (
                         <div className="ms-warn">
-                            No captain for {missingCaptains.join(" or ")} — the picks are captain-controlled, so mark
-                            one on the right (or you can make their picks yourself).
+                            No captain for {missingCaptains.join(" or ")}. Mark one on the right or make their picks
+                            yourself.
                         </div>
                     )}
                     {connected.length === 0 && (
                         <p className="hint">
-                            Nobody has joined yet. Send them the link above
-                            {pickBan
-                                ? " — a game can be set up without them, but then every pick has to come from you."
-                                : "."}
+                            Nobody has joined yet. Send them the link above.
+                            {pickBan ? " Without them, you make every pick." : ""}
                         </p>
                     )}
 
@@ -2376,8 +2360,8 @@ function TeamLobby(props: {
                                         <li key={issue.kind}>{issue.text}</li>
                                     ))}
                                 </ul>
-                                If that&apos;s not expected, tell the director: they can fix the packet and use
-                                Replace on the Packets tab, then you start the round again.
+                                If that&apos;s wrong, ask the director to fix the packet and Replace it. Then
+                                restart the round.
                             </div>
                         </div>
                     )}
@@ -2387,14 +2371,14 @@ function TeamLobby(props: {
                             <p className="hint">{pickBanSummary(tossupCount, control)}</p>
                             {packetCheck != undefined && packetCheck.issues.length > 0 && (
                                 <div className="ms-packet-check warn" role="note">
-                                    <strong>Check this packet&apos;s subcategories before you begin.</strong>
+                                    <strong>Check this packet&apos;s subcategories.</strong>
                                     <ul>
                                         {packetCheck.issues.map((issue) => (
                                             <li key={issue.kind + issue.text}>{issue.text}</li>
                                         ))}
                                     </ul>
-                                    The pick/ban still works, but the board may look off to the teams. The director
-                                    can fix the packet and use Replace on the Packets tab.
+                                    The pick/ban works, but the board may look off. The director can fix the packet
+                                    and Replace it.
                                 </div>
                             )}
                             {control !== "random" && (
@@ -2491,29 +2475,29 @@ const CONTROL_LABELS: { value: MassingerControl; label: string; hint: string }[]
     {
         value: "captain",
         label: "Each team's captain",
-        hint: "Only the player you mark as captain picks for their team.",
+        hint: "Only the captain picks.",
     },
     {
         value: "anyone",
         label: "Anyone on the team",
-        hint: "Any player the room knows to be on the team can pick for it.",
+        hint: "Any player on the team picks.",
     },
     {
         value: "moderator",
         label: "Moderator only",
-        hint: "Players just watch the board; you make every pick from here.",
+        hint: "You make every pick.",
     },
     {
         value: "random",
         label: "Nobody: random bans",
-        hint: "Klaxon bans 6 tossups at random; nothing is protected.",
+        hint: "6 random bans. No protects.",
     },
 ];
 
 // What the teams do, for the pick/ban option screens.
 const pickBanSummary = (tossups: number, control: MassingerControl): string =>
     control === "random"
-        ? `${tossups} tossups. Random bans: 6 tossups are banned at random, nothing is protected, and the teams don't pick.`
+        ? `${tossups} tossups. 6 random bans, no protects, no picks.`
         : `${tossups} tossups. Each team gets 3 bans and 2 protects.`;
 
 // --- MASSINGER pick/ban screen ---------------------------------------------
@@ -2706,7 +2690,7 @@ function PickBan(props: {
             <div className="mod-shell">
                 <div className="mod-main">
                     <div className="mod-center mod-setup">
-                        <h1>MASSINGER pick/ban — Round {round}</h1>
+                        <h1>MASSINGER pick/ban · Round {round}</h1>
                         <p className="hint">{pickBanSummary(packet.tossups.length, control)}</p>
                         {control !== "random" && (
                             <>
@@ -2739,8 +2723,8 @@ function PickBan(props: {
                         </select>
                         {control === "captain" && missingCaptains.length > 0 && (
                             <p className="ms-warn">
-                                No captain yet for {missingCaptains.join(" or ")} — mark one in the players list on the
-                                right (or their picks will have to come from you).
+                                No captain for {missingCaptains.join(" or ")}. Mark one on the right or make their picks
+                                yourself.
                             </p>
                         )}
 
@@ -2843,7 +2827,7 @@ function PickBan(props: {
             <div className="mod-main">
                 <div className="mod-center mod-setup ms-screen">
                     <div className="ms-title-row">
-                        <h1>MASSINGER pick/ban — Round {round}</h1>
+                        <h1>MASSINGER pick/ban · Round {round}</h1>
                         <PickSoundToggle />
                     </div>
 
@@ -2954,14 +2938,14 @@ function PickBan(props: {
                                 </div>
                             )}
                             <p className="hint">
-                                {remaining} questions remain — {bansLeft} more ban{bansLeft === 1 ? "" : "s"} to reach{" "}
+                                {remaining} questions left. {bansLeft} more ban{bansLeft === 1 ? "" : "s"} to reach{" "}
                                 {board.target}.
                             </p>
                         </>
                     ) : (
                         <p className="ms-doneline">
-                            {randomBans ? "Random bans drawn" : "Pick/ban complete"} — {remaining} questions remain
-                            {remaining > board.target ? " (all the bans are used)" : ""}.
+                            {randomBans ? "Random bans drawn" : "Pick/ban complete"}. {remaining} questions left.
+                            {remaining > board.target ? " All bans used." : ""}
                         </p>
                     )}
 
@@ -3108,7 +3092,7 @@ function PickBan(props: {
                                     window.confirm(
                                         randomBans
                                             ? "Draw the random bans again? These bans are lost."
-                                            : "Restart the pick/ban from scratch? All picks so far are lost."
+                                            : "Restart the pick/ban? All picks are lost."
                                     )
                                 ) {
                                     begin(true);
@@ -3121,8 +3105,7 @@ function PickBan(props: {
                     </div>
                     {editing && (
                         <p className="hint">
-                            Editing: “Clear” undoes everything done to that subcategory (its protect and any bans),
-                            without unwinding the picks made after it.
+                            “Clear” undoes a subcategory&apos;s protect and bans. Later picks stay.
                         </p>
                     )}
                     <p className="msg">{msg}</p>
@@ -3266,7 +3249,7 @@ function Reading(props: {
         if (
             !window.confirm(
                 played
-                    ? "Save this game to Klaxon and set up the next one? A backup copy (the game and every buzz) downloads to this computer."
+                    ? "Save this game and set up the next one? A backup copy downloads to this computer."
                     : "Set up the next game? Nothing has been read in this one."
             )
         ) {
@@ -3289,7 +3272,7 @@ function Reading(props: {
             window.alert(
                 `Couldn't save the game to Klaxon (${
                     (error as Error).message
-                }). It's still here: try again in a moment.`
+                }). It's still here. Try again in a moment.`
             );
         } finally {
             savingRef.current = false;
@@ -3404,7 +3387,7 @@ function Reading(props: {
         };
     }, [config, round]);
     const editPickBan = React.useCallback(() => {
-        if (window.confirm("Go back to the pick/ban? The game restarts from question 1 when you come back.")) {
+        if (window.confirm("Go back to the pick/ban? The game restarts from question 1.")) {
             config.onEditPickBan?.();
         }
     }, [config]);
@@ -3417,7 +3400,7 @@ function Reading(props: {
                     <button
                         onClick={() => void nextGame()}
                         disabled={saving}
-                        title="Save this game to Klaxon (and a backup copy here), then set up the next one"
+                        title="Saves to Klaxon, downloads a backup, sets up the next game"
                     >
                         {saving ? "Saving…" : "Save & next game"}
                     </button>
@@ -3427,7 +3410,7 @@ function Reading(props: {
                 {config.board && !hostStart?.confirm && (
                     <details className="ms-reading-summary">
                         <summary>
-                            MASSINGER pick/ban — {massingerRemaining(config.board)} questions in this game
+                            MASSINGER pick/ban · {massingerRemaining(config.board)} questions
                         </summary>
                         {/* After a reload there's no going back: the pick/ban screen isn't loaded. */}
                         <PickBanSummary board={config.board} onEdit={config.onEditPickBan ? editPickBan : undefined} />
@@ -3489,7 +3472,7 @@ function PickBanSummary(props: { board: IMassingerState; onEdit?: () => void }):
     return (
         <div className="ms-summary">
             <div className="ms-summary-head">
-                <strong>MASSINGER pick/ban — {massingerRemaining(board)} questions will be read</strong>
+                <strong>MASSINGER pick/ban · {massingerRemaining(board)} questions</strong>
                 {onEdit && (
                     <button className="ms-summary-edit" onClick={onEdit}>
                         Back to pick/ban
@@ -3506,7 +3489,7 @@ function PickBanSummary(props: { board: IMassingerState; onEdit?: () => void }):
                             {banned.map((s) => (
                                 <li key={s.label}>
                                     {s.label}
-                                    {s.banned < s.indexes.length ? ` (1 of ${s.indexes.length} — one still in)` : ""}
+                                    {s.banned < s.indexes.length ? ` (1 of ${s.indexes.length} banned)` : ""}
                                 </li>
                             ))}
                         </ul>
@@ -3661,11 +3644,10 @@ function LiteReading(props: {
             <div className="mod-main">
                 {roomState?.correction && (
                     <div className="mod-correction" role="status">
-                        <strong>Correcting a tournament game</strong> —{" "}
+                        <strong>Correcting a tournament game.</strong>{" "}
                         {roomState.correction.roomName || `Room ${roomState.correction.room}`}, round{" "}
-                        {roomState.correction.round}. Fix the event in MODAQ (click it in the event list, or Ctrl+Z to
-                        undo); every change here is saved into the tournament&apos;s stats. Close the tab when
-                        you&apos;re done.
+                        {roomState.correction.round}. Click an event to fix it, or press Ctrl+Z. Changes save to the
+                        tournament&apos;s stats.
                     </div>
                 )}
                 <RoomToolbar code={code} label={`Room ${code} · Packet ${roomState?.gameNumber ?? 1}`}>
@@ -3685,7 +3667,7 @@ function LiteReading(props: {
                             className="mod-endgame"
                             onClick={nextGame}
                             disabled={moving || askingNext}
-                            title="Hand over this game's stats and start the next packet"
+                            title="Save this game's stats and start the next packet"
                         >
                             Next packet →
                         </button>
@@ -3740,16 +3722,16 @@ function LiteReading(props: {
                             pageWide
                             disabled={status !== ""}
                             onFiles={onFiles}
-                            title={status || "Drop the packet anywhere on this page"}
-                            hint="A PDF, a Word document (.docx), or a packet JSON file"
+                            title={status || "Drop the packet anywhere"}
+                            hint="PDF, Word (.docx) or packet JSON"
                         />
                         {error && <p className="pk-error">{error}</p>}
                         <p className="hint">
                             {teams.length >= 2
-                                ? `Teams from the room: ${teams
+                                ? `Teams: ${teams
                                       .map((t) => `${t.name} (${t.players.join(", ")})`)
-                                      .join(" vs. ")}. They'll be filled in — check them and press Start.`
-                                : "Next, name the teams and press Start. (Players who give a team when they join are filled in for you.)"}
+                                      .join(" vs. ")}. Check them and press Start.`
+                                : "Name the teams and press Start."}
                         </p>
                     </div>
                 )}
@@ -3807,27 +3789,25 @@ function NextPacketPanel(props: {
     return (
         <div className="mod-prev mod-nextpacket" role="dialog" aria-label="Next packet">
             <h3>Next packet</h3>
-            {props.played && <p className="hint">This game&apos;s stats are downloaded and kept in Previous games.</p>}
+            {props.played && <p className="hint">Stats downloaded and saved in Previous games.</p>}
             <label className="mod-np-choice">
                 <input type="radio" name="np-keep" checked={keep} onChange={() => setKeep(true)} />
                 <span>
-                    <strong>Keep everyone in the room</strong> — same players, on the teams they finished on. Players
-                    can switch teams from their own page.
+                    <strong>Keep everyone in the room.</strong> Same teams. Players can switch on their page.
                 </span>
             </label>
             <label className="mod-np-choice">
                 <input type="radio" name="np-keep" checked={!keep} onChange={() => setKeep(false)} />
                 <span>
-                    <strong>Clear the room</strong> — for a new group. Everyone is removed and rejoins with the same
-                    link.
+                    <strong>Clear the room.</strong> Everyone rejoins with the same link.
                 </span>
             </label>
             {props.offerEvening && (
                 <label className="mod-np-choice mod-np-evening">
                     <input type="checkbox" checked={evening} onChange={(e) => setEvening(e.target.checked)} />
                     <span>
-                        <strong>Keep a running total for the evening</strong> — each player&apos;s points across
-                        packets, whichever team they play for.
+                        <strong>Keep a running total for the evening.</strong> Each player&apos;s points across
+                        packets.
                     </span>
                 </label>
             )}
@@ -3896,7 +3876,7 @@ function EveningTotals(props: { evening: IEveningSummary; onReset: () => void })
                 onClick={() => {
                     if (
                         window.confirm(
-                            "Start tonight's totals again from zero? Games already read stay in Previous games."
+                            "Reset tonight's totals to zero? Previous games stay."
                         )
                     ) {
                         props.onReset();
@@ -4068,15 +4048,13 @@ const WITHDRAW_CHOICES: { value: WithdrawMode; label: string; detail: string }[]
         value: "typed",
         label: "Type your answer first",
         detail:
-            "Everyone waiting in the buzz queue types their answer before the player with the floor gives theirs. " +
-            "Withdrawing is only free if you hadn't committed to a different answer.",
+            "Everyone in the queue types an answer first. Withdrawing is free until you commit to one.",
     },
     {
         value: "rationed",
         label: "One free withdraw, then a wait",
         detail:
-            "A withdrawal costs nothing, but not twice in a row: for the next few questions after one, a buzz is " +
-            "yours to answer.",
+            "Free, but not twice in a row.",
     },
 ];
 
@@ -4153,7 +4131,7 @@ function ShootoutSetup(props: {
     // A room reads one packet: a new one replaces it.
     const onFiles = (dropped: File[]): void => {
         const files: File[] = dropped.slice(0, 1);
-        setMsg(dropped.length > 1 ? "A room reads one packet; the first one is used." : "");
+        setMsg(dropped.length > 1 ? "One packet per room. Using the first." : "");
         setRows([]);
         const added: ISetupRow[] = files.map((file) => ({
             key: newPacketId(),
@@ -4229,29 +4207,25 @@ function ShootoutSetup(props: {
             <div className="mod-main">
                 <div className="mod-center mod-setup so-setup">
                     <h1>{initial ? "Edit the shootout" : "Set up the shootout"}</h1>
-                    <p className="hint">
-                        Everyone plays for themselves. Whoever opens the link is in the game as soon as they join — no
-                        roster to enter. The buzzer and room settings are the ones you chose when you made the room;
-                        change them under Room options.
-                    </p>
+                    <p className="hint">Everyone plays for themselves. No roster needed.</p>
 
                     <label htmlFor="so-notes">Notes for the players</label>
                     <textarea
                         id="so-notes"
                         rows={4}
                         maxLength={2000}
-                        placeholder="What kind of questions these are, what you're playtesting, anything else the room should know."
+                        placeholder="Question types, what you're playtesting, anything else."
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                     />
-                    <p className="hint">Shown on every player&apos;s screen for the whole session.</p>
+                    <p className="hint">Every player sees this.</p>
 
                     <label>Packet</label>
                     <PacketDrop
                         pageWide
                         onFiles={onFiles}
-                        title={rows.length ? "Drop a different packet to replace it" : "Drop the packet here"}
-                        hint="A PDF, Word document (.docx), or packet JSON"
+                        title={rows.length ? "Drop a packet to replace it" : "Drop the packet here"}
+                        hint="PDF, Word (.docx) or packet JSON"
                     />
                     {rows.length > 0 && (
                         <ol className="so-packets">
@@ -4435,10 +4409,7 @@ function TournamentShootoutSetup(props: {
             <div className="mod-main">
                 <div className="mod-center mod-setup so-setup">
                     <h1>{tournament?.name ?? "Shootout"}</h1>
-                    <p className="hint">
-                        Everyone plays for themselves; whoever opens the link is in the game. The director set up this
-                        shootout, so the packets and rules come from the tournament.
-                    </p>
+                    <p className="hint">Packets and rules come from the tournament.</p>
                     <dl className="so-fixed">
                         <dt>Scoring</dt>
                         <dd>
@@ -4465,8 +4436,8 @@ function TournamentShootoutSetup(props: {
                         <p className="hint">Loading the tournament&apos;s packets…</p>
                     ) : packets.length === 0 ? (
                         <p className="hint">
-                            No packets ready yet. Upload them in the director console&apos;s Packets tab (with several
-                            rooms, release them there too), then refresh.
+                            No packets yet. Upload and release them on the director&apos;s Packets tab, then
+                            refresh.
                         </p>
                     ) : (
                         <ol className="so-packets">
@@ -4776,8 +4747,8 @@ function ShootoutReading(props: {
         } else if (
             !window.confirm(
                 `Start the next game on ${next.name}?\n\n` +
-                    (playedNow ? "This game's stats are downloaded and kept. " : "") +
-                    "The scores start again from zero."
+                    (playedNow ? "This game's stats are saved. " : "") +
+                    "Scores reset to zero."
             )
         ) {
             return;
@@ -4861,7 +4832,7 @@ function ShootoutReading(props: {
                         <button
                             onClick={() => startPacket(index - 1)}
                             disabled={busy !== "" || gameLoaded === undefined}
-                            title={`Back to ${previous.name} — the game read on it comes back with it`}
+                            title={`Back to ${previous.name} and its game`}
                         >
                             ← {previous.name}
                         </button>
@@ -4870,7 +4841,7 @@ function ShootoutReading(props: {
                         <select
                             className="so-jump"
                             aria-label="Go to a packet"
-                            title="Go to any packet. One that has been read comes back as it was."
+                            title="Read packets come back as they were."
                             value={session?.current ?? ""}
                             disabled={busy !== "" || gameLoaded === undefined}
                             onChange={(e) => {
@@ -4899,7 +4870,7 @@ function ShootoutReading(props: {
                     <button
                         onClick={exportAll}
                         disabled={busy !== "" || index < 0}
-                        title="Every packet read this session, and its game, laid out for quizbowlbuzzpoints.com"
+                        title="Every packet and game this session, for quizbowlbuzzpoints.com"
                     >
                         Export all rounds for buzzpoints ⤓
                     </button>
@@ -4907,7 +4878,7 @@ function ShootoutReading(props: {
                         <select
                             className="so-jump"
                             aria-label="Scoring"
-                            title="The scoring in force. Changing it applies to the game on screen."
+                            title="Changes apply to the game on screen."
                             value={scheme ?? "15/10/-5"}
                             disabled={busy !== "" || session == undefined}
                             onChange={(e) => void setScheme(e.target.value)}
@@ -4930,7 +4901,7 @@ function ShootoutReading(props: {
                             onClick={() => {
                                 if (
                                     window.confirm(
-                                        "End the game for everyone? The players are sent home and the room stops taking new ones. The scoresheet, the chat and the log stay, and you can reopen it from the buzzer panel."
+                                        "End the game for everyone? Players are sent home and the room closes. The scoresheet, chat and log stay. You can reopen it from the buzzer panel."
                                     )
                                 ) {
                                     client.massinger({ action: "end_game", end: true });
@@ -4956,9 +4927,8 @@ function ShootoutReading(props: {
                 )}
                 {superMismatch && (
                     <div className="mod-warn" role="alert">
-                        <strong>This packet marks superpowers.</strong> It has {SUPERPOWER_MARKER} in it, and the
-                        scoring in force ({scheme}) has no tier for them — every superpower will be scored as an
-                        ordinary power.
+                        <strong>This packet has superpowers {SUPERPOWER_MARKER}.</strong> {scheme} scores them as
+                        powers.
                         <button onClick={() => void setScheme("20/15/10/-5")} disabled={busy !== ""}>
                             Use 20 / 15 / 10 / {"\u2212"}5
                         </button>
@@ -4970,7 +4940,7 @@ function ShootoutReading(props: {
                     empty room is the point, not a link to go and send. */}
                 {gameLoaded && here === 0 && roomState?.ended == undefined && (
                     <p className="so-status">
-                        Nobody has joined yet — send the player link. Players are added to the game as they arrive.
+                        Nobody has joined yet. Send the player link.
                     </p>
                 )}
                 {!staging && (
@@ -5111,7 +5081,7 @@ function AccountGate(props: { tcode: string; onApproved: () => void; strict?: bo
         return (
             <div className="mod-center mod-setup">
                 <h1>Reader sign-in</h1>
-                <p className="hint">This tournament requires an approved reader account to read its packets.</p>
+                <p className="hint">This tournament needs an approved reader account.</p>
                 <div className="acct-mode" role="group" aria-label="Sign in or create an account">
                     <button onClick={() => setMode("login")} aria-pressed={mode === "login"}>
                         Log in
@@ -5148,7 +5118,7 @@ function AccountGate(props: { tcode: string; onApproved: () => void; strict?: bo
             {status === "pending" && (
                 <>
                     <p>
-                        Your request is <strong>pending</strong> the tournament director&apos;s approval.
+                        Your request is <strong>pending</strong> the director&apos;s approval.
                     </p>
                     <div>
                         <button className="primary" onClick={refresh}>
@@ -5157,10 +5127,10 @@ function AccountGate(props: { tcode: string; onApproved: () => void; strict?: bo
                     </div>
                 </>
             )}
-            {status === "denied" && <p className="msg">Your access request was denied by the director.</p>}
+            {status === "denied" && <p className="msg">The director denied your request.</p>}
             {status == null && (
                 <>
-                    <p>You&apos;re signed in. Request access to read this tournament&apos;s packets.</p>
+                    <p>Request access to read this tournament&apos;s packets.</p>
                     <div>
                         <button className="primary" onClick={request}>
                             Request access

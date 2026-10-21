@@ -527,14 +527,14 @@ export class KlaxonClient {
                         if (!resp || !resp.ok) {
                             const message =
                                 resp?.error === "no_room"
-                                    ? "This room doesn't exist — it may have expired. Ask for a new link."
-                                    : "Could not join room as moderator.";
+                                    ? "Room not found. Ask for a new link."
+                                    : "Couldn't join the room.";
                             reject(new Error(message));
                             return;
                         }
                         if (resp.staffDenied) {
                             const error = new Error(
-                                "You don't have moderator access to this room."
+                                "No moderator access to this room."
                             ) as Error & { denyReason?: string; state?: IPublicRoomState };
                             error.denyReason = resp.denyReason;
                             error.state = resp.state;
