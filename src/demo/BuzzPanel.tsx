@@ -1101,6 +1101,35 @@ export function BuzzPanel(props: {
 
     const queue = state?.queue ?? [];
     const buzzed = queue.length > 0;
+
+    // A new buzz (not one already on the board when the page loaded): its key
+    // restarts the alert animations; it clears a moment later.
+    const buzzKey = buzzed ? `${state?.cycleNo ?? 0}:${queue[0].playerId}` : undefined;
+    const seenBuzzKey = React.useRef<string | undefined | null>(null);
+    const [buzzAlertKey, setBuzzAlertKey] = React.useState<string | undefined>(undefined);
+    React.useEffect(() => {
+        if (state == undefined) {
+            return;
+        }
+        const first = seenBuzzKey.current === null;
+        if (buzzKey === seenBuzzKey.current) {
+            return;
+        }
+        seenBuzzKey.current = buzzKey;
+        if (first || buzzKey == undefined) {
+            setBuzzAlertKey(undefined);
+            return;
+        }
+        setBuzzAlertKey(buzzKey);
+    }, [buzzKey, state]);
+    // Its own timer, so room updates arriving meanwhile don't cancel it.
+    React.useEffect(() => {
+        if (buzzAlertKey == undefined) {
+            return;
+        }
+        const t = window.setTimeout(() => setBuzzAlertKey(undefined), 1800);
+        return () => window.clearTimeout(t);
+    }, [buzzAlertKey]);
     const recent = useRecentBuzzes(client);
     const [undoClear, undoMsg] = useUndoClear(client);
     const undoable = recent.find((e) => e.undoId != undefined);
@@ -1295,14 +1324,32 @@ export function BuzzPanel(props: {
         </div>
     );
 
+    // Who has the buzz, big: the player's name on its own line, the team under
+    // it. A new buzz pops the card and flashes the window's edges (in the page
+    // margin, never over the question), so a reader with eyes on the text
+    // still catches it.
+    const head = buzzed ? memberOf(queue[0].playerId) : undefined;
+    const headName = buzzed ? head?.rosterPlayer || queue[0].name : "";
+    const headTeam = buzzed ? (head?.rosterPlayer ? head.rosterTeam : head?.team) ?? "" : "";
     const phaseBar = (
-        <div className={"klaxon-phase " + (buzzed ? "buzzed" : "ready")}>
-            {buzzed
-                ? modaqLabel(memberOf(queue[0].playerId), queue[0].name) +
-                  (queue.length > 1 ? ` · ${queue.length - 1} more` : "")
-                : "Ready to buzz"}
+        <div
+            key={buzzAlertKey ?? "idle"}
+            className={"klaxon-phase " + (buzzed ? "buzzed" : "ready") + (buzzAlertKey != undefined ? " fresh" : "")}
+            title={buzzed ? modaqLabel(head, queue[0].name) : undefined}
+        >
+            {buzzed ? (
+                <>
+                    <span className="kp-kicker">Buzz</span>
+                    <span className="kp-name">{headName}</span>
+                    {headTeam && headTeam !== headName ? <span className="kp-team">{headTeam}</span> : undefined}
+                    {queue.length > 1 ? <span className="kp-more">+{queue.length - 1} more</span> : undefined}
+                </>
+            ) : (
+                "Ready to buzz"
+            )}
         </div>
     );
+    const edgeFlash = buzzAlertKey != undefined && <div key={buzzAlertKey} className="kb-edge-flash" aria-hidden="true" />;
 
     const timerDisplay = timerLeft != null && (
         <div className={"klaxon-timer" + (timerLeft <= 0 ? " done" : "")} aria-hidden="true">
@@ -1532,6 +1579,7 @@ export function BuzzPanel(props: {
 
                 {stuckBanner}
                 {phaseBar}
+                {edgeFlash}
                 {timerDisplay}
                 <ProtestList client={client} protests={state.protests ?? []} />
 
@@ -1596,6 +1644,7 @@ export function BuzzPanel(props: {
 
             {stuckBanner}
             {phaseBar}
+            {edgeFlash}
             {timerDisplay}
 
             <ol className="klaxon-queue">

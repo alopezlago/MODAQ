@@ -240,7 +240,50 @@ function msMallet(ctx: AudioContext, t: number, freq: number, dur: number, peak:
     msNote(ctx, t, "sine", freq, dur, peak);
     msNote(ctx, t, "sine", freq * 2, dur * 0.6, peak * 0.15);
 }
+// Pick/ban sounds have their own off switch (shared with the players' room
+// page through Klaxon's localStorage key), separate from the buzz sounds.
+const MS_SOUND_KEY = "bz_massingerSound";
+function pickSoundsOn(): boolean {
+    try {
+        return localStorage.getItem(MS_SOUND_KEY) !== "0";
+    } catch {
+        return true;
+    }
+}
+function PickSoundToggle(): JSX.Element {
+    const [on, setOn] = React.useState(pickSoundsOn);
+    return (
+        <button
+            type="button"
+            className="ms-sound-toggle"
+            aria-pressed={on}
+            title="Turn the pick/ban sounds on or off (buzz sounds aren't affected)"
+            onClick={() => {
+                const next = !on;
+                try {
+                    if (next) {
+                        localStorage.removeItem(MS_SOUND_KEY);
+                    } else {
+                        localStorage.setItem(MS_SOUND_KEY, "0");
+                    }
+                } catch {
+                    // storage blocked: the toggle still works for this page
+                }
+                msSoundOverride = next;
+                setOn(next);
+            }}
+        >
+            {on ? "🔔 Pick sounds on" : "🔕 Pick sounds off"}
+        </button>
+    );
+}
+let msSoundOverride: boolean | undefined;
+const msSoundsEnabled = (): boolean => msSoundOverride ?? pickSoundsOn();
+
 function playPickSound(type: "ban" | "protect"): void {
+    if (!msSoundsEnabled()) {
+        return;
+    }
     const ctx = msAudioContext();
     if (ctx == undefined) {
         return;
@@ -256,6 +299,9 @@ function playPickSound(type: "ban" | "protect"): void {
     }
 }
 function playClockTick(secondsLeft: number): void {
+    if (!msSoundsEnabled()) {
+        return;
+    }
     const ctx = msAudioContext();
     if (ctx != undefined) {
         msNote(ctx, ctx.currentTime, "sine", secondsLeft <= 2 ? 1046.5 : 880, 0.12, 0.14);
@@ -1606,24 +1652,25 @@ function ModeratorBody(): JSX.Element {
                     </>
                 )}
 
-                <label>Packet</label>
+                <label>{serverPackets.length > 1 ? "Packet — click one to choose it" : "Packet"}</label>
                 {serverPackets.length > 0 ? (
-                    <div className="packet-choices" aria-label="Released tournament packets">
+                    <div className="packet-choices" role="radiogroup" aria-label="Released tournament packets">
                         {serverPackets.map((r) => {
                             const active = !packetFile && trimmed === r;
                             return (
                                 <button
                                     key={r}
+                                    type="button"
+                                    role="radio"
                                     className={active ? "packet-choice selected" : "packet-choice"}
-                                    aria-pressed={active}
+                                    aria-checked={active}
                                     onClick={() => chooseRound(r)}
                                 >
-                                    <span className="packet-choice-name">Round {r}</span>
-                                    {active && (
-                                        <span className="packet-choice-check" aria-hidden="true">
-                                            ✓ Selected
-                                        </span>
-                                    )}
+                                    <span className="packet-choice-radio" aria-hidden="true" />
+                                    <span className="packet-choice-name">{/^\d/.test(r) ? `Round ${r}` : r}</span>
+                                    <span className="packet-choice-check" aria-hidden="true">
+                                        {active ? "✓ Selected" : "Use this packet"}
+                                    </span>
                                 </button>
                             );
                         })}
@@ -2769,7 +2816,10 @@ function PickBan(props: {
         <div className="mod-shell">
             <div className="mod-main">
                 <div className="mod-center mod-setup ms-screen">
-                    <h1>MASSINGER pick/ban — Round {round}</h1>
+                    <div className="ms-title-row">
+                        <h1>MASSINGER pick/ban — Round {round}</h1>
+                        <PickSoundToggle />
+                    </div>
 
                     {active ? (
                         <>

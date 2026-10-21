@@ -64,6 +64,98 @@ body {
     /* Klaxon's indigo, not red: red is a wrong answer */
     background: var(--m-buzz-fill, #4f44c9);
     color: var(--m-on-strong, #fff);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 12px;
+}
+.klaxon-phase .kp-kicker {
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.85;
+}
+.klaxon-phase .kp-name {
+    font-size: 1.45rem;
+    font-weight: 800;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+}
+.klaxon-phase.buzzed .kp-kicker,
+.klaxon-phase.buzzed .kp-name,
+.klaxon-phase.buzzed .kp-team,
+.klaxon-phase.buzzed .kp-more {
+    color: var(--m-on-strong, #fff);
+}
+.klaxon-phase .kp-team {
+    font-size: 0.9rem;
+    font-weight: 600;
+    opacity: 0.9;
+    overflow-wrap: anywhere;
+}
+.klaxon-phase .kp-more {
+    font-size: 0.75rem;
+    font-weight: 600;
+    opacity: 0.8;
+}
+/* A new buzz: the card pops and rings once. */
+.klaxon-phase.buzzed.fresh {
+    animation: kp-pop 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+@keyframes kp-pop {
+    0% {
+        transform: scale(0.85);
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--m-buzz-fill, #4f44c9) 70%, transparent);
+    }
+    35% {
+        transform: scale(1.06);
+        box-shadow: 0 0 0 10px color-mix(in srgb, var(--m-buzz-fill, #4f44c9) 35%, transparent);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 18px transparent;
+    }
+}
+/* ...and the window's edges glow for a moment: a thin band in the page margin,
+   so it's seen from the corner of the eye without covering any of the text. */
+.kb-edge-flash {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2000;
+    box-shadow: inset 0 0 0 6px var(--m-buzz-fill, #4f44c9);
+    animation: kb-edge 1.6s ease-out forwards;
+}
+@keyframes kb-edge {
+    0%,
+    20%,
+    45% {
+        opacity: 1;
+    }
+    10%,
+    32% {
+        opacity: 0.35;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .klaxon-phase.buzzed.fresh {
+        animation: none;
+    }
+    .kb-edge-flash {
+        animation: kb-edge-calm 1.6s ease-out forwards;
+    }
+    @keyframes kb-edge-calm {
+        from {
+            opacity: 1;
+        }
+        to {
+            opacity: 0;
+        }
+    }
 }
 /* A player reporting that the buzzer was never cleared — deliberately loud. */
 .klaxon-stuck {
@@ -914,29 +1006,52 @@ body {
     gap: 6px;
     margin-bottom: 4px;
 }
-/* A list of released rounds: plain rows, the chosen one in the accent with a
-   check, so it reads as a selection rather than a status light. */
+/* Released rounds as radio-style choices: a radio dot, a raised button look
+   and a "Use this packet" cue, so they read as clickable and never as a text
+   field. The chosen one fills the dot and turns accent. */
 .packet-choice {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     cursor: pointer;
     text-align: left;
     color: inherit;
-    background: var(--m-surface, #fff);
-    border: 1px solid var(--m-control-line, #8a8886);
-    border-radius: 6px;
-    padding: 9px 12px;
+    background: var(--m-subtle, #f3f2f1);
+    border: 1px solid var(--m-line, #e1dfdd);
+    border-radius: 8px;
+    padding: 10px 14px;
     font-size: 0.95rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+    transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
 }
 .packet-choice:hover {
-    background: var(--m-subtle, #f3f2f1);
+    border-color: var(--m-accent, #0078d4);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
+}
+.packet-choice:focus-visible {
+    outline: 2px solid var(--m-accent, #0078d4);
+    outline-offset: 2px;
+}
+.packet-choice-radio {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--m-control-line, #8a8886);
+    background: var(--m-surface, #fff);
+    box-sizing: border-box;
+}
+.packet-choice:hover .packet-choice-radio {
+    border-color: var(--m-accent, #0078d4);
 }
 .packet-choice.selected {
     border-color: var(--m-accent, #0078d4);
-    box-shadow: inset 3px 0 0 var(--m-accent, #0078d4);
-    background: color-mix(in srgb, var(--m-accent, #0078d4) 9%, var(--m-surface, #fff));
+    background: color-mix(in srgb, var(--m-accent, #0078d4) 10%, var(--m-surface, #fff));
     font-weight: 600;
+}
+.packet-choice.selected .packet-choice-radio {
+    border-color: var(--m-accent, #0078d4);
+    background: radial-gradient(circle, var(--m-accent, #0078d4) 0 4px, var(--m-surface, #fff) 5px);
 }
 .packet-choice-name {
     flex: 1;
@@ -947,6 +1062,13 @@ body {
     font-size: 0.8rem;
     font-weight: 600;
     white-space: nowrap;
+}
+.packet-choice:not(.selected) .packet-choice-check {
+    opacity: 0.75;
+}
+.packet-choice:not(.selected):hover .packet-choice-check {
+    opacity: 1;
+    text-decoration: underline;
 }
 .packet-status {
     background: var(--m-warn-bg, #fff4ce);
@@ -3026,4 +3148,26 @@ a.kx-crumb:hover {
 }
 .ms-reading-summary[open] > summary {
     margin-bottom: 6px;
+}
+
+/* Pick/ban title with its own sound switch beside it. */
+.ms-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.ms-sound-toggle {
+    font-size: 0.85rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--m-control-line, #8a8886);
+    background: var(--m-surface, #fff);
+    color: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.ms-sound-toggle[aria-pressed="false"] {
+    color: var(--m-muted, #666);
 }
