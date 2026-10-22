@@ -232,6 +232,8 @@ export interface IChatMessage {
 export interface IProtest {
     id: string;
     cycle: number;
+    // The tossup or the bonus on that question (missing on older protests: tossup).
+    part?: "tossup" | "bonus";
     round: string | null;
     at: number;
     byTeam: string;

@@ -3195,3 +3195,11 @@ a.kx-crumb:hover {
 .ms-packet-check li {
     margin: 2px 0;
 }
+
+/* Protest card: what to do next, under the status. */
+.kp-next {
+    font-size: 12px;
+    color: #605e5c;
+    margin-top: 2px;
+    font-style: italic;
+}

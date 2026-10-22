@@ -745,8 +745,8 @@ function ProtestList(props: { client: KlaxonClient; protests: IProtest[] }): JSX
                     ? errorText(res.error, {
                           no_protest: "That protest is gone.",
                           dismissed: "That protest was dropped.",
-                          not_open: "Take the protest first.",
-                          not_filed: "File it in MODAQ first.",
+                          not_open: "Take statements first.",
+                          not_filed: "Complete lodging the protest first.",
                           empty: "No text to show.",
                       })
                     : ""
@@ -786,10 +786,16 @@ function ProtestList(props: { client: KlaxonClient; protests: IProtest[] }): JSX
                     return (
                         <li key={p.id} className={`klaxon-protest st-${p.status}`}>
                             <div className="kp-head">
-                                <strong>Q{p.cycle}</strong>
+                                <strong>
+                                    Q{p.cycle}
+                                    {p.part === "bonus" ? " bonus" : ""}
+                                </strong>
                                 <span className="kp-team">{p.byTeam}</span>
-                                <span className="kp-status">{p.status}</span>
+                                <span className="kp-status">{PROTEST_STATUS_WORD[p.status] ?? p.status}</span>
                             </div>
+                            {PROTEST_NEXT_STEP[p.status] != undefined && (
+                                <div className="kp-next">{PROTEST_NEXT_STEP[p.status]}</div>
+                            )}
                             {p.reasonLabel != undefined && (
                                 <div className="kp-reason">
                                     {p.reasonLabel}
@@ -811,12 +817,12 @@ function ProtestList(props: { client: KlaxonClient; protests: IProtest[] }): JSX
                             <div className="kp-actions">
                                 {p.status === "lodged" && (
                                     <button disabled={busy === p.id} onClick={() => void act("protest_open", p.id)}>
-                                        Open to both teams
+                                        Take statements
                                     </button>
                                 )}
                                 {p.status === "open" && (
                                     <button disabled={busy === p.id} onClick={() => void act("protest_file", p.id)}>
-                                        Filed in MODAQ
+                                        Complete lodging protest
                                     </button>
                                 )}
                                 {p.status === "filed" && !p.questionShown && (
@@ -827,7 +833,7 @@ function ProtestList(props: { client: KlaxonClient; protests: IProtest[] }): JSX
                                 {p.questionShown && <span className="kp-shown">question shown</span>}
                                 {p.status !== "filed" && (
                                     <button disabled={busy === p.id} onClick={() => void act("protest_dismiss", p.id)}>
-                                        Drop
+                                        Drop protest
                                     </button>
                                 )}
                             </div>
@@ -838,6 +844,18 @@ function ProtestList(props: { client: KlaxonClient; protests: IProtest[] }): JSX
         </div>
     );
 }
+
+// What a protest's status means, in words, and what the moderator does next.
+// The buttons are actions (verbs); the status is the label in the corner.
+const PROTEST_STATUS_WORD: Record<string, string> = {
+    lodged: "Lodged",
+    open: "Taking statements",
+    filed: "Filed",
+};
+const PROTEST_NEXT_STEP: Record<string, string> = {
+    lodged: "At the next break, let both teams write their case.",
+    open: "Record the protest in MODAQ, then press Complete lodging protest.",
+};
 
 // Whether a key event targets a text field, where "r" should be typed rather
 // than reset the buzzer.
