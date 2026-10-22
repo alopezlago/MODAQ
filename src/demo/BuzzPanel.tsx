@@ -1352,7 +1352,7 @@ export function BuzzPanel(props: {
     const headTeam = buzzed ? (head?.rosterPlayer ? head.rosterTeam : head?.team) ?? "" : "";
     const phaseBar = (
         <div
-            key={buzzAlertKey ?? "idle"}
+            key={`phase-${buzzAlertKey ?? "idle"}`}
             className={"klaxon-phase " + (buzzed ? "buzzed" : "ready") + (buzzAlertKey != undefined ? " fresh" : "")}
             title={buzzed ? modaqLabel(head, queue[0].name) : undefined}
         >
@@ -1368,7 +1368,7 @@ export function BuzzPanel(props: {
             )}
         </div>
     );
-    const edgeFlash = buzzAlertKey != undefined && <div key={buzzAlertKey} className="kb-edge-flash" aria-hidden="true" />;
+    const edgeFlash = buzzAlertKey != undefined && <div key={`flash-${buzzAlertKey}`} className="kb-edge-flash" aria-hidden="true" />;
 
     const timerDisplay = timerLeft != null && (
         <div className={"klaxon-timer" + (timerLeft <= 0 ? " done" : "")} aria-hidden="true">
