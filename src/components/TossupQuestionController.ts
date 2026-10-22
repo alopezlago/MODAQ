@@ -1,7 +1,8 @@
 import React from "react";
 import { AppState } from "../state/AppState";
 import { Cycle } from "../state/Cycle";
-import { IBuzzPointPlacement, UIState } from "../state/UIState";
+import { IBuzzPointPlacement } from "../state/IBuzzPointPlacement";
+import { UIState } from "../state/UIState";
 import { ModalVisibilityStatus } from "../state/ModalVisibilityStatus";
 import { getThrowOutQuestionPrompt } from "./ThrowOutQuestionMessage";
 import { ITossupWord, Tossup } from "../state/PacketState";

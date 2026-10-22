@@ -3,7 +3,8 @@ import { observer } from "mobx-react-lite";
 import { FocusZone, FocusZoneDirection, mergeStyleSets } from "@fluentui/react";
 
 import * as TossupQuestionController from "./TossupQuestionController";
-import { IBuzzFeedback, UIState } from "../state/UIState";
+import { IBuzzFeedback } from "../state/IBuzzFeedback";
+import { UIState } from "../state/UIState";
 import { ITossupWord, Tossup } from "../state/PacketState";
 import { QuestionWord } from "./QuestionWord";
 import { BuzzMenu } from "./BuzzMenu";

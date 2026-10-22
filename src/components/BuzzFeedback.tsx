@@ -1,9 +1,9 @@
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { keyframes, Layer, memoizeFunction, mergeStyleSets, Theme, ThemeContext } from "@fluentui/react";
+import { keyframes, Layer, memoizeFunction, mergeStyleSets, Text, Theme, ThemeContext } from "@fluentui/react";
 
 import { AppState } from "../state/AppState";
-import { IBuzzFeedback } from "../state/UIState";
+import { IBuzzFeedback } from "../state/IBuzzFeedback";
 
 // How long the banner shows; its animation is timed to match
 const feedbackDurationInMs = 2200;
@@ -48,10 +48,18 @@ export const BuzzFeedback = observer(function BuzzFeedback(props: IBuzzFeedbackP
                     <Layer>
                         {/* The key restarts the animation for each new buzz */}
                         <div key={feedback.id} className={classes.banner} role="status" aria-live="polite">
-                            <span className={classes.symbol}>{symbol}</span>
-                            <span className={classes.player}>{feedback.playerName}</span>
-                            <span className={classes.team}>{feedback.teamName}</span>
-                            <span className={classes.points}>{points}</span>
+                            <Text variant="xxLarge" className={classes.symbol}>
+                                {symbol}
+                            </Text>
+                            <Text variant="xLargePlus" className={classes.player}>
+                                {feedback.playerName}
+                            </Text>
+                            <Text variant="mediumPlus" className={classes.team}>
+                                {feedback.teamName}
+                            </Text>
+                            <Text variant="xLarge" className={classes.points}>
+                                {points}
+                            </Text>
                         </div>
                     </Layer>
                 );
@@ -117,20 +125,21 @@ const getClassNames = memoizeFunction(
                 animationTimingFunction: "ease-out",
                 animationFillMode: "forwards",
             },
+            // Text sets its own color, so the parts inherit the banner's white instead
             symbol: {
-                fontSize: "28px",
+                color: "inherit",
                 fontWeight: 700,
             },
             player: {
-                fontSize: "24px",
+                color: "inherit",
                 fontWeight: 600,
             },
             team: {
-                fontSize: "16px",
+                color: "inherit",
                 opacity: 0.85,
             },
             points: {
-                fontSize: "22px",
+                color: "inherit",
                 fontWeight: 700,
             },
         });
