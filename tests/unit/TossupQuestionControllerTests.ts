@@ -255,10 +255,47 @@ describe("TossupQuestionControllerTests", () => {
             TossupQuestionController.catchUpBuzzPointPlacement(appState, 4, 1000400);
             expect(appState.uiState.selectedWordIndex).to.equal(1);
         });
-        it("Doesn't move it backwards", () => {
-            const appState: AppState = startPlacement(2);
-            TossupQuestionController.catchUpBuzzPointPlacement(appState, 1, 1000400);
+        it("Follows a recognizer correction back to an earlier word", () => {
+            const appState: AppState = startPlacement(5);
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, 6, 1000200);
+            expect(appState.uiState.selectedWordIndex).to.equal(6);
+
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, 5, 1000400);
+            expect(appState.uiState.selectedWordIndex).to.equal(5);
+            expect(appState.uiState.buzzPointPlacement?.latestLivePosition).to.equal(6);
+        });
+        it("Applies the offset to a corrected position", () => {
+            const appState: AppState = new AppState();
+            const packet: PacketState = new PacketState();
+            packet.setTossups([new Tossup("One two three four five six seven eight", "Answer")]);
+            appState.game.loadPacket(packet);
+            appState.uiState.setTrackReaderWithMicrophone(true);
+            appState.uiState.setBuzzPointWordOffset(-1);
+            appState.uiState.setReaderFollowerLivePosition(5);
+            TossupQuestionController.handleBuzzShortcut(appState, 1000000);
+            expect(appState.uiState.selectedWordIndex).to.equal(4);
+
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, 3, 1000400);
             expect(appState.uiState.selectedWordIndex).to.equal(2);
+        });
+        it("Doesn't follow a correction back after the moderator moved it", () => {
+            const appState: AppState = startPlacement(5);
+            TossupQuestionController.moveBuzzPointTo(appState, 6);
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, 3, 1000400);
+            expect(appState.uiState.selectedWordIndex).to.equal(6);
+        });
+        it("Ignores a retracted position (-1)", () => {
+            const appState: AppState = startPlacement(2);
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, -1, 1000400);
+            expect(appState.uiState.selectedWordIndex).to.equal(2);
+            expect(appState.uiState.buzzPointPlacement).to.not.be.undefined;
+        });
+        it("A correction back doesn't count toward reading resuming", () => {
+            const appState: AppState = startPlacement(2);
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, 4, 1000400);
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, 3, 1000600);
+            TossupQuestionController.catchUpBuzzPointPlacement(appState, 6, 1005000);
+            expect(appState.uiState.buzzPointPlacement).to.not.be.undefined;
         });
     });
 

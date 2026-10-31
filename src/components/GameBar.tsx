@@ -374,7 +374,8 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
         {
             key: "trackReader",
             text: "Follow reading with microphone",
-            title: "Listen to the microphone and move the buzz point to where the reader is in the tossup",
+            title:
+                "Listen to the microphone and move the buzz point to where the reader is in the tossup. In Chrome and Edge, the browser may send the audio to an online speech service.",
             canCheck: true,
             checked: appState.uiState.trackReaderWithMicrophone,
             onClick: () => {
@@ -387,7 +388,28 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
                     return;
                 }
 
-                appState.uiState.setTrackReaderWithMicrophone(!appState.uiState.trackReaderWithMicrophone);
+                if (appState.uiState.trackReaderWithMicrophone) {
+                    appState.uiState.setTrackReaderWithMicrophone(false);
+                    return;
+                }
+
+                // Browser speech recognition (Chrome, Edge, Safari) can send the audio to the browser vendor's
+                // servers, so say so before turning it on the first time. Local recognition (Vosk) doesn't need it.
+                if (!appState.uiState.hasAcceptedSpeechPrivacyNotice && ReaderFollower.mayOfferFasterModel()) {
+                    appState.uiState.dialogState.showOKCancelMessageDialog({
+                        title: "Follow Reading with Microphone",
+                        message:
+                            "MODAQ will listen to the microphone while tossups are read. Your browser's speech recognition may send that audio to an online service run by the browser maker (such as Google or Microsoft) to turn it into text, unless an on-device model is installed. MODAQ itself doesn't save or upload the audio. Turn on microphone tracking?",
+                        okLabel: "Turn on",
+                        onOK: () => {
+                            appState.uiState.acceptSpeechPrivacyNotice();
+                            appState.uiState.setTrackReaderWithMicrophone(true);
+                        },
+                    });
+                    return;
+                }
+
+                appState.uiState.setTrackReaderWithMicrophone(true);
             },
         },
         {

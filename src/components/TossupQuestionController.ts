@@ -159,13 +159,16 @@ const stalePlacementInMs = 8000;
 /**
  * Handles a new reading position while the buzz point is being placed with the keyboard. Words the recognizer
  * reports shortly after Space was pressed were spoken before it, so the buzz point catches up to them -- unless
- * the moderator already moved it with the arrow keys. If the reader clearly keeps reading after that, the
- * placement is dropped, so it doesn't sit on a word the reader has long passed.
+ * the moderator already moved it with the arrow keys. In that window the recognizer can also revise a guess and
+ * report an earlier position, and the buzz point follows it back. If the reader clearly keeps reading after the
+ * window, the placement is dropped, so it doesn't sit on a word the reader has long passed.
  */
 export function catchUpBuzzPointPlacement(appState: AppState, wordIndex: number, now: number = Date.now()): void {
     const uiState: UIState = appState.uiState;
     const placement: IBuzzPointPlacement | undefined = uiState.buzzPointPlacement;
-    if (placement == undefined || wordIndex <= placement.latestLivePosition) {
+
+    // -1 means the recognizer retracted everything it heard; there's no better position to move to
+    if (placement == undefined || wordIndex < 0) {
         return;
     }
 
@@ -179,7 +182,8 @@ export function catchUpBuzzPointPlacement(appState: AppState, wordIndex: number,
         return;
     }
 
-    uiState.setBuzzPointPlacementLatestLivePosition(wordIndex);
+    // Track the furthest position heard, so a correction backward doesn't make reading look like it resumed later
+    uiState.setBuzzPointPlacementLatestLivePosition(Math.max(placement.latestLivePosition, wordIndex));
     const lastBuzzableIndex: number = getLastBuzzableIndex(appState);
     if (!placement.movedManually && lastBuzzableIndex >= 0) {
         uiState.setSelectedWordIndex(Math.max(0, Math.min(lastBuzzableIndex, wordIndex + placement.wordOffset)));

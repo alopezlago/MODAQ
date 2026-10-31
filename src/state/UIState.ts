@@ -129,6 +129,10 @@ export class UIState {
     // When true, listen to the microphone and move the buzz point as the reader reads the tossup
     public trackReaderWithMicrophone: boolean;
 
+    // When true, the user has seen (and accepted) the note that speech recognition may send microphone audio to an
+    // online service, so it isn't shown again when following the reader is turned on
+    public hasAcceptedSpeechPrivacyNotice: boolean;
+
     // When true, buzzes are recorded with the original buzz menu (a dropdown on the word) instead of the player pad
     public useBuzzMenu: boolean;
 
@@ -234,6 +238,7 @@ export class UIState {
         this.pendingSheet = undefined;
         this.pendingTossupProtestEvent = undefined;
         this.trackReaderWithMicrophone = false;
+        this.hasAcceptedSpeechPrivacyNotice = false;
         this.useBuzzMenu = false;
         this.buzzMenuState = {
             clearSelectedWordOnClose: true,
@@ -755,6 +760,10 @@ export class UIState {
             this.readerFollowerLivePosition = -1;
             this.readerFollowerLastCue = undefined;
         }
+    }
+
+    public acceptSpeechPrivacyNotice(): void {
+        this.hasAcceptedSpeechPrivacyNotice = true;
     }
 
     public setReaderFollowerLivePosition(position: number): void {

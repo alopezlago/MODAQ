@@ -16,6 +16,19 @@ interface IVoskResultMessage {
     };
 }
 
+interface IVoskLoadMessage {
+    event: "load";
+    result: boolean;
+}
+
+interface IVoskErrorMessage {
+    event: "error";
+    error: string;
+}
+
+// A recognizer that fails is recreated once; another failure this soon after means it isn't going to work
+const recognizerErrorRetryWindowInMs = 30000;
+
 // Samples per chunk sent to the recognizer. Smaller chunks reach it sooner (2048 samples is ~43 ms at 48 kHz),
 // which lowers latency; they cost a few more messages to the recognizer worker.
 const audioBufferSize = 2048;
@@ -28,18 +41,54 @@ const defaultModelUrl = "https://ccoreilly.github.io/vosk-browser/models/vosk-mo
 let cachedModelPromise: Promise<Model> | undefined;
 let cachedModelUrl: string | undefined;
 
+// Engines listening for errors from the shared model (errors that aren't tied to one recognizer)
+const modelErrorListeners: Set<(message: string) => void> = new Set();
+
+function clearCachedModel(modelUrl: string): void {
+    if (cachedModelUrl === modelUrl) {
+        cachedModelPromise = undefined;
+        cachedModelUrl = undefined;
+    }
+}
+
+// vosk-browser's createModel only waits for the "load" message, so a model that reports an error instead never
+// settles. Load it directly and fail on either.
+function loadModel(vosk: typeof import("vosk-browser"), modelUrl: string): Promise<Model> {
+    return new Promise((resolve, reject) => {
+        const model: Model = new vosk.Model(modelUrl);
+        let loaded = false;
+
+        model.on("load", (message) => {
+            if (((message as unknown) as IVoskLoadMessage).result) {
+                loaded = true;
+                resolve(model);
+            } else {
+                model.terminate();
+                reject(new Error("The speech model couldn't be loaded."));
+            }
+        });
+        model.on("error", (message) => {
+            const error: string = ((message as unknown) as IVoskErrorMessage).error;
+            if (!loaded) {
+                model.terminate();
+                reject(new Error(error));
+                return;
+            }
+
+            // The model's worker failed after loading; the next use has to load it again
+            clearCachedModel(modelUrl);
+            modelErrorListeners.forEach((listener) => listener(error));
+        });
+    });
+}
+
 function getModel(modelUrl: string): Promise<Model> {
     if (cachedModelPromise == undefined || cachedModelUrl !== modelUrl) {
         cachedModelUrl = modelUrl;
-        cachedModelPromise = import("vosk-browser").then((vosk) => vosk.createModel(modelUrl));
+        cachedModelPromise = import("vosk-browser").then((vosk) => loadModel(vosk, modelUrl));
 
         // If loading fails, clear the cache so the next attempt can retry
-        cachedModelPromise.catch(() => {
-            if (cachedModelUrl === modelUrl) {
-                cachedModelPromise = undefined;
-                cachedModelUrl = undefined;
-            }
-        });
+        cachedModelPromise.catch(() => clearCachedModel(modelUrl));
     }
 
     return cachedModelPromise;
@@ -75,6 +124,10 @@ export class VoskSpeechEngine implements ISpeechEngine {
 
     private vocabulary: string[];
 
+    private lastRecognizerErrorTime: number | undefined;
+
+    private readonly onModelError: (message: string) => void;
+
     constructor(callbacks: ISpeechEngineCallbacks, modelUrl?: string) {
         this.callbacks = callbacks;
         this.modelUrl = modelUrl ?? defaultModelUrl;
@@ -87,6 +140,8 @@ export class VoskSpeechEngine implements ISpeechEngine {
         this.recognizer = undefined;
         this.utteranceCount = 0;
         this.vocabulary = [];
+        this.lastRecognizerErrorTime = undefined;
+        this.onModelError = (message) => this.fail(message);
     }
 
     public static isSupported(): boolean {
@@ -123,6 +178,8 @@ export class VoskSpeechEngine implements ISpeechEngine {
             if (!this.active) {
                 return;
             }
+
+            modelErrorListeners.add(this.onModelError);
 
             this.callbacks.onStatusChanged("Requesting microphone access...");
             const mediaStream: MediaStream = await navigator.mediaDevices.getUserMedia({
@@ -201,6 +258,27 @@ export class VoskSpeechEngine implements ISpeechEngine {
                 this.callbacks.onPartialTranscript(`vosk-${this.utteranceCount}`, partial);
             }
         });
+        recognizer.on("error", (message) => {
+            if (this.recognizer !== recognizer) {
+                return;
+            }
+
+            const error: string = ((message as unknown) as IVoskErrorMessage).error;
+            const now: number = Date.now();
+            if (
+                this.lastRecognizerErrorTime != undefined &&
+                now - this.lastRecognizerErrorTime < recognizerErrorRetryWindowInMs
+            ) {
+                this.fail(error);
+                return;
+            }
+
+            // One failure may be a fluke; start over with a fresh recognizer
+            this.lastRecognizerErrorTime = now;
+            this.callbacks.onStatusChanged(`Speech recognizer error (${error}); restarting it`);
+            this.createRecognizer();
+            this.callbacks.onStatusChanged("Listening");
+        });
         recognizer.on("result", (message) => {
             if (this.recognizer !== recognizer) {
                 return;
@@ -216,6 +294,16 @@ export class VoskSpeechEngine implements ISpeechEngine {
         this.recognizer = recognizer;
     }
 
+    // Local recognition broke while listening. Stop, and say so instead of showing "Listening" with nothing heard.
+    private fail(error: string): void {
+        if (!this.active) {
+            return;
+        }
+
+        this.stop();
+        this.callbacks.onPermanentError(`Local speech recognition stopped working. Error: ${error}`);
+    }
+
     private removeRecognizer(): void {
         if (this.recognizer != undefined) {
             try {
@@ -229,6 +317,7 @@ export class VoskSpeechEngine implements ISpeechEngine {
     }
 
     private cleanUp(): void {
+        modelErrorListeners.delete(this.onModelError);
         this.removeRecognizer();
 
         if (this.processorNode != undefined) {

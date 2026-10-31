@@ -62,9 +62,17 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
         };
     }, [props.appState, isReaderFollowingEnabled, readerFollowerRestartCount]);
 
-    // Once there's a correct buzz the tossup is over (the reader moves on to the bonus), so stop following it.
-    // Wrong buzzes keep the tossup live, so keep following.
-    const isTossupOver: boolean = props.cycle.correctBuzz != undefined;
+    // Once there's a correct buzz the tossup is over (the reader moves on to the bonus), so stop following it. A
+    // wrong buzz keeps it live for the other teams, but once every team has buzzed wrong no one else can buzz, so
+    // stop then too.
+    const teamCount: number = props.appState.activeGame.teamNames.length;
+    const teamsWithWrongBuzzes: Set<string> = new Set(
+        (props.cycle.wrongBuzzes ?? [])
+            .filter((buzz) => buzz.tossupIndex === props.tossupNumber - 1)
+            .map((buzz) => buzz.marker.player.teamName)
+    );
+    const isTossupOver: boolean =
+        props.cycle.correctBuzz != undefined || (teamCount > 0 && teamsWithWrongBuzzes.size >= teamCount);
     const gameFormat: IGameFormat = props.appState.activeGame.gameFormat;
     React.useEffect(() => {
         readerFollowerSessionRef.current?.setTossup(isTossupOver ? undefined : props.tossup, gameFormat);
