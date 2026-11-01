@@ -78,6 +78,9 @@ function loadModel(vosk: typeof import("vosk-browser"), modelUrl: string): Promi
             // The model's worker failed after loading; the next use has to load it again
             clearCachedModel(modelUrl);
             modelErrorListeners.forEach((listener) => listener(error));
+
+            // Nothing uses the broken model anymore, so release its worker
+            model.terminate();
         });
     });
 }
@@ -223,6 +226,11 @@ export class VoskSpeechEngine implements ISpeechEngine {
 
             this.callbacks.onStatusChanged("Listening");
         } catch (e) {
+            // stop() was called while starting, and already cleaned up; the error doesn't matter anymore
+            if (!this.active) {
+                return;
+            }
+
             this.cleanUp();
 
             const error: Error = e instanceof Error ? e : new Error(String(e));
