@@ -58,8 +58,6 @@ export class UIState {
     public selectedWordIndex: number;
 
     @ignore
-
-    @ignore
     public customExportOptions: ICustomExport | undefined;
 
     @ignore
@@ -141,6 +139,7 @@ export class UIState {
     // When true, buzzes are recorded with the original buzz menu (a dropdown on the word) instead of the player pad
     public useBuzzMenu: boolean;
 
+    @ignore
     public buzzMenuState: BuzzMenuState;
 
     // When true, microphone tracking highlights where the reader is while they read. By default the reader's
