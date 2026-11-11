@@ -7,7 +7,14 @@ import { IClickTargetElement, wordIndexFromClickTarget } from "src/components/To
 class FakeElement implements IClickTargetElement {
     public previousElementSibling: FakeElement | null = null;
 
-    constructor(private readonly attributes: Record<string, string>, private readonly parent: FakeElement | null = null) {}
+    // Fields are assigned in the body: Node's built-in type stripping (used by CI) rejects parameter properties
+    private readonly attributes: Record<string, string>;
+    private readonly parent: FakeElement | null;
+
+    constructor(attributes: Record<string, string>, parent: FakeElement | null = null) {
+        this.attributes = attributes;
+        this.parent = parent;
+    }
 
     public getAttribute(name: string): string | null {
         return this.attributes[name] ?? null;

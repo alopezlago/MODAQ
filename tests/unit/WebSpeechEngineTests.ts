@@ -52,7 +52,13 @@ class FakeRecognition {
 }
 
 class FakePhrase {
-    constructor(public phrase: string, public boost?: number) {}
+    public phrase: string;
+    public boost?: number;
+
+    constructor(phrase: string, boost?: number) {
+        this.phrase = phrase;
+        this.boost = boost;
+    }
 }
 
 interface IBrowser {
