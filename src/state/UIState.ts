@@ -24,12 +24,18 @@ import { ModalVisibilityStatus } from "./ModalVisibilityStatus";
 import { IPacketParseStatus } from "./IPacketParseStatus";
 import { IPacket } from "./IPacket";
 import { IHostSettings } from "./IHostSettings";
+import { IBuzzPointPlacement } from "./IBuzzPointPlacement";
+import { IBuzzFeedback } from "./IBuzzFeedback";
 import { IViewSettings } from "./IViewSettings";
 
 // TODO: Look into breaking this up into individual UI component states. Lots of pendingX fields, which could be in
 // their own (see CustomizeGameFormatDialogState)
 // Alternatively, keep certain component-local states in the component state, and only store values that could be used
 // outside of that component here.
+
+// How many words the buzz point can be offset from the reader's detected position
+export const buzzPointWordOffsets = [-4, -3, -2, -1, 0, 1, 2, 3, 4] as const;
+export type BuzzPointWordOffset = typeof buzzPointWordOffsets[number];
 
 const DefaultFontFamily = "Times New Roman, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, serif";
 
@@ -50,9 +56,6 @@ export class UIState {
 
     @ignore
     public selectedWordIndex: number;
-
-    @ignore
-    public buzzMenuState: BuzzMenuState;
 
     @ignore
     public customExportOptions: ICustomExport | undefined;
@@ -126,6 +129,67 @@ export class UIState {
     // Default should be to highlight answered bonuses
     public noBonusHighlight: boolean;
 
+    // When true, listen to the microphone and move the buzz point as the reader reads the tossup
+    public trackReaderWithMicrophone: boolean;
+
+    // When true, the user has seen (and accepted) the note that speech recognition may send microphone audio to an
+    // online service, so it isn't shown again when following the reader is turned on
+    public hasAcceptedSpeechPrivacyNotice: boolean;
+
+    // When true, buzzes are recorded with the original buzz menu (a dropdown on the word) instead of the player pad
+    public useBuzzMenu: boolean;
+
+    @ignore
+    public buzzMenuState: BuzzMenuState;
+
+    // When true, microphone tracking highlights where the reader is while they read. By default the reader's
+    // position is tracked in the background and only shown when the user presses Space (the buzz shortcut).
+    public showReaderPositionWhileReading: boolean;
+
+    // When true, the highlight shown while reading (see showReaderPositionWhileReading) moves to the reader's
+    // position immediately, instead of waiting for the reading to pause. More responsive, but it jitters with
+    // the recognizer's bursts.
+    public instantReaderHighlight: boolean;
+
+    // Words to offset the buzz point from the reader's detected position when pressing Space (-4 to +4). Lets
+    // the user compensate for recognition lag/lead so the buzz lands on the right word. 0 means no offset.
+    public buzzPointWordOffset: BuzzPointWordOffset;
+
+    // When true, show diagnostics for the microphone tracking (engine, status, last heard words, and the reader's
+    // position).
+    @ignore
+    public showReaderFollowerDebug: boolean;
+
+    @ignore
+    public readerFollowerEngine: string | undefined;
+
+    @ignore
+    public readerFollowerStatus: string | undefined;
+
+    @ignore
+    public readerFollowerTranscript: string | undefined;
+
+    // Where the reader currently is, before the pause delay moves the buzz point there
+    @ignore
+    public readerFollowerLivePosition: number;
+
+    // The last event that made the buzz point update immediately (buzz sound, "correct"/"incorrect"/etc.)
+    @ignore
+    public readerFollowerLastCue: string | undefined;
+
+    // Set while the moderator is placing the buzz point with the keyboard: Space picks a starting word, the arrow
+    // keys move it, and Space again opens the buzz menu there
+    @ignore
+    public buzzPointPlacement: IBuzzPointPlacement | undefined;
+
+    // Incremented to make microphone tracking restart (e.g. after a faster speech model was installed)
+    @ignore
+    public readerFollowerRestartCount: number;
+
+    // The buzz just recorded from the player pad, shown briefly so it's clear who got it right or wrong
+    @ignore
+    public buzzFeedback: IBuzzFeedback | undefined;
+
     public pronunciationGuideColor: string | undefined;
 
     public questionFontColor: string | undefined;
@@ -146,10 +210,6 @@ export class UIState {
         this.dialogState = new DialogState();
         this.isEditingCycleIndex = false;
         this.selectedWordIndex = -1;
-        this.buzzMenuState = {
-            clearSelectedWordOnClose: true,
-            visible: false,
-        };
         this.customExportOptions = undefined;
         this.customExportIntervalId = undefined;
         this.customExportStatus = undefined;
@@ -182,6 +242,25 @@ export class UIState {
         this.pendingNewGame = undefined;
         this.pendingSheet = undefined;
         this.pendingTossupProtestEvent = undefined;
+        this.trackReaderWithMicrophone = false;
+        this.hasAcceptedSpeechPrivacyNotice = false;
+        this.useBuzzMenu = false;
+        this.buzzMenuState = {
+            clearSelectedWordOnClose: true,
+            visible: false,
+        };
+        this.showReaderPositionWhileReading = false;
+        this.instantReaderHighlight = false;
+        this.buzzPointWordOffset = 0;
+        this.showReaderFollowerDebug = false;
+        this.readerFollowerEngine = undefined;
+        this.readerFollowerStatus = undefined;
+        this.readerFollowerTranscript = undefined;
+        this.readerFollowerLivePosition = -1;
+        this.readerFollowerLastCue = undefined;
+        this.buzzPointPlacement = undefined;
+        this.readerFollowerRestartCount = 0;
+        this.buzzFeedback = undefined;
         this.useDarkMode = false;
         this.yappServiceUrl = undefined;
 
@@ -521,6 +600,7 @@ export class UIState {
 
             // Clear the selected words, since it's not relevant to the next question
             this.selectedWordIndex = -1;
+            this.buzzPointPlacement = undefined;
         }
     }
 
@@ -720,6 +800,62 @@ export class UIState {
         this.selectedWordIndex = newIndex;
     }
 
+    public toggleShowReaderPositionWhileReading(): void {
+        this.showReaderPositionWhileReading = !this.showReaderPositionWhileReading;
+    }
+
+    public toggleInstantReaderHighlight(): void {
+        this.instantReaderHighlight = !this.instantReaderHighlight;
+    }
+
+    public setBuzzPointWordOffset(offset: BuzzPointWordOffset): void {
+        this.buzzPointWordOffset = offset;
+    }
+
+    // The offset is restored from storage without going through the setter, so reset a value that isn't supported
+    public validateBuzzPointWordOffset(): void {
+        if (!(buzzPointWordOffsets as readonly number[]).includes(this.buzzPointWordOffset)) {
+            this.buzzPointWordOffset = 0;
+        }
+    }
+
+    public setTrackReaderWithMicrophone(value: boolean): void {
+        this.trackReaderWithMicrophone = value;
+
+        if (!value) {
+            this.readerFollowerEngine = undefined;
+            this.readerFollowerStatus = undefined;
+            this.readerFollowerTranscript = undefined;
+            this.readerFollowerLivePosition = -1;
+            this.readerFollowerLastCue = undefined;
+        }
+    }
+
+    public acceptSpeechPrivacyNotice(): void {
+        this.hasAcceptedSpeechPrivacyNotice = true;
+    }
+
+    public setReaderFollowerLivePosition(position: number): void {
+        this.readerFollowerLivePosition = position;
+    }
+
+    public setReaderFollowerLastCue(cue: string): void {
+        this.readerFollowerLastCue = cue;
+    }
+
+    public setReaderFollowerStatus(engine: string, status: string): void {
+        this.readerFollowerEngine = engine;
+        this.readerFollowerStatus = status;
+    }
+
+    public setReaderFollowerTranscript(transcript: string): void {
+        this.readerFollowerTranscript = transcript;
+    }
+
+    public toggleReaderFollowerDebug(): void {
+        this.showReaderFollowerDebug = !this.showReaderFollowerDebug;
+    }
+
     public setYappServiceUrl(url: string | undefined): void {
         this.yappServiceUrl = url;
     }
@@ -754,10 +890,6 @@ export class UIState {
 
     public toggleScoreVerticality(): void {
         this.isScoreVertical = !this.isScoreVertical;
-    }
-
-    public hideBuzzMenu(): void {
-        this.buzzMenuState.visible = false;
     }
 
     public resetCustomExport(): void {
@@ -818,9 +950,60 @@ export class UIState {
         this.sheetsState.sheetType = undefined;
     }
 
+    public hideBuzzMenu(): void {
+        this.buzzMenuState.visible = false;
+    }
+
     public showBuzzMenu(clearSelectedWordOnClose: boolean): void {
+        this.buzzPointPlacement = undefined;
         this.buzzMenuState.visible = true;
         this.buzzMenuState.clearSelectedWordOnClose = clearSelectedWordOnClose;
+    }
+
+    public toggleUseBuzzMenu(): void {
+        this.useBuzzMenu = !this.useBuzzMenu;
+        this.buzzPointPlacement = undefined;
+        this.buzzMenuState.visible = false;
+    }
+
+    public startBuzzPointPlacement(placement: IBuzzPointPlacement): void {
+        this.buzzPointPlacement = placement;
+    }
+
+    public markBuzzPointPlacementMoved(): void {
+        if (this.buzzPointPlacement != undefined) {
+            this.buzzPointPlacement.movedManually = true;
+        }
+    }
+
+    public confirmBuzzPointPlacement(): void {
+        if (this.buzzPointPlacement != undefined) {
+            this.buzzPointPlacement.startedByBuzzSound = false;
+        }
+    }
+
+    public setBuzzPointPlacementLatestLivePosition(position: number): void {
+        if (this.buzzPointPlacement != undefined) {
+            this.buzzPointPlacement.latestLivePosition = position;
+        }
+    }
+
+    public endBuzzPointPlacement(): void {
+        this.buzzPointPlacement = undefined;
+    }
+
+    public showBuzzFeedback(feedback: Omit<IBuzzFeedback, "id">): void {
+        this.buzzFeedback = { ...feedback, id: (this.buzzFeedback?.id ?? 0) + 1 };
+    }
+
+    public clearBuzzFeedback(id: number): void {
+        if (this.buzzFeedback?.id === id) {
+            this.buzzFeedback = undefined;
+        }
+    }
+
+    public restartReaderFollower(): void {
+        this.readerFollowerRestartCount++;
     }
 
     // We have to do this call here because this is where the information is available

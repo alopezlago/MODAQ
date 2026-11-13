@@ -76,5 +76,5 @@ export async function startGame(page: Page): Promise<void> {
     await page.getByRole("button", { name: "Start" }).click();
 
     // Confirm the game is active by waiting for the scoreboard.
-    await page.getByText(TEAM_ALPHA).waitFor({ state: "visible" });
+    await page.getByText(TEAM_ALPHA).first().waitFor({ state: "visible" });
 }

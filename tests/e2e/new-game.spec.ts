@@ -33,8 +33,8 @@ test.describe("new game dialog", () => {
 
         // After starting, the dialog should be gone and the scoreboard visible.
         await expect(page.getByRole("heading", { name: "New Game" })).not.toBeVisible();
-        await expect(page.getByText(TEAM_ALPHA)).toBeVisible();
-        await expect(page.getByText(TEAM_BETA)).toBeVisible();
+        await expect(page.getByText(TEAM_ALPHA).first()).toBeVisible();
+        await expect(page.getByText(TEAM_BETA).first()).toBeVisible();
     });
 
     test("scoreboard starts at 0 for both teams", async ({ page }) => {
@@ -67,7 +67,7 @@ test.describe("new game dialog", () => {
         await page.getByText('Packet "Test Packet" loaded.').waitFor({ state: "visible" });
         await page.getByRole("button", { name: "Start" }).click();
 
-        await expect(page.getByText("Red Team")).toBeVisible();
-        await expect(page.getByText("Blue Team")).toBeVisible();
+        await expect(page.getByText("Red Team").first()).toBeVisible();
+        await expect(page.getByText("Blue Team").first()).toBeVisible();
     });
 });

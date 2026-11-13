@@ -12,7 +12,7 @@ import * as BonusQuestionController from "./BonusQuestionController";
 import * as ReorderTeamsDialogController from "./dialogs/ReorderTeamsDialogController";
 import * as TossupQuestionController from "./TossupQuestionController";
 import { GameState } from "../state/GameState";
-import { UIState } from "../state/UIState";
+import { buzzPointWordOffsets, UIState } from "../state/UIState";
 import { Cycle } from "../state/Cycle";
 import { Bonus, Tossup } from "../state/PacketState";
 import { Player } from "../state/TeamState";
@@ -20,6 +20,7 @@ import { AppState } from "../state/AppState";
 import { IBonusProtestEvent, ITossupAnswerEvent, ITossupProtestEvent } from "../state/Events";
 import { useAppState } from "../contexts/StateContext";
 import { StatusDisplayType } from "../state/StatusDisplayType";
+import { ReaderFollower } from "../speech/ReaderFollower";
 
 const overflowProps: IButtonProps = { ariaLabel: "More" };
 
@@ -369,6 +370,116 @@ function getOptionsSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             onClick: () => {
                 appState.uiState.showFontDialog();
             },
+        },
+        {
+            key: "trackReader",
+            text: "Follow reading with microphone",
+            title:
+                "Listen to the microphone and move the buzz point to where the reader is in the tossup. In Chrome and Edge, the browser may send the audio to an online speech service.",
+            canCheck: true,
+            checked: appState.uiState.trackReaderWithMicrophone,
+            onClick: () => {
+                if (!appState.uiState.trackReaderWithMicrophone && !ReaderFollower.isSupported()) {
+                    appState.uiState.dialogState.showOKMessageDialog({
+                        title: "Microphone Tracking Unavailable",
+                        message:
+                            "Neither speech recognition nor microphone capture is supported in this browser. Try a recent version of Chrome, Edge, or Firefox.",
+                    });
+                    return;
+                }
+
+                if (appState.uiState.trackReaderWithMicrophone) {
+                    appState.uiState.setTrackReaderWithMicrophone(false);
+                    return;
+                }
+
+                // Browser speech recognition (Chrome, Edge, Safari) can send the audio to the browser vendor's
+                // servers, so say so before turning it on the first time. Local recognition (Vosk) doesn't need it.
+                if (!appState.uiState.hasAcceptedSpeechPrivacyNotice && ReaderFollower.mayOfferFasterModel()) {
+                    appState.uiState.dialogState.showOKCancelMessageDialog({
+                        title: "Follow Reading with Microphone",
+                        message:
+                            "MODAQ will listen to the microphone while tossups are read. Your browser's speech recognition may send that audio to an online service run by the browser maker (such as Google or Microsoft) to turn it into text, unless an on-device model is installed. MODAQ itself doesn't save or upload the audio. Turn on microphone tracking?",
+                        okLabel: "Turn on",
+                        onOK: () => {
+                            appState.uiState.acceptSpeechPrivacyNotice();
+                            appState.uiState.setTrackReaderWithMicrophone(true);
+                        },
+                    });
+                    return;
+                }
+
+                appState.uiState.setTrackReaderWithMicrophone(true);
+            },
+        },
+        {
+            key: "showReaderPosition",
+            text: "Show reader position while reading",
+            title: "In microphone mode, highlight where the reader is as they read. Otherwise it's only shown when you press Space.",
+            canCheck: true,
+            checked: appState.uiState.showReaderPositionWhileReading,
+            disabled: !appState.uiState.trackReaderWithMicrophone,
+            onClick: () => appState.uiState.toggleShowReaderPositionWhileReading(),
+        },
+        {
+            key: "instantReaderHighlight",
+            text: "Move highlight instantly (no delay)",
+            title: "When showing the reader position while reading, move it immediately instead of waiting for a pause",
+            canCheck: true,
+            checked: appState.uiState.instantReaderHighlight,
+            disabled:
+                !appState.uiState.trackReaderWithMicrophone || !appState.uiState.showReaderPositionWhileReading,
+            onClick: () => appState.uiState.toggleInstantReaderHighlight(),
+        },
+        ...(ReaderFollower.mayOfferFasterModel()
+            ? [
+                  {
+                      key: "installSpeechModel",
+                      text: "Download on-device speech model (lower latency)",
+                      title: "Recognize speech on this computer instead of an online service, which responds faster",
+                      onClick: () => {
+                          void ReaderFollower.installFasterModel().then((result) => {
+                              if (result === "installed") {
+                                  appState.uiState.restartReaderFollower();
+                              }
+
+                              appState.uiState.dialogState.showOKMessageDialog({
+                                  title: "On-device Speech Model",
+                                  message:
+                                      result === "installed"
+                                          ? "The on-device speech model is installed and will be used for microphone tracking. The debug info shows \"Listening (on-device)\" when it's in use."
+                                          : result === "unsupported"
+                                          ? "This browser doesn't offer an on-device speech model, so microphone tracking uses its online speech service. Chrome 139 or later offers one on some platforms."
+                                          : "The browser couldn't install an on-device speech model for this language. Microphone tracking will keep using the online speech service.",
+                              });
+                          });
+                      },
+                  },
+              ]
+            : []),
+        {
+            key: "buzzPointOffset",
+            text: "Buzz point offset (Space)",
+            title: "When you press Space, offset the buzz point this many words from where the reader is detected",
+            disabled: !appState.uiState.trackReaderWithMicrophone,
+            subMenuProps: {
+                items: buzzPointWordOffsets.map((offset) => ({
+                    key: `buzzPointOffset_${offset}`,
+                    text: offset === 0 ? "No offset" : `${offset > 0 ? "+" : ""}${offset} words`,
+                    canCheck: true,
+                    checked: appState.uiState.buzzPointWordOffset === offset,
+                    onClick: () => appState.uiState.setBuzzPointWordOffset(offset),
+                })),
+            },
+        },
+        {
+            key: "trackReaderDebug",
+            text: "Microphone debug info",
+            title: "Show diagnostics for microphone tracking under the tossup",
+            canCheck: true,
+            checked: appState.uiState.showReaderFollowerDebug,
+            disabled: !appState.uiState.trackReaderWithMicrophone,
+            onClick: () => appState.uiState.toggleReaderFollowerDebug(),
         }
     );
 
@@ -404,6 +515,14 @@ function getViewSubMenuItems(appState: AppState): ICommandBarItemProps[] {
             canCheck: true,
             checked: !appState.uiState.hideBonusOnDeadTossup,
             onClick: () => appState.uiState.toggleHideBonusOnDeadTossup(),
+        },
+        {
+            key: "useBuzzMenu",
+            text: "Use buzz menu instead of player pad",
+            title: "Record buzzes with the dropdown menu on the word instead of the floating player pad",
+            canCheck: true,
+            checked: appState.uiState.useBuzzMenu,
+            onClick: () => appState.uiState.toggleUseBuzzMenu(),
         },
     ];
 
