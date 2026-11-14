@@ -9,14 +9,14 @@ export function submit(appState: AppState): void {
         return;
     }
 
-    const firstPlayer: Player = players[0];
-    const otherPlayerIndex: number = players.findIndex((player) => player.teamName !== firstPlayer.teamName);
-    if (otherPlayerIndex === -1) {
+    const firstTeamName: string = players[0].teamName;
+    const otherTeamPlayers: Player[] = players.filter((player) => player.teamName !== firstTeamName);
+    if (otherTeamPlayers.length === 0) {
         return;
     }
 
-    players[0] = players[otherPlayerIndex];
-    players[otherPlayerIndex] = firstPlayer;
+    const firstTeamPlayers: Player[] = players.filter((player) => player.teamName === firstTeamName);
+    players.splice(0, players.length, ...otherTeamPlayers, ...firstTeamPlayers);
 
     appState.activeGame.setPlayers(players);
 }
