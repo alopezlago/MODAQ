@@ -4,7 +4,7 @@ import { Player } from "../../state/TeamState";
 import { AppState } from "../../state/AppState";
 
 export function submit(appState: AppState): void {
-    const players: Player[] = [...appState.activeGame.players];
+    const players: readonly Player[] = appState.activeGame.players;
     if (players.length < 2) {
         return;
     }
@@ -16,7 +16,5 @@ export function submit(appState: AppState): void {
     }
 
     const firstTeamPlayers: Player[] = players.filter((player) => player.teamName === firstTeamName);
-    players.splice(0, players.length, ...otherTeamPlayers, ...firstTeamPlayers);
-
-    appState.activeGame.setPlayers(players);
+    appState.activeGame.setPlayers([...otherTeamPlayers, ...firstTeamPlayers]);
 }
