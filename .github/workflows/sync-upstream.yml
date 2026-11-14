@@ -1,0 +1,38 @@
+name: Sync fork with upstream
+
+on:
+  schedule:
+    # 12:06 AM Eastern, every day (handles daylight saving automatically)
+    - cron: '6 0 * * *'
+      timezone: 'America/New_York'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync master from upstream
+        id: sync
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          before=$(gh api "repos/$REPO/commits/master" --jq .sha)
+          gh repo sync "$REPO" --branch master
+          after=$(gh api "repos/$REPO/commits/master" --jq .sha)
+          if [ "$before" != "$after" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Pushes made with GITHUB_TOKEN don't trigger other workflows,
+      # so start the Pages deployment explicitly when new commits arrived.
+      - name: Deploy to Pages
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: gh workflow run deploy.yml --repo "$REPO" --ref master
