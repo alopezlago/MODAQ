@@ -139,6 +139,9 @@ export class UIState {
     // When true, buzzes are recorded with the original buzz menu (a dropdown on the word) instead of the player pad
     public useBuzzMenu: boolean;
 
+    // When true, the player pad lists players left to right instead of top to bottom
+    public isPlayerPadHorizontal: boolean;
+
     @ignore
     public buzzMenuState: BuzzMenuState;
 
@@ -245,6 +248,7 @@ export class UIState {
         this.trackReaderWithMicrophone = false;
         this.hasAcceptedSpeechPrivacyNotice = false;
         this.useBuzzMenu = false;
+        this.isPlayerPadHorizontal = false;
         this.buzzMenuState = {
             clearSelectedWordOnClose: true,
             visible: false,
@@ -958,6 +962,10 @@ export class UIState {
         this.buzzPointPlacement = undefined;
         this.buzzMenuState.visible = true;
         this.buzzMenuState.clearSelectedWordOnClose = clearSelectedWordOnClose;
+    }
+
+    public setPlayerPadHorizontal(isHorizontal: boolean): void {
+        this.isPlayerPadHorizontal = isHorizontal;
     }
 
     public toggleUseBuzzMenu(): void {
