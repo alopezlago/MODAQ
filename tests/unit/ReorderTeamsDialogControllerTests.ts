@@ -67,4 +67,10 @@ describe("ReorderTeamsDialogControllerTests", () => {
         ReorderTeamsDialogController.submit(appState);
         expect(appState.game.teamNames).to.be.deep.equal([defaultTeamNames[1], defaultTeamNames[0]]);
     });
+    it("submit preserves player order within teams", () => {
+        const { appState } = initializeApp();
+
+        ReorderTeamsDialogController.submit(appState);
+        expect(appState.game.players.map((player) => player.name)).to.be.deep.equal(["Bob", "Alex", "Anna", "Ashok"]);
+    });
 });

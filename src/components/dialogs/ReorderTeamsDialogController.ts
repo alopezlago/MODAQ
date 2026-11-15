@@ -4,19 +4,17 @@ import { Player } from "../../state/TeamState";
 import { AppState } from "../../state/AppState";
 
 export function submit(appState: AppState): void {
-    const players: Player[] = [...appState.activeGame.players];
+    const players: readonly Player[] = appState.activeGame.players;
     if (players.length < 2) {
         return;
     }
 
-    const firstPlayer: Player = players[0];
-    const otherPlayerIndex: number = players.findIndex((player) => player.teamName !== firstPlayer.teamName);
-    if (otherPlayerIndex === -1) {
+    const firstTeamName: string = players[0].teamName;
+    const otherTeamPlayers: Player[] = players.filter((player) => player.teamName !== firstTeamName);
+    if (otherTeamPlayers.length === 0) {
         return;
     }
 
-    players[0] = players[otherPlayerIndex];
-    players[otherPlayerIndex] = firstPlayer;
-
-    appState.activeGame.setPlayers(players);
+    const firstTeamPlayers: Player[] = players.filter((player) => player.teamName === firstTeamName);
+    appState.activeGame.setPlayers([...otherTeamPlayers, ...firstTeamPlayers]);
 }
