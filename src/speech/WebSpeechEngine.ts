@@ -1,0 +1,549 @@
+import { ISpeechEngine, ISpeechEngineCallbacks } from "./SpeechEngine";
+
+// The Web Speech API isn't in TypeScript's dom library yet, so declare the small surface area we use
+interface ISpeechRecognitionAlternative {
+    transcript: string;
+    confidence: number;
+}
+
+interface ISpeechRecognitionResult {
+    isFinal: boolean;
+    length: number;
+    [index: number]: ISpeechRecognitionAlternative;
+}
+
+interface ISpeechRecognitionResultList {
+    length: number;
+    [index: number]: ISpeechRecognitionResult;
+}
+
+interface ISpeechRecognitionEvent {
+    resultIndex: number;
+    results: ISpeechRecognitionResultList;
+}
+
+interface ISpeechRecognitionErrorEvent {
+    error: string;
+}
+
+interface ISpeechRecognitionPhrase {
+    readonly phrase: string;
+    readonly boost: number;
+}
+
+interface ISpeechRecognitionPhraseConstructor {
+    new (phrase: string, boost?: number): ISpeechRecognitionPhrase;
+}
+
+interface ISpeechRecognition {
+    continuous: boolean;
+    interimResults: boolean;
+    lang: string;
+    maxAlternatives: number;
+
+    // Newer Chromium only: on-device recognition, and contextual biasing (which only works on-device)
+    processLocally?: boolean;
+    phrases?: ISpeechRecognitionPhrase[];
+
+    onend: (() => void) | null;
+    onerror: ((event: ISpeechRecognitionErrorEvent) => void) | null;
+    onresult: ((event: ISpeechRecognitionEvent) => void) | null;
+    onstart: (() => void) | null;
+    abort(): void;
+    start(): void;
+    stop(): void;
+}
+
+interface ISpeechRecognitionConstructor {
+    new (): ISpeechRecognition;
+    available?(options: { langs: string[]; processLocally: boolean }): Promise<string>;
+    install?(options: { langs: string[]; processLocally: boolean }): Promise<boolean>;
+}
+
+interface IWindowWithSpeechRecognition extends Window {
+    SpeechRecognition?: ISpeechRecognitionConstructor;
+    webkitSpeechRecognition?: ISpeechRecognitionConstructor;
+    SpeechRecognitionPhrase?: ISpeechRecognitionPhraseConstructor;
+}
+
+// Browsers end recognition sessions on their own (after silence, or after a minute or so), and every moment
+// between sessions is speech we don't hear. Restart a session that ran normally right away; back off only when
+// sessions keep failing immediately, so a persistent failure doesn't turn into a tight loop.
+const healthySessionDurationInMs = 2000;
+const initialRestartBackoffInMs = 250;
+const maximumRestartBackoffInMs = 4000;
+
+// The silent-session watchdog (see checkIdle): how often it looks, and how long a session may go without a result
+// before it's replaced (doubling per restart in a row, up to the maximum)
+const watchdogIntervalInMs = 1000;
+const initialIdleRestartInMs = 8000;
+const maximumIdleRestartInMs = 30000;
+
+// Between ending one session and starting the next, so the browser has released the microphone
+const restartSettleInMs = 150;
+
+// Which tossup words to bias recognition toward, and how much. Long words are the names and terms a recognizer
+// is most likely to get wrong without a hint.
+const maximumBiasPhrases = 100;
+const biasPhraseMinimumLength = 5;
+const biasPhraseBoost = 3;
+
+function getSpeechRecognitionConstructor(): ISpeechRecognitionConstructor | undefined {
+    if (typeof window === "undefined") {
+        return undefined;
+    }
+
+    const speechWindow: IWindowWithSpeechRecognition = window as IWindowWithSpeechRecognition;
+    return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+}
+
+function getSpeechRecognitionPhraseConstructor(): ISpeechRecognitionPhraseConstructor | undefined {
+    return typeof window === "undefined" ? undefined : (window as IWindowWithSpeechRecognition).SpeechRecognitionPhrase;
+}
+
+// Brave has Chromium's SpeechRecognition API but not the Google speech service behind it, so every online session
+// fails with a "network" error. It announces itself with navigator.brave.
+export function isBraveBrowser(): boolean {
+    return typeof navigator !== "undefined" && (navigator as { brave?: unknown }).brave != undefined;
+}
+
+// Sessions failing with "network" before recognition has ever produced a word means the speech service can't be
+// reached at all (blocked, or not there), not a blip. Stop retrying after this many.
+const unreachableServiceFailureCount = 3;
+
+function getLanguage(): string {
+    return document.documentElement.lang || "en-US";
+}
+
+/**
+ * Speech engine backed by the browser's native Web Speech API (Chrome/Edge/Safari). Chromium browsers send the
+ * audio to an online speech service, unless an on-device model is installed; then that's used instead, since it
+ * has less latency and supports biasing recognition toward the tossup's words.
+ */
+export class WebSpeechEngine implements ISpeechEngine {
+    public readonly name: string = "Web Speech API";
+
+    private readonly callbacks: ISpeechEngineCallbacks;
+
+    private recognition: ISpeechRecognition | undefined;
+
+    private active: boolean;
+
+    private restartTimerId: number | undefined;
+
+    // Recognition sessions restart, and each session numbers its results from 0 again, so include a session
+    // counter in utterance keys
+    private sessionId: number;
+
+    private sessionStartTime: number;
+
+    private restartBackoffInMs: number;
+
+    // Whether recognition runs on-device; decided once when listening starts
+    private processLocally: boolean;
+
+    // Set if the recognizer rejected bias phrases, so we stop sending them
+    private phrasesUnsupported: boolean;
+
+    private vocabulary: string[];
+
+    // When this session started or last delivered a result (see restartIfIdle)
+    private lastHeardTime: number;
+
+    // Whether any session has delivered a result since listening started, and how many "network" failures came
+    // before that; together they tell a service that never worked from one that dropped out for a moment
+    private heardAnything: boolean;
+
+    private networkFailures: number;
+
+    // A session can say it's listening and then never deliver a result (seen with on-device recognition, right
+    // after a restart for a new tossup's hint words). This checks every second, all the time, not just when a
+    // tossup changes: one that dies at the start of a tossup would otherwise stay dead for the whole question.
+    private watchdogId: number | undefined;
+
+    // Restarts in a row with nothing heard; each waits longer, so a quiet room isn't restarted every few seconds
+    private idleRestarts: number;
+
+    // Whether this session was given hint phrases, and whether it has delivered anything
+    private sessionUsedPhrases: boolean;
+
+    private sessionHeard: boolean;
+
+    // A session with hint phrases went silent: the next ones run without them until the vocabulary changes
+    private phrasesSkipped: boolean;
+
+    constructor(callbacks: ISpeechEngineCallbacks) {
+        this.callbacks = callbacks;
+        this.recognition = undefined;
+        this.active = false;
+        this.restartTimerId = undefined;
+        this.sessionId = 0;
+        this.sessionStartTime = 0;
+        this.restartBackoffInMs = initialRestartBackoffInMs;
+        this.processLocally = false;
+        this.phrasesUnsupported = false;
+        this.vocabulary = [];
+        this.lastHeardTime = 0;
+        this.heardAnything = false;
+        this.networkFailures = 0;
+        this.watchdogId = undefined;
+        this.idleRestarts = 0;
+        this.sessionUsedPhrases = false;
+        this.sessionHeard = false;
+        this.phrasesSkipped = false;
+    }
+
+    public static isSupported(): boolean {
+        return getSpeechRecognitionConstructor() != undefined;
+    }
+
+    /** Whether the browser can download an on-device recognition model (newer Chromium) */
+    public static canInstallOnDeviceModel(): boolean {
+        return getSpeechRecognitionConstructor()?.install != undefined;
+    }
+
+    /**
+     * Downloads the on-device recognition model, which is used from the next session on. Browsers require this to
+     * be called while handling a user action (e.g. a click). Resolves to whether the model was installed.
+     */
+    public static installOnDeviceModel(): Promise<boolean> {
+        const speechRecognitionConstructor:
+            | ISpeechRecognitionConstructor
+            | undefined = getSpeechRecognitionConstructor();
+        if (speechRecognitionConstructor?.install == undefined) {
+            return Promise.resolve(false);
+        }
+
+        try {
+            return speechRecognitionConstructor
+                .install({ langs: [getLanguage()], processLocally: true })
+                .catch(() => false);
+        } catch (e) {
+            return Promise.resolve(false);
+        }
+    }
+
+    public start(): void {
+        this.stop();
+        this.heardAnything = false;
+        this.networkFailures = 0;
+
+        const speechRecognitionConstructor:
+            | ISpeechRecognitionConstructor
+            | undefined = getSpeechRecognitionConstructor();
+        if (speechRecognitionConstructor == undefined) {
+            this.callbacks.onPermanentError("Speech recognition isn't supported in this browser.");
+            return;
+        }
+
+        this.active = true;
+        this.idleRestarts = 0;
+        this.watchdogId = window.setInterval(() => this.checkIdle(), watchdogIntervalInMs);
+        void this.startListening(speechRecognitionConstructor);
+    }
+
+    public stop(): void {
+        this.active = false;
+
+        if (this.watchdogId != undefined) {
+            window.clearInterval(this.watchdogId);
+            this.watchdogId = undefined;
+        }
+
+        if (this.restartTimerId != undefined) {
+            window.clearTimeout(this.restartTimerId);
+            this.restartTimerId = undefined;
+        }
+
+        if (this.recognition != undefined) {
+            this.recognition.onresult = null;
+            this.recognition.onerror = null;
+            this.recognition.onend = null;
+            this.recognition.onstart = null;
+            try {
+                this.recognition.abort();
+            } catch (e) {
+                // The session could've already stopped; we don't care at this point
+            }
+
+            this.recognition = undefined;
+        }
+    }
+
+    public setVocabulary(words: string[]): void {
+        this.vocabulary = words;
+        // A new tossup: give its hint phrases a chance, even if the last ones went quiet
+        this.phrasesSkipped = false;
+
+        // Bias phrases only take effect when a session starts. Restarting costs a moment of audio, so only do it
+        // when the phrases will actually be used. Stopping ends the session, and handleEnd starts the next one.
+        if (this.canUsePhrases() && this.recognition != undefined) {
+            try {
+                this.recognition.stop();
+            } catch (e) {
+                // The session already ended; handleEnd starts the next one with the new phrases
+            }
+        }
+    }
+
+    public restartIfIdle(idleMs: number): boolean {
+        if (!this.active || this.recognition == undefined || this.restartTimerId != undefined) {
+            return false;
+        }
+
+        if (Date.now() - this.lastHeardTime < idleMs) {
+            return false;
+        }
+
+        return this.restartStaleSession("Nothing heard for a while; restarting recognition...");
+    }
+
+    // Every second: a session that has delivered nothing for long enough is replaced. The wait doubles with each
+    // restart in a row (8s, 16s, then every 30s) and resets as soon as anything is heard.
+    private checkIdle(): void {
+        if (!this.active || this.recognition == undefined || this.restartTimerId != undefined) {
+            return;
+        }
+
+        const wait: number = Math.min(maximumIdleRestartInMs, initialIdleRestartInMs * Math.pow(2, this.idleRestarts));
+        if (Date.now() - this.lastHeardTime < wait) {
+            return;
+        }
+
+        // Hint phrases are the one thing a new tossup's session adds, so if that session never said a word, the
+        // next one goes without them
+        let reason = `Nothing heard for ${Math.round(wait / 1000)}s; restarting recognition...`;
+        if (this.sessionUsedPhrases && !this.sessionHeard) {
+            this.phrasesSkipped = true;
+            reason = `Nothing heard for ${Math.round(wait / 1000)}s; restarting recognition without hint words...`;
+        }
+
+        this.idleRestarts++;
+        this.restartStaleSession(reason);
+    }
+
+    private restartStaleSession(reason: string): boolean {
+        if (this.recognition == undefined) {
+            return false;
+        }
+
+        const speechRecognitionConstructor:
+            | ISpeechRecognitionConstructor
+            | undefined = getSpeechRecognitionConstructor();
+        if (speechRecognitionConstructor == undefined) {
+            return false;
+        }
+
+        // Let the old session go without waiting for its end event: a session that stopped delivering results may
+        // never send one either
+        const stale: ISpeechRecognition = this.recognition;
+        stale.onresult = null;
+        stale.onerror = null;
+        stale.onend = null;
+        stale.onstart = null;
+        try {
+            stale.abort();
+        } catch (e) {
+            // Already over
+        }
+
+        this.recognition = undefined;
+        this.callbacks.onStatusChanged(reason);
+        // A moment for the browser to let go of the old session's microphone before the new one asks for it
+        this.restartTimerId = window.setTimeout(() => {
+            this.restartTimerId = undefined;
+            if (this.active) {
+                this.startRecognitionSession(speechRecognitionConstructor);
+            }
+        }, restartSettleInMs);
+        return true;
+    }
+
+    private async startListening(speechRecognitionConstructor: ISpeechRecognitionConstructor): Promise<void> {
+        // Use on-device recognition if its model is already installed. Don't trigger the download ourselves.
+        if (speechRecognitionConstructor.available != undefined) {
+            try {
+                const availability: string = await speechRecognitionConstructor.available({
+                    langs: [getLanguage()],
+                    processLocally: true,
+                });
+                this.processLocally = availability === "available";
+            } catch (e) {
+                this.processLocally = false;
+            }
+        }
+
+        if (this.active) {
+            this.startRecognitionSession(speechRecognitionConstructor);
+        }
+    }
+
+    private canUsePhrases(): boolean {
+        return (
+            this.processLocally &&
+            !this.phrasesUnsupported &&
+            !this.phrasesSkipped &&
+            getSpeechRecognitionPhraseConstructor() != undefined
+        );
+    }
+
+    private startRecognitionSession(speechRecognitionConstructor: ISpeechRecognitionConstructor): void {
+        this.sessionId++;
+        this.sessionStartTime = Date.now();
+        this.lastHeardTime = this.sessionStartTime;
+        this.sessionHeard = false;
+        this.sessionUsedPhrases = false;
+
+        const recognition: ISpeechRecognition = new speechRecognitionConstructor();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+        recognition.lang = getLanguage();
+        if (this.processLocally) {
+            recognition.processLocally = true;
+        }
+
+        const phraseConstructor:
+            | ISpeechRecognitionPhraseConstructor
+            | undefined = getSpeechRecognitionPhraseConstructor();
+        if (this.canUsePhrases() && phraseConstructor != undefined) {
+            try {
+                recognition.phrases = this.vocabulary
+                    .filter((word) => word.length >= biasPhraseMinimumLength)
+                    .slice(0, maximumBiasPhrases)
+                    .map((word) => new phraseConstructor(word, biasPhraseBoost));
+                this.sessionUsedPhrases = recognition.phrases.length > 0;
+            } catch (e) {
+                this.phrasesUnsupported = true;
+            }
+        }
+
+        recognition.onstart = () =>
+            this.callbacks.onStatusChanged(
+                this.processLocally ? "Listening (on-device)" : "Listening (online service)"
+            );
+        recognition.onresult = (event) => this.handleResult(event);
+        recognition.onerror = (event) => this.handleError(event);
+        recognition.onend = () => this.handleEnd();
+
+        this.recognition = recognition;
+        this.callbacks.onStatusChanged("Starting recognition session...");
+
+        try {
+            recognition.start();
+        } catch (e) {
+            // start() throws if the session is already running, which means we're already listening
+        }
+    }
+
+    private handleResult(event: ISpeechRecognitionEvent): void {
+        this.lastHeardTime = Date.now();
+        this.heardAnything = true;
+        this.sessionHeard = true;
+        this.idleRestarts = 0;
+        this.networkFailures = 0;
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const result: ISpeechRecognitionResult = event.results[i];
+            const utteranceKey = `${this.sessionId}-${i}`;
+            const transcript: string = result[0].transcript;
+
+            if (result.isFinal) {
+                this.callbacks.onFinalTranscript(utteranceKey, transcript);
+            } else {
+                this.callbacks.onPartialTranscript(utteranceKey, transcript);
+            }
+        }
+    }
+
+    private handleError(event: ISpeechRecognitionErrorEvent): void {
+        if (event.error === "not-allowed") {
+            this.stop();
+            this.callbacks.onPermanentError(
+                "Couldn't access the microphone. Allow microphone access in your browser to track the reading position."
+            );
+            return;
+        }
+
+        // Safari reports this when speech recognition itself is turned off (it relies on Siri/Dictation), or when
+        // its speech recognition permission was denied
+        if (event.error === "service-not-allowed") {
+            this.stop();
+            this.callbacks.onPermanentError(
+                "Speech recognition isn't allowed. Allow microphone and speech recognition access in your browser. " +
+                    "In Safari, also make sure Siri or Dictation is turned on in System Settings."
+            );
+            return;
+        }
+
+        // The microphone couldn't be captured, which can happen when another capture of it is running (Safari,
+        // particularly on iOS, handles two at once poorly)
+        if (event.error === "audio-capture") {
+            this.callbacks.onAudioCaptureError?.();
+        }
+
+        if (event.error === "phrases-not-supported") {
+            this.phrasesUnsupported = true;
+        }
+
+        // An online service that has never answered: retrying forever just leaves the buzz point stuck at the
+        // start with nothing on screen saying why. Brave never has one, so it doesn't need three tries to tell.
+        if (event.error === "network" && !this.heardAnything && !this.processLocally) {
+            this.networkFailures++;
+            const brave: boolean = isBraveBrowser();
+            if (brave || this.networkFailures >= unreachableServiceFailureCount) {
+                this.stop();
+                if (this.callbacks.onServiceUnavailable != undefined) {
+                    this.callbacks.onServiceUnavailable();
+                    return;
+                }
+
+                this.callbacks.onPermanentError(
+                    brave
+                        ? "Brave doesn't include the speech recognition service that microphone tracking uses, so " +
+                              "it can't follow the reading here. Use Chrome or Edge for microphone tracking; " +
+                              "everything else works in Brave."
+                        : "The browser's speech recognition service can't be reached, so microphone tracking can't " +
+                              "follow the reading. Check your internet connection (or anything blocking Google's " +
+                              "speech service), or try Chrome or Edge."
+                );
+                return;
+            }
+        }
+
+        // Transient errors (no-speech, network, audio-capture, aborted) end the session, and handleEnd
+        // restarts it. Surface them so the debug window shows what's happening.
+        this.callbacks.onStatusChanged(`Recognition error: ${event.error}`);
+    }
+
+    private handleEnd(): void {
+        if (!this.active) {
+            return;
+        }
+
+        this.callbacks.onStatusChanged("Recognition session ended; restarting...");
+
+        // A session that ran normally ended on its own (silence, time limit, or a vocabulary change); restart
+        // right away. One that ended almost immediately is failing, so wait longer each time.
+        let delayInMs = restartSettleInMs;
+        if (Date.now() - this.sessionStartTime >= healthySessionDurationInMs) {
+            this.restartBackoffInMs = initialRestartBackoffInMs;
+        } else {
+            delayInMs = this.restartBackoffInMs;
+            this.restartBackoffInMs = Math.min(maximumRestartBackoffInMs, this.restartBackoffInMs * 2);
+        }
+
+        this.restartTimerId = window.setTimeout(() => {
+            this.restartTimerId = undefined;
+            if (!this.active) {
+                return;
+            }
+
+            const speechRecognitionConstructor:
+                | ISpeechRecognitionConstructor
+                | undefined = getSpeechRecognitionConstructor();
+            if (speechRecognitionConstructor != undefined) {
+                this.startRecognitionSession(speechRecognitionConstructor);
+            }
+        }, delayInMs);
+    }
+}
