@@ -10,6 +10,7 @@ import { QuestionWord } from "./QuestionWord";
 import { BuzzMenu } from "./BuzzMenu";
 import { Cycle } from "../state/Cycle";
 import { Answer } from "./Answer";
+import { ErrataButton } from "./ErrataButton";
 import type { IFormattedText } from "../parser/IFormattedText";
 import { TossupProtestDialog } from "./dialogs/TossupProtestDialog";
 import { CancelButton } from "./CancelButton";
@@ -181,13 +182,16 @@ export const TossupQuestion = observer(function TossupQuestion(props: IQuestionP
                 <BuzzFeedback appState={props.appState} />
                 <ReaderFollowerDebug appState={props.appState} />
             </div>
-            <div className={classes.sideButtons}>
-                <CancelButton
-                    className="throw-out-tossup"
-                    tooltip="Throw out tossup"
-                    onClick={throwOutClickHandler}
-                />
-                <ReaderFollowerIndicator uiState={props.appState.uiState} />
+            <div className={classes.questionButtons}>
+                <ErrataButton questionNumber={props.tossupNumber} questionType="tossup" />
+                <div className={classes.sideButtons}>
+                    <CancelButton
+                        className="throw-out-tossup"
+                        tooltip="Throw out tossup"
+                        onClick={throwOutClickHandler}
+                    />
+                    <ReaderFollowerIndicator uiState={props.appState.uiState} />
+                </div>
             </div>
         </div>
     );
@@ -264,6 +268,7 @@ interface IQuestionWordWrapperProps {
 }
 
 interface ITossupQuestionClassNames {
+    questionButtons: string;
     tossupContainer: string;
     tossupQuestionText: string;
     sideButtons: string;
@@ -275,6 +280,12 @@ const getClassNames = (): ITossupQuestionClassNames =>
             paddingLeft: "24px",
             display: "flex",
             justifyContent: "space-between",
+        },
+        // Keeps the errata and throw-out buttons together in the question's top-right corner
+        questionButtons: {
+            display: "flex",
+            alignItems: "flex-start",
+            whiteSpace: "nowrap",
         },
         tossupQuestionText: {
             display: "inline-block",

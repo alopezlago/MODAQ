@@ -94,6 +94,12 @@ export class DialogState {
         this.visibleDialog = ModalVisibilityStatus.None;
     }
 
+    public hideErrataDialog(): void {
+        if (this.visibleDialog === ModalVisibilityStatus.Errata) {
+            this.hideModalDialog();
+        }
+    }
+
     public hideFontDialog(): void {
         this.fontDialog = undefined;
         if (this.visibleDialog === ModalVisibilityStatus.Font) {
@@ -161,6 +167,10 @@ export class DialogState {
     public showCustomizeGameFormatDialog(gameFormat: IGameFormat): void {
         this.customizeGameFormat = new CustomizeGameFormatState(gameFormat);
         this.visibleDialog = ModalVisibilityStatus.CustomizeGameFormat;
+    }
+
+    public showErrataDialog(): void {
+        this.visibleDialog = ModalVisibilityStatus.Errata;
     }
 
     public showExportToJsonDialog(): void {

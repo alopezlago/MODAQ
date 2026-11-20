@@ -22,8 +22,10 @@ import { observer } from "mobx-react-lite";
 
 import * as PacketLoaderController from "./PacketLoaderController";
 import * as TossupQuestionController from "./TossupQuestionController";
+import * as ErrataDialogController from "./dialogs/ErrataDialogController";
 import { StateProvider } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";
+import { IErratum } from "../state/IErratum";
 import { watchReadAlongState } from "../speech/ReadAlongDiagnostics";
 import { GameViewer } from "./GameViewer";
 import { ModalDialogContainer } from "./ModalDialogContainer";
@@ -144,6 +146,41 @@ export const ModaqControl = observer(function ModaqControl(props: IModaqControlP
         }
     }, [appState, props.players]);
 
+    // Errata the host owns (e.g. loaded from its server): adopt them whenever that reference changes. Starting a new
+    // game clears errata, since they describe the packet that was just played, so re-seed the host's when that
+    // happens -- they're the host's to keep, not the game's.
+    const hostErrata: IErratum[] | undefined = props.errata;
+    React.useEffect(() => {
+        if (hostErrata == undefined) {
+            return;
+        }
+
+        appState.errata.setErrata(hostErrata);
+        return reaction(
+            () => appState.game.isLoaded,
+            (isLoaded) => {
+                if (isLoaded && appState.errata.errata.length === 0) {
+                    appState.errata.setErrata(hostErrata);
+                }
+            }
+        );
+    }, [appState, hostErrata]);
+
+    // Hand the host every change the moderator makes, so it can save errata with the tournament.
+    const onErrataChange = props.onErrataChange;
+    React.useEffect(() => {
+        if (onErrataChange == undefined) {
+            return;
+        }
+
+        return reaction(
+            () => appState.errata.errata.map((erratum) => ({ ...erratum })),
+            (errata) => onErrataChange(errata),
+            // Otherwise adopting the host's own errata (above) would echo them right back at it
+            { equals: comparer.structural }
+        );
+    }, [appState, onErrataChange]);
+
     const theme: Theme = React.useMemo(
         () =>
             createTheme({
@@ -188,6 +225,18 @@ export interface IModaqControlProps {
      * at the time of export.
      */
     customExport?: ICustomExport;
+
+    /**
+     * Initial errata for the current packet, e.g. loaded from a server. Adopted whenever this reference changes.
+     */
+    errata?: IErratum[];
+
+    /**
+     * Called whenever the moderator adds, edits, or removes an erratum, with the full new errata list. The errata UI
+     * is always available; this is for hosts that want to save errata themselves instead of (or in addition to)
+     * having the moderator export them to a file.
+     */
+    onErrataChange?: (errata: IErratum[]) => void;
 
     /**
      * The format of the current game, such as if powers are supported, if tossups are paired with bonuses, etc.
@@ -521,6 +570,14 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
         case "P":
         case "B":
             appState.uiState.previousCycle();
+            event.preventDefault();
+            event.stopPropagation();
+            break;
+
+        case "R":
+            // Mark the current question (the bonus once it's earned, otherwise the tossup) as having an erratum.
+            // Details are added at the end of the round.
+            ErrataDialogController.toggleMarkOnCurrentQuestion(appState);
             event.preventDefault();
             event.stopPropagation();
             break;
