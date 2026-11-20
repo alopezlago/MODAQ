@@ -1,6 +1,7 @@
 import { expect } from "chai";
 
 import * as ErrataDialogController from "src/components/dialogs/ErrataDialogController";
+import * as ExportController from "src/components/ExportController";
 import * as ErrataExport from "src/state/ErrataExport";
 import * as GameFormats from "src/state/GameFormats";
 import { AppState } from "src/state/AppState";
@@ -68,13 +69,45 @@ describe("ErrataTests", () => {
             expect(appState.errata.getErratum(3, "tossup")?.text).to.equal("Second");
         });
 
-        it("setErratum with blank text removes the erratum", () => {
+        it("setErratum with blank text keeps the question marked", () => {
             const appState: AppState = new AppState();
 
             appState.errata.setErratum({ questionNumber: 3, questionType: "tossup", thrownOut: false, text: "First" });
             appState.errata.setErratum({ questionNumber: 3, questionType: "tossup", thrownOut: false, text: "   " });
 
+            expect(appState.errata.errata.length).to.equal(1);
+            expect(appState.errata.getErratum(3, "tossup")?.text).to.equal("");
+        });
+
+        it("toggleMark marks a question without details, and unmarks it", () => {
+            const appState: AppState = new AppState();
+
+            expect(appState.errata.toggleMark(3, "bonus")).to.be.true;
+            const erratum = appState.errata.getErratum(3, "bonus");
+            expect(erratum?.text).to.equal("");
+            expect(erratum?.at).to.not.be.undefined;
+
+            expect(appState.errata.toggleMark(3, "bonus")).to.be.false;
             expect(appState.errata.errata.length).to.equal(0);
+        });
+
+        it("toggleMark doesn't unmark an erratum that has details", () => {
+            const appState: AppState = new AppState();
+            appState.errata.setErratum({ questionNumber: 3, questionType: "tossup", thrownOut: false, text: "Wrong" });
+
+            expect(appState.errata.toggleMark(3, "tossup")).to.be.true;
+            expect(appState.errata.getErratum(3, "tossup")?.text).to.equal("Wrong");
+        });
+
+        it("setText changes only that erratum's details", () => {
+            const appState: AppState = new AppState();
+            appState.errata.toggleMark(1, "tossup");
+            appState.errata.toggleMark(1, "bonus");
+
+            appState.errata.setText(1, "bonus", "Part 2 is ambiguous ");
+
+            expect(appState.errata.getErratum(1, "bonus")?.text).to.equal("Part 2 is ambiguous ");
+            expect(appState.errata.getErratum(1, "tossup")?.text).to.equal("");
         });
 
         it("getSortedErrata orders by question number, then type", () => {
@@ -93,51 +126,79 @@ describe("ErrataTests", () => {
     });
 
     describe("ErrataDialogController", () => {
-        it("showDialog opens the dialog seeded with the existing erratum", () => {
-            const appState: AppState = createAppStateWithGame();
-            appState.errata.setErratum({
-                questionNumber: 1,
-                questionType: "tossup",
-                thrownOut: false,
-                text: "Prompt on 'H'",
-            });
-
-            ErrataDialogController.showDialog(appState, 1, "tossup");
-
-            expect(appState.uiState.dialogState.visibleDialog).to.equal(ModalVisibilityStatus.Errata);
-
-            const errataDialog = appState.uiState.dialogState.errataDialog;
-            if (errataDialog == undefined) {
-                throw new Error("Errata dialog wasn't opened");
-            }
-
-            expect(errataDialog.questionNumber).to.equal(1);
-            expect(errataDialog.questionType).to.equal("tossup");
-            expect(errataDialog.text).to.equal("Prompt on 'H'");
-            expect(errataDialog.existed).to.be.true;
-        });
-
-        it("submit records the erratum and closes the dialog", () => {
+        it("toggleMarkOnCurrentQuestion marks the tossup before it's answered", () => {
             const appState: AppState = createAppStateWithGame();
 
-            ErrataDialogController.showDialog(appState, 2, "bonus");
-            ErrataDialogController.changeText(appState, "Part 2's answer is unclear.");
-            ErrataDialogController.submit(appState);
+            ErrataDialogController.toggleMarkOnCurrentQuestion(appState);
 
-            expect(appState.errata.getErratum(2, "bonus")?.text).to.equal("Part 2's answer is unclear.");
+            expect(appState.errata.getErratum(1, "tossup")).to.not.be.undefined;
+            expect(appState.errata.getErratum(1, "bonus")).to.be.undefined;
+            // Marking never opens a dialog; details are added at the end of the round
             expect(appState.uiState.dialogState.visibleDialog).to.equal(ModalVisibilityStatus.None);
-            expect(appState.uiState.dialogState.errataDialog).to.be.undefined;
         });
 
-        it("removeErratum removes the erratum for the question being edited", () => {
+        it("toggleMarkOnCurrentQuestion marks the bonus once it's earned", () => {
             const appState: AppState = createAppStateWithGame();
-            appState.errata.setErratum({ questionNumber: 1, questionType: "tossup", thrownOut: false, text: "Wrong" });
+            appState.game.cycles[0].addCorrectBuzz(
+                { player: firstTeamPlayer, points: 10, position: 2, isLastWord: false },
+                0,
+                appState.game.gameFormat,
+                0,
+                2
+            );
 
-            ErrataDialogController.showDialog(appState, 1, "tossup");
-            ErrataDialogController.removeErratum(appState);
+            ErrataDialogController.toggleMarkOnCurrentQuestion(appState);
+
+            expect(appState.errata.getErratum(1, "bonus")).to.not.be.undefined;
+            expect(appState.errata.getErratum(1, "tossup")).to.be.undefined;
+        });
+
+        it("toggleMarkOnCurrentQuestion again unmarks the question", () => {
+            const appState: AppState = createAppStateWithGame();
+
+            ErrataDialogController.toggleMarkOnCurrentQuestion(appState);
+            ErrataDialogController.toggleMarkOnCurrentQuestion(appState);
 
             expect(appState.errata.errata.length).to.equal(0);
-            expect(appState.uiState.dialogState.visibleDialog).to.equal(ModalVisibilityStatus.None);
+        });
+
+        it("finishing the round with errata opens the review instead of the export", () => {
+            const appState: AppState = createAppStateWithGame();
+            appState.errata.toggleMark(2, "tossup");
+
+            ExportController.finishRound(appState);
+
+            expect(appState.uiState.dialogState.visibleDialog).to.equal(ModalVisibilityStatus.Errata);
+        });
+
+        it("finishing the round without errata goes straight to the export", () => {
+            const appState: AppState = createAppStateWithGame();
+
+            ExportController.finishRound(appState);
+
+            expect(appState.uiState.dialogState.visibleDialog).to.equal(ModalVisibilityStatus.ExportToJson);
+        });
+
+        it("continueToExport keeps the details and moves on to the export", () => {
+            const appState: AppState = createAppStateWithGame();
+            appState.errata.toggleMark(2, "tossup");
+            ExportController.finishRound(appState);
+
+            ErrataDialogController.changeText(appState, 2, "tossup", "Should accept 'second'.");
+            ErrataDialogController.continueToExport(appState);
+
+            expect(appState.errata.getErratum(2, "tossup")?.text).to.equal("Should accept 'second'.");
+            expect(appState.uiState.dialogState.visibleDialog).to.equal(ModalVisibilityStatus.ExportToJson);
+        });
+
+        it("removeErratum removes the erratum from the review", () => {
+            const appState: AppState = createAppStateWithGame();
+            appState.errata.toggleMark(1, "tossup");
+            ExportController.finishRound(appState);
+
+            ErrataDialogController.removeErratum(appState, 1, "tossup");
+
+            expect(appState.errata.errata.length).to.equal(0);
         });
     });
 

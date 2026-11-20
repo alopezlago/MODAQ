@@ -8,7 +8,7 @@ import { UIState } from "../state/UIState";
 import { AppState } from "../state/AppState";
 import { ILabelStyles, Label, TooltipHost } from "@fluentui/react";
 import { useAppState } from "../contexts/StateContext";
-import { StatusDisplayType } from "../state/StatusDisplayType";
+import * as ExportController from "./ExportController";
 
 const ReturnKeyCode = 13;
 const questionNumberTextStyle: Partial<ITextFieldStyles> = {
@@ -161,14 +161,8 @@ function onProposedQuestionNumberKeyDown(event: React.KeyboardEvent<HTMLInputEle
 
 function onNextClick(appState: AppState): void {
     if (shouldNextButtonExport(appState)) {
-        // If they use Sheets, show the Export Sheets dialog. Otherwise, show the Export JSON dialog
-        if (appState.uiState.customExportOptions != undefined) {
-            appState.handleCustomExport(StatusDisplayType.MessageDialog, "NextButton");
-        } else if (appState.uiState.sheetsState.sheetId != undefined) {
-            appState.uiState.createPendingSheet();
-        } else {
-            appState.uiState.dialogState.showExportToJsonDialog();
-        }
+        // The end of the round: review any errata, then export
+        ExportController.finishRound(appState);
     } else {
         appState.uiState.nextCycle();
     }

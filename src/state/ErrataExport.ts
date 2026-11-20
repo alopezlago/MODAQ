@@ -95,7 +95,7 @@ function convertErratum(appState: AppState, erratum: IErratum): IErratumExport {
         question: `${label} ${erratum.questionNumber}`,
         questionType: erratum.questionType,
         questionNumber: erratum.questionNumber,
-        errata: erratum.text,
+        errata: erratum.text.trim(),
         thrownOut: erratum.thrownOut,
     };
 

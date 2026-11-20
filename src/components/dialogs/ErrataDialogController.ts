@@ -1,42 +1,73 @@
+import * as ExportController from "../ExportController";
 import { AppState } from "../../state/AppState";
-import { ErrataDialogState } from "../../state/ErrataDialogState";
+import { Cycle } from "../../state/Cycle";
+import { GameState } from "../../state/GameState";
 import { QuestionType } from "../../state/IErratum";
 
-export function showDialog(appState: AppState, questionNumber: number, questionType: QuestionType): void {
-    // Editing an existing erratum starts from what's already there
-    const text: string = appState.errata.getErratum(questionNumber, questionType)?.text ?? "";
-    appState.uiState.dialogState.showErrataDialog(questionNumber, questionType, text);
+export interface IQuestionReference {
+    questionNumber: number;
+    questionType: QuestionType;
 }
 
-export function changeText(appState: AppState, text: string): void {
-    appState.uiState.dialogState.errataDialog?.setText(text);
+/**
+ * Marks (or, if it's only marked, unmarks) a question as having an erratum. During the round that's all the
+ * moderator does; they add the details when they review the errata at the end of the round.
+ */
+export function toggleMark(appState: AppState, questionNumber: number, questionType: QuestionType): void {
+    appState.errata.toggleMark(questionNumber, questionType);
 }
 
-export function submit(appState: AppState): void {
-    const errataDialog: ErrataDialogState | undefined = appState.uiState.dialogState.errataDialog;
-    if (errataDialog == undefined) {
-        return;
+/**
+ * The R shortcut: marks the question being read. That's the bonus once a team has earned it, and the tossup before
+ * then.
+ */
+export function toggleMarkOnCurrentQuestion(appState: AppState): void {
+    const question: IQuestionReference | undefined = getCurrentQuestion(appState);
+    if (question != undefined) {
+        toggleMark(appState, question.questionNumber, question.questionType);
+    }
+}
+
+export function getCurrentQuestion(appState: AppState): IQuestionReference | undefined {
+    const game: GameState = appState.activeGame;
+    const cycleIndex: number = appState.uiState.cycleIndex;
+    const cycle: Cycle | undefined = game.playableCycles[cycleIndex];
+    if (cycle == undefined) {
+        return undefined;
     }
 
-    // Blank text removes the erratum, so clearing the field is the same as deleting it
-    appState.errata.setErratum({
-        questionNumber: errataDialog.questionNumber,
-        questionType: errataDialog.questionType,
-        thrownOut: false,
-        text: errataDialog.text,
-    });
-
-    hideDialog(appState);
-}
-
-export function removeErratum(appState: AppState): void {
-    const errataDialog: ErrataDialogState | undefined = appState.uiState.dialogState.errataDialog;
-    if (errataDialog == undefined) {
-        return;
+    if (cycle.correctBuzz != undefined) {
+        const bonusIndex: number = game.getBonusIndex(cycleIndex);
+        const bonusIsRead: boolean =
+            game.gameFormat.overtimeIncludesBonuses || cycleIndex < game.gameFormat.regulationTossupCount;
+        if (bonusIsRead && bonusIndex >= 0 && bonusIndex < game.packet.bonuses.length) {
+            return { questionNumber: bonusIndex + 1, questionType: "bonus" };
+        }
     }
 
-    appState.errata.removeErratum(errataDialog.questionNumber, errataDialog.questionType);
+    const tossupIndex: number = game.getTossupIndex(cycleIndex);
+    if (tossupIndex >= 0 && tossupIndex < game.packet.tossups.length) {
+        return { questionNumber: tossupIndex + 1, questionType: "tossup" };
+    }
+
+    return undefined;
+}
+
+export function changeText(appState: AppState, questionNumber: number, questionType: QuestionType, text: string): void {
+    appState.errata.setText(questionNumber, questionType, text);
+}
+
+export function removeErratum(appState: AppState, questionNumber: number, questionType: QuestionType): void {
+    appState.errata.removeErratum(questionNumber, questionType);
+}
+
+/**
+ * Finishes the end-of-round review and moves on to the export. Errata are saved as they're edited, so there's
+ * nothing to commit here.
+ */
+export function continueToExport(appState: AppState): void {
     hideDialog(appState);
+    ExportController.exportGame(appState);
 }
 
 export function hideDialog(appState: AppState): void {

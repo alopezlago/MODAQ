@@ -1,34 +1,35 @@
 import fs from "fs";
-import { test, expect, Download } from "@playwright/test";
+import { test, expect, Download, Page } from "@playwright/test";
 import { startGame } from "./game.fixture";
 
 const errataText = "The answer line should also accept 'Georgian'.";
 
+// The sample packet has two tossups, so the second one is the last question of the round
+async function goToLastQuestion(page: Page): Promise<void> {
+    await page.getByRole("button", { name: /Next/ }).click();
+    await expect(page.getByRole("button", { name: "Export..." })).toBeVisible();
+}
+
 test.describe("errata", () => {
-    test("a moderator can note an erratum from the question and export it on its own", async ({ page }) => {
+    test("R marks the current question, and the details are added at the end of the round", async ({ page }) => {
         await startGame(page);
 
-        // The flag sits in the question's top right corner, next to the throw-out button
-        const tossupErrataButton = page.getByRole("button", { name: /Note an erratum for tossup 1/ });
-        await expect(tossupErrataButton).toBeVisible();
-        await expect(page.getByRole("button", { name: /Note an erratum for bonus 1/ })).toBeVisible();
+        // R only marks the question; nothing opens while the moderator is reading
+        await page.keyboard.press("r");
+        await expect(page.getByRole("button", { name: /Erratum marked for tossup 1/ })).toBeVisible();
+        await expect(page.getByRole("dialog")).toHaveCount(0);
 
-        await tossupErrataButton.click();
-        await expect(page.getByRole("heading", { name: "Errata for Tossup 1" })).toBeVisible();
+        await goToLastQuestion(page);
 
-        await page.getByLabel("What was wrong with this question?").fill(errataText);
-        await page.getByRole("button", { name: "Save" }).click();
+        // Finishing the round brings up the review before the export
+        await page.getByRole("button", { name: "Export..." }).click();
+        await expect(page.getByRole("heading", { name: "Review errata" })).toBeVisible();
+        await page.getByLabel("What was wrong with Tossup 1?").fill(errataText);
+        await page.getByRole("button", { name: "Continue to export" }).click();
 
-        // The flag now reports the erratum it's holding
-        await expect(page.getByRole("button", { name: `Erratum: ${errataText}` })).toBeVisible();
-
-        // Exporting the QBJ brings the errata down beside it, in a file of their own, so the QBJ stays importable
-        await page.getByRole("menuitem", { name: "Export" }).click();
-        await page.getByRole("menuitem", { name: "Export to JSON..." }).click();
-
-        await expect(page.getByText(/The 1 errata you noted/)).toBeVisible();
         const exportButton = page.getByRole("link", { name: "Export QBJ" });
         await expect(exportButton).toBeVisible();
+        await expect(page.getByText(/The 1 errata you noted/)).toBeVisible();
 
         const downloads: Download[] = [];
         page.on("download", (download) => downloads.push(download));
@@ -48,7 +49,6 @@ test.describe("errata", () => {
         expect(contents.teams).toEqual(["Team Alpha", "Team Beta"]);
         expect(contents.errata).toHaveLength(1);
 
-        // The export has to say which question it's about and what the moderator wrote
         const erratum = contents.errata[0];
         expect(erratum.question).toEqual("Tossup 1");
         expect(erratum.questionNumber).toEqual(1);
@@ -57,24 +57,38 @@ test.describe("errata", () => {
         expect(erratum.questionText).toContain("His farewell address");
     });
 
-    test("an erratum can be edited and removed from the question's flag", async ({ page }) => {
+    test("the flag toggles the mark, and errata can be removed in the review", async ({ page }) => {
         await startGame(page);
 
-        await page.getByRole("button", { name: /Note an erratum for tossup 1/ }).click();
-        await page.getByLabel("What was wrong with this question?").fill(errataText);
-        await page.getByRole("button", { name: "Save" }).click();
+        // Clicking the flag twice unmarks the question
+        await page.getByRole("button", { name: /Mark an erratum for tossup 1/ }).click();
+        await page.getByRole("button", { name: /Erratum marked for tossup 1/ }).click();
+        await expect(page.getByRole("button", { name: /Mark an erratum for tossup 1/ })).toBeVisible();
 
-        // Reopening starts from what was written before
-        await page.getByRole("button", { name: `Erratum: ${errataText}` }).click();
-        await expect(page.getByLabel("What was wrong with this question?")).toHaveValue(errataText);
+        await page.getByRole("button", { name: /Mark an erratum for bonus 1/ }).click();
+        await expect(page.getByRole("button", { name: /Erratum marked for bonus 1/ })).toBeVisible();
 
-        await page.getByRole("button", { name: "Remove" }).click();
-        await expect(page.getByRole("button", { name: /Note an erratum for tossup 1/ })).toBeVisible();
+        await goToLastQuestion(page);
+        await page.getByRole("button", { name: "Export..." }).click();
+        await expect(page.getByLabel("What was wrong with Bonus 1?")).toBeVisible();
+        await expect(page.getByLabel("What was wrong with Tossup 1?")).toHaveCount(0);
+
+        await page.getByRole("button", { name: "Remove the erratum for Bonus 1" }).click();
+        await expect(page.getByText("No questions are marked as having errata.")).toBeVisible();
+        await page.getByRole("button", { name: "Continue to export" }).click();
 
         // With no errata left, the export is just the QBJ
-        await page.getByRole("menuitem", { name: "Export" }).click();
-        await page.getByRole("menuitem", { name: "Export to JSON..." }).click();
         await expect(page.getByRole("link", { name: "Export QBJ" })).toBeVisible();
         await expect(page.getByText(/errata you noted/)).toHaveCount(0);
+    });
+
+    test("without errata, finishing the round goes straight to the export", async ({ page }) => {
+        await startGame(page);
+        await goToLastQuestion(page);
+
+        await page.getByRole("button", { name: "Export..." }).click();
+
+        await expect(page.getByRole("link", { name: "Export QBJ" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Review errata" })).toHaveCount(0);
     });
 });

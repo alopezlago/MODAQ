@@ -22,6 +22,7 @@ import { observer } from "mobx-react-lite";
 
 import * as PacketLoaderController from "./PacketLoaderController";
 import * as TossupQuestionController from "./TossupQuestionController";
+import * as ErrataDialogController from "./dialogs/ErrataDialogController";
 import { StateProvider } from "../contexts/StateContext";
 import { AppState } from "../state/AppState";
 import { IErratum } from "../state/IErratum";
@@ -569,6 +570,14 @@ function shortcutHandler(event: KeyboardEvent, appState: AppState): void {
         case "P":
         case "B":
             appState.uiState.previousCycle();
+            event.preventDefault();
+            event.stopPropagation();
+            break;
+
+        case "R":
+            // Mark the current question (the bonus once it's earned, otherwise the tossup) as having an erratum.
+            // Details are added at the end of the round.
+            ErrataDialogController.toggleMarkOnCurrentQuestion(appState);
             event.preventDefault();
             event.stopPropagation();
             break;

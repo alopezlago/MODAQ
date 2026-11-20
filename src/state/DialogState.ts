@@ -2,8 +2,6 @@ import { makeAutoObservable } from "mobx";
 import { ignore } from "mobx-sync";
 import { AddQuestionDialogState } from "./AddQuestionsDialogState";
 import { CustomizeGameFormatState } from "./CustomizeGameFormatState";
-import { ErrataDialogState } from "./ErrataDialogState";
-import { QuestionType } from "./IErratum";
 import { IGameFormat } from "./IGameFormat";
 import { IMessageDialogState, MessageDialogType } from "./IMessageDialogState";
 import { RenamePlayerDialogState } from "./RenamePlayerDialogState";
@@ -30,9 +28,6 @@ export class DialogState {
 
     @ignore
     public customizeGameFormat: CustomizeGameFormatState | undefined;
-
-    @ignore
-    public errataDialog: ErrataDialogState | undefined;
 
     @ignore
     public fontDialog: FontDialogState | undefined;
@@ -64,7 +59,6 @@ export class DialogState {
         this.addPlayerDialog = undefined;
         this.addQuestions = undefined;
         this.customizeGameFormat = undefined;
-        this.errataDialog = undefined;
         this.fontDialog = undefined;
         this.importFromQBJDialog = undefined;
         this.messageDialog = undefined;
@@ -101,7 +95,6 @@ export class DialogState {
     }
 
     public hideErrataDialog(): void {
-        this.errataDialog = undefined;
         if (this.visibleDialog === ModalVisibilityStatus.Errata) {
             this.hideModalDialog();
         }
@@ -176,8 +169,7 @@ export class DialogState {
         this.visibleDialog = ModalVisibilityStatus.CustomizeGameFormat;
     }
 
-    public showErrataDialog(questionNumber: number, questionType: QuestionType, text: string): void {
-        this.errataDialog = new ErrataDialogState(questionNumber, questionType, text);
+    public showErrataDialog(): void {
         this.visibleDialog = ModalVisibilityStatus.Errata;
     }
 
